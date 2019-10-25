@@ -11,7 +11,6 @@ class Eia860Spider(scrapy.Spider):
     def parse(self, response):
         pass
 
-
     def all_forms(self, response):
         """
         Produce requests for collectable Eia860 forms
@@ -38,7 +37,6 @@ class Eia860Spider(scrapy.Spider):
             url = response.urljoin(l.xpath("@href").extract_first())
 
             yield Request(url, meta={"year": year})
-
 
     def form_for_year(self, response, year):
         """

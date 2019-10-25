@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import pytest
 from spiders.eia860 import Eia860Spider
 from . import factories
+
 
 class TestEia860:
     """Validate Eia860 Spider"""
@@ -21,7 +21,6 @@ class TestEia860:
                                  "/eia860/archive/xls/eia8602001.zip"
         assert result[-1].meta["year"] == 2001
 
-
     def test_spider_gets_specific_year(self):
         """Eia860 spider can pick forms for a specific year"""
         spider = Eia860Spider()
@@ -33,7 +32,6 @@ class TestEia860:
         assert result.url == "https://www.eia.gov/electricity/data/eia860" \
                              "/archive/xls/eia8602004.zip"
         assert result.meta["year"] == 2004
-
 
         for year in range(2001, 2018):
             result = spider.form_for_year(resp, year)
