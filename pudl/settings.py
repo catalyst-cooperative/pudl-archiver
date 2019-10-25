@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
+import os
 
-# Scrapy settings for scrapers project
+# Scrapy settings for pudl project
 #
 # For simplicity, this file contains only settings considered important or
 # commonly used. You can find more settings consulting the documentation:
@@ -9,10 +10,10 @@
 #     https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
 #     https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 
-BOT_NAME = 'scrapers'
+BOT_NAME = 'pudl'
 
-SPIDER_MODULES = ['scrapers.spiders']
-NEWSPIDER_MODULE = 'scrapers.spiders'
+SPIDER_MODULES = ['pudl.spiders']
+NEWSPIDER_MODULE = 'pudl.spiders'
 
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
@@ -47,13 +48,13 @@ ROBOTSTXT_OBEY = True
 # Enable or disable spider middlewares
 # See https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 #SPIDER_MIDDLEWARES = {
-#    'scrapers.middlewares.ScrapersSpiderMiddleware': 543,
+#    'pudl.middlewares.ScrapersSpiderMiddleware': 543,
 #}
 
 # Enable or disable downloader middlewares
 # See https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
 #DOWNLOADER_MIDDLEWARES = {
-#    'scrapers.middlewares.ScrapersDownloaderMiddleware': 543,
+#    'pudl.middlewares.ScrapersDownloaderMiddleware': 543,
 #}
 
 # Enable or disable extensions
@@ -64,9 +65,9 @@ ROBOTSTXT_OBEY = True
 
 # Configure item pipelines
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
-#ITEM_PIPELINES = {
-#    'scrapers.pipelines.ScrapersPipeline': 300,
-#}
+ITEM_PIPELINES = {
+    'pudl.pipelines.PudlPipeline': 300,
+}
 
 # Enable and configure the AutoThrottle extension (disabled by default)
 # See https://docs.scrapy.org/en/latest/topics/autothrottle.html
@@ -88,3 +89,5 @@ ROBOTSTXT_OBEY = True
 #HTTPCACHE_DIR = 'httpcache'
 #HTTPCACHE_IGNORE_HTTP_CODES = []
 #HTTPCACHE_STORAGE = 'scrapy.extensions.httpcache.FilesystemCacheStorage'
+
+SAVE_DIR = os.path.join(os.path.expanduser("~"), "tmp", "ei860")

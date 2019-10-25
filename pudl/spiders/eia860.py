@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
+from datetime import date
+import os
 import scrapy
 from scrapy.http import Request
+
+from pudl import items
 
 
 class Eia860Spider(scrapy.Spider):
@@ -8,8 +12,34 @@ class Eia860Spider(scrapy.Spider):
     allowed_domains = ['www.eia.gov']
     start_urls = ['https://www.eia.gov/electricity/data/eia860/']
 
+    def __init__(self, year=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        if year is not None:
+            year = int(year)
+
+            if year < 2001:
+                raise ValueError("Years before 2001 are not supported")
+
+        self.year = year
+
     def parse(self, response):
-        pass
+        """
+        Parse the eia860 home page
+
+        Args:
+            response (scrapy.http.Response): Must contain the main page
+
+        Yields:
+            appropriate follow-up requests to collect ZIP files
+        """
+        if self.year is None:
+            yield from self.all_forms(response)
+
+        else:
+            yield self.form_for_year(response, self.year)
+
+    # Parsers
 
     def all_forms(self, response):
         """
@@ -36,7 +66,7 @@ class Eia860Spider(scrapy.Spider):
 
             url = response.urljoin(l.xpath("@href").extract_first())
 
-            yield Request(url, meta={"year": year})
+            yield Request(url, meta={"year": year}, callback=self.parse_form)
 
     def form_for_year(self, response, year):
         """
@@ -59,4 +89,22 @@ class Eia860Spider(scrapy.Spider):
 
         if link is not None:
             url = response.urljoin(link)
-            return Request(url, meta={"year": year})
+            return Request(url, meta={"year": year}, callback=self.parse_form)
+
+    def parse_form(self, response):
+        """
+        Produce the Eia860 form projects
+
+        Args:
+            response (scrapy.http.Response): Must contain the downloaded ZIP
+                archive
+
+        Yields:
+            items.Eia860
+        """
+        path = os.path.join(
+            self.settings["SAVE_DIR"], "eia860-%d.%s.zip" %
+            (response.meta["year"], date.today().isoformat()))
+
+        yield items.Eia860(
+            data=response.body, year=response.meta["year"], save_path=path)

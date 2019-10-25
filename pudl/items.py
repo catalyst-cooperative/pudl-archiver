@@ -10,5 +10,10 @@ import scrapy
 
 class Eia860(scrapy.Item):
     """The Eia860 forms in a zip file"""
-    year = scrapy.Field(serializer=int)
     data = scrapy.Field()  # file binary
+    year = scrapy.Field(serializer=int)
+    save_path = scrapy.Field(serializer=str)
+
+    def __repr__(self):
+        return "Eia860(year=%d, save_path=%s)" % (
+            self["year"], self["save_path"])

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from spiders.eia860 import Eia860Spider
+from pudl.spiders.eia860 import Eia860Spider
 from . import factories
 
 
