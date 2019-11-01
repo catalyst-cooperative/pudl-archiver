@@ -5,6 +5,19 @@ import logging
 import requests
 
 
+eia860_metadata = {
+    "title": "Eia860 Source",
+    "upload_type": "dataset",
+    "description": "Eia860 Form Data, archived from "
+                   "https://www.eia.gov/electricity/data/eia860/",
+    "creators": [
+        {"name": "Source: US Energy Information Administration"},
+        {"name": "Uploaded: Catalyst Cooperative"}
+    ],
+    "access_right": "open",
+    "keywords": ["eia860", "electricity", "usa"]
+}
+
 class ZenStorage:
     """Thin interface to store data with zenodo.org via their api"""
 
@@ -92,31 +105,22 @@ class ZenStorage:
 
         return jsr
 
-    def new_eia860_version(self):
+    def new_deposition_version(self, metadata):
         """
-        Produce a new version of the Eia860 Zenodo archive, whether or not one
+        Produce a new version of the given deposition archive, whether or not one
         already exists
+
+        Args:
+            metadata: deposition matadata, per
+                      https://developers.zenodo.org/#representation22
 
         Returns:
             deposition data as dict, per
             https://developers.zenodo.org/?python#depositions
         """
-        deposition = self.get_deposition("Eia860 Source")
+        deposition = self.get_deposition("title:(%s)" % deposition["title"])
 
         if deposition is None:
-            metadata = {
-                "title": "Eia860 Source",
-                "upload_type": "dataset",
-                "description": "Eia860 Form Data, archived from "
-                               "https://www.eia.gov/electricity/data/eia860/",
-                "creators": [
-                    {"name": "Source: US Energy Information Administration"},
-                    {"name": "Uploaded: Catalyst Cooperative"}
-                ],
-                "access_right": "open",
-                "keywords": ["eia860", "electricity", "usa"]
-            }
-
             return self.create_deposition(metadata)
 
         if deposition["state"] == "unsubmitted":
@@ -133,5 +137,32 @@ class ZenStorage:
             msg = "Could not create new version: %s" % jsr
             self.logger.error(msg)
             raise RuntimeError(msg)
+
+        return jsr
+
+    def file_api_upload(self, deposition, file_name, file_handle):
+        """
+        Upload a file for the given deposition
+
+        Args:
+            deposition: the dict of the deposition resource
+            file_name: the desired file name
+            file_handle: an open file handle or bytes like object
+
+        Returns:
+            dict of the deposition file resource, per
+                https://developers.zenodo.org/#deposition-files
+        """
+        url = deposition["links"]["files"]
+        data = {"name": file_name}
+        files = {"file": file_handle}
+        response = requests.post(url, data=data, files=files)
+
+        jsr = response.json()
+
+        if response.status_code != 201:
+            msg = "Failed to upload file: %s" % jsr
+            self.logger.error(msg)
+            return
 
         return jsr
