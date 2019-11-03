@@ -18,6 +18,7 @@ eia860_metadata = {
     "keywords": ["eia860", "electricity", "usa"]
 }
 
+
 class ZenStorage:
     """Thin interface to store data with zenodo.org via their api"""
 
@@ -118,7 +119,7 @@ class ZenStorage:
             deposition data as dict, per
             https://developers.zenodo.org/?python#depositions
         """
-        deposition = self.get_deposition("title:(%s)" % deposition["title"])
+        deposition = self.get_deposition("title:(%s)" % metadata["title"])
 
         if deposition is None:
             return self.create_deposition(metadata)
@@ -154,7 +155,7 @@ class ZenStorage:
                 https://developers.zenodo.org/#deposition-files
         """
         url = deposition["links"]["files"]
-        data = {"name": file_name}
+        data = {"name": file_name, "access_token": self.key}
         files = {"file": file_handle}
         response = requests.post(url, data=data, files=files)
 
