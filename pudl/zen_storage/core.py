@@ -143,12 +143,13 @@ class ZenStorage:
 
     def file_api_upload(self, deposition, file_name, file_handle):
         """
-        Upload a file for the given deposition
+        Upload a file for the given deposition, using the older file api
 
         Args:
             deposition: the dict of the deposition resource
             file_name: the desired file name
-            file_handle: an open file handle or bytes like object
+            file_handle: an open file handle or bytes like object.
+                Must be < 100MB
 
         Returns:
             dict of the deposition file resource, per
@@ -158,12 +159,38 @@ class ZenStorage:
         data = {"name": file_name, "access_token": self.key}
         files = {"file": file_handle}
         response = requests.post(url, data=data, files=files)
-
         jsr = response.json()
 
         if response.status_code != 201:
             msg = "Failed to upload file: %s" % jsr
             self.logger.error(msg)
-            return
+            raise RuntimeError(msg)
+
+        return jsr
+
+    def bucket_api_upload(self, deposition, file_name, file_handle):
+        """
+        Upload a file for the given deposition, using the newer bucket api
+
+        Args:
+            deposition: the dict of the deposition resource
+            file_name: the desired file name
+            file_handle: an open file handle or bytes like object.
+                Must be < 100MB
+
+        Returns:
+            dict of the deposition file resource, per
+                https://developers.zenodo.org/#deposition-files
+        """
+        url = deposition["links"]["bucket"] + "/" + file_name
+        params = {"access_token": self.key}
+        response = requests.put(url, params=params, data=file_handle)
+        jsr = response.json()
+
+        if response.status_code not in [200, 201]:
+            msg = "Failed to upload file: code %d / %s on %s" % \
+                (response.status_code, jsr, deposition)
+            self.logger.error(msg)
+            raise RuntimeError(msg)
 
         return jsr

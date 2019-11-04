@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 import copy
 import io
 import os
@@ -48,13 +47,12 @@ class TestZenStorage:
         """Ensure we can create new versions of a deposition"""
         # It would be better if we could test a single function at a time,
         # however the api does not support versioning without a file upload.
-
         td = copy.deepcopy(self.test_deposition)
         td["title"] += ": %d" % random.randint(1000, 9999)
 
         first = self.zs.create_deposition(td)
-        fake_file = io.BytesIO(b"This is a test.")
-        self.zs.file_api_upload(first, "test1.txt", fake_file)
+        fake_file = io.BytesIO(b"This is a test, via the file api.")
+        self.zs.file_api_upload(first, "testing.txt", fake_file)
 
         response = requests.post(first["links"]["publish"],
                                  data={"access_token": self.zs.key})
@@ -73,3 +71,23 @@ class TestZenStorage:
         assert new_version["title"] == first["title"]
         assert new_version["state"] == "unsubmitted"
         assert not new_version["submitted"]
+
+    def test_bucket_api_upload(self):
+        """Verify the bucket api upload"""
+        td = copy.deepcopy(self.test_deposition)
+        td["title"] += ": %d" % random.randint(1000, 9999)
+
+        deposition = self.zs.create_deposition(td)
+        fake_file = io.BytesIO(b"This is a test, via the bucket api.")
+        self.zs.bucket_api_upload(deposition, "testing.txt", fake_file)
+        response = requests.post(deposition["links"]["publish"],
+                                 data={"access_token": self.zs.key})
+        published = response.json()
+
+        if response.status_code > 299:
+            raise AssertionError(
+                "Failed to save test deposition: code %d, %s" %
+                (response.status_code, published))
+
+        lookup = self.zs.get_deposition(td["title"])
+        assert lookup["files"][0]["filename"] == "testing.txt"
