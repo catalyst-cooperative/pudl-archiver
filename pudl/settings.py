@@ -90,4 +90,4 @@ ITEM_PIPELINES = {
 #HTTPCACHE_IGNORE_HTTP_CODES = []
 #HTTPCACHE_STORAGE = 'scrapy.extensions.httpcache.FilesystemCacheStorage'
 
-SAVE_DIR = os.path.join(os.path.expanduser("~"), "tmp", "ei860")
+SAVE_DIR = os.path.join(os.path.expanduser("~"), "tmp")

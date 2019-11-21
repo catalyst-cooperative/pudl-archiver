@@ -7,10 +7,10 @@ from scrapy.http import Request
 from pudl import items
 
 
-class Eia860Spider(scrapy.Spider):
-    name = 'eia860'
+class Eia923Spider(scrapy.Spider):
+    name = 'eia923'
     allowed_domains = ['www.eia.gov']
-    start_urls = ['https://www.eia.gov/electricity/data/eia860/']
+    start_urls = ['https://www.eia.gov/electricity/data/eia923/']
 
     def __init__(self, year=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -25,7 +25,7 @@ class Eia860Spider(scrapy.Spider):
 
     def parse(self, response):
         """
-        Parse the eia860 home page
+        Parse the eia923 home page
 
         Args:
             response (scrapy.http.Response): Must contain the main page
@@ -43,17 +43,17 @@ class Eia860Spider(scrapy.Spider):
 
     def all_forms(self, response):
         """
-        Produce requests for collectable Eia860 forms
+        Produce requests for collectable Eia923 forms
 
         Args:
             response (scrapy.http.Response): Must contain the main page
 
         Yields:
-            scrapy.http.Requests for Eia860 ZIP files from 2001 to the most
+            scrapy.http.Requests for Eia923 ZIP files from 2001 to the most
             recent available
         """
         links = response.xpath(
-            "//table[@class='simpletable']"
+            "//table[@class='simpletable'][1]"
             "//td[2]"
             "/a[contains(text(), 'ZIP')]")
 
@@ -70,14 +70,14 @@ class Eia860Spider(scrapy.Spider):
 
     def form_for_year(self, response, year):
         """
-        Produce request for a specific Eia860 form
+        Produce request for a specific Eia923 form
 
         Args:
             response (scrapy.http.Response): Must contain the main page
             year (int): integer year, 2001 to the most recent available
 
         Returns:
-            Single scrapy.http.Request for Eia860 ZIP file
+            Single scrapy.http.Request for Eia923 ZIP file
         """
         if year < 2001:
             raise ValueError("Years prior to 2001 not supported")
@@ -93,18 +93,18 @@ class Eia860Spider(scrapy.Spider):
 
     def parse_form(self, response):
         """
-        Produce the Eia860 form projects
+        Produce the Eia923 form projects
 
         Args:
             response (scrapy.http.Response): Must contain the downloaded ZIP
                 archive
 
         Yields:
-            items.Eia860
+            items.Eia923
         """
         path = os.path.join(
-            self.settings["SAVE_DIR"], "eia860", "eia860-%d.%s.zip" %
+            self.settings["SAVE_DIR"], "eia923", "eia923-%d.%s.zip" %
             (response.meta["year"], date.today().isoformat()))
 
-        yield items.Eia860(
+        yield items.Eia923(
             data=response.body, year=response.meta["year"], save_path=path)

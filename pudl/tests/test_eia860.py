@@ -10,7 +10,7 @@ class TestEia860:
     def test_spider_ids_files(self):
         """Eia860 spider parses zip file links"""
         spider = Eia860Spider()
-        resp = factories.TestResponseFactory()
+        resp = factories.TestResponseFactory(eia860=True)
         result = list(spider.all_forms(resp))
 
         assert result[0].url == "https://www.eia.gov/electricity/data/eia860" \
@@ -23,7 +23,7 @@ class TestEia860:
     def test_spider_gets_specific_year(self):
         """Eia860 spider can pick forms for a specific year"""
         spider = Eia860Spider()
-        resp = factories.TestResponseFactory()
+        resp = factories.TestResponseFactory(eia860=True)
 
         result = spider.form_for_year(resp, 2004)
 

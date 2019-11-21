@@ -39,8 +39,15 @@ class TestResponseFactory(factory.Factory):
         model = FakeResponse
         inline_args = ("url", "file_path")
 
-    url = "https://www.eia.gov/electricity/data/eia860/"
-    file_path = test_path("eia860.html")
+    class Params:
+        eia860 = factory.Trait(
+            url="https://www.eia.gov/electricity/data/eia860/",
+            file_path=test_path("eia860.html"))
+
+        eia923 = factory.Trait(
+            url="https://www.eia.gov/electricity/data/eia923/",
+            file_path=test_path("eia923.html"))
+
     encoding = "utf-8"
     request = factory.SubFactory(
         RequestFactory, url=factory.SelfAttribute("..url"))

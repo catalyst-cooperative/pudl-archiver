@@ -22,14 +22,13 @@ class PudlPipeline(object):
         Returns:
             the item, altered if necessary
         """
-        if isinstance(item, items.Eia860):
-            return self.save_file(item)
-
-        return item
+        # If we start collecting items that are not meant to be saved, change
+        # write per-class processors
+        return self.save_file(item)
 
     def save_file(self, item):
         """
-        Save an Eia860 form
+        Save a single file
 
         Args:
             item (scrapy.Item): to be saved to hard drive, must have a

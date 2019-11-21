@@ -17,3 +17,14 @@ class Eia860(scrapy.Item):
     def __repr__(self):
         return "Eia860(year=%d, save_path=%s)" % (
             self["year"], self["save_path"])
+
+
+class Eia923(scrapy.Item):
+    """The Eia923 forms in a zip file"""
+    data = scrapy.Field()  # file binary
+    year = scrapy.Field(serializer=int)
+    save_path = scrapy.Field(serializer=str)
+
+    def __repr__(self):
+        return "Eia923(year=%d, save_path=%s)" % (
+            self["year"], self["save_path"])
