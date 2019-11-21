@@ -44,6 +44,10 @@ class TestResponseFactory(factory.Factory):
             url="https://www.eia.gov/electricity/data/eia860/",
             file_path=test_path("eia860.html"))
 
+        eia861 = factory.Trait(
+            url="https://www.eia.gov/electricity/data/eia861/",
+            file_path=test_path("eia861.html"))
+
         eia923 = factory.Trait(
             url="https://www.eia.gov/electricity/data/eia923/",
             file_path=test_path("eia923.html"))
