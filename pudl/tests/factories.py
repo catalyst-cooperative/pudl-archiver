@@ -52,6 +52,10 @@ class TestResponseFactory(factory.Factory):
             url="https://www.eia.gov/electricity/data/eia923/",
             file_path=test_path("eia923.html"))
 
+        ferc1 = factory.Trait(
+            url="https://www.ferc.gov/docs-filing/forms/form-1/data.asp",
+            file_path=test_path("ferc1.html"))
+
     encoding = "utf-8"
     request = factory.SubFactory(
         RequestFactory, url=factory.SelfAttribute("..url"))
