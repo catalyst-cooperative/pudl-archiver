@@ -56,6 +56,11 @@ class TestResponseFactory(factory.Factory):
             url="https://www.ferc.gov/docs-filing/forms/form-1/data.asp",
             file_path=test_path("ferc1.html"))
 
+        ipm = factory.Trait(
+            url="https://www.epa.gov/airmarkets/"
+                "national-electric-energy-data-system-needs-v6",
+            file_path=test_path("ipm.html"))
+
     encoding = "utf-8"
     request = factory.SubFactory(
         RequestFactory, url=factory.SelfAttribute("..url"))
