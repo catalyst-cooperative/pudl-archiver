@@ -55,5 +55,11 @@ class Ipm(DataFile):
     version = scrapy.Field(serializer=int)
 
     def __repr__(self):
-        return "Ipm(version=%d, revision=%s)" % (
+        return "Ipm(version=%d, revision='%s', save_path='%s')" % (
             self["version"], self["revision"].isoformat())
+
+
+class Cems(DataFile):
+    """A CEMS zip file"""
+    def __repr__(self):
+        return "Cems(save_path='%s')" % self["save_path"]
