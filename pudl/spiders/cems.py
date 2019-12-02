@@ -32,7 +32,7 @@ class CemsFtpManager:
             list of ints for each year of data available on the site
         """
         client = self._new_client()
-        years = client.nlst(self.root)
+        years = [int(x) for x in client.nlst(self.root)]
         client.quit()
         return years
 
@@ -73,7 +73,7 @@ class CemsSpider(scrapy.Spider):
         ftp_manager = CemsFtpManager()
 
         if self.year is None:
-            years = ftp_manager.all_years()
+            years = ftp_manager.available_years()
         else:
             years = [self.year]
 
