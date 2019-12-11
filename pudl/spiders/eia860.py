@@ -23,6 +23,10 @@ class Eia860Spider(scrapy.Spider):
 
         self.year = year
 
+        # Don't try to access SETTINGS during init because scrapy does not
+        # provide them on test spiders.
+        self.subdir = os.path.join("eia860", date.today().isoformat())
+
     def parse(self, response):
         """
         Parse the eia860 home page
@@ -103,8 +107,8 @@ class Eia860Spider(scrapy.Spider):
             items.Eia860
         """
         path = os.path.join(
-            self.settings["SAVE_DIR"], "eia860", "eia860-%d.%s.zip" %
-            (response.meta["year"], date.today().isoformat()))
+            self.settings["SAVE_DIR"], self.subdir,
+            "eia860-%s.zip" % response.meta["year"])
 
         yield items.Eia860(
             data=response.body, year=response.meta["year"], save_path=path)
