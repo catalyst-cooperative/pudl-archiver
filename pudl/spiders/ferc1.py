@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
-from datetime import date
 import os
 import scrapy
 from scrapy.http import Request
 
 from pudl import items
+from pudl.helpers import new_output_dir
 
 
 class Ferc1Spider(scrapy.Spider):
@@ -30,6 +30,10 @@ class Ferc1Spider(scrapy.Spider):
         Yields:
             List of Requests for Ferc 1 forms
         """
+        # Spider settings are not available during __init__, so finalizing here
+        settings_output_dir = self.settings.get("OUTPUT_DIR")
+        output_root = os.path.join(settings_output_dir, "ferc1")
+        self.output_dir = new_output_dir(output_root)
 
         if self.year is not None:
             yield self.form_for_year(self.year)
@@ -48,8 +52,8 @@ class Ferc1Spider(scrapy.Spider):
             Ferc1 item
         """
         path = os.path.join(
-            self.settings["SAVE_DIR"], "ferc1", "ferc1-%d.%s.zip" %
-            (response.meta["year"], date.today().isoformat()))
+            self.output_dir,
+            "ferc1-%s.zip" % response.meta["year"])
 
         yield items.Ferc1(data=response.body, year=response.meta["year"],
                           save_path=path)

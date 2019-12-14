@@ -90,4 +90,4 @@ AUTOTHROTTLE_TARGET_CONCURRENCY = 5.0
 #HTTPCACHE_IGNORE_HTTP_CODES = []
 #HTTPCACHE_STORAGE = 'scrapy.extensions.httpcache.FilesystemCacheStorage'
 
-SAVE_DIR = os.path.join(os.path.expanduser("~"), "tmp")
+OUTPUT_DIR = os.path.join(os.path.expanduser("~"), "Downloads", "pudl", "scrape")

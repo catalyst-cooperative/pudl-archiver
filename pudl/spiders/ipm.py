@@ -6,13 +6,22 @@ import scrapy
 from scrapy.http import Request
 
 from pudl import items
+from pudl.helpers import new_output_dir
 
 
 class IpmSpider(scrapy.Spider):
     name = "ipm"
     allowed_domains = ["www.epa.gov"]
-    start_urls = ["https://www.epa.gov/airmarkets/"
-                  "national-electric-energy-data-system-needs-v6"]
+
+    def start_requests(self):
+        """Finalize setup and yield the initializing request"""
+        # Spider settings are not available during __init__, so finalizing here
+        settings_output_dir = self.settings.get("OUTPUT_DIR")
+        output_root = os.path.join(settings_output_dir, "ipm")
+        self.output_dir = new_output_dir(output_root)
+
+        yield Request("https://www.epa.gov/airmarkets/"
+                      "national-electric-energy-data-system-needs-v6")
 
     def parse(self, response):
         """
@@ -59,9 +68,8 @@ class IpmSpider(scrapy.Spider):
             items.Ipm
         """
         path = os.path.join(
-            self.settings["SAVE_DIR"], "ipm", "ipm-v%d-rev_%s.%s.xlsx" %
-            (response.meta["version"], response.meta["revision"].isoformat(),
-            date.today()))
+            self.output_dir, "ipm-v%d-rev_%s.xlsx" %
+            (response.meta["version"], response.meta["revision"].isoformat()))
 
         yield items.Ipm(
             data=response.body, version=response.meta["version"],

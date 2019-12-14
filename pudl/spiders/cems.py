@@ -6,6 +6,7 @@ import scrapy
 from scrapy.http import Request
 
 from pudl import items
+from pudl.helpers import new_output_dir
 
 
 class CemsFtpManager:
@@ -68,7 +69,11 @@ class CemsSpider(scrapy.Spider):
             self.year = int(year)
 
     def start_requests(self):
-        """Produce Requests for CEMS data files"""
+        """Finalize setup and produce Requests for CEMS data files"""
+        # Spider settings are not available during __init__, so finalizing here
+        settings_output_dir = self.settings.get("OUTPUT_DIR")
+        output_root = os.path.join(settings_output_dir, "cems")
+        self.output_dir = new_output_dir(output_root)
 
         ftp_manager = CemsFtpManager()
 
@@ -94,5 +99,5 @@ class CemsSpider(scrapy.Spider):
             appropriate follow-up requests to collect ZIP files
         """
         filename = os.path.basename(response.url)
-        path = os.path.join(self.settings["SAVE_DIR"], "cems", filename)
+        path = os.path.join(self.output_dir, filename)
         yield items.Cems(data=response.body, save_path=path)

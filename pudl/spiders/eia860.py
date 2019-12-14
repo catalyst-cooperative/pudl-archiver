@@ -1,16 +1,15 @@
 # -*- coding: utf-8 -*-
-from datetime import date
 import os
 import scrapy
 from scrapy.http import Request
 
 from pudl import items
+from pudl.helpers import new_output_dir
 
 
 class Eia860Spider(scrapy.Spider):
     name = 'eia860'
     allowed_domains = ['www.eia.gov']
-    start_urls = ['https://www.eia.gov/electricity/data/eia860/']
 
     def __init__(self, year=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -23,9 +22,14 @@ class Eia860Spider(scrapy.Spider):
 
         self.year = year
 
-        # Don't try to access SETTINGS during init because scrapy does not
-        # provide them on test spiders.
-        self.subdir = os.path.join("eia860", date.today().isoformat())
+    def start_requests(self):
+        """Finalize setup and yield the initializing request"""
+        # Spider settings are not available during __init__, so finalizing here
+        settings_output_dir = self.settings.get("OUTPUT_DIR")
+        output_root = os.path.join(settings_output_dir, "eia860")
+        self.output_dir = new_output_dir(output_root)
+
+        yield Request("https://www.eia.gov/electricity/data/eia860/")
 
     def parse(self, response):
         """
@@ -107,7 +111,7 @@ class Eia860Spider(scrapy.Spider):
             items.Eia860
         """
         path = os.path.join(
-            self.settings["SAVE_DIR"], self.subdir,
+            self.output_dir,
             "eia860-%s.zip" % response.meta["year"])
 
         yield items.Eia860(

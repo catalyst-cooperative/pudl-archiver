@@ -56,7 +56,7 @@ class Ipm(DataFile):
 
     def __repr__(self):
         return "Ipm(version=%d, revision='%s', save_path='%s')" % (
-            self["version"], self["revision"].isoformat())
+            self["version"], self["revision"].isoformat(), self["save_path"])
 
 
 class Cems(DataFile):

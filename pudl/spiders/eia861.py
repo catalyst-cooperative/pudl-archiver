@@ -1,16 +1,15 @@
 # -*- coding: utf-8 -*-
-from datetime import date
 import os
 import scrapy
 from scrapy.http import Request
 
 from pudl import items
+from pudl.helpers import new_output_dir
 
 
 class Eia861Spider(scrapy.Spider):
     name = 'eia861'
     allowed_domains = ['www.eia.gov']
-    start_urls = ['https://www.eia.gov/electricity/data/eia861/']
 
     def __init__(self, year=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -22,6 +21,15 @@ class Eia861Spider(scrapy.Spider):
                 raise ValueError("Years before 2001 are not supported")
 
         self.year = year
+
+    def start_requests(self):
+        """Finalize setup and yield the initializing request"""
+        # Spider settings are not available during __init__, so finalizing here
+        settings_output_dir = self.settings.get("OUTPUT_DIR")
+        output_root = os.path.join(settings_output_dir, "eia861")
+        self.output_dir = new_output_dir(output_root)
+
+        yield Request("https://www.eia.gov/electricity/data/eia861/")
 
     def parse(self, response):
         """
@@ -103,8 +111,8 @@ class Eia861Spider(scrapy.Spider):
             items.Eia861
         """
         path = os.path.join(
-            self.settings["SAVE_DIR"], "eia861", "eia861-%d.%s.zip" %
-            (response.meta["year"], date.today().isoformat()))
+            self.output_dir,
+            "eia861-%s.zip" % response.meta["year"])
 
         yield items.Eia861(
             data=response.body, year=response.meta["year"], save_path=path)
