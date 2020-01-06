@@ -91,3 +91,4 @@ AUTOTHROTTLE_TARGET_CONCURRENCY = 5.0
 #HTTPCACHE_STORAGE = 'scrapy.extensions.httpcache.FilesystemCacheStorage'
 
 OUTPUT_DIR = os.path.join(os.path.expanduser("~"), "Downloads", "pudl", "scrape")
+LOG_FILE = os.path.join(OUTPUT_DIR, "scrape.log")
