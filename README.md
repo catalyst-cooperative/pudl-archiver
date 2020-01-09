@@ -1,5 +1,12 @@
 # PUDL Scrapers
 
+# Installation
+
+To make automation easy, it is recommended that you use
+(vex)[https://github.com/sashahart/vex] to manage your python environment.
+
+From your virtual environment: `pip install -r requirements.txt  # Done!`
+
 
 # Output location
 
