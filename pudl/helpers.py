@@ -4,6 +4,7 @@ import datetime
 import glob
 import os
 
+
 def new_output_dir(root):
     """
     Produce the name of a fresh output directory.
@@ -24,6 +25,4 @@ def new_output_dir(root):
         return os.path.join(root, "%s#%03d" % (today.isoformat(), 1))
 
     previous = int(todays_outputs[0][-3:])
-    return os.path.join(root, "%s#%03d" % (today.isoformat(), previous +
-1))
-
+    return os.path.join(root, "%s#%03d" % (today.isoformat(), previous + 1))
