@@ -11,7 +11,6 @@ class TestEpaCemsFtpManager:
         """Make sure the EpaCemsFtpManager loads."""
         EpaCemsFtpManager(testing=True)
 
-
     def test_minimal_collection(self):
         """
         Integration:  make sure the EpaCemsFtpManager collects a few files, and
