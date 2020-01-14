@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+import logging
 import ftplib
 import os
 import shutil
@@ -11,11 +12,15 @@ from pudl.helpers import new_output_dir
 import pudl.settings
 
 
+logger = logging.Logger(__name__)
+logger.addHandler(logging.FileHandler(pudl.settings.LOG_FILE))
+
+
 class EpaCemsFtpManager:
     """Custom client for the EPA CEMS ftp server"""
 
     server = "newftp.epa.gov"
-    root = "dmdnload/emissions/hourly/monthly"
+    root = "/dmdnload/emissions/hourly/monthly"
 
     def __init__(self, testing=False):
         """
@@ -81,6 +86,7 @@ class EpaCemsFtpManager:
         with open(local_path, "wb") as f:
             self.client.retrbinary(cmd, f.write)
 
+        logger.debug("%s downloaded" % local_path)
         return local_path
 
     def collect_year(self, year):
@@ -96,13 +102,20 @@ class EpaCemsFtpManager:
             os.makedirs(self.output_dir)
 
         directory = "%s/%d" % (self.root, year)
-        self.client.cwd(directory)
+
+        try:
+            self.client.cwd(directory)
+        except Exception as err:
+            logger.error(
+                "Failed to open remote dir %s, error %s. Year %d skipped."
+                % (directory, err, year))
+            return 0
 
         count = 0
         file_names = self.client.nlst()
 
-        if self.testing:
-            file_names = file_names[:5]
+        # TODO: only on testing
+        file_names = file_names[:5]
 
         for fn in file_names:
             self.download(fn)
@@ -134,6 +147,10 @@ def get_arguments():
 if __name__ == "__main__":
 
     args = get_arguments()
+
+    if args.verbose:
+        logger.addHandler(logging.StreamHandler())
+
     year = getattr(args, "year", None)
 
     if year is not None:
@@ -143,7 +160,7 @@ if __name__ == "__main__":
             if year in available:
                 cftp.collect_year(year)
             else:
-                print("Data for %d is not available" % year)
+                logger.error("Data for %d is not available" % year)
 
         sys.exit()
 
@@ -152,5 +169,4 @@ if __name__ == "__main__":
         for year in cftp.available_years():
 
             count = cftp.collect_year(year)
-            if args.verbose:
-                print("Downloaded %d files for %d" % (count, year))
+            logger.debug("Downloaded %d files for %d" % (count, year))
