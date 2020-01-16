@@ -3,40 +3,36 @@
 # Installation
 
 To make automation easy, it is recommended that you use
-(vex)[https://github.com/sashahart/vex] to manage your python environment.
+[vex](https://github.com/sashahart/vex) to manage your python environment.
 
-From your virtual environment: `pip install -r requirements.txt  # Done!`
+From your virtual environment:
 
+    pip install -r requirements.txt
+    pip install ./ # OR pip install -e ./
+    # Done
 
 # Output location
 
 Logs are collected:
 `[your home]/Downloads/pudl/scrape/`
 
-Data from the scrapers is stored: 
+Data from the scrapers is stored:
 `[your home]/Downloads/pudl/scrape/[source_name]/[today #]`
 
 
 # Running the scrapers
 
-The general pattern: is `scrapy crawl [source_name]` for one of the supported.
-Typically and additional "year" argument is available,
-if the form `scrapy crawl [source_name] -a year=[year]`.  
-
+The general pattern is `scrapy crawl [source_name]` for one of the supported
+sources.  Typically and additional "year" argument is available, in the form
+`scrapy crawl [source_name] -a year=[year]`.
 
 See below for exact commands and available arguments.
 
+## EPA CEMS
 
-## CEMS
+For full instructions:
 
-To collect all the data:
-
-`scrapy crawl cems`
-
-To collect a specific year (eg, 2007):
-
-`scrapy crawl cems -a year=2007`
-
+`epacems.py --help`
 
 ## EIA860
 

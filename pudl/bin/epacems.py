@@ -34,7 +34,7 @@ class EpaCemsFtpManager:
         """
         self.testing = testing
         settings_output_dir = pudl.settings.OUTPUT_DIR
-        output_root = os.path.join(settings_output_dir, "cems")
+        output_root = os.path.join(settings_output_dir, "epacems")
         self.output_dir = new_output_dir(output_root)
         self.total_count = 0
 
