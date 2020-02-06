@@ -1,17 +1,17 @@
 # -*- coding: utf-8 -*-
 
 from datetime import date
-from pudl.spiders.ipm import IpmSpider
+from pudl.spiders.epaipm import EpaIpmSpider
 from . import factories
 
 
-class TestIpm:
+class TestEpaIpm:
     """Validate Ipm Spider"""
 
     def test_spider_ids_files(self):
         """Ipm spider parses zip file links"""
-        spider = IpmSpider()
-        resp = factories.TestResponseFactory(ipm=True)
+        spider = EpaIpmSpider()
+        resp = factories.TestResponseFactory(epaipm=True)
         result = list(spider.parse(resp))
 
         assert result[0].url == "https://www.epa.gov/sites/production/" \
@@ -26,7 +26,7 @@ class TestIpm:
 
     def test_needs_version(self):
         """Spider can get the NEEDS version number from a description"""
-        spider = IpmSpider()
+        spider = EpaIpmSpider()
 
         for i in range(10):
             description = "NEEDS v%d rev: 5-31-2019" % i
@@ -34,7 +34,7 @@ class TestIpm:
 
     def test_needs_revision(self):
         """Spider can get the NEEDS revision from a description"""
-        spider = IpmSpider()
+        spider = EpaIpmSpider()
 
         assert spider.needs_revision("NEEDS v6 rev: 5-31-2019") == \
             date(2019, 5, 31)

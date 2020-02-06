@@ -9,15 +9,15 @@ from pudl import items
 from pudl.helpers import new_output_dir
 
 
-class IpmSpider(scrapy.Spider):
-    name = "ipm"
+class EpaIpmSpider(scrapy.Spider):
+    name = "epaipm"
     allowed_domains = ["www.epa.gov"]
 
     def start_requests(self):
         """Finalize setup and yield the initializing request"""
         # Spider settings are not available during __init__, so finalizing here
         settings_output_dir = self.settings.get("OUTPUT_DIR")
-        output_root = os.path.join(settings_output_dir, "ipm")
+        output_root = os.path.join(settings_output_dir, "epaipm")
         self.output_dir = new_output_dir(output_root)
 
         yield Request("https://www.epa.gov/airmarkets/"
@@ -65,13 +65,13 @@ class IpmSpider(scrapy.Spider):
             file
 
         Yields:
-            items.Ipm
+            items.EpaIpm
         """
         path = os.path.join(
-            self.output_dir, "ipm-v%d-rev_%s.xlsx" %
+            self.output_dir, "epaipm-v%d-rev_%s.xlsx" %
             (response.meta["version"], response.meta["revision"].isoformat()))
 
-        yield items.Ipm(
+        yield items.EpaIpm(
             data=response.body, version=response.meta["version"],
             revision=response.meta["revision"], save_path=path)
 

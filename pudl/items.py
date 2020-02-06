@@ -49,13 +49,13 @@ class Ferc1(DataFile):
             self["year"], self["save_path"])
 
 
-class Ipm(DataFile):
-    """An IPM (NEEDS) xls file"""
+class EpaIpm(DataFile):
+    """An EPA IPM (NEEDS) xls file"""
     revision = scrapy.Field()
     version = scrapy.Field(serializer=int)
 
     def __repr__(self):
-        return "Ipm(version=%d, revision='%s', save_path='%s')" % (
+        return "EpaIpm(version=%d, revision='%s', save_path='%s')" % (
             self["version"], self["revision"].isoformat(), self["save_path"])
 
 

@@ -82,6 +82,6 @@ To collect a specific year (eg, 2007):
 
 To collect all the data:
 
-`scrapy crawl ipm`
+`scrapy crawl epaipm`
 
 No additional arguments are supported.
