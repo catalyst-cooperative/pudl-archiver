@@ -2,7 +2,7 @@
 
 import random
 import os
-from pudl.bin.epacems import EpaCemsFtpManager
+from pudl.bin.epacems import EpaCemsFtpManager, states
 
 
 class TestEpaCemsFtpManager:
@@ -24,3 +24,18 @@ class TestEpaCemsFtpManager:
             assert os.path.exists(output_dir)
 
         assert not os.path.exists(output_dir)
+
+    def test_parse_name(self):
+        """Make sure we can ID the filterable components of a file name"""
+        year = random.randint(1995, 2019)
+        month = random.randint(1, 12)
+        state = random.choice(states).lower()
+
+        filename = "%d%s%02.d.zip" % (year, state, month)
+
+        msg = "wrong result for %s" % filename
+        epacems = EpaCemsFtpManager()
+
+        assert epacems.file_year(filename) == year, msg
+        assert epacems.file_month(filename) == month, msg
+        assert epacems.file_state(filename) == state, msg

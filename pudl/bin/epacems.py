@@ -12,6 +12,13 @@ from pudl.helpers import new_output_dir
 import pudl.settings
 
 
+states = ["al", "ak", "az", "ar", "ca", "co", "ct", "dc", "de", "fl", "ga",
+          "hi", "id", "il", "in", "ia", "ks", "ky", "la", "me", "md",
+          "ma", "mi", "mn", "ms", "mo", "mt", "ne", "nv", "nh", "nj",
+          "nm", "ny", "nc", "nd", "oh", "ok", "or", "pa", "ri", "sc",
+          "sd", "tn", "tx", "ut", "vt", "va", "wa", "wv", "wi", "wy"]
+
+
 class EpaCemsFtpManager:
     """Custom client for the EPA CEMS ftp server"""
 
@@ -71,6 +78,57 @@ class EpaCemsFtpManager:
         client.login()
         return client
 
+    def file_year(self, filename):
+        """
+        Produce the year for an epa cems file name
+
+        Args:
+            filename: str, the name of the file as listed on the ftp server
+
+        Returns:
+            int, the year represented by the file, or None if it is
+                unavailable.
+        """
+        try:
+            return int(filename[:4])
+        except ValueError:
+            self.logger.warning("Missing year from %s" % filename)
+
+    def file_month(self, filename):
+        """
+        Produce the month for an epa cems file name
+
+        Args:
+            filename: str, the name of the file as listed on the ftp server
+
+        Returns:
+            int, the month represented by the file, or None if it is
+                unavailable
+        """
+        try:
+            return int(filename[6:8])
+        except ValueError:
+            self.logger.warning("Missing month from %s" % filename)
+
+    def file_state(self, filename):
+        """
+        Produce the state for an epa cems file name
+
+        Args:
+            filename: str, the name of the file as listed on the ftp server
+
+        Returns:
+            str, two digit state abbreviation
+        """
+        abbr = filename[4:6].lower()
+
+        if abbr not in states:
+            self.logger.warning("Missing state from %s, got %s" %
+                                (filename, abbr))
+            return
+
+        return abbr
+
     def available_years(self):
         """
         List all available years
@@ -104,11 +162,14 @@ class EpaCemsFtpManager:
         self.logger.debug("%s downloaded" % local_path)
         return True
 
-    def collect_year(self, year):
+    def collect_year(self, year, month=None, state=None):
         """
         Download all files for a given year
 
-        Args: year, int, the year
+        Args:
+            year, int, the year
+            month, int, limit collection to the given month
+            state, str, limit the collection to the given state
 
         Returns:
             int, a count of the number of files downloaded
@@ -134,6 +195,13 @@ class EpaCemsFtpManager:
 
         while queue != []:
             fn = queue.pop()
+
+            if month is not None and month != self.file_month(fn):
+                continue
+
+            if state is not None and state != self.file_state(fn):
+                continue
+
             success = self.download(fn)
 
             if success:
@@ -158,6 +226,12 @@ def get_arguments():
     parser.add_argument(
         "--year", type=int,
         help="Limit collection to the provided year")
+    parser.add_argument(
+        "--month", type=int,
+        help="Limit collection to a given month (1-12)")
+    parser.add_argument(
+        "--state", type=str,
+        help="Limit collection to a given state")
 
     parser.add_argument(
         "--loglevel", default="DEBUG", help="Set logging level")
@@ -173,6 +247,11 @@ if __name__ == "__main__":
 
     args = get_arguments()
     year = getattr(args, "year", None)
+    month = getattr(args, "month", None)
+    state = getattr(args, "state", None)
+
+    if state is not None:
+        state = state.lower()
 
     if year is not None:
         with EpaCemsFtpManager(
@@ -180,7 +259,7 @@ if __name__ == "__main__":
             available = cftp.available_years()
 
             if year in available:
-                cftp.collect_year(year)
+                cftp.collect_year(year, month=month, state=state)
             else:
                 cftp.logger.error("Data for %d is not available" % year)
 
@@ -191,6 +270,6 @@ if __name__ == "__main__":
                 loglevel=args.loglevel, verbose=args.verbose) as cftp:
 
         for year in cftp.available_years():
-            cftp.collect_year(year)
+            cftp.collect_year(year, month=month, state=state)
 
         cftp.logger.info("Download complete: %d files" % cftp.total_count)
