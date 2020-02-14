@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from distutils.core import setup
+from setuptools import find_packages, setup
 
 setup(name="PudleScrapers",
-      version="0.1.0",
+      version="0.1.1",
       author="PUDL",
-      packages=["pudl"],
+      packages=find_packages(),
       scripts=["pudl/bin/epacems.py"])

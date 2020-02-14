@@ -91,4 +91,3 @@ AUTOTHROTTLE_DEBUG = True
 #HTTPCACHE_STORAGE = 'scrapy.extensions.httpcache.FilesystemCacheStorage'
 
 OUTPUT_DIR = os.path.join(os.path.expanduser("~"), "Downloads", "pudl", "scrape")
-LOG_FILE = os.path.join(OUTPUT_DIR, "scrape.log")
