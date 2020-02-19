@@ -1,10 +1,11 @@
 FROM python:alpine
 
+ARG UID
+ARG GID
 ENV USER=pudl
-ENV UID=50000
-ENV GID=50000
 ENV HOME=/home/pudl
 ENV PATH=$PATH:${HOME}/.local/bin
+ENV PUDL_IN=${HOME}/pudl/
 
 RUN apk add build-base musl-dev python3-dev libffi-dev openssl-dev libxslt-dev
 
@@ -30,6 +31,8 @@ COPY ./ ${HOME}/scrapers
 RUN chown -R ${USER}:${USER} ${HOME}
 
 USER ${USER}
+RUN mkdir -m 775 -p ${PUDL_IN}
+
 WORKDIR ${HOME}/scrapers
 RUN pip install --prefix ${HOME}/.local ./
 

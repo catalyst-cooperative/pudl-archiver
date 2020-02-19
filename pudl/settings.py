@@ -90,7 +90,7 @@ AUTOTHROTTLE_DEBUG = True
 #HTTPCACHE_IGNORE_HTTP_CODES = []
 #HTTPCACHE_STORAGE = 'scrapy.extensions.httpcache.FilesystemCacheStorage'
 
-OUTPUT_ROOT = os.env.get(
+OUTPUT_ROOT = os.environ.get(
     "PUDL_IN",
     os.path.join(os.path.expanduser("~"), "Downloads", "pudl"))
 OUTPUT_DIR = os.path.join(OUTPUT_ROOT, "scraped")
