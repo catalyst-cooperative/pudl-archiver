@@ -45,14 +45,7 @@ class EpaCemsFtpManager:
         self.output_dir = new_output_dir(output_root)
         self.total_count = 0
 
-        log_file = pudl.settings.LOG_FILE
-
-        if not os.path.exists(log_file):
-            with open(log_file, "w") as f:
-                f.write("")
-
         self.logger = logging.Logger(__name__)
-        self.logger.addHandler(logging.FileHandler(log_file))
 
         if verbose:
             self.logger.addHandler(logging.StreamHandler())
