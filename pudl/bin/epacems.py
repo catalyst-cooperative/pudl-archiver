@@ -8,6 +8,8 @@ import os
 import shutil
 import sys
 
+import zipfile
+
 from pudl.helpers import new_output_dir
 import pudl.settings
 
@@ -134,25 +136,58 @@ class EpaCemsFtpManager:
 
     def download(self, remote_name):
         """
-        Download an individual file.
+        Download an individual file.  Due to Zenodo archive limitations, EPA
+        CEMS files are bundled into larger archives by year and state where
+        possible.
 
         Args: remote_name, str: the name of the file on the remote server
 
         Returns: True on success, False on failure
-
         """
-        _, file_name = os.path.split(remote_name)
-        local_path = os.path.join(self.output_dir, file_name)
-        cmd = "RETR %s" % remote_name
 
-        try:
+        def save_to_zip(file_name, cmd, year, state):
+            """Save the remote file to a larger zip archive."""
+            wrapper_filename = "%d-%s.zip" % (year, state)
+            wrapper_path = os.path.join(self.output_dir, wrapper_filename)
+
+            if not os.path.exists(wrapper_path):
+                zf = zipfile.ZipFile(wrapper_path, "w",
+                                     compression=zipfile.ZIP_BZIP2)
+                zf.close()
+                self.logger.debug("Created wrapper archive: %s" % wrapper_path)
+
+            with zipfile.ZipFile(wrapper_path, "a") as zf:
+                with zf.open(file_name, "w", force_zip64=True) as f:
+                    self.client.retrbinary(cmd, f.write)
+
+            return "%s::%s" % (wrapper_path, file_name)
+
+        def save_as_is(file_name, cmd):
+            """Save the remote file to disk, as is."""
+            local_path = os.path.join(self.output_dir, file_name)
+
             with open(local_path, "wb") as f:
                 self.client.retrbinary(cmd, f.write)
+
+            return local_path
+
+        _, file_name = os.path.split(remote_name)
+        cmd = "RETR %s" % remote_name
+
+        year = self.file_year(file_name)
+        state = self.file_state(file_name)
+
+        try:
+            if year is None or state is None:
+                local_name = save_as_is(file_name, cmd)
+            else:
+                local_name = save_to_zip(file_name, cmd, year, state)
+
         except Exception as err:
             self.logger.error("Failed to download %s: %s" % (file_name, err))
             return False
 
-        self.logger.debug("%s downloaded" % local_path)
+        self.logger.debug("%s downloaded" % local_name)
         return True
 
     def collect_year(self, year, month=None, state=None):
@@ -236,8 +271,10 @@ def get_arguments():
     return args
 
 
-if __name__ == "__main__":
-
+def main():
+    """
+    Manage program flow to download EPA CEMS data from the FTP server
+    """
     args = get_arguments()
     year = getattr(args, "year", None)
     month = getattr(args, "month", None)
@@ -255,9 +292,10 @@ if __name__ == "__main__":
                 cftp.collect_year(year, month=month, state=state)
             else:
                 cftp.logger.error("Data for %d is not available" % year)
+                return 1
 
         cftp.logger.info("Download complete: %d files" % cftp.total_count)
-        sys.exit()
+        return 0
 
     with EpaCemsFtpManager(
                 loglevel=args.loglevel, verbose=args.verbose) as cftp:
@@ -266,3 +304,9 @@ if __name__ == "__main__":
             cftp.collect_year(year, month=month, state=state)
 
         cftp.logger.info("Download complete: %d files" % cftp.total_count)
+
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
