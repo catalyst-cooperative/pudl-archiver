@@ -37,5 +37,4 @@ class TestEpaCemsFtpManager:
         epacems = EpaCemsFtpManager()
 
         assert epacems.file_year(filename) == year, msg
-        assert epacems.file_month(filename) == month, msg
         assert epacems.file_state(filename) == state, msg
