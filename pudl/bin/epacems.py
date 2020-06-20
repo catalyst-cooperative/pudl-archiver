@@ -216,9 +216,12 @@ class EpaCemsFtpManager:
                 count += 1
                 self.total_count += 1
             else:
+                self.client.quit()
+                self.client = self._new_client()
                 queue.append(fn)
+                self.logger.warning("Failed download %s requeued", fn)
 
-        self.logger.info("Downloaded %d files for year %d" % (count, year))
+        self.logger.info("Downloaded %d files for year %d", count, year)
         return count
 
 
