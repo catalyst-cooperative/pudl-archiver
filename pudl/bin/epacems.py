@@ -68,7 +68,7 @@ class EpaCemsFtpManager:
 
     def _new_client(self):
         """Create a new, logged in client on the CEMS server"""
-        client = ftplib.FTP(self.server)
+        client = ftplib.FTP(self.server, timeout=15)
         client.connect()
         client.login()
         return client
@@ -216,8 +216,9 @@ class EpaCemsFtpManager:
                 count += 1
                 self.total_count += 1
             else:
-                self.client.quit()
+                self.client.close()
                 self.client = self._new_client()
+                self.client.cwd(directory)
                 queue.append(fn)
                 self.logger.warning("Failed download %s requeued", fn)
 
