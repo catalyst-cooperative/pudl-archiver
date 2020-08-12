@@ -14,7 +14,7 @@ class DataFile(scrapy.Item):
 
 
 class Eia860(DataFile):
-    """The Eia860 forms in a zip file"""
+    """The Eia860 forms in a zip file."""
     year = scrapy.Field(serializer=int)
 
     def __repr__(self):
@@ -23,7 +23,7 @@ class Eia860(DataFile):
 
 
 class Eia861(DataFile):
-    """The Eia861 forms in a zip file"""
+    """The Eia861 forms in a zip file."""
     year = scrapy.Field(serializer=int)
 
     def __repr__(self):
@@ -32,7 +32,7 @@ class Eia861(DataFile):
 
 
 class Eia923(DataFile):
-    """The Eia923 forms in a zip file"""
+    """The Eia923 forms in a zip file."""
     year = scrapy.Field(serializer=int)
 
     def __repr__(self):
@@ -41,7 +41,7 @@ class Eia923(DataFile):
 
 
 class Ferc1(DataFile):
-    """The Ferc1 forms in a zip file"""
+    """The Ferc1 forms in a zip file."""
     year = scrapy.Field(serializer=int)
 
     def __repr__(self):
@@ -49,8 +49,15 @@ class Ferc1(DataFile):
             self["year"], self["save_path"])
 
 
+class Ferc714(DataFile):
+    """The Ferc714 data zip file."""
+
+    def __repr__(self):
+        return "Ferc714('%s')" % self["save_path"]
+
+
 class EpaIpm(DataFile):
-    """An EPA IPM (NEEDS) xls file"""
+    """An EPA IPM (NEEDS) xls file."""
     revision = scrapy.Field()
     version = scrapy.Field(serializer=int)
 
