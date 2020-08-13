@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import os
+from pathlib import Path
 import scrapy
 from scrapy.http import Request
 
@@ -31,8 +31,8 @@ class Ferc1Spider(scrapy.Spider):
             List of Requests for Ferc 1 forms
         """
         # Spider settings are not available during __init__, so finalizing here
-        settings_output_dir = self.settings.get("OUTPUT_DIR")
-        output_root = os.path.join(settings_output_dir, "ferc1")
+        settings_output_dir = Path(self.settings.get("OUTPUT_DIR"))
+        output_root = settings_output_dir / "ferc1"
         self.output_dir = new_output_dir(output_root)
 
         if self.year is not None:
@@ -51,9 +51,7 @@ class Ferc1Spider(scrapy.Spider):
         Yields:
             Ferc1 item
         """
-        path = os.path.join(
-            self.output_dir,
-            "ferc1-%s.zip" % response.meta["year"])
+        path = self.output_dir / ("ferc1-%s.zip" % response.meta["year"])
 
         yield items.Ferc1(data=response.body, year=response.meta["year"],
                           save_path=path)

@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
-import os
+from pathlib import Path
+
 import factory
 from scrapy.http import Request, TextResponse
 
-BASE_PATH = os.path.dirname(os.path.abspath(__file__))
+BASE_PATH = Path(__file__).parent
 
 
 class RequestFactory(factory.Factory):
@@ -20,7 +21,7 @@ class RequestFactory(factory.Factory):
 
 
 def test_path(filename):
-    return os.path.join(BASE_PATH, "data", filename)
+    return BASE_PATH / "data" / filename
 
 
 class FakeResponse(TextResponse):

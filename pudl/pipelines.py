@@ -5,7 +5,7 @@
 # Don't forget to add your pipeline to the ITEM_PIPELINES setting
 # See: https://docs.scrapy.org/en/latest/topics/item-pipeline.html
 
-import os
+from pathlib import Path
 
 
 class PudlPipeline(object):
@@ -36,12 +36,13 @@ class PudlPipeline(object):
         Returns:
             unaltered item upon success
         """
-        save_dir = os.path.dirname(item["save_path"])
+        save_path = Path(item["save_path"])
+        save_dir = save_path.parent
 
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
+        if not save_dir.exists():
+            save_dir.mkdir(parents=True)
 
-        with open(item["save_path"], "wb") as f:
+        with save_path.open("wb") as f:
             f.write(item["data"])
 
         return item

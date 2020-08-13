@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import os
+from pathlib import Path
 import scrapy
 from scrapy.http import Request
 
@@ -25,8 +25,8 @@ class Eia861Spider(scrapy.Spider):
     def start_requests(self):
         """Finalize setup and yield the initializing request"""
         # Spider settings are not available during __init__, so finalizing here
-        settings_output_dir = self.settings.get("OUTPUT_DIR")
-        output_root = os.path.join(settings_output_dir, "eia861")
+        settings_output_dir = Path(self.settings.get("OUTPUT_DIR"))
+        output_root = settings_output_dir / "eia861"
         self.output_dir = new_output_dir(output_root)
 
         yield Request("https://www.eia.gov/electricity/data/eia861/")
@@ -110,9 +110,7 @@ class Eia861Spider(scrapy.Spider):
         Yields:
             items.Eia861
         """
-        path = os.path.join(
-            self.output_dir,
-            "eia861-%s.zip" % response.meta["year"])
+        path = self.output_dir / ("eia861-%s.zip" % response.meta["year"])
 
         yield items.Eia861(
             data=response.body, year=response.meta["year"], save_path=path)

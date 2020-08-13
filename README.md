@@ -14,10 +14,10 @@ From your virtual environment:
 # Output location
 
 Logs are collected:
-`[your home]/Downloads/pudl/scrape/`
+`[your home]/Downloads/pudl/scraped/`
 
 Data from the scrapers is stored:
-`[your home]/Downloads/pudl/scrape/[source_name]/[today #]`
+`[your home]/Downloads/pudl/scraped/[source_name]/[today #]`
 
 
 # Running the scrapers
@@ -32,7 +32,7 @@ See below for exact commands and available arguments.
 
 For full instructions:
 
-`epacems.py --help`
+`epacems --help`
 
 ## EIA860
 
@@ -76,6 +76,13 @@ To collect all the data:
 To collect a specific year (eg, 2007):
 
 `scrapy crawl ferc1 -a year=2007`
+
+## FERC 714
+To collect the data:
+
+`scrapy crawl ferc714`
+
+There are no subsets, that's it.
 
 
 ## IPM NEEDS6

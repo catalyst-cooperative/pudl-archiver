@@ -16,7 +16,7 @@ class Ferc714Spider(scrapy.Spider):
         """Initialize download of FERC form 714."""
         base = Path(self.settings.get("OUTPUT_DIR"))
         ferc_dir = base / "ferc714"
-        self.output_dir = Path(new_output_dir(str(ferc_dir)))
+        self.output_dir = new_output_dir(ferc_dir)
 
         yield Request("https://www.ferc.gov/sites/default/files/2020-06/"
                       "form714-database-June-2020.zip")

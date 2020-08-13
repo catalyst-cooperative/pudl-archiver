@@ -4,7 +4,7 @@
 import argparse
 import logging
 import ftplib
-import os
+from pathlib import Path
 import shutil
 import sys
 
@@ -42,8 +42,8 @@ class EpaCemsFtpManager:
 
         """
         self.testing = testing
-        settings_output_dir = pudl.settings.OUTPUT_DIR
-        output_root = os.path.join(settings_output_dir, "epacems")
+        settings_output_dir = Path(pudl.settings.OUTPUT_DIR)
+        output_root = settings_output_dir / "epacems"
         self.output_dir = new_output_dir(output_root)
         self.total_count = 0
 
@@ -132,9 +132,9 @@ class EpaCemsFtpManager:
         def save_to_zip(file_name, cmd, year, state):
             """Save the remote file to a larger zip archive."""
             wrapper_filename = "%d-%s.zip" % (year, state)
-            wrapper_path = os.path.join(self.output_dir, wrapper_filename)
+            wrapper_path = self.output_dir / wrapper_filename
 
-            if not os.path.exists(wrapper_path):
+            if not wrapper_path.exists():
                 zf = zipfile.ZipFile(wrapper_path, "w",
                                      compression=zipfile.ZIP_BZIP2)
                 zf.close()
@@ -148,14 +148,14 @@ class EpaCemsFtpManager:
 
         def save_as_is(file_name, cmd):
             """Save the remote file to disk, as is."""
-            local_path = os.path.join(self.output_dir, file_name)
+            local_path = self.output_dir / file_name
 
             with open(local_path, "wb") as f:
                 self.client.retrbinary(cmd, f.write)
 
             return local_path
 
-        _, file_name = os.path.split(remote_name)
+        file_name = Path(remote_name).name
         cmd = "RETR %s" % remote_name
 
         year = self.file_year(file_name)
@@ -185,8 +185,8 @@ class EpaCemsFtpManager:
         Returns:
             int, a count of the number of files downloaded
         """
-        if not os.path.exists(self.output_dir):
-            os.makedirs(self.output_dir)
+        if not self.output_dir.exists():
+            self.output_dir.mkdir(parents=True)
 
         directory = "%s/%d" % (self.root, year)
 
