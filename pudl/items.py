@@ -67,6 +67,12 @@ class EpaIpm(DataFile):
 
 
 class Cems(DataFile):
-    """A CEMS zip file"""
+    """A CEMS zip file."""
     def __repr__(self):
         return "Cems(save_path='%s')" % self["save_path"]
+
+
+class Census(DataFile):
+    """Census zip file."""
+    def __repr__(self):
+        return "Census(save_path='%s')" % self["save_path"]
