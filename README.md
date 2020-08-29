@@ -28,6 +28,12 @@ sources.  Typically and additional "year" argument is available, in the form
 
 See below for exact commands and available arguments.
 
+## 2010 Census GeoData
+
+`scrapy crawl census`
+
+No other options.
+
 ## EPA CEMS
 
 For full instructions:
