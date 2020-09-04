@@ -7,4 +7,4 @@ setup(name="PudleScrapers",
       version="0.2.0",
       author="PUDL",
       packages=find_packages(),
-      entry_points={"console_scripts": ["epacems=pudl.bin.epacems:main"]})
+      entry_points={"console_scripts": ["epacems=pudl_scrapers.bin.epacems:main"]})

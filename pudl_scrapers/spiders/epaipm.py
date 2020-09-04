@@ -6,8 +6,8 @@ import re
 import scrapy
 from scrapy.http import Request
 
-from pudl import items
-from pudl.helpers import new_output_dir
+from pudl_scrapers import items
+from pudl_scrapers.helpers import new_output_dir
 
 
 class EpaIpmSpider(scrapy.Spider):

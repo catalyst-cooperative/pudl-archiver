@@ -10,8 +10,8 @@ import sys
 
 import zipfile
 
-from pudl.helpers import new_output_dir
-import pudl.settings
+from pudl_scrapers.helpers import new_output_dir
+import pudl_scrapers.settings
 
 
 states = ["al", "ak", "az", "ar", "ca", "co", "ct", "dc", "de", "fl", "ga",
@@ -42,7 +42,7 @@ class EpaCemsFtpManager:
 
         """
         self.testing = testing
-        settings_output_dir = Path(pudl.settings.OUTPUT_DIR)
+        settings_output_dir = Path(pudl_scrapers.settings.OUTPUT_DIR)
         output_root = settings_output_dir / "epacems"
         self.output_dir = new_output_dir(output_root)
         self.total_count = 0

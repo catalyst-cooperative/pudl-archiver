@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 
-# Scrapy settings for pudl project
+# Scrapy settings for pudl_scrapers project
 #
 # For simplicity, this file contains only settings considered important or
 # commonly used. You can find more settings consulting the documentation:
@@ -10,10 +10,10 @@ import os
 #     https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
 #     https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 
-BOT_NAME = 'pudl'
+BOT_NAME = 'pudl_scrapers'
 
-SPIDER_MODULES = ['pudl.spiders']
-NEWSPIDER_MODULE = 'pudl.spiders'
+SPIDER_MODULES = ['pudl_scrapers.spiders']
+NEWSPIDER_MODULE = 'pudl_scrapers.spiders'
 
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
@@ -48,13 +48,13 @@ CONCURRENT_REQUESTS_PER_DOMAIN = 5
 # Enable or disable spider middlewares
 # See https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 #SPIDER_MIDDLEWARES = {
-#    'pudl.middlewares.ScrapersSpiderMiddleware': 543,
+#    'pudl_scrapers.middlewares.ScrapersSpiderMiddleware': 543,
 #}
 
 # Enable or disable downloader middlewares
 # See https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
 #DOWNLOADER_MIDDLEWARES = {
-#    'pudl.middlewares.ScrapersDownloaderMiddleware': 543,
+#    'pudl_scrapers.middlewares.ScrapersDownloaderMiddleware': 543,
 #}
 
 # Enable or disable extensions
@@ -66,7 +66,7 @@ CONCURRENT_REQUESTS_PER_DOMAIN = 5
 # Configure item pipelines
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
 ITEM_PIPELINES = {
-    'pudl.pipelines.PudlPipeline': 300,
+    'pudl_scrapers.pipelines.PudlPipeline': 300,
 }
 
 # Enable and configure the AutoThrottle extension (disabled by default)
@@ -92,5 +92,5 @@ AUTOTHROTTLE_DEBUG = True
 
 OUTPUT_ROOT = os.environ.get(
     "PUDL_IN",
-    os.path.join(os.path.expanduser("~"), "Downloads", "pudl"))
+    os.path.join(os.path.expanduser("~"), "Downloads", "pudl_scrapers"))
 OUTPUT_DIR = os.path.join(OUTPUT_ROOT, "scraped")
