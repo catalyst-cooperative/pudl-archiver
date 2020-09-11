@@ -15,10 +15,10 @@ import pudl_scrapers.settings
 
 
 states = ["al", "ak", "az", "ar", "ca", "co", "ct", "dc", "de", "fl", "ga",
-          "hi", "id", "il", "in", "ia", "ks", "ky", "la", "me", "md",
-          "ma", "mi", "mn", "ms", "mo", "mt", "ne", "nv", "nh", "nj",
-          "nm", "ny", "nc", "nd", "oh", "ok", "or", "pa", "ri", "sc",
-          "sd", "tn", "tx", "ut", "vt", "va", "wa", "wv", "wi", "wy"]
+          "hi", "id", "il", "in", "ia", "ks", "ky", "la", "me", "md", "ma",
+          "mi", "mn", "ms", "mo", "mt", "ne", "nv", "nh", "nj", "nm", "ny",
+          "nc", "nd", "oh", "ok", "or", "pa", "pr", "ri", "sc", "sd", "tn",
+          "tx", "ut", "vt", "va", "wa", "wv", "wi", "wy"]
 
 
 class EpaCemsFtpManager:
@@ -131,7 +131,7 @@ class EpaCemsFtpManager:
 
         def save_to_zip(file_name, cmd, year, state):
             """Save the remote file to a larger zip archive."""
-            wrapper_filename = "%d-%s.zip" % (year, state)
+            wrapper_filename = "epacems-%d-%s.zip" % (year, state)
             wrapper_path = self.output_dir / wrapper_filename
 
             if not wrapper_path.exists():

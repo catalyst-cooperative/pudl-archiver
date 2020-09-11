@@ -59,7 +59,7 @@ class EpaIpmSpider(scrapy.Spider):
 
     def parse_form(self, response):
         """
-        Produce the Eia860 form projects
+        Produce the EpaIpm form projects
 
         Args:
             response (scrapy.http.Response): Must contain the downloaded xlsx
@@ -69,8 +69,7 @@ class EpaIpmSpider(scrapy.Spider):
             items.EpaIpm
         """
         path = self.output_dir / (
-            "epaipm-v%d-rev_%s.xlsx" %
-            (response.meta["version"], response.meta["revision"].isoformat()))
+            "epaipm-%s.xlsx" % response.meta["revision"].isoformat())
 
         yield items.EpaIpm(
             data=response.body, version=response.meta["version"],

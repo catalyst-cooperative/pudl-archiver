@@ -23,5 +23,5 @@ class Ferc714Spider(scrapy.Spider):
 
     def parse(self, response):
         """Parse the downloaded FERC form 714."""
-        path = str(self.output_dir / "form714.zip")
+        path = str(self.output_dir / "ferc714.zip")
         yield items.Ferc714(data=response.body, save_path=path)
