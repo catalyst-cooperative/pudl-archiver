@@ -76,5 +76,5 @@ class Ferc1Spider(scrapy.Spider):
         Yields:
             Requests for all available Ferc form 1 zip files
         """
-        for year in range(1994, 2019):
+        for year in range(1994, 2020):
             yield self.form_for_year(year)
