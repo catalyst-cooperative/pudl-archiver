@@ -3,7 +3,7 @@
 
 from setuptools import find_packages, setup
 
-setup(name="PudlScrapers",
+setup(name="pudl_scrapers",
       version="0.2.0",
       author="PUDL",
       packages=find_packages(),
