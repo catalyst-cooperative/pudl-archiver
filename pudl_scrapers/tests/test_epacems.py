@@ -2,7 +2,7 @@
 
 import random
 import os
-from pudl.bin.epacems import EpaCemsFtpManager, states
+from pudl_scrapers.bin.epacems import EpaCemsFtpManager, states
 
 
 class TestEpaCemsFtpManager:

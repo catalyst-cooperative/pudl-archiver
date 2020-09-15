@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from pudl.spiders.eia860 import Eia860Spider
+from pudl_scrapers.spiders.eia860 import Eia860Spider
 from . import factories
 
 
