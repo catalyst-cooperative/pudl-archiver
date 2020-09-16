@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from datetime import date
-from pudl.spiders.epaipm import EpaIpmSpider
+from pudl_scrapers.spiders.epaipm import EpaIpmSpider
 from . import factories
 
 

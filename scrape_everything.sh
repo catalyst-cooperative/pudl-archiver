@@ -5,4 +5,4 @@ for spider in $(scrapy list)
     scrapy crawl $spider
     done
 
-epacems.py --verbose
+epacems --verbose

@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
-import os
+from pathlib import Path
 import scrapy
 from scrapy.http import Request
 
-from pudl import items
-from pudl.helpers import new_output_dir
+from pudl_scrapers import items
+from pudl_scrapers.helpers import new_output_dir
 
 
-class Eia860Spider(scrapy.Spider):
-    name = 'eia860'
+class Eia861Spider(scrapy.Spider):
+    name = 'eia861'
     allowed_domains = ['www.eia.gov']
 
     def __init__(self, year=None, *args, **kwargs):
@@ -25,15 +25,15 @@ class Eia860Spider(scrapy.Spider):
     def start_requests(self):
         """Finalize setup and yield the initializing request"""
         # Spider settings are not available during __init__, so finalizing here
-        settings_output_dir = self.settings.get("OUTPUT_DIR")
-        output_root = os.path.join(settings_output_dir, "eia860")
+        settings_output_dir = Path(self.settings.get("OUTPUT_DIR"))
+        output_root = settings_output_dir / "eia861"
         self.output_dir = new_output_dir(output_root)
 
-        yield Request("https://www.eia.gov/electricity/data/eia860/")
+        yield Request("https://www.eia.gov/electricity/data/eia861/")
 
     def parse(self, response):
         """
-        Parse the eia860 home page
+        Parse the eia861 home page
 
         Args:
             response (scrapy.http.Response): Must contain the main page
@@ -51,13 +51,13 @@ class Eia860Spider(scrapy.Spider):
 
     def all_forms(self, response):
         """
-        Produce requests for collectable Eia860 forms
+        Produce requests for collectable Eia861 forms
 
         Args:
             response (scrapy.http.Response): Must contain the main page
 
         Yields:
-            scrapy.http.Requests for Eia860 ZIP files from 2001 to the most
+            scrapy.http.Requests for Eia861 ZIP files from 2001 to the most
             recent available
         """
         links = response.xpath(
@@ -78,14 +78,14 @@ class Eia860Spider(scrapy.Spider):
 
     def form_for_year(self, response, year):
         """
-        Produce request for a specific Eia860 form
+        Produce request for a specific Eia861 form
 
         Args:
             response (scrapy.http.Response): Must contain the main page
             year (int): integer year, 2001 to the most recent available
 
         Returns:
-            Single scrapy.http.Request for Eia860 ZIP file
+            Single scrapy.http.Request for Eia861 ZIP file
         """
         if year < 2001:
             raise ValueError("Years prior to 2001 not supported")
@@ -101,18 +101,16 @@ class Eia860Spider(scrapy.Spider):
 
     def parse_form(self, response):
         """
-        Produce the Eia860 form projects
+        Produce the Eia861 form projects
 
         Args:
             response (scrapy.http.Response): Must contain the downloaded ZIP
                 archive
 
         Yields:
-            items.Eia860
+            items.Eia861
         """
-        path = os.path.join(
-            self.output_dir,
-            "eia860-%s.zip" % response.meta["year"])
+        path = self.output_dir / ("eia861-%s.zip" % response.meta["year"])
 
-        yield items.Eia860(
+        yield items.Eia861(
             data=response.body, year=response.meta["year"], save_path=path)

@@ -2,7 +2,7 @@
 
 import random
 import os
-from pudl.bin.epacems import EpaCemsFtpManager, states
+from pudl_scrapers.bin.epacems import EpaCemsFtpManager, states
 
 
 class TestEpaCemsFtpManager:
@@ -17,7 +17,7 @@ class TestEpaCemsFtpManager:
                       cleans up after itself in testing mode
         """
         with EpaCemsFtpManager(testing=True) as cftp:
-            year = random.randint(1995, 2019)
+            year = random.randint(1995, 2020)
             cftp.collect_year(year)
 
             output_dir = cftp.output_dir
@@ -27,7 +27,7 @@ class TestEpaCemsFtpManager:
 
     def test_parse_name(self):
         """Make sure we can ID the filterable components of a file name"""
-        year = random.randint(1995, 2019)
+        year = random.randint(1995, 2020)
         month = random.randint(1, 12)
         state = random.choice(states).lower()
 

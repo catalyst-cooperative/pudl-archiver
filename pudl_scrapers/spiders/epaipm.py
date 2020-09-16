@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 from datetime import date
-import os
+from pathlib import Path
+
 import re
 import scrapy
 from scrapy.http import Request
 
-from pudl import items
-from pudl.helpers import new_output_dir
+from pudl_scrapers import items
+from pudl_scrapers.helpers import new_output_dir
 
 
 class EpaIpmSpider(scrapy.Spider):
@@ -16,8 +17,8 @@ class EpaIpmSpider(scrapy.Spider):
     def start_requests(self):
         """Finalize setup and yield the initializing request"""
         # Spider settings are not available during __init__, so finalizing here
-        settings_output_dir = self.settings.get("OUTPUT_DIR")
-        output_root = os.path.join(settings_output_dir, "epaipm")
+        settings_output_dir = Path(self.settings.get("OUTPUT_DIR"))
+        output_root = settings_output_dir / "epaipm"
         self.output_dir = new_output_dir(output_root)
 
         yield Request("https://www.epa.gov/airmarkets/"
@@ -58,7 +59,7 @@ class EpaIpmSpider(scrapy.Spider):
 
     def parse_form(self, response):
         """
-        Produce the Eia860 form projects
+        Produce the EpaIpm form projects
 
         Args:
             response (scrapy.http.Response): Must contain the downloaded xlsx
@@ -67,9 +68,8 @@ class EpaIpmSpider(scrapy.Spider):
         Yields:
             items.EpaIpm
         """
-        path = os.path.join(
-            self.output_dir, "epaipm-v%d-rev_%s.xlsx" %
-            (response.meta["version"], response.meta["revision"].isoformat()))
+        path = self.output_dir / (
+            "epaipm-%s.xlsx" % response.meta["revision"].isoformat())
 
         yield items.EpaIpm(
             data=response.body, version=response.meta["version"],

@@ -1,11 +1,13 @@
+# typical (second $UID not a typo):
+# docker build ./ --build-arg UID=$UID --build-arg GID=$UID
 FROM python:alpine
 
 ARG UID
 ARG GID
-ENV USER=pudl
-ENV HOME=/home/pudl
+ENV USER=pudl_scrapers
+ENV HOME=/home/pudl_scrapers
 ENV PATH=$PATH:${HOME}/.local/bin
-ENV PUDL_IN=${HOME}/pudl/
+ENV PUDL_IN=${HOME}/pudl_scrapers/
 
 RUN apk add build-base musl-dev python3-dev libffi-dev openssl-dev libxslt-dev
 
@@ -15,7 +17,7 @@ COPY ./requirements.txt ./
 RUN pip install --prefix /usr/local -r requirements.txt
 
 # Set up local user
-RUN addgroup --gid ${GID} ${USER} \
+RUN addgroup -g ${GID} ${USER} \
     && adduser \
     --disabled-password \
     --gecos "" \
