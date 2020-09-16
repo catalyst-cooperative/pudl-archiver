@@ -22,15 +22,6 @@ jobs:
     - name: Run PyTest
       run: pytest
 
-    - name: Upload test coverage report to CodeCov
-      uses: codecov/codecov-action@v1
-
-    - name: Archive test coverage report at GitHub
-      uses: actions/upload-artifact@v2
-      with:
-        name: code-coverage-report
-        path: coverage.xml
-
     - name: Inform the Codemonkeys
       uses: 8398a7/action-slack@v3
       with:
