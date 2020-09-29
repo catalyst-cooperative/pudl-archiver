@@ -33,6 +33,9 @@ ROBOTSTXT_OBEY = False
 CONCURRENT_REQUESTS_PER_DOMAIN = 5
 #CONCURRENT_REQUESTS_PER_IP = 16
 
+# Some larger files like census ~264MB take longer than 3 min at home:
+DOWNLOAD_TIMEOUT = 360
+
 # Disable cookies (enabled by default)
 #COOKIES_ENABLED = False
 
