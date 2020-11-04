@@ -15,11 +15,24 @@ class DataFile(scrapy.Item):
 
 class Eia860(DataFile):
     """The Eia860 forms in a zip file."""
+
     year = scrapy.Field(serializer=int)
 
     def __repr__(self):
         return "Eia860(year=%d, save_path='%s')" % (
             self["year"], self["save_path"])
+
+
+class Eia860M(DataFile):
+    """The Eia860M forms in a zip file."""
+
+    year = scrapy.Field(serializer=int)
+    month = scrapy.Field(serializer=str)
+    print(f"initializing item for {year} {month}")
+
+    def __repr__(self):
+        return "Eia860M(year=%d, save_path='%s')" % (
+            self["year"], self["month"], self["save_path"])
 
 
 class Eia861(DataFile):
@@ -68,11 +81,13 @@ class EpaIpm(DataFile):
 
 class Cems(DataFile):
     """A CEMS zip file."""
+
     def __repr__(self):
         return "Cems(save_path='%s')" % self["save_path"]
 
 
 class Census(DataFile):
     """Census zip file."""
+
     def __repr__(self):
         return "Census(save_path='%s')" % self["save_path"]
