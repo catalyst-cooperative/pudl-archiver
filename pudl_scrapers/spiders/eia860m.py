@@ -1,4 +1,8 @@
-"""Spider for 860 M."""
+"""
+Spider for EIA 860 M.
+
+This module include th
+"""
 # -*- coding: utf-8 -*-
 from pathlib import Path
 import scrapy
@@ -37,7 +41,10 @@ class Eia860MSpider(scrapy.Spider):
 
     def parse(self, response):
         """
-        Parse the eia860 home page.
+        Parse the EIA 860 M main page.
+
+        Get responses for either all EIA 860 M XLSX files, or grab a specific
+        month and year (as specified in the arguments of this object).
 
         Args:
             response (scrapy.http.Response): Must contain the main page
@@ -45,7 +52,7 @@ class Eia860MSpider(scrapy.Spider):
         Yields:
             appropriate follow-up requests to collect XLSX files
         """
-        if self.year is None:
+        if self.year is None or self.month is None:
             yield from self.all_forms(response)
 
         else:
@@ -119,5 +126,7 @@ class Eia860MSpider(scrapy.Spider):
             f"eia860m-{response.meta['year']}-{response.meta['month']}.xlsx"
         )
 
-        yield pudl_scrapers.items.Eia860(
-            data=response.body, year=response.meta["year"], save_path=path)
+        yield pudl_scrapers.items.Eia860M(
+            data=response.body, year=response.meta["year"],
+            month=response.meta["month"], save_path=path
+        )
