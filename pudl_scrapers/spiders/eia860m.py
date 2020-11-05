@@ -1,31 +1,72 @@
 """
 Spider for EIA 860 M.
 
-This module include th
+This module include the required infromation to establish a scrapy spider for
+EIA 860M. Most of the logic in here revolves around finding the right page,
+finding the right links from the page and storing how and where they should be
+saved. EIA 860 M is different from the other spiders in that we need the
+ability to specify both a month and a year to scrape. Right now the two modes
+are grab everything or grab a specific month and year combo.
+
 """
-# -*- coding: utf-8 -*-
+
+import logging
 from pathlib import Path
 import scrapy
 from scrapy.http import Request
+from time import strptime
 
 import pudl_scrapers
 
 
+logger = logging.getLogger(__name__)
+
+
 class Eia860MSpider(scrapy.Spider):
-    """Spider for Monthly EIA 860."""
+    """Spider for Monthly EIA 860M."""
 
     name = 'eia860m'
     allowed_domains = ['www.eia.gov']
 
     def __init__(self, year=None, month=None, *args, **kwargs):
-        """Spider for scrapping EIA 860 Monthly."""
+        """
+        Spider for scrapping EIA 860 Monthly.
+
+        If a year is specified a month must also be specified. Not all
+        year/month combos will provide data. The months available are quite
+        erradic. Most years all months are available, but in 2015 only July -
+        December are available and the most recent year's month should change
+        regularly. If a bad year/month combo is given nothing will be returned.
+        Check for availability before scrapping:
+        www.eia.gov/electricity/data/eia860m/
+
+
+
+        Args:
+            year (int): year of available EIA 860 M data. Currently only
+                available from 2015 through 2020. This works only in
+                conjunction with specifying a month. Default is None.
+            month (string): full name of month to grab. This works only in
+                conjunction with specifying a year. Default is None.
+        """
         super().__init__(*args, **kwargs)
 
         if year is not None:
             year = int(year)
 
-            if year < 2005:
-                raise ValueError("Years before 2005 are not supported")
+            if year < 2015:
+                raise ValueError("Years before 2015 are not supported")
+        # force the month to be capitalized.
+        if month is not None:
+            month = month.title()
+
+        month_year_combo = [month, year]
+        if not any([all(v is None for v in month_year_combo),
+                    all(v is not None for v in month_year_combo)]):
+            raise AssertionError(
+                "Scrapping a specific month without a specified year is "
+                "not supported."
+            )
 
         self.year = year
         self.month = month
@@ -70,14 +111,15 @@ class Eia860MSpider(scrapy.Spider):
             response (scrapy.http.Response): Must contain the main page
 
         Yields:
-            scrapy.http.Requests for Eia860M XLSX files from 2005 to the most
+            scrapy.http.Requests for Eia860M XLSX files from 2015 to the most
             recent available
         """
         links = response.xpath(
             "//table[@class='basic-table full-width']"
             "//td[2]"
-            # "/a[contains(text(), 'XLS')]"
         )
+        if not links:
+            logger.info("No links were found for EIA 860 M.")
 
         for l in links:
             title = l.xpath('a/@title').extract_first().strip()
@@ -88,14 +130,15 @@ class Eia860MSpider(scrapy.Spider):
 
     def form_for_month_year(self, response, month, year):
         """
-        Produce request for a specific EIA 860M forms.
+        Produce request for a specific EIA 860 M forms.
 
         Args:
             response (scrapy.http.Response): Must contain the main page
-            year (int): integer year, 2001 to the most recent available
+            month (string): title case full name of month to grab.
+            year (int): integer year, 2015 to the most recent available
 
         Returns:
-            Single scrapy.http.Request for Eia860 XLSX file
+            Single scrapy.http.Request for EIA 860 M XLSX file
         """
         if year < 2015:
             raise ValueError("Years prior to 2015 not supported")
@@ -107,9 +150,13 @@ class Eia860MSpider(scrapy.Spider):
 
         if link is not None:
             url = response.urljoin(link)
-            return Request(url,
-                           meta={"year": year, "month": month},
-                           callback=self.parse_form)
+            return Request(
+                url,
+                meta={"year": year,
+                      "month": str(strptime(month, '%B').tm_mon).zfill(2)},
+                callback=self.parse_form)
+        else:
+            logger.info(f"No links were found for EIA 860M {month}, {year}.")
 
     def parse_form(self, response):
         """

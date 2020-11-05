@@ -17,7 +17,7 @@ class TestEia860M:
         assert result[0].url == "https://www.eia.gov/electricity/data" \
             "/eia860m/xls/august_generator2020.xlsx"
         assert result[0].meta["year"] == 2020
-        assert result[0].meta["month"] == "August"
+        assert result[0].meta["month"] == "08"
         assert result[-1].url == "https://www.eia.gov/electricity/data" \
             "/eia860m/archive/xls/july_generator2015.xlsx"
         assert result[-1].meta["year"] == 2015
