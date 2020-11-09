@@ -15,6 +15,7 @@ class DataFile(scrapy.Item):
 
 class Eia860(DataFile):
     """The Eia860 forms in a zip file."""
+
     year = scrapy.Field(serializer=int)
 
     def __repr__(self):
@@ -22,8 +23,22 @@ class Eia860(DataFile):
             self["year"], self["save_path"])
 
 
+class Eia860M(DataFile):
+    """The EIA 860 M forms in a xlsx file."""
+
+    year = scrapy.Field(serializer=int)
+    month = scrapy.Field(serializer=str)
+
+    def __repr__(self):
+        return (
+            f"Eia860M(year={self['year']}, month={self['month']}, "
+            f"save_path={self['save_path']})"
+        )
+
+
 class Eia861(DataFile):
     """The Eia861 forms in a zip file."""
+
     year = scrapy.Field(serializer=int)
 
     def __repr__(self):
@@ -33,6 +48,7 @@ class Eia861(DataFile):
 
 class Eia923(DataFile):
     """The Eia923 forms in a zip file."""
+
     year = scrapy.Field(serializer=int)
 
     def __repr__(self):
@@ -42,6 +58,7 @@ class Eia923(DataFile):
 
 class Ferc1(DataFile):
     """The Ferc1 forms in a zip file."""
+
     year = scrapy.Field(serializer=int)
 
     def __repr__(self):
@@ -58,6 +75,7 @@ class Ferc714(DataFile):
 
 class EpaIpm(DataFile):
     """An EPA IPM (NEEDS) xls file."""
+
     revision = scrapy.Field()
     version = scrapy.Field(serializer=int)
 
@@ -68,11 +86,13 @@ class EpaIpm(DataFile):
 
 class Cems(DataFile):
     """A CEMS zip file."""
+
     def __repr__(self):
         return "Cems(save_path='%s')" % self["save_path"]
 
 
 class Census(DataFile):
     """Census zip file."""
+
     def __repr__(self):
         return "Census(save_path='%s')" % self["save_path"]

@@ -51,6 +51,17 @@ To collect a specific year (eg, 2007):
 `scrapy crawl eia860 -a year=2007`
 
 
+## EIA860M
+
+To collect all the data:
+
+`scrapy crawl eia860m`
+
+To collect a specific month & year (eg, August 2020):
+
+`scrapy crawl eia860 -a month=August -a year=2020`
+
+
 ## EIA861
 
 To collect all the data:
