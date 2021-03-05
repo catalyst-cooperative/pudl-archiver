@@ -18,7 +18,7 @@ class TestEia861:
         assert result[0].meta["year"] == 2019
 
         assert result[-1].url == "https://www.eia.gov/electricity/data/" \
-                                 "eia861/archive/zip/861_1990.zip"
+                                 "eia861/archive/zip/f86190.zip"
         assert result[-1].meta["year"] == 1990
 
     def test_spider_gets_specific_year(self):
@@ -31,7 +31,7 @@ class TestEia861:
 
         assert result is not None
         assert result.url == "https://www.eia.gov/electricity/data/" \
-                             "eia861/archive/zip/861_2011.zip"
+                             "eia861/archive/zip/f86111.zip"
         assert result.meta["year"] == 2011
 
         # 2012 has newer name scheme

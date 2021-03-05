@@ -92,22 +92,14 @@ class Eia861Spider(scrapy.Spider):
         if year < 1990:
             raise ValueError("Years prior to 1990 not supported")
 
-        path = "//table[@class='simpletable']//" \
+        path = "//table[@class='simpletable']//td[2]/" \
                "a[contains(@title, '%d')]/@href" % year
 
         # Since April or May 2020, the EIA website has provided "original" and
         # "reformatted" versions of the data for 1990-2011. Select the
-        # reformatted data by taking the last element of the selected list.
-        # For 2012 and later, the list has one element. For 2011 and earlier,
-        # "original" is first and "reformatted" is second.
-        # https://web.archive.org/web/20200509062741/https://www.eia.gov/electricity/data/eia861/
-        link_list = response.xpath(path).getall()
+        # original data by taking the first column ('td[2]' above)
 
-        try:
-            link = link_list[-1]
-        except IndexError:
-            # If no elements, handle errors elsewhere.
-            link = None
+        link = response.xpath(path).extract_first()
 
         if link is not None:
             url = response.urljoin(link)
