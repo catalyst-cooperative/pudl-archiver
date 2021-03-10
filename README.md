@@ -14,10 +14,10 @@ From your virtual environment:
 # Output location
 
 Logs are collected:
-`[your home]/Downloads/pudl/scraped/`
+`[your home]/Downloads/pudl_scrapers/scraped/`
 
 Data from the scrapers is stored:
-`[your home]/Downloads/pudl/scraped/[source_name]/[today #]`
+`[your home]/Downloads/pudl_scrapers/scraped/[source_name]/[today #]`
 
 
 # Running the scrapers
@@ -66,7 +66,7 @@ To collect a specific month & year (eg, August 2020):
 
 To collect all the data:
 
-`scrapy crawl eia923`
+`scrapy crawl eia861`
 
 To collect a specific year (eg, 2007):
 

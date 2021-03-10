@@ -17,8 +17,8 @@ class Eia861Spider(scrapy.Spider):
         if year is not None:
             year = int(year)
 
-            if year < 2001:
-                raise ValueError("Years before 2001 are not supported")
+            if year < 1990:
+                raise ValueError("Years before 1990 are not supported")
 
         self.year = year
 
@@ -57,24 +57,26 @@ class Eia861Spider(scrapy.Spider):
             response (scrapy.http.Response): Must contain the main page
 
         Yields:
-            scrapy.http.Requests for Eia861 ZIP files from 2001 to the most
+            scrapy.http.Requests for Eia861 ZIP files from 1990 to the most
             recent available
         """
         links = response.xpath(
             "//table[@class='simpletable']"
             "//td[2]"
             "/a[contains(text(), 'ZIP')]")
-
+        # There may be duplicates for a year (different formats).
+        # First, collect the set of years, then return results by year.
+        # (form_for_year contains the logic to choose which version we want)
+        years = set()
         for l in links:
             title = l.xpath('@title').extract_first().strip()
             year = int(title.split(" ")[-1])
 
-            if year < 2001:
+            if year < 1990:
                 continue
-
-            url = response.urljoin(l.xpath("@href").extract_first())
-
-            yield Request(url, meta={"year": year}, callback=self.parse_form)
+            years.add(year)
+        for year in reversed(sorted(years)):
+            yield self.form_for_year(response, year)
 
     def form_for_year(self, response, year):
         """
@@ -82,16 +84,20 @@ class Eia861Spider(scrapy.Spider):
 
         Args:
             response (scrapy.http.Response): Must contain the main page
-            year (int): integer year, 2001 to the most recent available
+            year (int): integer year, 1990 to the most recent available
 
         Returns:
             Single scrapy.http.Request for Eia861 ZIP file
         """
-        if year < 2001:
-            raise ValueError("Years prior to 2001 not supported")
+        if year < 1990:
+            raise ValueError("Years prior to 1990 not supported")
 
         path = "//table[@class='simpletable']//td[2]/" \
                "a[contains(@title, '%d')]/@href" % year
+
+        # Since April or May 2020, the EIA website has provided "original" and
+        # "reformatted" versions of the data for 1990-2011. Select the
+        # original data by taking the first column ('td[2]' above)
 
         link = response.xpath(path).extract_first()
 
