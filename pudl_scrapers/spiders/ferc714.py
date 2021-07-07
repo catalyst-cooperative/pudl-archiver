@@ -18,8 +18,10 @@ class Ferc714Spider(scrapy.Spider):
         ferc_dir = base / "ferc714"
         self.output_dir = new_output_dir(ferc_dir)
 
-        yield Request("https://www.ferc.gov/sites/default/files/2020-06/"
-                      "form714-database-June-2020.zip")
+        yield Request(
+            "https://www.ferc.gov/sites/default/files/2021-06/"
+            "Form-714-csv-files-June-2021.zip"
+        )
 
     def parse(self, response):
         """Parse the downloaded FERC form 714."""
