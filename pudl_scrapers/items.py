@@ -73,6 +73,13 @@ class Ferc714(DataFile):
         return "Ferc714('%s')" % self["save_path"]
 
 
+class EipInfrastructure(DataFile):
+    """The EipInfrastructure excel file."""
+
+    def __repr__(self):
+        return "EipInfrastructure('%s')" % self["save_path"]
+
+
 class EpaIpm(DataFile):
     """An EPA IPM (NEEDS) xls file."""
 

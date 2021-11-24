@@ -2,14 +2,20 @@
 
 # Installation
 
-To make automation easy, it is recommended that you use
-[vex](https://github.com/sashahart/vex) to manage your python environment.
+We recommend using conda to create a manage your environment.
 
-From your virtual environment:
+Run:
+```
+conda env create -f environment.yml
+conda activate pudl-scrapers
+```
 
-    pip install -r requirements.txt
-    pip install ./ # OR pip install -e ./
-    # Done
+If you don't want ot use conda, create a virtual environment and run:
+
+```
+pip install -r requirements.txt
+pip install ./ # OR pip install -e ./
+```
 
 # Output location
 
@@ -98,6 +104,13 @@ To collect a specific year (eg, 2007):
 To collect the data:
 
 `scrapy crawl ferc714`
+
+There are no subsets, that's it.
+
+## EIP Infrastructure
+To collect the data:
+
+`scrapy crawl eipinfrastructure`
 
 There are no subsets, that's it.
 

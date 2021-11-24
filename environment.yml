@@ -1,0 +1,6 @@
+name: pudl-scrapers
+
+dependencies:
+  - factory_boy >= 2.12
+  - scrapy >= 1.7
+  - pytest >= 5.2
