@@ -20,10 +20,14 @@ class EipInfrastructureSpider(scrapy.Spider):
         output_root = settings_output_dir / "eipinfrastructure"
         self.output_dir = new_output_dir(output_root)
 
-        yield Request("https://environmentalintegrity.org/download/eip-emissions-increase-database/?wpdmdl=13864&refresh=619e7743265e61637775171")
+        yield Request("https://environmentalintegrity.org/download/eip-emissions-increase-database/")
 
     def parse(self, response):
         """Parse the downloaded EIP Infrastructure excel file."""
+        download_url = response.xpath("//a[@class='wpdm-download-link download-on-click btn btn-primary ']").xpath("@data-downloadurl").get()
+        yield Request(download_url, callback=self.parse_form)
+
+    def parse_form(self, response):
         filename = response.headers["Content-Disposition"].decode("utf-8")
         update_date = filename.replace('"', '').split("%20")[-1]
         extension = update_date.split(".")[-1]
