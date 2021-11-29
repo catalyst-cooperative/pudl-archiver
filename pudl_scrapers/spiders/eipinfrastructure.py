@@ -36,5 +36,5 @@ class EipInfrastructureSpider(scrapy.Spider):
         update_date = datetime.strptime(update_date, "%m.%d.%Y")
         update_date = update_date.date().isoformat()
 
-        path = str(self.output_dir / f"eipinfra_{update_date}.{extension}")
+        path = str(self.output_dir / f"eipinfratructure_{update_date}.{extension}")
         yield items.EipInfrastructure(data=response.body, save_path=path)
