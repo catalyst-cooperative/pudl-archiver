@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from datetime import datetime
 from pathlib import Path
 import scrapy
 from scrapy.http import Request
@@ -25,6 +26,11 @@ class EipInfrastructureSpider(scrapy.Spider):
         """Parse the downloaded EIP Infrastructure excel file."""
         filename = response.headers["Content-Disposition"].decode("utf-8")
         update_date = filename.replace('"', '').split("%20")[-1]
+        extension = update_date.split(".")[-1]
+        update_date = update_date.replace(f".{extension}", "")
 
-        path = str(self.output_dir / f"eipinfra_{update_date}")
+        update_date = datetime.strptime(update_date, "%m.%d.%Y")
+        update_date = update_date.date().isoformat()
+
+        path = str(self.output_dir / f"eipinfra_{update_date}.{extension}")
         yield items.EipInfrastructure(data=response.body, save_path=path)
