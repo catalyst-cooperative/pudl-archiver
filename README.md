@@ -2,7 +2,7 @@
 
 # Installation
 
-We recommend using conda to create a manage your environment.
+We recommend using conda to create and manage your environment.
 
 Run:
 ```
