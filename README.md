@@ -114,6 +114,13 @@ To collect the data:
 
 There are no subsets, that's it.
 
+## LBLN ISO Queues
+To collect the data:
+
+`scrapy crawl lbnlisoqueues`
+
+There are no subsets, that's it.
+
 
 ## IPM NEEDS6
 

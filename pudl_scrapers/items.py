@@ -80,6 +80,13 @@ class EipInfrastructure(DataFile):
         return "EipInfrastructure('%s')" % self["save_path"]
 
 
+class LblnIsoQueues(DataFile):
+    """The LblnIsoQueues excel file."""
+
+    def __repr__(self):
+        return "LblnIsoQueues('%s')" % self["save_path"]
+
+
 class EpaIpm(DataFile):
     """An EPA IPM (NEEDS) xls file."""
 
