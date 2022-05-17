@@ -19,8 +19,7 @@ class Eia860(DataFile):
     year = scrapy.Field(serializer=int)
 
     def __repr__(self):
-        return "Eia860(year=%d, save_path='%s')" % (
-            self["year"], self["save_path"])
+        return "Eia860(year=%d, save_path='%s')" % (self["year"], self["save_path"])
 
 
 class Eia860M(DataFile):
@@ -42,8 +41,7 @@ class Eia861(DataFile):
     year = scrapy.Field(serializer=int)
 
     def __repr__(self):
-        return "Eia861(year=%d, save_path='%s')" % (
-            self["year"], self["save_path"])
+        return "Eia861(year=%d, save_path='%s')" % (self["year"], self["save_path"])
 
 
 class Eia923(DataFile):
@@ -52,8 +50,7 @@ class Eia923(DataFile):
     year = scrapy.Field(serializer=int)
 
     def __repr__(self):
-        return "Eia923(year=%d, save_path='%s')" % (
-            self["year"], self["save_path"])
+        return "Eia923(year=%d, save_path='%s')" % (self["year"], self["save_path"])
 
 
 class Ferc1(DataFile):
@@ -62,8 +59,7 @@ class Ferc1(DataFile):
     year = scrapy.Field(serializer=int)
 
     def __repr__(self):
-        return "Ferc1(year=%d, save_path='%s')" % (
-            self["year"], self["save_path"])
+        return "Ferc1(year=%d, save_path='%s')" % (self["year"], self["save_path"])
 
 
 class Ferc714(DataFile):
@@ -95,7 +91,17 @@ class EpaIpm(DataFile):
 
     def __repr__(self):
         return "EpaIpm(version=%d, revision='%s', save_path='%s')" % (
-            self["version"], self["revision"].isoformat(), self["save_path"])
+            self["version"],
+            self["revision"].isoformat(),
+            self["save_path"],
+        )
+
+
+class EpaEiaCrosswalk(DataFile):
+    """BLAH."""
+
+    def __repr__(self):
+        return blah
 
 
 class Cems(DataFile):
