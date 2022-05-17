@@ -25,10 +25,6 @@ class EpaEiaSpider(scrapy.Spider):
     name = "epa-eia-crosswalk"
     allowed_domains = ["www.github.com/USEPA"]
 
-    def __init__(self, year=None, *args, **kwargs):
-        """Spider for scraping the EPA-EIA crosswalk."""
-        super().__init__(*args, **kwargs)
-
     def start_requests(self):
         """Finalize setup and yield the initializing request."""
         # Spider settings are not available during __init__, so finalizing here
