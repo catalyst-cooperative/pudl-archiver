@@ -98,10 +98,10 @@ class EpaIpm(DataFile):
 
 
 class EpaEiaCrosswalk(DataFile):
-    """BLAH."""
+    """The EPA-EIA Crosswalk excel file."""
 
     def __repr__(self):
-        return blah
+        return "EpaEiaCrosswalk('%s')" % self["save_path"]
 
 
 class Cems(DataFile):
