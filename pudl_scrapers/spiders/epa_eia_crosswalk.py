@@ -2,8 +2,7 @@
 Spider for EPA-EIA Crosswalk.
 
 This module include the required infromation to establish a scrapy spider for
-the EPA-EIA Crosswalk. It pulls both the Crosswalk csv file and the field
-descriptions csv.
+the EPA-EIA Crosswalk. It pulls the entire repo zip file from github.
 
 """
 
@@ -32,16 +31,11 @@ class EpaEiaSpider(scrapy.Spider):
         output_root = settings_output_dir / self.name
         self.output_dir = pudl_scrapers.helpers.new_output_dir(output_root)
 
-        urls = [
-            "https://github.com/USEPA/camd-eia-crosswalk/raw/master/epa_eia_crosswalk.csv",
-            "https://github.com/USEPA/camd-eia-crosswalk/raw/master/field_descriptions.csv",
-        ]
-
-        for url in urls:
-            yield Request(url)
+        yield Request(
+            "https://github.com/USEPA/camd-eia-crosswalk/archive/refs/heads/master.zip"
+        )
 
     def parse(self, response):
         """Parse the downloaded census zip file."""
-        filename = response.url.split("/")[-1]
-        path = self.output_dir / filename
+        path = self.output_dir / "epa_eia_crosswalk.zip"
         yield items.EpaEiaCrosswalk(data=response.body, save_path=path)
