@@ -7,4 +7,6 @@ setup(name="pudl_scrapers",
       version="0.2.0",
       author="PUDL",
       packages=find_packages(),
-      entry_points={"console_scripts": ["epacems=pudl_scrapers.bin.epacems:main"]})
+      entry_points={
+          "console_scripts": ["epacems=pudl_scrapers.bin.epacems:main", "ferc_xbrl=pudl_scrapers.bin.ferc_xbrl:main"]
+      })

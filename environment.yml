@@ -4,3 +4,8 @@ dependencies:
   - factory_boy >= 2.12
   - scrapy >= 1.7
   - pytest >= 5.2
+  - feedparser >= 6.0
+  - coloredlogs ~= 15.0
+
+  - pip:
+    - --editable ./[docs,tests,dev]
