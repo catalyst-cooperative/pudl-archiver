@@ -3,7 +3,6 @@ import argparse
 import logging
 import re
 from typing import Optional
-from pathlib import Path
 from zipfile import ZipFile
 
 import coloredlogs
@@ -43,13 +42,22 @@ def parse_main():
 
 
 def archive_filings(
-    feed_path: Path,
+    feed_path: str,
     form_name: str,
     filter_year: Optional[int] = None,
     filter_period: Optional[str] = None,
     use_feed_name: bool = False
 ):
-    """Pull filings and archive in zipfile."""
+    """
+    Download filings and archive in zipfile.
+
+    Args:
+        feed_path: URL or local file path pointing to RSS feed.
+        form_name: Name of form to for filter.
+        filter_year: Filing year for filter.
+        filter_period: Filing period for filter.
+        use_feed_name: Use file name provided by feed, or create a more descriptive name.
+    """
     logger = logging.getLogger("xbrl_extract")
     rss_feed = feedparser.parse(feed_path)
 
