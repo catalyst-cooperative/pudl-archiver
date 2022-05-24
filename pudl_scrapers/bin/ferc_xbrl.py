@@ -108,7 +108,7 @@ def archive_filings(
         # Save snapshot of RSS feed
         with zipfile.open("rssfeed", "w") as f:
             logger.info("Writing rss feed metadata to archive.")
-            json.dump(metadata, f)
+            f.write(json.dumps(metadata).encode("utf-8"))
 
 
 def main():
