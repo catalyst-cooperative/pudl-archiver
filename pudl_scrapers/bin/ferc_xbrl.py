@@ -1,5 +1,6 @@
 """A command line interface (CLI) to archive data from an RSS feed."""
 import argparse
+import json
 import logging
 import re
 from typing import Optional
@@ -20,16 +21,13 @@ def parse_main():
         "-r", "--rss-path", default=FERC_RSS_LINK, help="Specify path to RSS feed"
     )
     parser.add_argument(
-        "-y", "--year", default=None, type=int, help="Specify single year for filter"
+        "-y", "--year", default=2021, type=int, help="Specify single year for filter"
     )
     parser.add_argument(
-        "-f", "--form-name", default="Form 1", help="Specify form name for filter"
+        "-f", "--form-number", default=1, type=int, help="Specify form name for filter"
     )
     parser.add_argument(
         "-p", "--period", default=None, help="Specify filing period for filter"
-    )
-    parser.add_argument(
-        "-n", "--use-feed-name", default=False, action="store_true", help="Use filenames directly from feed (these are not consistent or descriptive, so custome names will be created by default)."
     )
     parser.add_argument(
         "--loglevel",
@@ -43,28 +41,30 @@ def parse_main():
 
 def archive_filings(
     feed_path: str,
-    form_name: str,
-    filter_year: Optional[int] = None,
+    form_number: int,
+    filter_year: int,
     filter_period: Optional[str] = None,
-    use_feed_name: bool = False
 ):
     """
     Download filings and archive in zipfile.
 
     Args:
         feed_path: URL or local file path pointing to RSS feed.
-        form_name: Name of form to for filter.
+        form_number: Form number for filter.
         filter_year: Filing year for filter.
         filter_period: Filing period for filter.
         use_feed_name: Use file name provided by feed, or create a more descriptive name.
     """
-    logger = logging.getLogger("xbrl_extract")
+    logger = logging.getLogger("xbrl_archive")
     rss_feed = feedparser.parse(feed_path)
 
-    year_str = filter_year if filter_year else "all-years"
-    archive_path = f"ferc-{form_name.lower().replace(' ', '')}-{year_str}.zip"
+    form_name = f"Form {form_number}"
+    archive_path = f"ferc{form_number}-{filter_year}.zip"
 
     logger.info(f"Archiving filings in {archive_path}.")
+
+    # Save JSON file with metadata from RSS feed
+    metadata = {}
 
     with ZipFile(archive_path, "w") as zipfile:
         # Actual link to XBRL filing is only available in inline html
@@ -93,28 +93,29 @@ def archive_filings(
             link = xbrl_link_pat.search(entry["summary_detail"]["value"])
             filing = requests.get(link.group(1))
 
-            # Create file name from filing metadata
-            filer = entry["title"].replace(" ", "")
-            year = entry["ferc_year"]
-            period = entry["ferc_period"]
-
-            # Construct file name, or use name from feed if instructed
-            if use_feed_name:
-                fname = link.group(2)
+            # Add filing metadata
+            filing_name = f"{entry['ferc_formname']}{entry['ferc_period']}"
+            if filing_name in metadata:
+                metadata[filing_name].update({entry["id"]: entry})
             else:
-                fname = f"{filer}-{year}-{period}.xbrl"
+                metadata[filing_name] = {entry["id"]: entry}
 
             # Write to zipfile
-            with zipfile.open(fname, "w") as f:
-                logger.info(f"Writing {fname} to archive.")
+            with zipfile.open(f"{entry['id']}.xbrl", "w") as f:
+                logger.info(f"Writing {entry['title']} to archive.")
                 f.write(filing.text.encode("utf-8"))
+
+        # Save snapshot of RSS feed
+        with zipfile.open("rssfeed", "w") as f:
+            logger.info("Writing rss feed metadata to archive.")
+            json.dump(metadata, f)
 
 
 def main():
     """CLI for archiving FERC XBRL filings from RSS feed."""
     args = parse_main()
 
-    logger = logging.getLogger("xbrl_extract")
+    logger = logging.getLogger("xbrl_archive")
     logger.setLevel(args.loglevel)
     log_format = "%(asctime)s [%(levelname)8s] %(name)s:%(lineno)s %(message)s"
     coloredlogs.install(fmt=log_format, level=args.loglevel, logger=logger)
@@ -126,8 +127,7 @@ def main():
 
     archive_filings(
         args.rss_path,
-        args.form_name,
+        args.form_number,
         filter_year=args.year,
         filter_period=args.period,
-        use_feed_name=args.use_feed_name
     )
