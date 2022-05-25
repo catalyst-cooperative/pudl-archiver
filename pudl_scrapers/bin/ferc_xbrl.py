@@ -2,6 +2,7 @@
 import argparse
 import json
 import logging
+from pathlib import Path
 import re
 from typing import Optional
 from zipfile import ZipFile
@@ -9,6 +10,9 @@ from zipfile import ZipFile
 import coloredlogs
 import feedparser
 import requests
+
+from pudl_scrapers.helpers import new_output_dir
+import pudl_scrapers.settings
 
 
 FERC_RSS_LINK = "https://ecollection.ferc.gov/api/rssfeed"
@@ -53,13 +57,17 @@ def archive_filings(
         form_number: Form number for filter.
         filter_year: Filing year for filter.
         filter_period: Filing period for filter.
-        use_feed_name: Use file name provided by feed, or create a more descriptive name.
     """
     logger = logging.getLogger("xbrl_archive")
     rss_feed = feedparser.parse(feed_path)
 
+    # Create output directory if it doesn't exist
+    output_dir = new_output_dir(Path(pudl_scrapers.settings.OUTPUT_DIR) / "ferc1")
+    if not output_dir.exists():
+        output_dir.mkdir(parents=True)
+
     form_name = f"Form {form_number}"
-    archive_path = f"ferc{form_number}-{filter_year}.zip"
+    archive_path = output_dir / f"ferc{form_number}-{filter_year}.zip"
 
     logger.info(f"Archiving filings in {archive_path}.")
 
@@ -94,7 +102,7 @@ def archive_filings(
             filing = requests.get(link.group(1))
 
             # Add filing metadata
-            filing_name = f"{entry['ferc_title']}{entry['ferc_period']}"
+            filing_name = f"{entry['title']}{entry['ferc_period']}"
             if filing_name in metadata:
                 metadata[filing_name].update({entry["id"]: entry})
             else:
