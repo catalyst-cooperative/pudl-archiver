@@ -94,7 +94,7 @@ def archive_filings(
             filing = requests.get(link.group(1))
 
             # Add filing metadata
-            filing_name = f"{entry['ferc_formname']}{entry['ferc_period']}"
+            filing_name = f"{entry['ferc_title']}{entry['ferc_period']}"
             if filing_name in metadata:
                 metadata[filing_name].update({entry["id"]: entry})
             else:
