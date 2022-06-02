@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 class EpaEiaSpider(scrapy.Spider):
     """Spider for EPA-EIA Crosswalk."""
 
-    name = "epa-eia-crosswalk"
+    name = "epa_eia_crosswalk"
     allowed_domains = ["www.github.com/USEPA"]
 
     def start_requests(self):

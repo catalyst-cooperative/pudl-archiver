@@ -50,7 +50,7 @@ For full instructions:
 
  To collect the data and field descriptions:
 
- `scrapy crawl epa-eia-crosswalk`
+ `scrapy crawl epa_eia_crosswalk`
 
 ## EIA860
 
