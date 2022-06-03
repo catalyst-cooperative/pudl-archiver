@@ -10,7 +10,7 @@ conda env create -f environment.yml
 conda activate pudl-scrapers
 ```
 
-If you don't want ot use conda, create a virtual environment and run:
+If you don't want to use conda, create a virtual environment and run:
 
 ```
 pip install -r requirements.txt
@@ -36,7 +36,7 @@ See below for exact commands and available arguments.
 
 ## 2010 Census GeoData
 
-`scrapy crawl census`
+`scrapy crawl censusdp1tract`
 
 No other options.
 
@@ -45,6 +45,12 @@ No other options.
 For full instructions:
 
 `epacems --help`
+
+## EPA-EIA Crosswalk
+
+ To collect the data and field descriptions:
+
+ `scrapy crawl epa_eia_crosswalk`
 
 ## EIA860
 
