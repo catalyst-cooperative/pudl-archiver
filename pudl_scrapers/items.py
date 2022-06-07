@@ -97,11 +97,11 @@ class EpaIpm(DataFile):
         )
 
 
-class EpaEiaCrosswalk(DataFile):
-    """The EPA-EIA Crosswalk zip file."""
+class EpaCemsUnitidEiaPlantCrosswalk(DataFile):
+    """The EPA CEMS unitid to EIA plant Crosswalk zip file."""
 
     def __repr__(self):
-        return "EpaEiaCrosswalk('%s')" % self["save_path"]
+        return "EpaCemsUnitidEiaPlantCrosswalk('%s')" % self["save_path"]
 
 
 class Cems(DataFile):

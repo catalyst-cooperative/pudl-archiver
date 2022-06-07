@@ -46,11 +46,11 @@ For full instructions:
 
 `epacems --help`
 
-## EPA-EIA Crosswalk
+## EPA CEMS unitid to EIA plant Crosswalk
 
  To collect the data and field descriptions:
 
- `scrapy crawl epa_eia_crosswalk`
+ `scrapy crawl epacems_unitid_eia_plant_crosswalk`
 
 ## EIA860
 

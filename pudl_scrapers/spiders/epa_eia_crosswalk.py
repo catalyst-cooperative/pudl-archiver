@@ -1,8 +1,9 @@
 """
-Spider for EPA-EIA Crosswalk.
+Spider for EPA CEMS unitid to EIA plant Crosswalk.
 
 This module include the required infromation to establish a scrapy spider for
-the EPA-EIA Crosswalk. It pulls the entire repo zip file from github.
+the EPA CEMS unitid to EIA plant Crosswalk. It pulls the entire repo zip file from
+github.
 
 """
 
@@ -18,10 +19,10 @@ from scrapy.http import Request
 logger = logging.getLogger(__name__)
 
 
-class EpaEiaSpider(scrapy.Spider):
-    """Spider for EPA-EIA Crosswalk."""
+class EpaCemsUnitidEiaPlantSpider(scrapy.Spider):
+    """Spider for EPA CEMS unitid to EIA plant Crosswalk."""
 
-    name = "epa_eia_crosswalk"
+    name = "epacems_unitid_eia_plant_crosswalk"
     allowed_domains = ["www.github.com/USEPA"]
 
     def start_requests(self):
@@ -37,5 +38,5 @@ class EpaEiaSpider(scrapy.Spider):
 
     def parse(self, response):
         """Parse the downloaded census zip file."""
-        path = self.output_dir / "epa_eia_crosswalk.zip"
-        yield items.EpaEiaCrosswalk(data=response.body, save_path=path)
+        path = self.output_dir / "epacems_unitid_eia_plant_crosswalk.zip"
+        yield items.EpaCemsUnitidEiaPlantCrosswalk(data=response.body, save_path=path)
