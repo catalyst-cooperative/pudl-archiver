@@ -69,32 +69,11 @@ class Ferc714(DataFile):
         return "Ferc714('%s')" % self["save_path"]
 
 
-class EipInfrastructure(DataFile):
-    """The EipInfrastructure excel file."""
-
-    def __repr__(self):
-        return "EipInfrastructure('%s')" % self["save_path"]
-
-
 class LblnIsoQueues(DataFile):
     """The LblnIsoQueues excel file."""
 
     def __repr__(self):
         return "LblnIsoQueues('%s')" % self["save_path"]
-
-
-class EpaIpm(DataFile):
-    """An EPA IPM (NEEDS) xls file."""
-
-    revision = scrapy.Field()
-    version = scrapy.Field(serializer=int)
-
-    def __repr__(self):
-        return "EpaIpm(version=%d, revision='%s', save_path='%s')" % (
-            self["version"],
-            self["revision"].isoformat(),
-            self["save_path"],
-        )
 
 
 class EpaCemsUnitidEiaPlantCrosswalk(DataFile):

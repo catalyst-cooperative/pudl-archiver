@@ -112,26 +112,3 @@ To collect the data:
 `scrapy crawl ferc714`
 
 There are no subsets, that's it.
-
-## EIP Infrastructure
-To collect the data:
-
-`scrapy crawl eipinfrastructure`
-
-There are no subsets, that's it.
-
-## LBLN ISO Queues
-To collect the data:
-
-`scrapy crawl lbnlisoqueues`
-
-There are no subsets, that's it.
-
-
-## IPM NEEDS6
-
-To collect all the data:
-
-`scrapy crawl epaipm`
-
-No additional arguments are supported.

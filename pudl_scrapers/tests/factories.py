@@ -43,29 +43,28 @@ class TestResponseFactory(factory.Factory):
     class Params:
         eia860 = factory.Trait(
             url="https://www.eia.gov/electricity/data/eia860/",
-            file_path=test_path("eia860.html"))
+            file_path=test_path("eia860.html"),
+        )
 
         eia860m = factory.Trait(
             url="https://www.eia.gov/electricity/data/eia860m/",
-            file_path=test_path("eia860m.html"))
+            file_path=test_path("eia860m.html"),
+        )
 
         eia861 = factory.Trait(
             url="https://www.eia.gov/electricity/data/eia861/",
-            file_path=test_path("eia861.html"))
+            file_path=test_path("eia861.html"),
+        )
 
         eia923 = factory.Trait(
             url="https://www.eia.gov/electricity/data/eia923/",
-            file_path=test_path("eia923.html"))
+            file_path=test_path("eia923.html"),
+        )
 
         ferc1 = factory.Trait(
             url="https://www.ferc.gov/docs-filing/forms/form-1/data.asp",
-            file_path=test_path("ferc1.html"))
-
-        epaipm = factory.Trait(
-            url="https://www.epa.gov/airmarkets/"
-                "national-electric-energy-data-system-needs-v6",
-            file_path=test_path("epaipm.html"))
+            file_path=test_path("ferc1.html"),
+        )
 
     encoding = "utf-8"
-    request = factory.SubFactory(
-        RequestFactory, url=factory.SelfAttribute("..url"))
+    request = factory.SubFactory(RequestFactory, url=factory.SelfAttribute("..url"))
