@@ -69,13 +69,6 @@ class Ferc714(DataFile):
         return "Ferc714('%s')" % self["save_path"]
 
 
-class LblnIsoQueues(DataFile):
-    """The LblnIsoQueues excel file."""
-
-    def __repr__(self):
-        return "LblnIsoQueues('%s')" % self["save_path"]
-
-
 class EpaCemsUnitidEiaPlantCrosswalk(DataFile):
     """The EPA CEMS unitid to EIA plant Crosswalk zip file."""
 
