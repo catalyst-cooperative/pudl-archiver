@@ -46,11 +46,11 @@ For full instructions:
 
 `epacems --help`
 
-## EPA-EIA Crosswalk
+## EPA CEMS unitid to EIA plant Crosswalk
 
  To collect the data and field descriptions:
 
- `scrapy crawl epa_eia_crosswalk`
+ `scrapy crawl epacems_unitid_eia_plant_crosswalk`
 
 ## EIA860
 
@@ -112,26 +112,3 @@ To collect the data:
 `scrapy crawl ferc714`
 
 There are no subsets, that's it.
-
-## EIP Infrastructure
-To collect the data:
-
-`scrapy crawl eipinfrastructure`
-
-There are no subsets, that's it.
-
-## LBLN ISO Queues
-To collect the data:
-
-`scrapy crawl lbnlisoqueues`
-
-There are no subsets, that's it.
-
-
-## IPM NEEDS6
-
-To collect all the data:
-
-`scrapy crawl epaipm`
-
-No additional arguments are supported.

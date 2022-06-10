@@ -69,39 +69,11 @@ class Ferc714(DataFile):
         return "Ferc714('%s')" % self["save_path"]
 
 
-class EipInfrastructure(DataFile):
-    """The EipInfrastructure excel file."""
+class EpaCemsUnitidEiaPlantCrosswalk(DataFile):
+    """The EPA CEMS unitid to EIA plant Crosswalk zip file."""
 
     def __repr__(self):
-        return "EipInfrastructure('%s')" % self["save_path"]
-
-
-class LblnIsoQueues(DataFile):
-    """The LblnIsoQueues excel file."""
-
-    def __repr__(self):
-        return "LblnIsoQueues('%s')" % self["save_path"]
-
-
-class EpaIpm(DataFile):
-    """An EPA IPM (NEEDS) xls file."""
-
-    revision = scrapy.Field()
-    version = scrapy.Field(serializer=int)
-
-    def __repr__(self):
-        return "EpaIpm(version=%d, revision='%s', save_path='%s')" % (
-            self["version"],
-            self["revision"].isoformat(),
-            self["save_path"],
-        )
-
-
-class EpaEiaCrosswalk(DataFile):
-    """The EPA-EIA Crosswalk zip file."""
-
-    def __repr__(self):
-        return "EpaEiaCrosswalk('%s')" % self["save_path"]
+        return "EpaCemsUnitidEiaPlantCrosswalk('%s')" % self["save_path"]
 
 
 class Cems(DataFile):
