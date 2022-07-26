@@ -6,7 +6,10 @@ setup(
     name="pudl_scrapers",
     version="0.2.0",
     author="PUDL",
-    packages=find_packages(),
+    # Directory to search recursively for __init__.py files defining Python packages
+    packages=find_packages("src"),
+    # Location of the "root" package:
+    package_dir={"": "src"},
     python_requires=">=3.10,<3.11",
     install_requires=[
         "factory_boy>=2.12",
