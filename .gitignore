@@ -1,5 +1,10 @@
 *swp
 __pycache__
 *pyc
-/pudl_scrapers.egg-info/
+**/*.egg-info/
 .DS_Store
+commit.txt
+.coverage
+.tox/
+coverage.xml
+.env_tox
