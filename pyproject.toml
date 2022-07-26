@@ -12,3 +12,6 @@ include = "\\.pyi?$"
 [tool.isort]
 profile = "black"
 known_first_party = "pudl_scrapers"
+
+[tool.bandit]
+skips = ["B101"]
