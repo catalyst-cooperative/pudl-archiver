@@ -22,7 +22,7 @@ jobs:
           mamba-version: "*"
           channels: conda-forge,defaults
           channel-priority: true
-          python-version: 3.10
+          python-version: "3.10"
           activate-environment: pudl-scrapers
           environment-file: environment.yml
       - shell: bash -l {0}
@@ -33,9 +33,9 @@ jobs:
           conda config --show
           printenv | sort
 
-    - name: Run PyTest
-      run: |
-        conda run -n pudl-scrapers pytest
+      - name: Run PyTest
+        run: |
+          conda run -n pudl-scrapers pytest
 
   ci-notify:
     runs-on: ubuntu-latest
