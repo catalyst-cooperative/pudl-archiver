@@ -8,6 +8,7 @@ import scrapy
 
 class DataFile(scrapy.Item):
     """A generic binary data file Item."""
+
     data = scrapy.Field()  # file binary
     save_path = scrapy.Field(serializer=str)
 

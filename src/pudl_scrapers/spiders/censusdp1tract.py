@@ -10,6 +10,7 @@ from pudl_scrapers.helpers import new_output_dir
 
 class CensusDp1TractSpider(scrapy.Spider):
     """Scrapy spider to download the US Census DP1 GeoDatabase."""
+
     name = "censusdp1tract"
     allowed_domains = ["www2.census.gov"]
 

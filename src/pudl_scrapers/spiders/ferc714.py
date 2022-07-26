@@ -10,6 +10,7 @@ from pudl_scrapers.helpers import new_output_dir
 
 class Ferc714Spider(scrapy.Spider):
     """Scrapy spider for the FERC-714 data."""
+
     name = "ferc714"
     allowed_domains = ["www.ferc.gov"]
 

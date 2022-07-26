@@ -10,6 +10,7 @@ from pudl_scrapers.helpers import new_output_dir
 
 class Ferc1Spider(scrapy.Spider):
     """Scrapy spider for downloading FERC Form 1 data."""
+
     name = "ferc1"
     allowed_domains = ["www.ferc.gov"]
     start_urls = ["https://www.ferc.gov/docs-filing/forms/form-1/data.asp"]

@@ -11,7 +11,6 @@ commonly used. You can find more settings consulting the documentation:
 
 import os
 
-
 BOT_NAME = "pudl_scrapers"
 
 SPIDER_MODULES = ["pudl_scrapers.spiders"]

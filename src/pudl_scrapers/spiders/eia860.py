@@ -10,6 +10,7 @@ from pudl_scrapers.helpers import new_output_dir
 
 class Eia860Spider(scrapy.Spider):
     """Scrapy spider for the EIA-860 data."""
+
     name = "eia860"
     allowed_domains = ["www.eia.gov"]
 

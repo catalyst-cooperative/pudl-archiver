@@ -9,8 +9,10 @@ BASE_PATH = Path(__file__).parent
 
 class RequestFactory(factory.Factory):
     """Factory to generate fake requests."""
+
     class Meta:
         """Metadata class."""
+
         model = Request
 
     url = "http://example.com"
@@ -30,6 +32,7 @@ def test_path(filename):
 
 class FakeResponse(TextResponse):
     """Fake a response for spider testing."""
+
     def __init__(self, url, file_path, *args, **kwargs):
         """Initialize the fake response."""
         with open(file_path, "rb") as f:
@@ -40,13 +43,16 @@ class FakeResponse(TextResponse):
 
 class TestResponseFactory(factory.Factory):
     """Factory for generating server responses during testing."""
+
     class Meta:
         """Metdata class."""
+
         model = FakeResponse
         inline_args = ("url", "file_path")
 
     class Params:
         """Parameters to use in generating responses for each test case."""
+
         eia860 = factory.Trait(
             url="https://www.eia.gov/electricity/data/eia860/",
             file_path=test_path("eia860.html"),
