@@ -35,7 +35,10 @@ jobs:
 
       - name: Run PyTest
         run: |
-          conda run -n pudl-scrapers pytest
+          conda run -n pudl-scrapers tox
+
+      - name: Upload test coverage report to CodeCov
+        uses: codecov/codecov-action@v3.1.0
 
   ci-notify:
     runs-on: ubuntu-latest

@@ -4,3 +4,7 @@ __pycache__
 **/*.egg-info/
 .DS_Store
 commit.txt
+.coverage
+.tox/
+coverage.xml
+.env_tox
