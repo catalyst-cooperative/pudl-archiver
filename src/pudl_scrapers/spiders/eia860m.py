@@ -12,12 +12,12 @@ are grab everything or grab a specific month and year combo.
 
 import logging
 from pathlib import Path
-import scrapy
-from scrapy.http import Request
 from time import strptime
 
-import pudl_scrapers
+import scrapy
+from scrapy.http import Request
 
+import pudl_scrapers
 
 logger = logging.getLogger(__name__)
 

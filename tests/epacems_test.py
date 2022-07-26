@@ -1,7 +1,8 @@
 # -*- coding: utf -8-
 
-import random
 import os
+import random
+
 from pudl_scrapers.bin.epacems import EpaCemsFtpManager, states
 
 

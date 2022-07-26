@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from pathlib import Path
+
 import scrapy
 from scrapy.http import Request
 

@@ -1,17 +1,15 @@
 #!/usr/bin/env python
 
 import argparse
-import logging
 import ftplib
-from pathlib import Path
+import logging
 import shutil
 import sys
-
 import zipfile
+from pathlib import Path
 
-from pudl_scrapers.helpers import new_output_dir
 import pudl_scrapers.settings
-
+from pudl_scrapers.helpers import new_output_dir
 
 states = ["al", "ak", "az", "ar", "ca", "co", "ct", "dc", "de", "fl", "ga",
           "hi", "id", "il", "in", "ia", "ks", "ky", "la", "me", "md", "ma",

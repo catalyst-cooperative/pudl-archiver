@@ -10,11 +10,11 @@ github.
 import logging
 from pathlib import Path
 
-import pudl_scrapers
 import scrapy
-from pudl_scrapers import items
 from scrapy.http import Request
 
+import pudl_scrapers
+from pudl_scrapers import items
 
 logger = logging.getLogger(__name__)
 
