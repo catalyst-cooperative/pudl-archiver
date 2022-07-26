@@ -14,6 +14,8 @@ import requests
 from pudl_scrapers.helpers import new_output_dir
 import pudl_scrapers.settings
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 FERC_RSS_LINK = "https://ecollection.ferc.gov/api/rssfeed"
 
@@ -58,7 +60,6 @@ def archive_filings(
         filter_year: Filing year for filter.
         filter_period: Filing period for filter.
     """
-    logger = logging.getLogger("xbrl_archive")
     rss_feed = feedparser.parse(feed_path)
 
     # Create output directory if it doesn't exist
@@ -122,16 +123,6 @@ def archive_filings(
 def main():
     """CLI for archiving FERC XBRL filings from RSS feed."""
     args = parse_main()
-
-    logger = logging.getLogger("xbrl_archive")
-    logger.setLevel(args.loglevel)
-    log_format = "%(asctime)s [%(levelname)8s] %(name)s:%(lineno)s %(message)s"
-    coloredlogs.install(fmt=log_format, level=args.loglevel, logger=logger)
-
-    if args.logfile:
-        file_logger = logging.FileHandler(args.logfile)
-        file_logger.setFormatter(logging.Formatter(log_format))
-        logger.addHandler(file_logger)
 
     archive_filings(
         args.rss_path,
