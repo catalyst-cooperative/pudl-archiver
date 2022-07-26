@@ -141,7 +141,7 @@ class EpaCemsFtpManager:
                 with zf.open(file_name, "w", force_zip64=True) as f:
                     self.client.retrbinary(cmd, f.write)
 
-            return "%s::%s" % (wrapper_path, file_name)
+            return "{}::{}".format(wrapper_path, file_name)
 
         def save_as_is(file_name, cmd):
             """Save the remote file to disk, as is."""
@@ -165,7 +165,7 @@ class EpaCemsFtpManager:
                 local_name = save_to_zip(file_name, cmd, year, state)
 
         except Exception as err:
-            self.logger.error("Failed to download %s: %s" % (file_name, err))
+            self.logger.error("Failed to download {}: {}".format(file_name, err))
             return False
 
         self.logger.debug("%s downloaded" % local_name)

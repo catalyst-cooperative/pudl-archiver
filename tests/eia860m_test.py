@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Test EIA 860 M."""
 
 from pudl_scrapers.spiders.eia860m import Eia860MSpider

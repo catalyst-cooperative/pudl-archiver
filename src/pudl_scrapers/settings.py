@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import os
 
 # Scrapy settings for pudl_scrapers project

@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from pudl_scrapers.spiders.ferc1 import Ferc1Spider
 
 

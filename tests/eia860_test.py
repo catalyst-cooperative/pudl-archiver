@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from pudl_scrapers.spiders.eia860 import Eia860Spider
 from tests import factories
 
