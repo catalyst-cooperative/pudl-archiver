@@ -8,8 +8,8 @@ from pudl_scrapers.helpers import new_output_dir
 
 
 class Eia861Spider(scrapy.Spider):
-    name = 'eia861'
-    allowed_domains = ['www.eia.gov']
+    name = "eia861"
+    allowed_domains = ["www.eia.gov"]
 
     def __init__(self, year=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -61,15 +61,14 @@ class Eia861Spider(scrapy.Spider):
             recent available
         """
         links = response.xpath(
-            "//table[@class='simpletable']"
-            "//td[2]"
-            "/a[contains(text(), 'ZIP')]")
+            "//table[@class='simpletable']" "//td[2]" "/a[contains(text(), 'ZIP')]"
+        )
         # There may be duplicates for a year (different formats).
         # First, collect the set of years, then return results by year.
         # (form_for_year contains the logic to choose which version we want)
         years = set()
         for l in links:
-            title = l.xpath('@title').extract_first().strip()
+            title = l.xpath("@title").extract_first().strip()
             year = int(title.split(" ")[-1])
 
             if year < 1990:
@@ -92,8 +91,10 @@ class Eia861Spider(scrapy.Spider):
         if year < 1990:
             raise ValueError("Years prior to 1990 not supported")
 
-        path = "//table[@class='simpletable']//td[2]/" \
-               "a[contains(@title, '%d')]/@href" % year
+        path = (
+            "//table[@class='simpletable']//td[2]/"
+            "a[contains(@title, '%d')]/@href" % year
+        )
 
         # Since April or May 2020, the EIA website has provided "original" and
         # "reformatted" versions of the data for 1990-2011. Select the
@@ -119,4 +120,5 @@ class Eia861Spider(scrapy.Spider):
         path = self.output_dir / ("eia861-%s.zip" % response.meta["year"])
 
         yield items.Eia861(
-            data=response.body, year=response.meta["year"], save_path=path)
+            data=response.body, year=response.meta["year"], save_path=path
+        )

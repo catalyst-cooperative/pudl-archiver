@@ -7,7 +7,6 @@ from pathlib import Path
 
 
 class PudlPipeline:
-
     def process_item(self, item, spider):
         """
         Process any item produced by the scrapers

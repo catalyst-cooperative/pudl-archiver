@@ -8,8 +8,8 @@ from pudl_scrapers.helpers import new_output_dir
 
 
 class Ferc714Spider(scrapy.Spider):
-    name = 'ferc714'
-    allowed_domains = ['www.ferc.gov']
+    name = "ferc714"
+    allowed_domains = ["www.ferc.gov"]
 
     def start_requests(self):
         """Initialize download of FERC form 714."""

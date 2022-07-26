@@ -8,9 +8,9 @@ from pudl_scrapers.helpers import new_output_dir
 
 
 class Ferc1Spider(scrapy.Spider):
-    name = 'ferc1'
-    allowed_domains = ['www.ferc.gov']
-    start_urls = ['https://www.ferc.gov/docs-filing/forms/form-1/data.asp']
+    name = "ferc1"
+    allowed_domains = ["www.ferc.gov"]
+    start_urls = ["https://www.ferc.gov/docs-filing/forms/form-1/data.asp"]
 
     def __init__(self, year=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -53,8 +53,9 @@ class Ferc1Spider(scrapy.Spider):
         """
         path = self.output_dir / ("ferc1-%s.zip" % response.meta["year"])
 
-        yield items.Ferc1(data=response.body, year=response.meta["year"],
-                          save_path=path)
+        yield items.Ferc1(
+            data=response.body, year=response.meta["year"], save_path=path
+        )
 
     def form_for_year(self, year):
         """

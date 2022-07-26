@@ -25,8 +25,8 @@ logger = logging.getLogger(__name__)
 class Eia860MSpider(scrapy.Spider):
     """Spider for Monthly EIA 860M."""
 
-    name = 'eia860m'
-    allowed_domains = ['www.eia.gov']
+    name = "eia860m"
+    allowed_domains = ["www.eia.gov"]
 
     def __init__(self, year=None, month=None, *args, **kwargs):
         """
@@ -61,8 +61,12 @@ class Eia860MSpider(scrapy.Spider):
             month = month.title()
 
         month_year_combo = [month, year]
-        if not any([all(v is None for v in month_year_combo),
-                    all(v is not None for v in month_year_combo)]):
+        if not any(
+            [
+                all(v is None for v in month_year_combo),
+                all(v is not None for v in month_year_combo),
+            ]
+        ):
             raise AssertionError(
                 "Scrapping a specific month without a specified year is "
                 "not supported."
@@ -97,9 +101,11 @@ class Eia860MSpider(scrapy.Spider):
             yield from self.all_forms(response)
 
         else:
-            yield self.form_for_month_year(response,
-                                           month=self.month,
-                                           year=self.year,)
+            yield self.form_for_month_year(
+                response,
+                month=self.month,
+                year=self.year,
+            )
 
     # Parsers
 
@@ -114,15 +120,12 @@ class Eia860MSpider(scrapy.Spider):
             scrapy.http.Requests for Eia860M XLSX files from 2015 to the most
             recent available
         """
-        links = response.xpath(
-            "//table[@class='basic-table full-width']"
-            "//td[2]"
-        )
+        links = response.xpath("//table[@class='basic-table full-width']" "//td[2]")
         if not links:
             logger.info("No links were found for EIA 860 M.")
 
         for l in links:
-            title = l.xpath('a/@title').extract_first().strip()
+            title = l.xpath("a/@title").extract_first().strip()
             # the format for the title is 'EIA 860M MONTH YEAR'
             year = int(title.split(" ")[-1])
             month = title.split(" ")[-2]
@@ -143,8 +146,10 @@ class Eia860MSpider(scrapy.Spider):
         if year < 2015:
             raise ValueError("Years prior to 2015 not supported")
 
-        path = "//table[@class='basic-table full-width']" \
-               f"//td[2]/a[contains(@title, '{month} {year}')]/@href"
+        path = (
+            "//table[@class='basic-table full-width']"
+            f"//td[2]/a[contains(@title, '{month} {year}')]/@href"
+        )
 
         link = response.xpath(path).extract_first()
 
@@ -152,9 +157,12 @@ class Eia860MSpider(scrapy.Spider):
             url = response.urljoin(link)
             return Request(
                 url,
-                meta={"year": year,
-                      "month": str(strptime(month, '%B').tm_mon).zfill(2)},
-                callback=self.parse_form)
+                meta={
+                    "year": year,
+                    "month": str(strptime(month, "%B").tm_mon).zfill(2),
+                },
+                callback=self.parse_form,
+            )
         else:
             logger.info(f"No links were found for EIA 860M {month}, {year}.")
 
@@ -174,6 +182,8 @@ class Eia860MSpider(scrapy.Spider):
         )
 
         yield pudl_scrapers.items.Eia860M(
-            data=response.body, year=response.meta["year"],
-            month=response.meta["month"], save_path=path
+            data=response.body,
+            year=response.meta["year"],
+            month=response.meta["month"],
+            save_path=path,
         )

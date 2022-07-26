@@ -8,8 +8,8 @@ from pudl_scrapers.helpers import new_output_dir
 
 
 class Eia860Spider(scrapy.Spider):
-    name = 'eia860'
-    allowed_domains = ['www.eia.gov']
+    name = "eia860"
+    allowed_domains = ["www.eia.gov"]
 
     def __init__(self, year=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -61,12 +61,11 @@ class Eia860Spider(scrapy.Spider):
             recent available
         """
         links = response.xpath(
-            "//table[@class='simpletable']"
-            "//td[2]"
-            "/a[contains(text(), 'ZIP')]")
+            "//table[@class='simpletable']" "//td[2]" "/a[contains(text(), 'ZIP')]"
+        )
 
         for l in links:
-            title = l.xpath('@title').extract_first().strip()
+            title = l.xpath("@title").extract_first().strip()
             year = int(title.split(" ")[-1])
 
             if year < 2001:
@@ -90,8 +89,10 @@ class Eia860Spider(scrapy.Spider):
         if year < 2001:
             raise ValueError("Years prior to 2001 not supported")
 
-        path = "//table[@class='simpletable']//td[2]/" \
-               "a[contains(@title, '%d')]/@href" % year
+        path = (
+            "//table[@class='simpletable']//td[2]/"
+            "a[contains(@title, '%d')]/@href" % year
+        )
 
         link = response.xpath(path).extract_first()
 
@@ -113,4 +114,5 @@ class Eia860Spider(scrapy.Spider):
         path = self.output_dir / ("eia860-%s.zip" % response.meta["year"])
 
         yield items.Eia860(
-            data=response.body, year=response.meta["year"], save_path=path)
+            data=response.body, year=response.meta["year"], save_path=path
+        )

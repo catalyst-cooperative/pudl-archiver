@@ -13,6 +13,7 @@ logger.setLevel(logging.INFO)
 
 DATA_URL = "https://api.eia.gov/bulk/ELEC.zip"
 
+
 def main() -> int:
     """Download EIA bulk electricity data."""
     output_dir = new_output_dir(Path(OUTPUT_DIR) / "eia_bulk_elec")
@@ -34,6 +35,7 @@ def main() -> int:
     logger.info("Completed download of EIA bulk electricity data.")
 
     return 0
+
 
 if __name__ == "__main__":
     sys.exit(main())

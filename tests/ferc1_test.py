@@ -12,8 +12,7 @@ class TestFerc1:
         assert all_forms[0].url == "ftp://eforms1.ferc.gov/f1allyears/f1_1994.zip"
         assert all_forms[0].meta["year"] == 1994
 
-        assert all_forms[26].url == "ftp://eforms1.ferc.gov/f1allyears/" \
-                                    "f1_2020.zip"
+        assert all_forms[26].url == "ftp://eforms1.ferc.gov/f1allyears/" "f1_2020.zip"
         assert all_forms[26].meta["year"] == 2020
 
     def test_spider_gets_specific_year(self):
@@ -22,6 +21,5 @@ class TestFerc1:
 
         for year in range(1994, 2021):
             form_req = spider.form_for_year(year)
-            assert form_req.url == \
-                "ftp://eforms1.ferc.gov/f1allyears/f1_%d.zip" % year
+            assert form_req.url == "ftp://eforms1.ferc.gov/f1allyears/f1_%d.zip" % year
             assert form_req.meta["year"] == year

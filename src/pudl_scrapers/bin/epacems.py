@@ -11,11 +11,60 @@ from pathlib import Path
 import pudl_scrapers.settings
 from pudl_scrapers.helpers import new_output_dir
 
-states = ["al", "ak", "az", "ar", "ca", "co", "ct", "dc", "de", "fl", "ga",
-          "hi", "id", "il", "in", "ia", "ks", "ky", "la", "me", "md", "ma",
-          "mi", "mn", "ms", "mo", "mt", "ne", "nv", "nh", "nj", "nm", "ny",
-          "nc", "nd", "oh", "ok", "or", "pa", "pr", "ri", "sc", "sd", "tn",
-          "tx", "ut", "vt", "va", "wa", "wv", "wi", "wy"]
+states = [
+    "al",
+    "ak",
+    "az",
+    "ar",
+    "ca",
+    "co",
+    "ct",
+    "dc",
+    "de",
+    "fl",
+    "ga",
+    "hi",
+    "id",
+    "il",
+    "in",
+    "ia",
+    "ks",
+    "ky",
+    "la",
+    "me",
+    "md",
+    "ma",
+    "mi",
+    "mn",
+    "ms",
+    "mo",
+    "mt",
+    "ne",
+    "nv",
+    "nh",
+    "nj",
+    "nm",
+    "ny",
+    "nc",
+    "nd",
+    "oh",
+    "ok",
+    "or",
+    "pa",
+    "pr",
+    "ri",
+    "sc",
+    "sd",
+    "tn",
+    "tx",
+    "ut",
+    "vt",
+    "va",
+    "wa",
+    "wv",
+    "wi",
+    "wy",
+]
 
 
 class EpaCemsFtpManager:
@@ -99,8 +148,7 @@ class EpaCemsFtpManager:
         abbr = filename[4:6].lower()
 
         if abbr not in states:
-            self.logger.warning("Missing state from %s, got %s" %
-                                (filename, abbr))
+            self.logger.warning("Missing state from %s, got %s" % (filename, abbr))
             return
 
         return abbr
@@ -132,8 +180,7 @@ class EpaCemsFtpManager:
             wrapper_path = self.output_dir / wrapper_filename
 
             if not wrapper_path.exists():
-                zf = zipfile.ZipFile(wrapper_path, "w",
-                                     compression=zipfile.ZIP_BZIP2)
+                zf = zipfile.ZipFile(wrapper_path, "w", compression=zipfile.ZIP_BZIP2)
                 zf.close()
                 self.logger.debug("Created wrapper archive: %s" % wrapper_path)
 
@@ -192,7 +239,8 @@ class EpaCemsFtpManager:
         except Exception as err:
             self.logger.error(
                 "Failed to open remote dir %s, error %s. Year %d skipped."
-                % (directory, err, year))
+                % (directory, err, year)
+            )
             return 0
 
         count = 0
@@ -230,20 +278,22 @@ def get_arguments():
     Returns: result of the command line arguments
     """
     parser = argparse.ArgumentParser(
-        description="Download EPA CEMS data from the EPA's FTP server")
+        description="Download EPA CEMS data from the EPA's FTP server"
+    )
 
     parser.add_argument(
-        "--year", type=int,
-        help="Limit collection to the provided year")
-    parser.add_argument(
-        "--state", type=str,
-        help="Limit collection to a given state")
+        "--year", type=int, help="Limit collection to the provided year"
+    )
+    parser.add_argument("--state", type=str, help="Limit collection to a given state")
 
+    parser.add_argument("--loglevel", default="DEBUG", help="Set logging level")
     parser.add_argument(
-        "--loglevel", default="DEBUG", help="Set logging level")
-    parser.add_argument(
-        "--verbose", default=False, action="store_const",
-        const=True, help="Print progress details to stdout")
+        "--verbose",
+        default=False,
+        action="store_const",
+        const=True,
+        help="Print progress details to stdout",
+    )
 
     args = parser.parse_args()
     return args
@@ -261,8 +311,7 @@ def main():
         state = state.lower()
 
     if year is not None:
-        with EpaCemsFtpManager(
-                loglevel=args.loglevel, verbose=args.verbose) as cftp:
+        with EpaCemsFtpManager(loglevel=args.loglevel, verbose=args.verbose) as cftp:
             available = cftp.available_years()
 
             if year in available:
@@ -274,8 +323,7 @@ def main():
         cftp.logger.info("Download complete: %d files" % cftp.total_count)
         return 0
 
-    with EpaCemsFtpManager(
-                loglevel=args.loglevel, verbose=args.verbose) as cftp:
+    with EpaCemsFtpManager(loglevel=args.loglevel, verbose=args.verbose) as cftp:
 
         for year in cftp.available_years():
             cftp.collect_year(year, state=state)

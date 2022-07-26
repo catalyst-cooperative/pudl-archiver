@@ -5,7 +5,6 @@ from pudl_scrapers.bin.epacems import EpaCemsFtpManager, states
 
 
 class TestEpaCemsFtpManager:
-
     def test_initialization(self):
         """Make sure the EpaCemsFtpManager loads."""
         EpaCemsFtpManager(testing=True)
