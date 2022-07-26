@@ -1,3 +1,5 @@
+"""Scrapy spider for the EIA-861 data."""
+
 from pathlib import Path
 
 import scrapy
@@ -8,10 +10,12 @@ from pudl_scrapers.helpers import new_output_dir
 
 
 class Eia861Spider(scrapy.Spider):
+    """Scrapy spider for the EIA-861 data."""
     name = "eia861"
     allowed_domains = ["www.eia.gov"]
 
     def __init__(self, year=None, *args, **kwargs):
+        """Initialize the spider."""
         super().__init__(*args, **kwargs)
 
         if year is not None:
@@ -23,7 +27,7 @@ class Eia861Spider(scrapy.Spider):
         self.year = year
 
     def start_requests(self):
-        """Finalize setup and yield the initializing request"""
+        """Finalize setup and yield the initializing request."""
         # Spider settings are not available during __init__, so finalizing here
         settings_output_dir = Path(self.settings.get("OUTPUT_DIR"))
         output_root = settings_output_dir / "eia861"
@@ -32,8 +36,7 @@ class Eia861Spider(scrapy.Spider):
         yield Request("https://www.eia.gov/electricity/data/eia861/")
 
     def parse(self, response):
-        """
-        Parse the eia861 home page
+        """Parse the EIA-861 home page.
 
         Args:
             response (scrapy.http.Response): Must contain the main page
@@ -50,8 +53,7 @@ class Eia861Spider(scrapy.Spider):
     # Parsers
 
     def all_forms(self, response):
-        """
-        Produce requests for collectable Eia861 forms
+        """Produce requests for collectable EIA-861 forms.
 
         Args:
             response (scrapy.http.Response): Must contain the main page
@@ -67,8 +69,8 @@ class Eia861Spider(scrapy.Spider):
         # First, collect the set of years, then return results by year.
         # (form_for_year contains the logic to choose which version we want)
         years = set()
-        for l in links:
-            title = l.xpath("@title").extract_first().strip()
+        for link in links:
+            title = link.xpath("@title").extract_first().strip()
             year = int(title.split(" ")[-1])
 
             if year < 1990:
@@ -78,8 +80,7 @@ class Eia861Spider(scrapy.Spider):
             yield self.form_for_year(response, year)
 
     def form_for_year(self, response, year):
-        """
-        Produce request for a specific Eia861 form
+        """Produce request for a specific EIA-861 form.
 
         Args:
             response (scrapy.http.Response): Must contain the main page
@@ -93,7 +94,7 @@ class Eia861Spider(scrapy.Spider):
 
         path = (
             "//table[@class='simpletable']//td[2]/"
-            "a[contains(@title, '%d')]/@href" % year
+            f"a[contains(@title, '{year}')]/@href"
         )
 
         # Since April or May 2020, the EIA website has provided "original" and
@@ -107,8 +108,7 @@ class Eia861Spider(scrapy.Spider):
             return Request(url, meta={"year": year}, callback=self.parse_form)
 
     def parse_form(self, response):
-        """
-        Produce the Eia861 form projects
+        """Produce the EIA-861 form projects.
 
         Args:
             response (scrapy.http.Response): Must contain the downloaded ZIP
@@ -117,7 +117,7 @@ class Eia861Spider(scrapy.Spider):
         Yields:
             items.Eia861
         """
-        path = self.output_dir / ("eia861-%s.zip" % response.meta["year"])
+        path = self.output_dir / f"eia861-{response.meta['year']}.zip"
 
         yield items.Eia861(
             data=response.body, year=response.meta["year"], save_path=path

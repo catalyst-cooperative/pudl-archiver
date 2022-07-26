@@ -1,5 +1,4 @@
-"""
-Spider for EPA CEMS unitid to EIA plant Crosswalk.
+"""Spider for EPA CEMS unitid to EIA plant Crosswalk.
 
 This module include the required infromation to establish a scrapy spider for
 the EPA CEMS unitid to EIA plant Crosswalk. It pulls the entire repo zip file from

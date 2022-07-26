@@ -1,3 +1,4 @@
+"""Scrapy spider to download the US Census DP1 GeoDatabase."""
 from pathlib import Path
 
 import scrapy
@@ -8,10 +9,12 @@ from pudl_scrapers.helpers import new_output_dir
 
 
 class CensusDp1TractSpider(scrapy.Spider):
+    """Scrapy spider to download the US Census DP1 GeoDatabase."""
     name = "censusdp1tract"
     allowed_domains = ["www2.census.gov"]
 
     def start_requests(self):
+        """Begin requesting the data."""
         base = Path(self.settings.get("OUTPUT_DIR"))
         cdt_dir = base / "censusdp1tract"
         self.output_dir = new_output_dir(cdt_dir)

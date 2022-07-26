@@ -1,3 +1,4 @@
+"""Scrapy spider for the EIA-860 data."""
 from pathlib import Path
 
 import scrapy
@@ -8,10 +9,12 @@ from pudl_scrapers.helpers import new_output_dir
 
 
 class Eia860Spider(scrapy.Spider):
+    """Scrapy spider for the EIA-860 data."""
     name = "eia860"
     allowed_domains = ["www.eia.gov"]
 
     def __init__(self, year=None, *args, **kwargs):
+        """Initialize the EIA-860 Spider."""
         super().__init__(*args, **kwargs)
 
         if year is not None:
@@ -23,7 +26,7 @@ class Eia860Spider(scrapy.Spider):
         self.year = year
 
     def start_requests(self):
-        """Finalize setup and yield the initializing request"""
+        """Finalize setup and yield the initializing request."""
         # Spider settings are not available during __init__, so finalizing here
         settings_output_dir = Path(self.settings.get("OUTPUT_DIR"))
         output_root = settings_output_dir / "eia860"
@@ -32,8 +35,7 @@ class Eia860Spider(scrapy.Spider):
         yield Request("https://www.eia.gov/electricity/data/eia860/")
 
     def parse(self, response):
-        """
-        Parse the eia860 home page
+        """Parse the eia860 home page.
 
         Args:
             response (scrapy.http.Response): Must contain the main page
@@ -50,8 +52,7 @@ class Eia860Spider(scrapy.Spider):
     # Parsers
 
     def all_forms(self, response):
-        """
-        Produce requests for collectable Eia860 forms
+        """Produce requests for collectable Eia860 forms.
 
         Args:
             response (scrapy.http.Response): Must contain the main page
@@ -64,20 +65,19 @@ class Eia860Spider(scrapy.Spider):
             "//table[@class='simpletable']" "//td[2]" "/a[contains(text(), 'ZIP')]"
         )
 
-        for l in links:
-            title = l.xpath("@title").extract_first().strip()
+        for link in links:
+            title = link.xpath("@title").extract_first().strip()
             year = int(title.split(" ")[-1])
 
             if year < 2001:
                 continue
 
-            url = response.urljoin(l.xpath("@href").extract_first())
+            url = response.urljoin(link.xpath("@href").extract_first())
 
             yield Request(url, meta={"year": year}, callback=self.parse_form)
 
     def form_for_year(self, response, year):
-        """
-        Produce request for a specific Eia860 form
+        """Produce request for a specific Eia860 form.
 
         Args:
             response (scrapy.http.Response): Must contain the main page
@@ -91,7 +91,7 @@ class Eia860Spider(scrapy.Spider):
 
         path = (
             "//table[@class='simpletable']//td[2]/"
-            "a[contains(@title, '%d')]/@href" % year
+            f"a[contains(@title, '{year}')]/@href"
         )
 
         link = response.xpath(path).extract_first()
@@ -101,8 +101,7 @@ class Eia860Spider(scrapy.Spider):
             return Request(url, meta={"year": year}, callback=self.parse_form)
 
     def parse_form(self, response):
-        """
-        Produce the Eia860 form projects
+        """Produce the Eia860 form projects.
 
         Args:
             response (scrapy.http.Response): Must contain the downloaded ZIP
@@ -111,7 +110,7 @@ class Eia860Spider(scrapy.Spider):
         Yields:
             items.Eia860
         """
-        path = self.output_dir / ("eia860-%s.zip" % response.meta["year"])
+        path = self.output_dir / f"eia860-{response.meta['year']}.zip"
 
         yield items.Eia860(
             data=response.body, year=response.meta["year"], save_path=path

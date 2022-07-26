@@ -1,3 +1,4 @@
+"""Mocking fixtures for the Scrapy tests."""
 from pathlib import Path
 
 import factory
@@ -7,27 +8,30 @@ BASE_PATH = Path(__file__).parent
 
 
 class RequestFactory(factory.Factory):
+    """Factory to generate fake requests."""
     class Meta:
+        """Metadata class."""
         model = Request
 
     url = "http://example.com"
 
     @factory.post_generation
-    def meta(obj, create, extracted, **kwargs):
+    def meta(self, create, extracted, **kwargs):
+        """Generate some meta-metadata."""
         if extracted is not None:
             for k, v in extracted.items():
-                obj.meta[k] = v
+                self.meta[k] = v
 
 
 def test_path(filename):
+    """Path to the testing data file."""
     return BASE_PATH / "data" / filename
 
 
 class FakeResponse(TextResponse):
-    """Fake a response for spider testing"""
-
+    """Fake a response for spider testing."""
     def __init__(self, url, file_path, *args, **kwargs):
-
+        """Initialize the fake response."""
         with open(file_path, "rb") as f:
             contents = f.read()
 
@@ -35,11 +39,14 @@ class FakeResponse(TextResponse):
 
 
 class TestResponseFactory(factory.Factory):
+    """Factory for generating server responses during testing."""
     class Meta:
+        """Metdata class."""
         model = FakeResponse
         inline_args = ("url", "file_path")
 
     class Params:
+        """Parameters to use in generating responses for each test case."""
         eia860 = factory.Trait(
             url="https://www.eia.gov/electricity/data/eia860/",
             file_path=test_path("eia860.html"),

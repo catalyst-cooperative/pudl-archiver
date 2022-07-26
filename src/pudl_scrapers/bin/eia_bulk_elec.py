@@ -1,6 +1,7 @@
 """Script to download EIA electricity data in bulk."""
 import logging
 from pathlib import Path
+import sys
 
 import requests
 from tqdm import tqdm

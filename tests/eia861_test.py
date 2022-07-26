@@ -1,12 +1,13 @@
+"""Test for the EIA-861 Spider."""
 from pudl_scrapers.spiders.eia861 import Eia861Spider
 from tests import factories
 
 
 class TestEia861:
-    """Validate Eia861 Spider"""
+    """Validate Eia861 Spider."""
 
     def test_spider_ids_files(self):
-        """Eia861 spider parses zip file links"""
+        """Eia861 spider parses zip file links."""
         spider = Eia861Spider()
         resp = factories.TestResponseFactory(eia861=True)
         result = list(spider.all_forms(resp))
@@ -24,7 +25,7 @@ class TestEia861:
         assert result[-1].meta["year"] == 1990
 
     def test_spider_gets_specific_year(self):
-        """Eia861 spider can pick forms for a specific year"""
+        """Eia861 spider can pick forms for a specific year."""
         spider = Eia861Spider()
         resp = factories.TestResponseFactory(eia861=True)
 

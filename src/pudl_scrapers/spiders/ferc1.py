@@ -1,3 +1,4 @@
+"""Scrapy spider for downloading FERC Form 1 data."""
 from pathlib import Path
 
 import scrapy
@@ -8,11 +9,13 @@ from pudl_scrapers.helpers import new_output_dir
 
 
 class Ferc1Spider(scrapy.Spider):
+    """Scrapy spider for downloading FERC Form 1 data."""
     name = "ferc1"
     allowed_domains = ["www.ferc.gov"]
     start_urls = ["https://www.ferc.gov/docs-filing/forms/form-1/data.asp"]
 
     def __init__(self, year=None, *args, **kwargs):
+        """Initialize the FERC-1 Spider."""
         super().__init__(*args, **kwargs)
 
         if year is not None:
@@ -24,8 +27,7 @@ class Ferc1Spider(scrapy.Spider):
         self.year = year
 
     def start_requests(self):
-        """
-        Start requesting Ferc 1 forms
+        """Start requesting Ferc 1 forms.
 
         Yields:
             List of Requests for Ferc 1 forms
@@ -42,8 +44,7 @@ class Ferc1Spider(scrapy.Spider):
         yield from self.all_form_requests()
 
     def parse(self, response):
-        """
-        Produce the Ferc1 item
+        """Produce the Ferc1 item.
 
         Args:
             response: scrapy.http.Response containing ferc1 data
@@ -51,15 +52,14 @@ class Ferc1Spider(scrapy.Spider):
         Yields:
             Ferc1 item
         """
-        path = self.output_dir / ("ferc1-%s.zip" % response.meta["year"])
+        path = self.output_dir / f"ferc1-{response.meta['year']}.zip"
 
         yield items.Ferc1(
             data=response.body, year=response.meta["year"], save_path=path
         )
 
     def form_for_year(self, year):
-        """
-        Produce a form request for the given year
+        """Produce a form request for the given year.
 
         Args:
             year: int
@@ -67,12 +67,11 @@ class Ferc1Spider(scrapy.Spider):
         Returns:
             Request for the Ferc 1 form
         """
-        url = "ftp://eforms1.ferc.gov/f1allyears/f1_%d.zip" % year
+        url = f"ftp://eforms1.ferc.gov/f1allyears/f1_{year}.zip"
         return Request(url, meta={"year": year}, callback=self.parse)
 
     def all_form_requests(self):
-        """
-        Produces form requests for all supported years
+        """Produces form requests for all supported years.
 
         Yields:
             Requests for all available Ferc form 1 zip files

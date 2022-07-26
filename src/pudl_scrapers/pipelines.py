@@ -1,15 +1,18 @@
-# Define your item pipelines here
-#
-# Don't forget to add your pipeline to the ITEM_PIPELINES setting
-# See: https://docs.scrapy.org/en/latest/topics/item-pipeline.html
+"""Define your scrapy item pipelines here.
+
+Don't forget to add your pipeline to the ITEM_PIPELINES setting
+See: https://docs.scrapy.org/en/latest/topics/item-pipeline.html
+
+"""
 
 from pathlib import Path
 
 
 class PudlPipeline:
+    """Pipeline for all the PUDL scrapers."""
+
     def process_item(self, item, spider):
-        """
-        Process any item produced by the scrapers
+        """Process any item produced by the scrapers.
 
         Args:
             item (scrapy.Item): the item we will process
@@ -23,8 +26,7 @@ class PudlPipeline:
         return self.save_file(item)
 
     def save_file(self, item):
-        """
-        Save a single file
+        """Save a single file.
 
         Args:
             item (scrapy.Item): to be saved to hard drive, must have a

@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+"""A custom FTP scraping script for the EPA CEMS data."""
 
 import argparse
 import ftplib  # nosec: B402
@@ -68,14 +69,13 @@ states = [
 
 
 class EpaCemsFtpManager:
-    """Custom client for the EPA CEMS ftp server"""
+    """Custom client for the EPA CEMS ftp server."""
 
     server = "newftp.epa.gov"
     root = "/dmdnload/emissions/hourly/monthly"
 
     def __init__(self, loglevel="DEBUG", verbose=False, testing=False):
-        """
-        Initialize the CemsFtpManager
+        """Initialize the CemsFtpManager.
 
         Args:
             loglevel: str, valid logger log-level
@@ -101,27 +101,26 @@ class EpaCemsFtpManager:
         self.logger.setLevel(loglevel)
 
     def __enter__(self):
-        """Support `with` statement by returning self"""
+        """Support `with` statement by returning self."""
         self.client = self._new_client()
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        """Support `with` statement with cleanup, as needed"""
+        """Support `with` statement with cleanup, as needed."""
         self.client.quit()
 
         if self.testing:
             shutil.rmtree(self.output_dir)
 
     def _new_client(self):
-        """Create a new, logged in client on the CEMS server"""
+        """Create a new, logged in client on the CEMS server."""
         client = ftplib.FTP(self.server, timeout=15)  # nosec: B321
         client.connect()
         client.login()
         return client
 
     def file_year(self, filename):
-        """
-        Produce the year for an epa cems file name
+        """Produce the year for an EPA CEMS file name.
 
         Args:
             filename: str, the name of the file as listed on the ftp server
@@ -133,11 +132,10 @@ class EpaCemsFtpManager:
         try:
             return int(filename[:4])
         except ValueError:
-            self.logger.warning("Missing year from %s" % filename)
+            self.logger.warning(f"Missing year from {filename}")
 
     def file_state(self, filename):
-        """
-        Produce the state for an epa cems file name
+        """Produce the state for an epa cems file name.
 
         Args:
             filename: str, the name of the file as listed on the ftp server
@@ -148,14 +146,13 @@ class EpaCemsFtpManager:
         abbr = filename[4:6].lower()
 
         if abbr not in states:
-            self.logger.warning("Missing state from %s, got %s" % (filename, abbr))
+            self.logger.warning(f"Missing state from {filename}, got {abbr}")
             return
 
         return abbr
 
     def available_years(self):
-        """
-        List all available years
+        """List all available EPA CEMS years.
 
         Returns:
             list of ints for each year of data available on the site
@@ -164,31 +161,33 @@ class EpaCemsFtpManager:
         return years
 
     def download(self, remote_name):
-        """
-        Download an individual file.  Due to Zenodo archive limitations, EPA
-        CEMS files are bundled into larger archives by year and state where
-        possible.
+        """Download an individual EPA CEMS file.
 
-        Args: remote_name, str: the name of the file on the remote server
+        Due to Zenodo archive limitations, EPA CEMS files are bundled into larger
+        archives by year and state where possible.
 
-        Returns: True on success, False on failure
+        Args:
+            remote_name (str): the name of the file on the remote server
+
+        Returns:
+            True on success, False on failure
         """
 
         def save_to_zip(file_name, cmd, year, state):
             """Save the remote file to a larger zip archive."""
-            wrapper_filename = "epacems-%d-%s.zip" % (year, state)
+            wrapper_filename = f"epacems-{year}-{state}.zip"
             wrapper_path = self.output_dir / wrapper_filename
 
             if not wrapper_path.exists():
                 zf = zipfile.ZipFile(wrapper_path, "w", compression=zipfile.ZIP_BZIP2)
                 zf.close()
-                self.logger.debug("Created wrapper archive: %s" % wrapper_path)
+                self.logger.debug(f"Created wrapper archive: {wrapper_path}")
 
             with zipfile.ZipFile(wrapper_path, "a") as zf:
                 with zf.open(file_name, "w", force_zip64=True) as f:
                     self.client.retrbinary(cmd, f.write)
 
-            return "{}::{}".format(wrapper_path, file_name)
+            return f"{wrapper_path}::{file_name}"
 
         def save_as_is(file_name, cmd):
             """Save the remote file to disk, as is."""
@@ -200,7 +199,7 @@ class EpaCemsFtpManager:
             return local_path
 
         file_name = Path(remote_name).name
-        cmd = "RETR %s" % remote_name
+        cmd = f"RETR {remote_name}"
 
         year = self.file_year(file_name)
         state = self.file_state(file_name)
@@ -212,15 +211,14 @@ class EpaCemsFtpManager:
                 local_name = save_to_zip(file_name, cmd, year, state)
 
         except Exception as err:
-            self.logger.error("Failed to download {}: {}".format(file_name, err))
+            self.logger.error(f"Failed to download {file_name}: {err}")
             return False
 
-        self.logger.debug("%s downloaded" % local_name)
+        self.logger.debug(f"{local_name} downloaded")
         return True
 
     def collect_year(self, year, state=None):
-        """
-        Download all files for a given year
+        """Download all available files for a given year.
 
         Args:
             year, int, the year
@@ -232,14 +230,14 @@ class EpaCemsFtpManager:
         if not self.output_dir.exists():
             self.output_dir.mkdir(parents=True)
 
-        directory = "%s/%d" % (self.root, year)
+        directory = f"{self.root}/{year}"
 
         try:
             self.client.cwd(directory)
         except Exception as err:
             self.logger.error(
-                "Failed to open remote dir %s, error %s. Year %d skipped."
-                % (directory, err, year)
+                f"Failed to open remote dir {directory}, error {err}. "
+                f"Year {year} skipped."
             )
             return 0
 
@@ -265,17 +263,17 @@ class EpaCemsFtpManager:
                 self.client = self._new_client()
                 self.client.cwd(directory)
                 queue.append(fn)
-                self.logger.warning("Failed download %s requeued", fn)
+                self.logger.warning(f"Failed download {fn} requeued")
 
-        self.logger.info("Downloaded %d files for year %d", count, year)
+        self.logger.info(f"Downloaded {count} files for year {year}")
         return count
 
 
 def get_arguments():
-    """
-    Parse the command line arguments
+    """Parse the command line arguments.
 
-    Returns: result of the command line arguments
+    Returns:
+        result of the command line arguments
     """
     parser = argparse.ArgumentParser(
         description="Download EPA CEMS data from the EPA's FTP server"
@@ -300,9 +298,7 @@ def get_arguments():
 
 
 def main():
-    """
-    Manage program flow to download EPA CEMS data from the FTP server
-    """
+    """Manage program flow to download EPA CEMS data from the FTP server."""
     args = get_arguments()
     year = getattr(args, "year", None)
     state = getattr(args, "state", None)
@@ -317,10 +313,10 @@ def main():
             if year in available:
                 cftp.collect_year(year, state=state)
             else:
-                cftp.logger.error("Data for %d is not available" % year)
+                cftp.logger.error(f"Data for {year} is not available")
                 return 1
 
-        cftp.logger.info("Download complete: %d files" % cftp.total_count)
+        cftp.logger.info(f"Download complete: {cftp.total_count} files")
         return 0
 
     with EpaCemsFtpManager(loglevel=args.loglevel, verbose=args.verbose) as cftp:
@@ -328,7 +324,7 @@ def main():
         for year in cftp.available_years():
             cftp.collect_year(year, state=state)
 
-        cftp.logger.info("Download complete: %d files" % cftp.total_count)
+        cftp.logger.info(f"Download complete: {cftp.total_count} files")
 
     return 0
 

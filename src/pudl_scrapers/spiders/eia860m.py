@@ -1,5 +1,4 @@
-"""
-Spider for EIA 860 M.
+"""Spider for the EIA-860M monthly data.
 
 This module include the required infromation to establish a scrapy spider for
 EIA 860M. Most of the logic in here revolves around finding the right page,
@@ -29,18 +28,14 @@ class Eia860MSpider(scrapy.Spider):
     allowed_domains = ["www.eia.gov"]
 
     def __init__(self, year=None, month=None, *args, **kwargs):
-        """
-        Spider for scrapping EIA 860 Monthly.
+        """Spider for scrapping EIA 860 Monthly.
 
         If a year is specified a month must also be specified. Not all
         year/month combos will provide data. The months available are quite
         erradic. Most years all months are available, but in 2015 only July -
         December are available and the most recent year's month should change
         regularly. If a bad year/month combo is given nothing will be returned.
-        Check for availability before scrapping:
-        www.eia.gov/electricity/data/eia860m/
-
-
+        Check for availability before scraping: www.eia.gov/electricity/data/eia860m/
 
         Args:
             year (int): year of available EIA 860 M data. Currently only
@@ -68,7 +63,7 @@ class Eia860MSpider(scrapy.Spider):
             ]
         ):
             raise AssertionError(
-                "Scrapping a specific month without a specified year is "
+                "Scraping a specific month without a specified year is "
                 "not supported."
             )
 
@@ -85,8 +80,7 @@ class Eia860MSpider(scrapy.Spider):
         yield Request("https://www.eia.gov/electricity/data/eia860m/")
 
     def parse(self, response):
-        """
-        Parse the EIA 860 M main page.
+        """Parse the EIA-860M main page.
 
         Get responses for either all EIA 860 M XLSX files, or grab a specific
         month and year (as specified in the arguments of this object).
@@ -110,8 +104,7 @@ class Eia860MSpider(scrapy.Spider):
     # Parsers
 
     def all_forms(self, response):
-        """
-        Produce requests for collectable EIA 860M forms.
+        """Produce requests for collectable EIA-860M forms.
 
         Args:
             response (scrapy.http.Response): Must contain the main page
@@ -124,16 +117,15 @@ class Eia860MSpider(scrapy.Spider):
         if not links:
             logger.info("No links were found for EIA 860 M.")
 
-        for l in links:
-            title = l.xpath("a/@title").extract_first().strip()
+        for link in links:
+            title = link.xpath("a/@title").extract_first().strip()
             # the format for the title is 'EIA 860M MONTH YEAR'
             year = int(title.split(" ")[-1])
             month = title.split(" ")[-2]
             yield self.form_for_month_year(response, month, year)
 
     def form_for_month_year(self, response, month, year):
-        """
-        Produce request for a specific EIA 860 M forms.
+        """Produce request for a specific EIA-860M forms.
 
         Args:
             response (scrapy.http.Response): Must contain the main page
@@ -167,8 +159,7 @@ class Eia860MSpider(scrapy.Spider):
             logger.info(f"No links were found for EIA 860M {month}, {year}.")
 
     def parse_form(self, response):
-        """
-        Produce the EIA 860M form projects.
+        """Produce the EIA-860M form projects.
 
         Args:
             response (scrapy.http.Response): Must contain the downloaded XLSX
