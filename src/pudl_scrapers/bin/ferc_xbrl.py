@@ -35,12 +35,6 @@ def parse_main():
     parser.add_argument(
         "-p", "--period", default=None, help="Specify filing period for filter"
     )
-    parser.add_argument(
-        "--loglevel",
-        help="Set log level",
-        default="INFO",
-    )
-    parser.add_argument("--logfile", help="Path to logfile", default=None)
 
     return parser.parse_args()
 
