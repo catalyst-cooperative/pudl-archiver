@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import argparse
-import ftplib
+import ftplib  # nosec: B402
 import logging
 import shutil
 import sys
@@ -114,7 +114,7 @@ class EpaCemsFtpManager:
 
     def _new_client(self):
         """Create a new, logged in client on the CEMS server"""
-        client = ftplib.FTP(self.server, timeout=15)
+        client = ftplib.FTP(self.server, timeout=15)  # nosec: B321
         client.connect()
         client.login()
         return client
