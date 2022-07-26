@@ -57,7 +57,7 @@ def archive_filings(
     rss_feed = feedparser.parse(feed_path)
 
     # Create output directory if it doesn't exist
-    output_dir = new_output_dir(Path(pudl_scrapers.settings.OUTPUT_DIR) / "ferc1")
+    output_dir = new_output_dir(Path(pudl_scrapers.settings.OUTPUT_DIR) / f"ferc{form_number}")
     if not output_dir.exists():
         output_dir.mkdir(parents=True)
 
