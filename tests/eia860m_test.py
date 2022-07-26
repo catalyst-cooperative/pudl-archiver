@@ -2,7 +2,7 @@
 """Test EIA 860 M."""
 
 from pudl_scrapers.spiders.eia860m import Eia860MSpider
-from . import factories
+from tests import factories
 
 
 class TestEia860M:

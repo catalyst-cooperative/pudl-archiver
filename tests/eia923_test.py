@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from pudl_scrapers.spiders.eia923 import Eia923Spider
-from . import factories
+from tests import factories
 
 
 class TestEia923:
