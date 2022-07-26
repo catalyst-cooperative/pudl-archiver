@@ -9,4 +9,4 @@ dependencies:
   - python>=3.10,<3.11
   - setuptools<64
   - pip:
-    - --editable ./
+      - --editable ./[dev,docs,tests]
