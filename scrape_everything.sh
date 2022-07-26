@@ -6,3 +6,4 @@ for spider in $(scrapy list)
     done
 
 epacems --verbose
+eia_bulk_elec

@@ -1,6 +1,12 @@
+---
 name: pudl-scrapers
-
+channels:
+  - conda-forge
+  - defaults
 dependencies:
-  - factory_boy >= 2.12
-  - scrapy >= 1.7
-  - pytest >= 5.2
+  # Used to set up the environment
+  - pip>=21,<23
+  - python>=3.10,<3.11
+  - setuptools<64
+  - pip:
+    - --editable ./

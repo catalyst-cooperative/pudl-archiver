@@ -10,13 +10,6 @@ conda env create -f environment.yml
 conda activate pudl-scrapers
 ```
 
-If you don't want to use conda, create a virtual environment and run:
-
-```
-pip install -r requirements.txt
-pip install ./ # OR pip install -e ./
-```
-
 # Output location
 
 Logs are collected:
@@ -34,7 +27,7 @@ sources.  Typically and additional "year" argument is available, in the form
 
 See below for exact commands and available arguments.
 
-## 2010 Census GeoData
+## 2010 Census DP1 GeoDatabase
 
 `scrapy crawl censusdp1tract`
 
@@ -46,9 +39,15 @@ For full instructions:
 
 `epacems --help`
 
+## EIA Bulk Electricity Data
+
+`eia_bulk_elec`
+
+No other options.
+
 ## EPA CEMS unitid to EIA plant Crosswalk
 
- To collect the data and field descriptions:
+To collect the data and field descriptions:
 
  `scrapy crawl epacems_unitid_eia_plant_crosswalk`
 
