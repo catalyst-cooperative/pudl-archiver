@@ -3,3 +3,4 @@ __pycache__
 *pyc
 /pudl_scrapers.egg-info/
 .DS_Store
+commit.txt
