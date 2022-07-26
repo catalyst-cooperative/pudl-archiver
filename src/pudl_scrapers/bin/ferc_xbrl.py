@@ -2,8 +2,8 @@
 import argparse
 import json
 import logging
-from pathlib import Path
 import re
+from pathlib import Path
 from typing import Optional
 from zipfile import ZipFile
 
@@ -11,8 +11,8 @@ import coloredlogs
 import feedparser
 import requests
 
-from pudl_scrapers.helpers import new_output_dir
 import pudl_scrapers.settings
+from pudl_scrapers.helpers import new_output_dir
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -43,7 +43,7 @@ def archive_filings(
     feed_path: str,
     form_number: int,
     filter_year: int,
-    filter_period: Optional[str] = None,
+    filter_period: str | None = None,
 ):
     """
     Download filings and archive in zipfile.
@@ -57,7 +57,9 @@ def archive_filings(
     rss_feed = feedparser.parse(feed_path)
 
     # Create output directory if it doesn't exist
-    output_dir = new_output_dir(Path(pudl_scrapers.settings.OUTPUT_DIR) / f"ferc{form_number}")
+    output_dir = new_output_dir(
+        Path(pudl_scrapers.settings.OUTPUT_DIR) / f"ferc{form_number}"
+    )
     if not output_dir.exists():
         output_dir.mkdir(parents=True)
 
@@ -72,7 +74,9 @@ def archive_filings(
     with ZipFile(archive_path, "w") as zipfile:
         # Actual link to XBRL filing is only available in inline html
         # This regex pattern will help extract the actual link
-        xbrl_link_pat = re.compile('href="(.+\.(xml|xbrl))">(.+(xml|xbrl))<')  # noqa: W605
+        xbrl_link_pat = re.compile(
+            r'href="(.+\.(xml|xbrl))">(.+(xml|xbrl))<'
+        )  # noqa: W605
 
         # Loop through entries and filter
         for entry in rss_feed.entries:
