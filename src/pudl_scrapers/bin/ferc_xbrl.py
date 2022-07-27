@@ -3,8 +3,8 @@ import argparse
 import json
 import logging
 import re
+import zipfile
 from pathlib import Path
-from zipfile import ZipFile
 
 import feedparser
 import requests
@@ -41,6 +41,7 @@ def archive_filings(
     feed_path: str,
     form_number: int,
     filter_year: int,
+    output_dir: Path,
     filter_period: str | None = None,
 ):
     """Download filings and archive in zipfile.
@@ -49,16 +50,10 @@ def archive_filings(
         feed_path: URL or local file path pointing to RSS feed.
         form_number: Form number for filter.
         filter_year: Filing year for filter.
+        output_dir: Directory to write archive to.
         filter_period: Filing period for filter.
     """
     rss_feed = feedparser.parse(feed_path)
-
-    # Create output directory if it doesn't exist
-    output_dir = new_output_dir(
-        Path(pudl_scrapers.settings.OUTPUT_DIR) / f"ferc{form_number}"
-    )
-    if not output_dir.exists():
-        output_dir.mkdir(parents=True)
 
     form_name = f"Form {form_number}"
     archive_path = output_dir / f"ferc{form_number}-{filter_year}.zip"
@@ -68,7 +63,8 @@ def archive_filings(
     # Save JSON file with metadata from RSS feed
     metadata = {}
 
-    with ZipFile(archive_path, "w") as zipfile:
+    print(archive_path)
+    with zipfile.ZipFile(archive_path, "w") as archive:
         # Actual link to XBRL filing is only available in inline html
         # This regex pattern will help extract the actual link
         xbrl_link_pat = re.compile(
@@ -105,12 +101,12 @@ def archive_filings(
                 metadata[filing_name] = {entry["id"]: entry}
 
             # Write to zipfile
-            with zipfile.open(f"{entry['id']}.xbrl", "w") as f:
+            with archive.open(f"{entry['id']}.xbrl", "w") as f:
                 logger.info(f"Writing {entry['title']} to archive.")
                 f.write(filing.text.encode("utf-8"))
 
         # Save snapshot of RSS feed
-        with zipfile.open("rssfeed", "w") as f:
+        with archive.open("rssfeed", "w") as f:
             logger.info("Writing rss feed metadata to archive.")
             f.write(json.dumps(metadata).encode("utf-8"))
 
@@ -119,9 +115,17 @@ def main():
     """CLI for archiving FERC XBRL filings from RSS feed."""
     args = parse_main()
 
+    # Create output directory if it doesn't exist
+    output_dir = new_output_dir(
+        Path(pudl_scrapers.settings.OUTPUT_DIR) / f"ferc{args.form_number}"
+    )
+    if not output_dir.exists():
+        output_dir.mkdir(parents=True)
+
     archive_filings(
-        args.rss_path,
-        args.form_number,
+        feed_path=args.rss_path,
+        form_number=args.form_number,
+        output_dir=output_dir,
         filter_year=args.year,
         filter_period=args.period,
     )
