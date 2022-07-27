@@ -26,9 +26,9 @@ repos:
       - id: name-tests-test # Follow PyTest naming convention.
         exclude: ^tests/factories.py
 
-  ########################################################################################
+  #####################################################################################
   # Formatters: hooks that re-write Python and RST files
-  ########################################################################################
+  #####################################################################################
 
   # Convert relative imports to absolute imports
   - repo: https://github.com/MarcoGorelli/absolufy-imports
@@ -48,16 +48,11 @@ repos:
     hooks:
       - id: rm-unneeded-f-str
 
-  # Use built-in types for annotations as per PEP585, with __futures__ for Python 3.8/3.9
-  # Note that this sometimes conflicts with Pydantic on Python 3.8/3.9
   - repo: https://github.com/sondrelg/pep585-upgrade
     rev: "v1.0"
     hooks:
       - id: upgrade-type-hints
-        args: ["--futures=true"]
 
-  # Update a bunch of Python syntax, using __futures__ for Python 3.8/3.9
-  # Note that this sometimes conflicts with Pydantic on Python 3.8/3.9
   - repo: https://github.com/asottile/pyupgrade
     rev: v2.37.2
     hooks:
