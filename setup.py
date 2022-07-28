@@ -39,7 +39,7 @@ setup(
             "flake8-colors>=0.1,<0.2",  # Produce colorful error / warning output
             "flake8-docstrings>=1.5,<1.7",  # Ensure docstrings are formatted well
             "flake8-rst-docstrings>=0.2,<0.3",  # Allow use of ReST in docstrings
-            "flake8-use-fstring>=1.0,<1.4",  # Highlight use of old-style string formatting
+            "flake8-use-fstring>=1.0,<1.5",  # Highlight use of old-style string formatting
             "mccabe>=0.6,<0.8",  # Checks that code isn't overly complicated
             "pep8-naming>=0.12,<0.14",  # Require PEP8 compliant variable names
             "pre-commit>=2.9,<2.21",  # Allow us to run pre-commit hooks in testing
