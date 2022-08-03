@@ -8,6 +8,7 @@ from pathlib import Path
 
 import feedparser
 import requests
+from feedparser import FeedParserDict
 
 import pudl_scrapers.settings
 from pudl_scrapers.helpers import new_output_dir
@@ -19,22 +20,32 @@ FERC_RSS_LINK = "https://ecollection.ferc.gov/api/rssfeed"
 SUPPORTED_FORMS = [1, 2, 6, 60, 714]
 # Actual link to XBRL filing is only available in inline html
 # This regex pattern will help extract the actual link
-XBRL_LINK_PATTERN = re.compile(
-    r'href="(.+\.(xml|xbrl))">(.+(xml|xbrl))<'
-)  # noqa: W605
+XBRL_LINK_PATTERN = re.compile(r'href="(.+\.(xml|xbrl))">(.+(xml|xbrl))<')  # noqa: W605
 
 
 def parse_main():
     """Process base commands from the CLI."""
     parser = argparse.ArgumentParser(description="Archive filings from RSS feed")
     parser.add_argument(
-        "-r", "--rss-path", default=FERC_RSS_LINK, help=f"Specify path to RSS feed. This can be either a URL or local path (default value is '{FERC_RSS_LINK}')."
+        "-r",
+        "--rss-path",
+        default=FERC_RSS_LINK,
+        help=f"Specify path to RSS feed. This can be either a URL or local path (default value is '{FERC_RSS_LINK}').",
     )
     parser.add_argument(
-        "-y", "--years", default=2021, type=int, nargs="*", help="Specify a list of years to filter on (default value is 'None', which will select all years available)."
+        "-y",
+        "--years",
+        default=2021,
+        type=int,
+        nargs="*",
+        help="Specify a list of years to filter on (default value is 'None', which will select all years available).",
     )
     parser.add_argument(
-        "-f", "--form-number", default=1, type=int, help=f"Specify form number for filter. Allowable form numbers include: {SUPPORTED_FORMS}."
+        "-f",
+        "--form-number",
+        default=1,
+        type=int,
+        help=f"Specify form number for filter. Allowable form numbers include: {SUPPORTED_FORMS}.",
     )
     parser.add_argument(
         "-p", "--period", default=None, help="Specify filing period for filter"
@@ -46,7 +57,7 @@ def parse_main():
 def archive_filings(
     feed_path: str,
     form_number: int,
-    filter_year: int,
+    filter_years: list[int] | None,
     output_dir: Path,
     filter_period: str | None = None,
 ):
@@ -55,12 +66,40 @@ def archive_filings(
     Args:
         feed_path: URL or local file path pointing to RSS feed.
         form_number: Form number for filter.
-        filter_year: Filing year for filter.
+        filter_years: Filing year for filter.
         output_dir: Directory to write archive to.
         filter_period: Filing period for filter.
     """
     rss_feed = feedparser.parse(feed_path)
 
+    # If no filter years are specified archive all years
+    # Only 2021 and 2022 are available at this time
+    if not filter_years:
+        filter_years = [2021, 2022]
+
+    # Loop through requested years and create archive of available filings
+    for year in filter_years:
+        logger.info(f"Creating form {form_number} archive for year: {year}")
+        archive_year(rss_feed, form_number, year, output_dir, filter_period)
+
+
+def archive_year(
+    rss_feed: FeedParserDict,
+    form_number: int,
+    filter_year: int,
+    output_dir: Path,
+    filter_period: str | None = None,
+):
+    """Download filings and archive in zipfile.
+
+    Args:
+        rss_feed: Parsed RSS feed with filing metadata.
+        form_number: Form number for filter.
+        filter_year: Filing year for filter.
+        output_dir: Directory to write archive to.
+        filter_period: Filing period for filter.
+    """
+    # Form name for filter
     form_name = f"Form {form_number}"
     archive_path = output_dir / f"ferc{form_number}-{filter_year}.zip"
 
@@ -69,14 +108,8 @@ def archive_filings(
     # Save JSON file with metadata from RSS feed
     metadata = {}
 
-    print(archive_path)
+    # Open zip file for archiving filings
     with zipfile.ZipFile(archive_path, "w") as archive:
-        # Actual link to XBRL filing is only available in inline html
-        # This regex pattern will help extract the actual link
-        xbrl_link_pat = re.compile(
-            r'href="(.+\.(xml|xbrl))">(.+(xml|xbrl))<'
-        )  # noqa: W605
-
         # Loop through entries and filter
         for entry in rss_feed.entries:
             year = int(entry["ferc_year"])
@@ -96,7 +129,7 @@ def archive_filings(
                     continue
 
             # Get link then download filing
-            link = xbrl_link_pat.search(entry["summary_detail"]["value"])
+            link = XBRL_LINK_PATTERN.search(entry["summary_detail"]["value"])
             filing = requests.get(link.group(1))
 
             # Add filing metadata
@@ -128,10 +161,19 @@ def main():
     if not output_dir.exists():
         output_dir.mkdir(parents=True)
 
+    # Validate CLI args
+    if args.form_number not in SUPPORTED_FORMS:
+        raise ValueError(f"Form number {args.form_number} is not a valid form.")
+
+    if not args.years:
+        # Check if any years are out of range
+        if any([year < 2021 for year in args.years]):
+            raise ValueError("XBRL data is only available for 2021 forward")
+
     archive_filings(
         feed_path=args.rss_path,
         form_number=args.form_number,
         output_dir=output_dir,
-        filter_year=args.year,
+        filter_years=args.years,
         filter_period=args.period,
     )

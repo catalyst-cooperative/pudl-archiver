@@ -111,7 +111,7 @@ def test_archive_script(mocker):
     ferc_xbrl.archive_filings(
         feed_path=BASE_PATH / "data/ferc_rssfeed.atom",
         form_number=1,
-        filter_year=2021,
+        filter_years=[2021],
         output_dir=Path("./"),
     )
 
