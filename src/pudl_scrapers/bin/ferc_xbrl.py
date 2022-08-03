@@ -39,7 +39,8 @@ def parse_main():
         default=2021,
         type=int,
         nargs="*",
-        help="Specify a list of years to filter on (default value is 'None', which will select all years available).",
+        help="Specify a list of years to filter on. The year defines the report year the "
+        "filing pertains to (default value is 'None', which will select all years available).",
     )
     parser.add_argument(
         "-f",
@@ -52,7 +53,9 @@ def parse_main():
         "-p",
         "--period",
         default=None,
-        help="Specify filing period for filter. Allowable filing periods include: Q1, Q2, Q3, Q4 (default value is 'None', which will allow all filing periods).",
+        help="Specify filing period for filter. Filing period defines the quarter the filing pertains "
+        "to and expects a value of 'Q1', 'Q2', 'Q3', or 'Q4' (default value is 'None',"
+        "which will select filings from all quarters).",
     )
 
     return parser.parse_args()
