@@ -1,10 +1,10 @@
 """Scrapy spider for the EIA-860 data."""
+import logging
+import re
 from pathlib import Path
 
 import scrapy
 from scrapy.http import Request
-import re
-import logging
 
 from pudl_scrapers import items
 from pudl_scrapers.helpers import new_output_dir
@@ -73,7 +73,7 @@ class Eia860Spider(scrapy.Spider):
 
         for link in links:
             title = link.xpath("@title").extract_first().strip()
-            m = re.search("\d{4}", title)
+            m = re.search(r"\d{4}", title)
             if m:
                 year = int(m.group(0))
             else:
