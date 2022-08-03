@@ -14,6 +14,7 @@ import pudl_scrapers.settings
 from pudl_scrapers.helpers import new_output_dir
 
 logger = logging.getLogger(__name__)
+logger.addHandler(logging.StreamHandler())
 logger.setLevel(logging.INFO)
 
 FERC_RSS_LINK = "https://ecollection.ferc.gov/api/rssfeed"
@@ -48,7 +49,10 @@ def parse_main():
         help=f"Specify form number for filter. Allowable form numbers include: {SUPPORTED_FORMS}.",
     )
     parser.add_argument(
-        "-p", "--period", default=None, help="Specify filing period for filter"
+        "-p",
+        "--period",
+        default=None,
+        help="Specify filing period for filter. Allowable filing periods include: Q1, Q2, Q3, Q4 (default value is 'None', which will allow all filing periods).",
     )
 
     return parser.parse_args()
@@ -79,7 +83,7 @@ def archive_filings(
 
     # Loop through requested years and create archive of available filings
     for year in filter_years:
-        logger.info(f"Creating form {form_number} archive for year: {year}")
+        logger.info(f"Creating form {form_number} archive for year {year}")
         archive_year(rss_feed, form_number, year, output_dir, filter_period)
 
 
@@ -165,10 +169,14 @@ def main():
     if args.form_number not in SUPPORTED_FORMS:
         raise ValueError(f"Form number {args.form_number} is not a valid form.")
 
-    if not args.years:
+    if args.years:
         # Check if any years are out of range
         if any([year < 2021 for year in args.years]):
             raise ValueError("XBRL data is only available for 2021 forward")
+
+    if args.period:
+        if args.period not in ["Q1", "Q2", "Q3", "Q4"]:
+            raise ValueError(f"Invalid filing period: {args.period}")
 
     archive_filings(
         feed_path=args.rss_path,
