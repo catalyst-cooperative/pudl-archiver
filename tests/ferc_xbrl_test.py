@@ -6,7 +6,7 @@ from pudl_scrapers.bin import ferc_xbrl
 
 BASE_PATH = Path(__file__).parent
 
-EXPECTED_METADATA = {
+EXPECTED_METADATA_2021 = {
     "Example FilerQ4": {
         "0": {
             "id": "0",
@@ -94,12 +94,12 @@ EXPECTED_METADATA = {
             },
             "ferc_xbrlfiling": "",
         },
-    }
+    },
 }
 
 
-def test_archive_script(mocker):
-    """Test the archiving script."""
+def test_archive_filings(mocker):
+    """Test archive filings function with multiple years."""
     # Prepare mocks
     zipfile_mock = mocker.MagicMock(name="zipfile")
     mocker.patch("pudl_scrapers.bin.ferc_xbrl.zipfile", new=zipfile_mock)
@@ -111,12 +111,12 @@ def test_archive_script(mocker):
     ferc_xbrl.archive_filings(
         feed_path=BASE_PATH / "data/ferc_rssfeed.atom",
         form_number=1,
-        filter_years=[2021],
+        filter_years=[2021, 2022],
         output_dir=Path("./"),
     )
 
     # Test that zipfile was created with proper name
-    zipfile_mock.ZipFile.assert_called_once_with(Path("./") / "ferc1-2021.zip", "w")
+    zipfile_mock.ZipFile.assert_any_call(Path("./") / "ferc1-2021.zip", "w")
 
     # Get mock associated with ZipFile context manager
     archive_mock = zipfile_mock.ZipFile.return_value.__enter__.return_value
@@ -128,5 +128,12 @@ def test_archive_script(mocker):
 
     # Test metadata was written as expected
     archive_mock.open.return_value.__enter__.return_value.write.assert_any_call(
-        json.dumps(EXPECTED_METADATA).encode("utf-8")
+        json.dumps(EXPECTED_METADATA_2021).encode("utf-8")
     )
+
+    # Test that zipfile was created with proper name
+    zipfile_mock.ZipFile.assert_any_call(Path("./") / "ferc1-2022.zip", "w")
+
+    # Test that all expected filings were written to zip
+    archive_mock.open.assert_any_call("2.xbrl", "w")
+    archive_mock.open.assert_any_call("rssfeed", "w")
