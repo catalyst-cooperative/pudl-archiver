@@ -16,19 +16,25 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 FERC_RSS_LINK = "https://ecollection.ferc.gov/api/rssfeed"
+SUPPORTED_FORMS = [1, 2, 6, 60, 714]
+# Actual link to XBRL filing is only available in inline html
+# This regex pattern will help extract the actual link
+XBRL_LINK_PATTERN = re.compile(
+    r'href="(.+\.(xml|xbrl))">(.+(xml|xbrl))<'
+)  # noqa: W605
 
 
 def parse_main():
     """Process base commands from the CLI."""
     parser = argparse.ArgumentParser(description="Archive filings from RSS feed")
     parser.add_argument(
-        "-r", "--rss-path", default=FERC_RSS_LINK, help="Specify path to RSS feed"
+        "-r", "--rss-path", default=FERC_RSS_LINK, help=f"Specify path to RSS feed. This can be either a URL or local path (default value is '{FERC_RSS_LINK}')."
     )
     parser.add_argument(
-        "-y", "--year", default=2021, type=int, help="Specify single year for filter"
+        "-y", "--years", default=2021, type=int, nargs="*", help="Specify a list of years to filter on (default value is 'None', which will select all years available)."
     )
     parser.add_argument(
-        "-f", "--form-number", default=1, type=int, help="Specify form name for filter"
+        "-f", "--form-number", default=1, type=int, help=f"Specify form number for filter. Allowable form numbers include: {SUPPORTED_FORMS}."
     )
     parser.add_argument(
         "-p", "--period", default=None, help="Specify filing period for filter"
