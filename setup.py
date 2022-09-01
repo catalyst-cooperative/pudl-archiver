@@ -18,7 +18,7 @@ setup(
     ],
     extras_require={
         "dev": [
-            "black>=22.0,<22.7",  # A deterministic code formatter
+            "black>=22.0,<22.9",  # A deterministic code formatter
             "isort>=5.0,<5.11",  # Standardized import sorting
             "tox>=3.20,<3.26",  # Python test environment manager
             "twine>=3.3,<4.1",  # Used to make releases to PyPI
