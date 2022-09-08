@@ -45,11 +45,11 @@ For full instructions:
 
 No other options.
 
-## EPA CEMS unitid to EIA plant Crosswalk
+## EPA CAMD to EIA Crosswalk
 
 To collect the data and field descriptions:
 
- `scrapy crawl epacems_unitid_eia_plant_crosswalk`
+ `scrapy crawl epacamd_eia`
 
 ## EIA860
 
