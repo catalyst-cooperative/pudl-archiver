@@ -75,12 +75,12 @@ class Ferc714(DataFile):
         return f"Ferc714('{self['save_path']}')"
 
 
-class EpaCemsUnitidEiaPlantCrosswalk(DataFile):
-    """The EPA CEMS unitid to EIA plant Crosswalk zip file."""
+class EpaCamdEia(DataFile):
+    """The EPA CAMD to EIA Crosswalk zip file."""
 
     def __repr__(self):
-        """String representation of the EPA CEMS to EIA Crosswalk data file."""
-        return f"EpaCemsUnitidEiaPlantCrosswalk('{self['save_path']}')"
+        """String representation of the EPA CAMD to EIA Crosswalk data file."""
+        return f"EpaCamdEia('{self['save_path']}')"
 
 
 class Cems(DataFile):
