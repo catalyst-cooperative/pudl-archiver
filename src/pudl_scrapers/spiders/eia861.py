@@ -72,7 +72,7 @@ class Eia861Spider(scrapy.Spider):
         years = set()
         for link in links:
             title = link.xpath("@title").extract_first().strip()
-            year = int(title.split(" ")[-1])
+            year = int(title.split(" ")[0])
 
             if year < 1990:
                 continue
