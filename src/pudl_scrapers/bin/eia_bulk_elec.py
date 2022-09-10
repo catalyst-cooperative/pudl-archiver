@@ -18,7 +18,7 @@ DATA_URL = "https://api.eia.gov/bulk/ELEC.zip"
 def main() -> int:
     """Download EIA bulk electricity data."""
     output_dir = new_output_dir(Path(OUTPUT_DIR) / "eia_bulk_elec")
-    out_path = output_dir / "ELEC.zip"
+    out_path = output_dir / "eia_bulk_elec.zip"
     out_path.parent.mkdir(parents=True, exist_ok=False)
 
     logger.info("Starting download of EIA bulk electricity data.")
