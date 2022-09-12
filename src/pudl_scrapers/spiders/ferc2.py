@@ -88,10 +88,10 @@ class Ferc2Spider(scrapy.Spider):
         }
         # Special rules for grabbing the early two-part data:
         if part is not None:
-            assert year >= 1991 and year <= 1999
+            assert year >= 1991 and year <= 1999  # nosec: B101
             url = early_urls[(year, part)]
         else:
-            assert year >= 1996 and year <= 2021
+            assert year >= 1996 and year <= 2021  # nosec: B101
             url = f"https://forms.ferc.gov/f2allyears/f2_{year}.zip"
 
         return Request(
