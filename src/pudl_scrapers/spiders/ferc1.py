@@ -17,18 +17,6 @@ class Ferc1Spider(scrapy.Spider):
         "https://www.ferc.gov/general-information-0/electric-industry-forms/form-1-1-f-3-q-electric-historical-vfp-data"
     ]
 
-    def __init__(self, year=None, *args, **kwargs):
-        """Initialize the FERC-1 Spider."""
-        super().__init__(*args, **kwargs)
-
-        if year is not None:
-            year = int(year)
-
-            if year < 1994:
-                raise ValueError("Years before 1994 are not supported")
-
-        self.year = year
-
     def start_requests(self):
         """Start requesting FERC 1 forms.
 
@@ -39,10 +27,6 @@ class Ferc1Spider(scrapy.Spider):
         settings_output_dir = Path(self.settings.get("OUTPUT_DIR"))
         output_root = settings_output_dir / "ferc1"
         self.output_dir = new_output_dir(output_root)
-
-        if self.year is not None:
-            yield self.form_for_year(self.year)
-            return
 
         yield from self.all_form_requests()
 
