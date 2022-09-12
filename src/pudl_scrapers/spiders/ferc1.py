@@ -30,10 +30,10 @@ class Ferc1Spider(scrapy.Spider):
         self.year = year
 
     def start_requests(self):
-        """Start requesting Ferc 1 forms.
+        """Start requesting FERC 1 forms.
 
         Yields:
-            List of Requests for Ferc 1 forms
+            List of Requests for FERC 1 forms
         """
         # Spider settings are not available during __init__, so finalizing here
         settings_output_dir = Path(self.settings.get("OUTPUT_DIR"))
@@ -47,7 +47,7 @@ class Ferc1Spider(scrapy.Spider):
         yield from self.all_form_requests()
 
     def parse(self, response):
-        """Produce the Ferc1 item.
+        """Produce the FERC item.
 
         Args:
             response: scrapy.http.Response containing ferc1 data
@@ -79,5 +79,5 @@ class Ferc1Spider(scrapy.Spider):
         Yields:
             Requests for all available Ferc form 1 zip files
         """
-        for year in range(1994, 2021):
+        for year in range(1994, 2022):
             yield self.form_for_year(year)

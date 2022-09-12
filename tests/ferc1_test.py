@@ -20,7 +20,7 @@ class TestFerc1:
         """Ferc1 generates any individual form url."""
         spider = Ferc1Spider()
 
-        for year in range(1994, 2021):
+        for year in range(1994, 2022):
             form_req = spider.form_for_year(year)
             assert form_req.url == f"https://forms.ferc.gov/f1allyears/f1_{year}.zip"
             assert form_req.meta["year"] == year
