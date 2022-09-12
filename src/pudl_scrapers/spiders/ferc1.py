@@ -13,7 +13,9 @@ class Ferc1Spider(scrapy.Spider):
 
     name = "ferc1"
     allowed_domains = ["www.ferc.gov"]
-    start_urls = ["https://www.ferc.gov/docs-filing/forms/form-1/data.asp"]
+    start_urls = [
+        "https://www.ferc.gov/general-information-0/electric-industry-forms/form-1-1-f-3-q-electric-historical-vfp-data"
+    ]
 
     def __init__(self, year=None, *args, **kwargs):
         """Initialize the FERC-1 Spider."""
@@ -68,7 +70,7 @@ class Ferc1Spider(scrapy.Spider):
         Returns:
             Request for the Ferc 1 form
         """
-        url = f"ftp://eforms1.ferc.gov/f1allyears/f1_{year}.zip"
+        url = f"https://forms.ferc.gov/f1allyears/f1_{year}.zip"
         return Request(url, meta={"year": year}, callback=self.parse)
 
     def all_form_requests(self):
