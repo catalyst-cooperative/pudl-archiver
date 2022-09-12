@@ -95,15 +95,18 @@ To collect a specific year (eg, 2007):
 `scrapy crawl eia923 -a year=2007`
 
 
-## FERC Form 1
+## FERC Forms 1, 2, 6, & 60:
 
 To collect all the data:
 
-`scrapy crawl ferc1`
+```sh
+scrapy crawl ferc1
+scrapy crawl ferc2
+scrapy crawl ferc6
+scrapy crawl ferc60
+```
 
-To collect a specific year (eg, 2007):
-
-`scrapy crawl ferc1 -a year=2007`
+There are no subsets enabled.
 
 ## FERC 714
 To collect the data:
