@@ -67,6 +67,37 @@ class Ferc1(DataFile):
         return f"Ferc1(year={self['year']}, save_path='{self['save_path']}')"
 
 
+class Ferc2(DataFile):
+    """The Ferc2 forms in a zip file."""
+
+    year = scrapy.Field(serializer=int)
+    part = scrapy.Field(serializer=int)
+
+    def __repr__(self):
+        """String representation of a FERC-2 data file."""
+        return f"Ferc2(year={self['year']}, part={self['part']}, save_path='{self['save_path']}')"
+
+
+class Ferc6(DataFile):
+    """The FERC Form 6 in a zip file."""
+
+    year = scrapy.Field(serializer=int)
+
+    def __repr__(self):
+        """String representation of a FERC-6 data file."""
+        return f"Ferc6(year={self['year']}, save_path='{self['save_path']}')"
+
+
+class Ferc60(DataFile):
+    """The FERC Form 60 in a zip file."""
+
+    year = scrapy.Field(serializer=int)
+
+    def __repr__(self):
+        """String representation of a FERC-60 data file."""
+        return f"Ferc60(year={self['year']}, save_path='{self['save_path']}')"
+
+
 class Ferc714(DataFile):
     """The Ferc714 data zip file."""
 
