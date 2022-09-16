@@ -7,6 +7,6 @@ dependencies:
   # Used to set up the environment
   - pip>=21,<23
   - python>=3.10,<3.11
-  - setuptools<64
+  - setuptools<66
   - pip:
       - --editable ./[dev,docs,tests]

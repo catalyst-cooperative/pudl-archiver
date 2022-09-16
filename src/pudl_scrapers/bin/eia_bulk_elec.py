@@ -1,4 +1,9 @@
-"""Script to download EIA electricity data in bulk."""
+"""A script to download EIA electricity data in bulk.
+
+This script doesn't take any arguments, but does download ~200MB of JSON.
+
+"""
+import argparse
 import logging
 import sys
 from pathlib import Path
@@ -15,13 +20,22 @@ logger.setLevel(logging.INFO)
 DATA_URL = "https://api.eia.gov/bulk/ELEC.zip"
 
 
+def parse_command_line(argv):
+    """Parse the command line args, just to print a help message."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    return parser.parse_args(argv[1:])
+
+
 def main() -> int:
     """Download EIA bulk electricity data."""
+    _ = parse_command_line(sys.argv)
+
     output_dir = new_output_dir(Path(OUTPUT_DIR) / "eia_bulk_elec")
-    out_path = output_dir / "ELEC.zip"
+    out_path = output_dir / "eia_bulk_elec.zip"
     out_path.parent.mkdir(parents=True, exist_ok=False)
 
     logger.info("Starting download of EIA bulk electricity data.")
+
     resp = requests.get(DATA_URL, stream=True)
     resp.raise_for_status()
 
