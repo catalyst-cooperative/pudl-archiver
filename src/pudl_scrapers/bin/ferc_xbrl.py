@@ -37,7 +37,7 @@ be found in month specific feeds that can be retrieved by appending a query stri
 to this URL to specify the month and year desired.
 """
 
-Year = pydantic.conint(ge=2014, le=datetime.datetime.today().year)
+Year = pydantic.conint(ge=2000, le=datetime.datetime.today().year)
 """Constrained pydantic integer type with all years containing XBRL data."""
 
 
@@ -268,7 +268,9 @@ def archive_form(form: FercForm, indexed_filings: FormFilings):
 
         with zipfile.ZipFile(archive_path, "w") as archive:
             # Archive taxonomy
-            archive_taxonomy(form, year, archive)
+            # The first version of the taxonomy was released in 2020
+            if year >= 2019:
+                archive_taxonomy(form, year, archive)
 
             for filing in filings:
                 # Download filing
