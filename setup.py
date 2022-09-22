@@ -16,6 +16,7 @@ setup(
         "feedparser>=6.0",
         "scrapy>=1.7",
         "tqdm>=4.64",
+        "catalystcoop.arelle-mirror==1.3.0",
     ],
     extras_require={
         "dev": [

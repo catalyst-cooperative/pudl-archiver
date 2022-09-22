@@ -88,6 +88,8 @@ def test_archive_filings(mocker):
     )
     mocker.patch("pudl_scrapers.bin.ferc_xbrl.new_output_dir", new=new_output_dir_mock)
 
+    mocker.patch("pudl_scrapers.bin.ferc_xbrl.archive_taxonomy")
+
     # Mock out requests to avoid making any real requests
     _ = mocker.Mock("pudl_scrapers.bin.ferc_xbrl.requests")
 

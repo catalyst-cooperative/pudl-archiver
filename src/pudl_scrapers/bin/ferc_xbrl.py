@@ -9,10 +9,12 @@ import zipfile
 from concurrent.futures import ProcessPoolExecutor as Executor
 from enum import Enum
 from pathlib import Path
+from urllib.parse import urlparse
 
 import feedparser
 import pydantic
 import requests
+from arelle import Cntlr, ModelManager, ModelXbrl
 from dateutil import rrule
 from pydantic import BaseModel, Field, HttpUrl, root_validator, validator
 
@@ -191,6 +193,57 @@ def index_available_entries(
     }
 
 
+def archive_taxonomy(form: FercForm, year: Year, archive: zipfile.ZipFile):
+    """Download taxonomy and archive all files that comprise the taxonomy.
+
+    XBRL taxonomies are made up of many different files. Each taxonomy has a single
+    file/URL that serves as the entry point to the taxonomy, which will point to those
+    other files. FERC does distribute archives of each taxonomy, which can be found here:
+    https://ecollection.ferc.gov/taxonomyHistory. This, however, is not easy to
+    access programmatically, so this function will download and archive the
+    taxonomies manually. To do this, it uses Arelle to first parse the taxonomy.
+    Arelle can then provide a list of URL's pointing to all files that make up the
+    taxonomy.
+
+    Args:
+        form: Ferc form.
+        year: Year of taxonomy version.
+        archive: zipfile context manager.
+    """
+    # Get date used in entry point URL (first day of year)
+    date = datetime.date(year, 1, 1)
+
+    # Get integer form number
+    form_number = form.as_int()
+
+    logger.info(f"Archiving ferc{form_number}-{year} taxonomy")
+
+    # Construct entry point URL
+    taxonomy_entry_point = f"https://ecollection.ferc.gov/taxonomy/form{form_number}/{date.isoformat()}/form/form{form_number}/form-{form_number}_{date.isoformat()}.xsd"
+
+    # Use Arelle to parse taxonomy
+    cntlr = Cntlr.Cntlr()
+    cntlr.startLogging(logFileName="logToPrint")
+    model_manager = ModelManager.initialize(cntlr)
+    taxonomy = ModelXbrl.load(model_manager, taxonomy_entry_point)
+
+    # Loop through all files and save to appropriate location in archive
+    for url in taxonomy.urlDocs.keys():
+        url = urlparse(url)
+
+        # There are some generic XML/XBRL files in the taxonomy that should be skipped
+        if not url.netloc.endswith("ferc.gov"):
+            continue
+
+        # Download file
+        file = requests.get(url.geturl())
+
+        path = Path(url.path).relative_to("/")
+
+        with archive.open(str(path), "w") as f:
+            f.write(file.text.encode("utf-8"))
+
+
 def archive_form(form: FercForm, indexed_filings: FormFilings):
     """Create an archive for each year with filings available for the form in question.
 
@@ -209,12 +262,14 @@ def archive_form(form: FercForm, indexed_filings: FormFilings):
 
     # Loop through all years with filings available
     for year, filings in indexed_filings.items():
-        print("YEAR", year)
         metadata = {}
         archive_path = output_dir / f"ferc{form_number}-{year}.zip"
         logging.info(f"Creating {archive_path} archive.")
 
         with zipfile.ZipFile(archive_path, "w") as archive:
+            # Archive taxonomy
+            archive_taxonomy(form, year, archive)
+
             for filing in filings:
                 # Download filing
                 xbrl_file = requests.get(filing.download_url)
