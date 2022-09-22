@@ -39,7 +39,7 @@ jobs:
           conda run -n pudl-scrapers tox
 
       - name: Upload test coverage report to CodeCov
-        uses: codecov/codecov-action@v3.1.0
+        uses: codecov/codecov-action@v3.1.1
 
   ci-notify:
     runs-on: ubuntu-latest
