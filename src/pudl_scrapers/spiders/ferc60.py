@@ -39,7 +39,7 @@ class Ferc60Spider(scrapy.Spider):
         Yields:
             Ferc60 item
         """
-        path = self.output_dir / f"ferc6-{response.meta['year']}.zip"
+        path = self.output_dir / f"ferc60-{response.meta['year']}.zip"
 
         yield items.Ferc60(
             data=response.body, year=response.meta["year"], save_path=path
