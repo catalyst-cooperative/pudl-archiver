@@ -7,3 +7,4 @@ for spider in $(scrapy list)
 
 epacems --verbose
 eia_bulk_elec
+ferc_xbrl -l

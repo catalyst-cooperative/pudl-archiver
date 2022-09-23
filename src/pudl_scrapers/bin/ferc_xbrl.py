@@ -8,6 +8,7 @@ import time
 import zipfile
 from concurrent.futures import ProcessPoolExecutor as Executor
 from enum import Enum
+from functools import partial
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -19,7 +20,7 @@ from dateutil import rrule
 from pydantic import BaseModel, Field, HttpUrl, root_validator, validator
 
 import pudl_scrapers.settings
-from pudl_scrapers.helpers import new_output_dir
+from pudl_scrapers.helpers import get_latest_directory, new_output_dir
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
@@ -244,68 +245,100 @@ def archive_taxonomy(form: FercForm, year: Year, archive: zipfile.ZipFile):
             f.write(file.text.encode("utf-8"))
 
 
-def archive_form(form: FercForm, indexed_filings: FormFilings):
+def archive_year(year: Year, filings: set[FeedEntry], form: FercForm, output_dir: Path):
+    """Archive a single year of data for a desired form.
+
+    Args:
+        year: Year to archive.
+        filings: Set of filings indexed from RSS feed.
+        form: Ferc form.
+        output_dir: Directory to save archived filings in.
+    """
+    # Get form number as integer
+    form_number = form.as_int()
+
+    metadata = {}
+    archive_path = output_dir / f"ferc{form_number}-{year}.zip"
+
+    with zipfile.ZipFile(archive_path, "w") as archive:
+        # Archive taxonomy
+        # The first version of the taxonomy was released in 2020
+        if year > 2019:
+            archive_taxonomy(form, year, archive)
+
+        for filing in filings:
+            # Download filing
+            xbrl_file = requests.get(filing.download_url)
+
+            # Add filing metadata
+            filing_name = f"{filing.title}{filing.ferc_period}"
+            if filing_name in metadata:
+                metadata[filing_name].update({filing.entry_id: filing.json()})
+            else:
+                metadata[filing_name] = {filing.entry_id: filing.json()}
+
+            # Write to zipfile
+            with archive.open(f"{filing.entry_id}.xbrl", "w") as f:
+                logger.info(f"Writing {filing.title} to form {form_number} archive.")
+                f.write(xbrl_file.text.encode("utf-8"))
+
+        # Save snapshot of RSS feed
+        with archive.open("rssfeed", "w") as f:
+            logger.info("Writing rss feed metadata to archive.")
+            f.write(json.dumps(metadata).encode("utf-8"))
+
+    logging.info(f"Finished scraping ferc{form_number}-{year}.")
+
+
+def archive_form(
+    form: FercForm, indexed_filings: FormFilings, use_latest_dir: bool = False
+):
     """Create an archive for each year with filings available for the form in question.
 
     Args:
         form: Ferc form.
         indexed_filings: Dictionary mapping available filings to year of filing.
+        use_latest_dir: Use the most recently created output directory.
     """
     # Get form number as integer
     form_number = form.as_int()
-    # Create output directory if it doesn't exist
-    output_dir = new_output_dir(
-        Path(pudl_scrapers.settings.OUTPUT_DIR) / f"ferc{form_number}"
-    )
-    if not output_dir.exists():
-        output_dir.mkdir(parents=True)
+
+    # Create new output directory or use latest
+    if use_latest_dir:
+        output_dir = get_latest_directory(
+            Path(pudl_scrapers.settings.OUTPUT_DIR) / f"ferc{form_number}"
+        )
+    else:
+        # Create output directory if it doesn't exist
+        output_dir = new_output_dir(
+            Path(pudl_scrapers.settings.OUTPUT_DIR) / f"ferc{form_number}"
+        )
+        if not output_dir.exists():
+            output_dir.mkdir(parents=True)
 
     # Loop through all years with filings available
-    for year, filings in indexed_filings.items():
-        metadata = {}
-        archive_path = output_dir / f"ferc{form_number}-{year}.zip"
-        logging.info(f"Creating {archive_path} archive.")
-
-        with zipfile.ZipFile(archive_path, "w") as archive:
-            # Archive taxonomy
-            # The first version of the taxonomy was released in 2020
-            if year >= 2019:
-                archive_taxonomy(form, year, archive)
-
-            for filing in filings:
-                # Download filing
-                xbrl_file = requests.get(filing.download_url)
-
-                # Add filing metadata
-                filing_name = f"{filing.title}{filing.ferc_period}"
-                if filing_name in metadata:
-                    metadata[filing_name].update({filing.entry_id: filing.json()})
-                else:
-                    metadata[filing_name] = {filing.entry_id: filing.json()}
-
-                # Write to zipfile
-                with archive.open(f"{filing.entry_id}.xbrl", "w") as f:
-                    logger.info(
-                        f"Writing {filing.title} to form {form_number} archive."
-                    )
-                    f.write(xbrl_file.text.encode("utf-8"))
-
-            # Save snapshot of RSS feed
-            with archive.open("rssfeed", "w") as f:
-                logger.info("Writing rss feed metadata to archive.")
-                f.write(json.dumps(metadata).encode("utf-8"))
+    archive_year_form = partial(archive_year, form=form, output_dir=output_dir)
+    with Executor(max_workers=5) as executor:
+        [
+            _
+            for _ in executor.map(
+                archive_year_form, indexed_filings.keys(), indexed_filings.values()
+            )
+        ]
 
 
-def archive_filings(requested_forms: list[FercForm]):
-    """Create archives for all requested forms."""
+def archive_filings(requested_forms: list[FercForm], use_latest_dir: bool = False):
+    """Create archives for all requested forms.
+
+    Args:
+        requested_forms: List of forms to scrape.
+        use_latest_dir: Use the most recently created output directory.
+    """
     indexed_filings = index_available_entries(requested_forms)
-    with Executor() as executor:
-        form_archivers = executor.map(
-            archive_form, indexed_filings.keys(), indexed_filings.values()
-        )
 
-        # Loop through archivers to execute in parallel
-        [_ for _ in form_archivers]
+    # Loop through indexed filings and archive
+    for form, filings in indexed_filings.items():
+        archive_form(form, filings, use_latest_dir)
 
 
 def parse_main():
@@ -319,6 +352,12 @@ def parse_main():
         nargs="*",
         help="Specify form numbers to archive. Allowable form numbers include: 1, 2, 6, 60, 714. By default, archives will be created for all forms.",
     )
+    parser.add_argument(
+        "-l",
+        "--latest-output-dir",
+        action="store_true",
+        help="Use the most recently created output directory. This allows archives to be stored in same directory as DBF archives.",
+    )
 
     return parser.parse_args()
 
@@ -330,4 +369,4 @@ def main():
     # Validate form numbers by converting to enum
     form_numbers = [FercForm.from_int(form_number) for form_number in args.form_numbers]
 
-    archive_filings(form_numbers)
+    archive_filings(form_numbers, args.latest_output_dir)

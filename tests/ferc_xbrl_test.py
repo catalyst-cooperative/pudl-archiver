@@ -94,9 +94,11 @@ def test_archive_filings(mocker):
     _ = mocker.Mock("pudl_scrapers.bin.ferc_xbrl.requests")
 
     # Call function
-    ferc_xbrl.archive_form(
+    ferc_xbrl.archive_year(
+        year=2021,
+        filings=FORM1_FILINGS[2021],
         form=ferc_xbrl.FercForm.FORM_1,
-        indexed_filings=FORM1_FILINGS,
+        output_dir=Path("./"),
     )
 
     # Test that zipfile was created with proper name
@@ -109,6 +111,14 @@ def test_archive_filings(mocker):
     archive_mock.open.assert_any_call("0.xbrl", "w")
     archive_mock.open.assert_any_call("2.xbrl", "w")
     archive_mock.open.assert_any_call("rssfeed", "w")
+
+    # Call function
+    ferc_xbrl.archive_year(
+        year=2022,
+        filings=FORM1_FILINGS[2022],
+        form=ferc_xbrl.FercForm.FORM_1,
+        output_dir=Path("./"),
+    )
 
     # Test that zipfile was created with proper name
     zipfile_mock.ZipFile.assert_any_call(Path("./") / "ferc1-2022.zip", "w")
