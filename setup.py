@@ -50,6 +50,7 @@ setup(
             "pytest-console-scripts>=1.1,<1.4",  # Allow automatic testing of scripts
             "pytest-cov>=2.10,<3.1",  # Pytest plugin for working with coverage
             "pytest-mock>=3.0,<3.9",  # Pytest plugin for mocking function calls and objects
+            "rstcheck[sphinx]>=5.0,<6.2",  # ReStructuredText linter
         ],
     },
     entry_points={
