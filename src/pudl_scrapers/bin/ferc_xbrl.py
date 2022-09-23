@@ -258,7 +258,7 @@ def archive_year(year: Year, filings: set[FeedEntry], form: FercForm, output_dir
     form_number = form.as_int()
 
     metadata = {}
-    archive_path = output_dir / f"ferc{form_number}-{year}.zip"
+    archive_path = output_dir / f"ferc{form_number}-xbrl-{year}.zip"
 
     with zipfile.ZipFile(archive_path, "w") as archive:
         # Archive taxonomy

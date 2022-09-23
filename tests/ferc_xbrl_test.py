@@ -102,7 +102,7 @@ def test_archive_filings(mocker):
     )
 
     # Test that zipfile was created with proper name
-    zipfile_mock.ZipFile.assert_any_call(Path("./") / "ferc1-2021.zip", "w")
+    zipfile_mock.ZipFile.assert_any_call(Path("./") / "ferc1-xbrl-2021.zip", "w")
 
     # Get mock associated with ZipFile context manager
     archive_mock = zipfile_mock.ZipFile.return_value.__enter__.return_value
@@ -121,7 +121,7 @@ def test_archive_filings(mocker):
     )
 
     # Test that zipfile was created with proper name
-    zipfile_mock.ZipFile.assert_any_call(Path("./") / "ferc1-2022.zip", "w")
+    zipfile_mock.ZipFile.assert_any_call(Path("./") / "ferc1-xbrl-2022.zip", "w")
 
     # Test that all expected filings were written to zip
     archive_mock.open.assert_any_call("3.xbrl", "w")
