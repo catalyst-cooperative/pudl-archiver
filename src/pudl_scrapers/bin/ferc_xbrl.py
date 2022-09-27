@@ -7,8 +7,8 @@ import re
 import time
 import zipfile
 from concurrent.futures import ProcessPoolExecutor as Executor
+from concurrent.futures import wait
 from enum import Enum
-from functools import partial
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -279,7 +279,9 @@ def archive_year(year: Year, filings: set[FeedEntry], form: FercForm, output_dir
 
             # Write to zipfile
             with archive.open(f"{filing.entry_id}.xbrl", "w") as f:
-                logger.info(f"Writing {filing.title} to form {form_number} archive.")
+                logger.info(
+                    f"Writing {filing.title} to form{form_number}-{year} archive."
+                )
                 f.write(xbrl_file.text.encode("utf-8"))
 
         # Save snapshot of RSS feed
@@ -287,44 +289,7 @@ def archive_year(year: Year, filings: set[FeedEntry], form: FercForm, output_dir
             logger.info("Writing rss feed metadata to archive.")
             f.write(json.dumps(metadata).encode("utf-8"))
 
-    logging.info(f"Finished scraping ferc{form_number}-{year}.")
-
-
-def archive_form(
-    form: FercForm, indexed_filings: FormFilings, use_latest_dir: bool = False
-):
-    """Create an archive for each year with filings available for the form in question.
-
-    Args:
-        form: Ferc form.
-        indexed_filings: Dictionary mapping available filings to year of filing.
-        use_latest_dir: Use the most recently created output directory.
-    """
-    # Get form number as integer
-    form_number = form.as_int()
-
-    # Create new output directory or use latest
-    if use_latest_dir:
-        output_dir = get_latest_directory(
-            Path(pudl_scrapers.settings.OUTPUT_DIR) / f"ferc{form_number}"
-        )
-    else:
-        # Create output directory if it doesn't exist
-        output_dir = new_output_dir(
-            Path(pudl_scrapers.settings.OUTPUT_DIR) / f"ferc{form_number}"
-        )
-        if not output_dir.exists():
-            output_dir.mkdir(parents=True)
-
-    # Loop through all years with filings available
-    archive_year_form = partial(archive_year, form=form, output_dir=output_dir)
-    with Executor(max_workers=5) as executor:
-        [
-            _
-            for _ in executor.map(
-                archive_year_form, indexed_filings.keys(), indexed_filings.values()
-            )
-        ]
+    logger.info(f"Finished scraping ferc{form_number}-{year}.")
 
 
 def archive_filings(requested_forms: list[FercForm], use_latest_dir: bool = False):
@@ -336,9 +301,35 @@ def archive_filings(requested_forms: list[FercForm], use_latest_dir: bool = Fals
     """
     indexed_filings = index_available_entries(requested_forms)
 
-    # Loop through indexed filings and archive
-    for form, filings in indexed_filings.items():
-        archive_form(form, filings, use_latest_dir)
+    # XBRL filings have to be downloaded individually
+    # Doing this in parallel is important for improving performance
+    download_tasks = []
+    with Executor(max_workers=10) as executor:
+        # Loop through indexed filings and archive
+        for form, filings in indexed_filings.items():
+            # Get form number as integer
+            form_number = form.as_int()
+
+            # Create new output directory or use latest
+            if use_latest_dir:
+                output_dir = get_latest_directory(
+                    Path(pudl_scrapers.settings.OUTPUT_DIR) / f"ferc{form_number}"
+                )
+            else:
+                # Create output directory if it doesn't exist
+                output_dir = new_output_dir(
+                    Path(pudl_scrapers.settings.OUTPUT_DIR) / f"ferc{form_number}"
+                )
+                if not output_dir.exists():
+                    output_dir.mkdir(parents=True)
+
+            # Loop through all years with filings available
+            for year, year_filings in filings.items():
+                download_tasks.append(
+                    executor.submit(archive_year, year, year_filings, form, output_dir)
+                )
+
+        wait(download_tasks)
 
 
 def parse_main():
