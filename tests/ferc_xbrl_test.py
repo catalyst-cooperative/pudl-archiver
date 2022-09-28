@@ -1,5 +1,6 @@
 """Test the FERC XBRL data scraping script."""
 from pathlib import Path
+from zipfile import ZIP_DEFLATED
 
 from pudl_scrapers.bin import ferc_xbrl
 
@@ -102,7 +103,9 @@ def test_archive_filings(mocker):
     )
 
     # Test that zipfile was created with proper name
-    zipfile_mock.ZipFile.assert_any_call(Path("./") / "ferc1-xbrl-2021.zip", "w")
+    zipfile_mock.ZipFile.assert_any_call(
+        Path("./") / "ferc1-xbrl-2021.zip", "w", compression=ZIP_DEFLATED
+    )
 
     # Get mock associated with ZipFile context manager
     archive_mock = zipfile_mock.ZipFile.return_value.__enter__.return_value
@@ -121,7 +124,9 @@ def test_archive_filings(mocker):
     )
 
     # Test that zipfile was created with proper name
-    zipfile_mock.ZipFile.assert_any_call(Path("./") / "ferc1-xbrl-2022.zip", "w")
+    zipfile_mock.ZipFile.assert_any_call(
+        Path("./") / "ferc1-xbrl-2022.zip", "w", compression=ZIP_DEFLATED
+    )
 
     # Test that all expected filings were written to zip
     archive_mock.open.assert_any_call("3.xbrl", "w")

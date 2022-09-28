@@ -11,6 +11,7 @@ from concurrent.futures import wait
 from enum import Enum
 from pathlib import Path
 from urllib.parse import urlparse
+from zipfile import ZIP_DEFLATED
 
 import feedparser
 import pydantic
@@ -260,7 +261,7 @@ def archive_year(year: Year, filings: set[FeedEntry], form: FercForm, output_dir
     metadata = {}
     archive_path = output_dir / f"ferc{form_number}-xbrl-{year}.zip"
 
-    with zipfile.ZipFile(archive_path, "w") as archive:
+    with zipfile.ZipFile(archive_path, "w", compression=ZIP_DEFLATED) as archive:
         # Archive taxonomy
         # The first version of the taxonomy was released in 2020
         if year > 2019:
