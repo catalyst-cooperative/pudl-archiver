@@ -46,7 +46,7 @@ setup(
             "pydocstyle>=5.1,<6.2",  # Style guidelines for Python documentation
             "pytest>=6.2,<7.2",  # Our testing framework
             "pytest-console-scripts>=1.1,<1.4",  # Allow automatic testing of scripts
-            "pytest-cov>=2.10,<3.1",  # Pytest plugin for working with coverage
+            "pytest-cov>=2.10,<4.1",  # Pytest plugin for working with coverage
             "rstcheck[sphinx]>=5.0,<6.2",  # ReStructuredText linter
             "tox>=3.20,<3.27",  # Python test environment manager
         ],
