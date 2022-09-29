@@ -13,8 +13,10 @@ setup(
     python_requires=">=3.10,<3.11",
     install_requires=[
         "factory_boy>=2.12",
+        "feedparser>=6.0",
         "scrapy>=1.7",
         "tqdm>=4.64",
+        "catalystcoop.arelle-mirror==1.3.0",
     ],
     extras_require={
         "dev": [
@@ -47,14 +49,15 @@ setup(
             "pytest>=6.2,<7.2",  # Our testing framework
             "pytest-console-scripts>=1.1,<1.4",  # Allow automatic testing of scripts
             "pytest-cov>=2.10,<4.1",  # Pytest plugin for working with coverage
+            "pytest-mock>=3.0,<3.9",  # Pytest plugin for mocking function calls and objects
             "rstcheck[sphinx]>=5.0,<6.2",  # ReStructuredText linter
-            "tox>=3.20,<3.27",  # Python test environment manager
         ],
     },
     entry_points={
         "console_scripts": [
             "epacems=pudl_scrapers.bin.epacems:main",
             "eia_bulk_elec=pudl_scrapers.bin.eia_bulk_elec:main",
+            "ferc_xbrl=pudl_scrapers.bin.ferc_xbrl:main",
         ]
     },
 )
