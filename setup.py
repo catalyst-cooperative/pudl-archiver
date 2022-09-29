@@ -28,8 +28,8 @@ setup(
         "docs": [
             "doc8>=0.9,<1.1",  # Ensures clean documentation formatting
             "furo>=2022.4.7",
-            "sphinx>=4,!=5.1.0,<5.1.2",  # The default Python documentation engine
-            "sphinx-autoapi>=1.8,<1.10",  # Generates documentation from docstrings
+            "sphinx>=4,!=5.1.0,<5.2.3",  # The default Python documentation engine
+            "sphinx-autoapi>=1.8,<2.1",  # Generates documentation from docstrings
             "sphinx-issues>=1.2,<3.1",  # Allows references to GitHub issues
         ],
         "tests": [
@@ -48,7 +48,7 @@ setup(
             "pydocstyle>=5.1,<6.2",  # Style guidelines for Python documentation
             "pytest>=6.2,<7.2",  # Our testing framework
             "pytest-console-scripts>=1.1,<1.4",  # Allow automatic testing of scripts
-            "pytest-cov>=2.10,<3.1",  # Pytest plugin for working with coverage
+            "pytest-cov>=2.10,<4.1",  # Pytest plugin for working with coverage
             "pytest-mock>=3.0,<3.9",  # Pytest plugin for mocking function calls and objects
             "rstcheck[sphinx]>=5.0,<6.2",  # ReStructuredText linter
         ],
