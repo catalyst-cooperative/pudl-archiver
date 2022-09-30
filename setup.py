@@ -34,7 +34,7 @@ setup(
         ],
         "tests": [
             "bandit[toml]>=1.6,<1.8",  # Checks code for security issues
-            "coverage>=5.3,<6.5",  # Lets us track what code is being tested
+            "coverage>=5.3,<6.6",  # Lets us track what code is being tested
             "doc8>=0.9,<1.1",  # Ensures clean documentation formatting
             "flake8>=4.0,<5.1",  # A framework for linting & static analysis
             "flake8-builtins>=1.5,<1.6",  # Avoid shadowing Python built-in names
