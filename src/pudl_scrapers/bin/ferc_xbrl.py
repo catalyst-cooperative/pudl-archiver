@@ -274,9 +274,9 @@ def archive_year(year: Year, filings: set[FeedEntry], form: FercForm, output_dir
             # Add filing metadata
             filing_name = f"{filing.title}{filing.ferc_period}"
             if filing_name in metadata:
-                metadata[filing_name].update({filing.entry_id: filing.json()})
+                metadata[filing_name].update({filing.entry_id: filing.dict()})
             else:
-                metadata[filing_name] = {filing.entry_id: filing.json()}
+                metadata[filing_name] = {filing.entry_id: filing.dict()}
 
             # Write to zipfile
             with archive.open(f"{filing.entry_id}.xbrl", "w") as f:
@@ -288,7 +288,7 @@ def archive_year(year: Year, filings: set[FeedEntry], form: FercForm, output_dir
         # Save snapshot of RSS feed
         with archive.open("rssfeed", "w") as f:
             logger.info("Writing rss feed metadata to archive.")
-            f.write(json.dumps(metadata).encode("utf-8"))
+            f.write(json.dumps(metadata, default=str).encode("utf-8"))
 
     logger.info(f"Finished scraping ferc{form_number}-{year}.")
 
