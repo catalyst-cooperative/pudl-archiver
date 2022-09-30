@@ -34,7 +34,7 @@ setup(
         ],
         "tests": [
             "bandit[toml]>=1.6,<1.8",  # Checks code for security issues
-            "coverage>=5.3,<6.5",  # Lets us track what code is being tested
+            "coverage>=5.3,<6.6",  # Lets us track what code is being tested
             "doc8>=0.9,<1.1",  # Ensures clean documentation formatting
             "flake8>=4.0,<5.1",  # A framework for linting & static analysis
             "flake8-builtins>=1.5,<1.6",  # Avoid shadowing Python built-in names
@@ -49,7 +49,7 @@ setup(
             "pytest>=6.2,<7.2",  # Our testing framework
             "pytest-console-scripts>=1.1,<1.4",  # Allow automatic testing of scripts
             "pytest-cov>=2.10,<4.1",  # Pytest plugin for working with coverage
-            "pytest-mock>=3.0,<3.9",  # Pytest plugin for mocking function calls and objects
+            "pytest-mock>=3.0,<3.10",  # Pytest plugin for mocking function calls and objects
             "rstcheck[sphinx]>=5.0,<6.2",  # ReStructuredText linter
         ],
     },
