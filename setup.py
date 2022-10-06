@@ -49,7 +49,7 @@ setup(
             "pytest>=6.2,<7.2",  # Our testing framework
             "pytest-console-scripts>=1.1,<1.4",  # Allow automatic testing of scripts
             "pytest-cov>=2.10,<4.1",  # Pytest plugin for working with coverage
-            "pytest-mock>=3.0,<3.10",  # Pytest plugin for mocking function calls and objects
+            "pytest-mock>=3.0,<3.11",  # Pytest plugin for mocking function calls and objects
             "rstcheck[sphinx]>=5.0,<6.2",  # ReStructuredText linter
         ],
     },
