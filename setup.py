@@ -12,11 +12,12 @@ setup(
     package_dir={"": "src"},
     python_requires=">=3.10,<3.11",
     install_requires=[
+        "catalystcoop.pudl @ git+https://github.com/catalyst-cooperative/pudl.git@dev",
         "factory_boy>=2.12",
         "feedparser>=6.0",
-        "scrapy>=1.7",
         "tqdm>=4.64",
         "catalystcoop.arelle-mirror==1.3.0",
+        "python-dotenv~=0.21.0",
     ],
     extras_require={
         "dev": [
