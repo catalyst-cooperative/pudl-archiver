@@ -5,12 +5,12 @@ See https://developers.zenodo.org/#entities for more info.
 import datetime
 from typing import Literal
 
-from pydantic import AnyHttpUrl, BaseModel, Field, constr
+from pydantic import AnyHttpUrl, BaseModel, Field, constr, validator
 
 from pudl.metadata.classes import Contributor, DataSource
 
-Doi = constr(regex=r"10.5281/zenodo.\d7")
-SandboxDoi = constr(regex=r"10.5281/zenodo.\d7")
+Doi = constr(regex=r"10\.5281/zenodo\.\d{6,7}")
+SandboxDoi = constr(regex=r"10\.5072/zenodo\.\d{6,7}")
 
 PUDL_DESCRIPTION = """
 <p>This archive contains raw input data for the Public Utility Data Liberation (PUDL)
@@ -35,8 +35,6 @@ class DepositionCreator(BaseModel):
 
     name: str
     affiliation: str | None = None
-    orcid: str | None = None
-    gnd: str | None = None
 
     @classmethod
     def from_contributor(cls, contributor: Contributor) -> "DepositionCreator":
@@ -51,17 +49,22 @@ class DepositionMetadata(BaseModel):
     """
 
     upload_type: str = "dataset"
-    publication_date: datetime.date
+    publication_date: datetime.date = None
     language: str = "eng"
     title: str
     creators: list[DepositionCreator]
     description: str
     access_right: str = "open"
-    license_ = Field(alias="license")
+    license_: str = Field(alias="license")
     doi: Doi | SandboxDoi | None = None
-    preserve_doi: Doi | SandboxDoi | None = None
+    prereserve_doi: dict | bool = False
     keywords: list[str] | None = None
     version: str | None = None
+
+    @validator("doi", pre=True)
+    def check_empty_string(cls, doi: str):
+        if doi == "":
+            return None
 
     @classmethod
     def from_data_source(cls, data_source_id: str) -> "DepositionMetadata":
@@ -79,23 +82,25 @@ class DepositionMetadata(BaseModel):
                 DepositionCreator.from_contributor(contributor)
                 for contributor in data_source.contributors
             ],
-            license_=data_source.license_raw.name,
+            license=data_source.license_raw.name,
             keywords=data_source.keywords,
+            version="1.0.0",
         )
 
 
 class FileLinks(BaseModel):
     """Pydantic model representing zenodo deposition file Links."""
 
-    self: AnyHttpUrl
-    version: AnyHttpUrl
-    uploads: AnyHttpUrl
+    self: AnyHttpUrl | None = None
+    version: AnyHttpUrl | None = None
+    uploads: AnyHttpUrl | None = None
+    download: AnyHttpUrl | None = None
 
 
-class DepositionFile(BaseModel):
-    """Pydantic model representing zenodo deposition files.
+class BucketFile(BaseModel):
+    """Pydantic model representing zenodo file metadata returned by bucket api.
 
-    See https://developers.zenodo.org/#representation22.
+    See https://developers.zenodo.org/#quickstart-upload.
     """
 
     key: str
@@ -110,18 +115,31 @@ class DepositionFile(BaseModel):
     delete_marker: bool
 
 
+class DepositionFile(BaseModel):
+    """Pydantic model representing zenodo deposition files.
+
+    See https://developers.zenodo.org/#representation22.
+    """
+
+    checksum: str
+    filename: str
+    id_: str = Field(alias="id")
+    filesize: int
+    links: FileLinks
+
+
 class DepositionLinks(BaseModel):
     """Pydantic model representing zenodo deposition Links."""
 
-    bucket: AnyHttpUrl
-    discard: AnyHttpUrl
-    edit: AnyHttpUrl
-    files: AnyHttpUrl
-    html: AnyHttpUrl
-    latest_draft: AnyHttpUrl
-    latest_draft_html: AnyHttpUrl
-    publish: AnyHttpUrl
-    self: AnyHttpUrl
+    bucket: AnyHttpUrl | None = None
+    discard: AnyHttpUrl | None = None
+    edit: AnyHttpUrl | None = None
+    files: AnyHttpUrl | None = None
+    html: AnyHttpUrl | None = None
+    latest_draft: AnyHttpUrl | None = None
+    latest_draft_html: AnyHttpUrl | None = None
+    publish: AnyHttpUrl | None = None
+    self: AnyHttpUrl | None = None
 
 
 class Deposition(BaseModel):
@@ -130,16 +148,17 @@ class Deposition(BaseModel):
     See https://developers.zenodo.org/#depositions.
     """
 
-    concecptrecid: str
+    conceptdoi: Doi | SandboxDoi | None = None
+    conceptrecid: str
     created: datetime.datetime
-    files: list[DepositionFile]
+    files: list[DepositionFile] = []
     id_: int = Field(alias="id")
     metadata: DepositionMetadata
     modified: datetime.datetime
     links: DepositionLinks
     owner: int
     record_id: int
-    record_url: AnyHttpUrl
+    record_url: AnyHttpUrl | None = None
     state: Literal["inprogress", "done", "error", "submitted", "unsubmitted"]
     submitted: bool
     title: str

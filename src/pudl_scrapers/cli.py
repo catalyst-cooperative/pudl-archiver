@@ -7,78 +7,103 @@ import logging
 import os
 
 import aiohttp
+import coloredlogs
 import yaml
 from dotenv import load_dotenv
 
-from pudl_scrapers.zenodo.api_client import DatasetSettings, ZenodoDepositionInterface
+from pudl_scrapers.archiver.ferc1 import Ferc1Archiver
+from pudl_scrapers.archiver.ferc6 import Ferc6Archiver
+from pudl_scrapers.archiver.ferc60 import Ferc60Archiver
+from pudl_scrapers.zenodo.api_client import ZenodoClient
 
-logger = logging.getLogger(__name__)
-logging.basicConfig()
+logger = logging.getLogger("catalystcoop.pudl_scrapers")
 
 
 def parse_main():
     """Process base commands from the CLI."""
     parser = argparse.ArgumentParser(description="Upload PUDL data archives to Zenodo")
     parser.add_argument(
-        "deposition",
+        "datasets",
+        nargs="*",
         help="Name of the Zenodo deposition. Supported: censusdp1tract, "
         "eia860, eia861, eia923, eia_bulk_elec, epacems, epacamd_eia, "
-        "ferc1, ferc2, ferc714, eia860m",
+        "ferc1, ferc2, ferc6, ferc60, ferc714, eia860m",
+    )
+    parser.add_argument(
+        "--sandbox",
+        action="store_true",
+        help="Use Zenodo sandbox server",
+    )
+    parser.add_argument(
+        "--initialize",
+        action="store_true",
+        help="Initialize new deposition by preserving a DOI",
     )
     return parser.parse_args()
 
 
 async def archive_dataset(
     name: str,
-    doi: str,
+    zenodo_client: ZenodoClient,
     session: aiohttp.ClientSession,
-    upload_key: str,
-    publish_key: str,
-    testing: bool = False,
+    initialize: bool = False,
 ):
     """Download and archive dataset on zenodo."""
-    deposition = ZenodoDepositionInterface(
-        session, upload_key, publish_key, doi, testing
-    )
+    async with zenodo_client.deposition_interface(name, initialize) as deposition:
+        # Create new deposition then return
+        match name:
+            case "ferc1":
+                archiver = Ferc1Archiver(session, deposition)
+            case "ferc6":
+                archiver = Ferc6Archiver(session, deposition)
+            case "ferc60":
+                archiver = Ferc60Archiver(session, deposition)
+            case _:
+                raise RuntimeError("Dataset not supported")
+
+        await archiver.create_archive()
 
 
-async def main():
+async def archive_datasets():
     """A CLI for the PUDL Zenodo Storage system."""
     args = parse_main()
     load_dotenv()
 
-    with open("dataset_doi.yaml") as f:
-        dataset_settings = {
-            name: DatasetSettings(**dois) for name, dois in yaml.safe_load(f)
-        }
+    if args.sandbox:
+        upload_key = os.environ["ZENODO_SANDBOX_TOKEN_UPLOAD"]
+        publish_key = os.environ["ZENODO_SANDBOX_TOKEN_UPLOAD"]
+    else:
+        upload_key = os.environ["ZENODO_SANDBOX_TOKEN_UPLOAD"]
+        publish_key = os.environ["ZENODO_SANDBOX_TOKEN_UPLOAD"]
 
-    async with aiohttp.ClientSession() as session:
+    async with aiohttp.ClientSession(raise_for_status=True) as session:
         # List to gather all archivers to run asyncronously
-        archivers = []
+        tasks = []
         for dataset in args.datasets:
-            settings = dataset_settings.get(dataset, DatasetSettings())
+            zenodo_client = ZenodoClient(
+                "dataset_doi.yaml",
+                session,
+                upload_key,
+                publish_key,
+                testing=args.sandbox,
+            )
 
-            if args.testing:
-                doi = settings.sandbox_doi
-                upload_key = os.environ["ZENODO_SANDBOX_TOKEN_UPLOAD"]
-                publish_key = os.environ["ZENODO_SANDBOX_TOKEN_UPLOAD"]
-            else:
-                doi = settings.sandbox_doi
-                upload_key = os.environ["ZENODO_SANDBOX_TOKEN_UPLOAD"]
-                publish_key = os.environ["ZENODO_SANDBOX_TOKEN_UPLOAD"]
-
-            if doi is None:
-                raise RuntimeError(
-                    f"No DOI available for {dataset}. Must reserve a DOI before running."
-                )
-
-            archivers.append(
+            tasks.append(
                 archive_dataset(
-                    dataset, doi, session, upload_key, publish_key, args.testing
+                    dataset, zenodo_client, session, initialize=args.initialize
                 )
             )
 
-        await asyncio.gather(archivers)
+        await asyncio.gather(*tasks)
 
 
-asyncio.run(main())
+def main():
+    logger.setLevel(logging.INFO)
+    log_format = "%(asctime)s [%(levelname)8s] %(name)s:%(lineno)s %(message)s"
+    coloredlogs.install(fmt=log_format, level=logging.INFO, logger=logger)
+
+    asyncio.run(archive_datasets())
+
+
+if __name__ == "main":
+    main()

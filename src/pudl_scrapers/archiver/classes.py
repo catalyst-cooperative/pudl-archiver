@@ -1,6 +1,8 @@
 """Defines base class for archiver."""
 import asyncio
 import datetime
+import logging
+import tempfile
 import typing
 import zipfile
 from abc import ABC, abstractmethod
@@ -8,6 +10,7 @@ from pathlib import Path
 
 import aiohttp
 
+from pudl_scrapers.frictionless import ResourceInfo
 from pudl_scrapers.zenodo.api_client import ZenodoDepositionInterface
 
 MEDIA_TYPES: dict[str, str] = {
@@ -15,6 +18,8 @@ MEDIA_TYPES: dict[str, str] = {
     "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     "csv": "text/csv",
 }
+
+ArchiveAwaitable = typing.Generator[typing.Awaitable[tuple[Path, dict]], None, None]
 
 
 class AbstractDatasetArchiver(ABC):
@@ -29,29 +34,38 @@ class AbstractDatasetArchiver(ABC):
         self.session = session
         self.deposition = depostion
 
+        # Create a temporary directory for downloading
+        self._download_directory_manager = tempfile.TemporaryDirectory()
+        self.download_directory = Path(self._download_directory_manager.name)
+
+        # Create logger
+        self.logger = logging.getLogger(f"catalystcoop.{__name__}")
+        self.logger.info(f"Archiving {self.name}")
+
     @abstractmethod
-    async def get_resources(
+    def get_resources(
         self,
-    ) -> typing.Genrator[typing.Awaitable[tuple[Path, dict]]]:
+    ) -> ArchiveAwaitable:
         ...
 
-    async def download_zipfile(self, url: str, download_path: Path, retries: int = 0):
+    async def download_zipfile(self, url: str, download_path: Path, retries: int = 5):
         """File to download a zipfile and retry if zipfile is invalid."""
         for _ in range(0, retries + 1):
-            with open(download_path, "wb") as f:
-                self.download_file(url, f, encoding="utf-8")
+            await self.download_file(url, download_path, encoding="utf-8")
 
             if zipfile.is_zipfile(download_path):
                 return None
 
+        # If it makes it here that means it couldn't download a valid zipfile
         raise RuntimeError(f"Failed to download valid zipfile from {url}")
 
     async def download_file(
-        self, url: str, file: typing.IO, encoding: str | None = None
+        self, url: str, filename: Path, encoding: str | None = None
     ):
         """Download a file using async session manager."""
         async with self.session.get(url) as response:
-            file.write(await response.text(encoding))
+            with open(filename, "wb") as f:
+                f.write(await response.read())
 
     def current_year(self) -> int:
         """Helper function to get the current year at run-time."""
@@ -60,8 +74,15 @@ class AbstractDatasetArchiver(ABC):
     async def create_archive(self):
         """Download all resources and create an archive for upload."""
         resources = [resource for resource in self.get_resources()]
+        resource_info = {}
 
-        for resource_path, partitions in asyncio.as_completed(resources):
-            await self.deposition.add_file(resource_path, partitions)
+        for resource_coroutine in asyncio.as_completed(resources):
+            resource_path, partitions = await resource_coroutine
+            self.logger.info(
+                f"Downloaded {resource_path} adding resource to zenodo deposition."
+            )
+            resource_info[str(resource_path.name)] = ResourceInfo(
+                local_path=resource_path, partitions=partitions
+            )
 
-        await self.deposition.finish()
+        await self.deposition.add_files(resource_info)
