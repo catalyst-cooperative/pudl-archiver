@@ -5,9 +5,9 @@ import logging
 from contextlib import asynccontextmanager
 from hashlib import md5
 from pathlib import Path
+from typing import BinaryIO
 
 import aiohttp
-import requests
 import semantic_version
 import yaml
 from pydantic import BaseModel
@@ -28,16 +28,6 @@ class DatasetSettings(BaseModel):
 
     production_doi: Doi | None = None
     sandbox_doi: SandboxDoi | None = None
-
-    @classmethod
-    def new_from_doi(cls, doi: str) -> "DatasetSettings":
-        """Create new DatasetSettings object from a DOI string."""
-        if doi.startswith("10.5281"):
-            return cls(production_doi=doi)
-        elif doi.startswith("10.5072"):
-            return cls(sandbox_doi=doi)
-        else:
-            raise RuntimeError(f"Invalid DOI: {doi}")
 
 
 def _compute_md5(file_path: Path) -> str:
@@ -82,6 +72,11 @@ class ZenodoDepositionInterface:
         # Map resource name to resource partitions
         self.resource_parts: dict[str, dict] = {}
 
+        self.deposition: Deposition = None
+        self.new_deposition: Deposition = None
+        self.deposition_files: dict[str, DepositionFile] = {}
+        self.changed = False
+
     @classmethod
     async def open_interface(
         cls,
@@ -104,14 +99,24 @@ class ZenodoDepositionInterface:
 
             interface.deposition = await interface.get_deposition(doi)
 
-        # Map file name to file metadata for all files in deposition
-        deposition_files = {file.filename: file for file in interface.deposition.files}
-        print(interface.deposition)
-        interface.deposition_files = deposition_files
-
         interface.new_deposition = await interface.new_deposition_version()
 
+        # Map file name to file metadata for all files in deposition
+        interface.deposition_files = await interface.remote_fileinfo(
+            interface.new_deposition
+        )
+
         return interface
+
+    async def remote_fileinfo(self, deposition: Deposition):
+        """Return info on all files contained in deposition."""
+        url = deposition.links.files
+        params = {"access_token": self.upload_key}
+
+        async with self.session.get(url, params=params) as response:
+            raw_json = await response.json()
+
+        return {file["filename"]: DepositionFile(**file) for file in raw_json}
 
     async def create_deposition(self, data_source_id: str):
         """
@@ -149,23 +154,29 @@ class ZenodoDepositionInterface:
 
     async def add_files(self, resources: dict[str, ResourceInfo]):
         """Check if local file already exists in deposition."""
-        print(self.deposition_files)
         for name, resource in resources.items():
             if name not in self.deposition_files:
+                self.changed = True
                 self.logger.info(f"Uploading {name}")
-                await self.upload(resource.local_path)
+
+                with open(resource.local_path, "rb") as f:
+                    await self.upload(f, resource.local_path.name)
             else:
                 file_info = self.deposition_files[name]
 
                 # If file is not exact match for existing file, update with new file
                 if not _compute_md5(resource.local_path) == file_info.checksum:
+                    self.changed = True
                     self.logger.info(f"Updating {name}")
                     await self.delete_file(file_info)
-                    await self.upload(resource.local_path)
+
+                    with open(resource.local_path, "rb") as f:
+                        await self.upload(f, resource.local_path.name)
 
         # Delete files not included in new deposition
-        for file in self.deposition_files:
-            if file.filename not in resources:
+        for filename, file in self.deposition_files.items():
+            if filename not in resources and filename != "datapackage.json":
+                self.changed = True
                 await self.delete_file(file)
 
         await self.update_datapackage(resources)
@@ -244,7 +255,7 @@ class ZenodoDepositionInterface:
             file.links.self, params={"access_token": self.upload_key}
         )
 
-    async def upload(self, file_path: Path) -> BucketFile:
+    async def upload(self, file: BinaryIO, filename: str) -> BucketFile:
         """
         Upload a file for the given deposition.
 
@@ -262,18 +273,20 @@ class ZenodoDepositionInterface:
         """
         params = {"access_token": self.upload_key}
         if self.new_deposition.links.bucket:
-            url = f"{self.new_deposition.links.bucket}/{file_path.name}"
+            url = f"{self.new_deposition.links.bucket}/{filename}"
         elif self.new_deposition.links.files:
-            url = f"{self.new_deposition.links.files}/{file_path.name}"
+            url = f"{self.new_deposition.links.files}/{filename}"
         else:
             raise RuntimeError("No file or bucket link available for deposition.")
 
-        with open(file_path, "rb") as f:
-            async with self.session.put(url, params=params, data=f) as response:
-                return await response.json()
+        async with self.session.put(url, params=params, data=file) as response:
+            return await response.json()
 
     async def update_datapackage(self, resources: dict[str, ResourceInfo]):
         """Create new frictionless datapackage for deposition."""
+        if not self.changed:
+            return None
+
         self.logger.info(f"Creating new datapackage.json for {self.name}")
         url = self.new_deposition.links.files
         params = {"access_token": self.upload_key}
@@ -285,22 +298,27 @@ class ZenodoDepositionInterface:
             }
 
         if "datapackage.json" in files:
-            self.delete_file(files["datapackage.json"])
+            await self.delete_file(files["datapackage.json"])
             files.pop("datapackage.json")
 
         datapackage = DataPackage.from_filelist(self.name, files.values(), resources)
 
         datapackage_json = io.BytesIO(bytes(datapackage.json(), encoding="utf-8"))
 
-        await self.upload(datapackage_json)
+        await self.upload(datapackage_json, "datapackage.json")
 
     async def publish(self):
         """Publish new deposition or discard if it hasn't been updated."""
+        if not self.changed:
+            return None
+
         self.logger.info(f"Publishing deposition for {self.name}")
         url = self.new_deposition.links.publish
         params = {"access_token": self.publish_key}
+        headers = {"Content-Type": "application/json"}
 
-        await self.session.post(url, params=params)
+        async with self.session.post(url, params=params, headers=headers) as response:
+            return Deposition(**await response.json())
 
 
 class ZenodoClient:
@@ -355,21 +373,32 @@ class ZenodoClient:
             create_new=initialize,
         )
 
-        # Write new conceptdoi to settings
-        if initialize:
-            self.dataset_settings[data_source_id] = DatasetSettings.new_from_doi(
-                deposition_interface.deposition.metadata.prereserve_doi["doi"]
-            )
-
-            # Update doi settings YAML
-            with open(self.deposition_settings_path, "w") as f:
-                raw_settings = {
-                    name: settings.dict()
-                    for name, settings in self.dataset_settings.items()
-                }
-                yaml.dump(raw_settings, f)
-
         try:
             yield deposition_interface
         finally:
-            await deposition_interface.publish()
+            deposition = await deposition_interface.publish()
+
+            if initialize:
+                # Get new DOI and update settings
+                if self.testing:
+                    sandbox_doi = deposition.conceptdoi
+                    production_doi = self.dataset_settings.get(
+                        data_source_id, DatasetSettings()
+                    ).production_doi
+                else:
+                    production_doi = deposition.conceptdoi
+                    sandbox_doi = self.dataset_settings.get(
+                        data_source_id, DatasetSettings()
+                    ).sandbox_doi
+
+                self.dataset_settings[data_source_id] = DatasetSettings(
+                    sandbox_doi=sandbox_doi, production_doi=production_doi
+                )
+
+                # Update doi settings YAML
+                with open(self.deposition_settings_path, "w") as f:
+                    raw_settings = {
+                        name: settings.dict()
+                        for name, settings in self.dataset_settings.items()
+                    }
+                    yaml.dump(raw_settings, f)

@@ -8,12 +8,14 @@ import os
 
 import aiohttp
 import coloredlogs
-import yaml
 from dotenv import load_dotenv
 
-from pudl_scrapers.archiver.ferc1 import Ferc1Archiver
-from pudl_scrapers.archiver.ferc6 import Ferc6Archiver
-from pudl_scrapers.archiver.ferc60 import Ferc60Archiver
+from pudl_scrapers.archiver.censussp1tract import CensusDp1TractArchiver
+from pudl_scrapers.archiver.ferc.ferc1 import Ferc1Archiver
+from pudl_scrapers.archiver.ferc.ferc2 import Ferc2Archiver
+from pudl_scrapers.archiver.ferc.ferc6 import Ferc6Archiver
+from pudl_scrapers.archiver.ferc.ferc60 import Ferc60Archiver
+from pudl_scrapers.archiver.ferc.ferc714 import Ferc714Archiver
 from pudl_scrapers.zenodo.api_client import ZenodoClient
 
 logger = logging.getLogger("catalystcoop.pudl_scrapers")
@@ -54,10 +56,16 @@ async def archive_dataset(
         match name:
             case "ferc1":
                 archiver = Ferc1Archiver(session, deposition)
+            case "ferc2":
+                archiver = Ferc2Archiver(session, deposition)
             case "ferc6":
                 archiver = Ferc6Archiver(session, deposition)
             case "ferc60":
                 archiver = Ferc60Archiver(session, deposition)
+            case "ferc714":
+                archiver = Ferc714Archiver(session, deposition)
+            case "censusdp1tract":
+                archiver = CensusDp1TractArchiver(session, deposition)
             case _:
                 raise RuntimeError("Dataset not supported")
 
