@@ -318,7 +318,7 @@ class ZenodoDepositionInterface:
         headers = {"Content-Type": "application/json"}
 
         async with self.session.post(url, params=params, headers=headers) as response:
-            return Deposition(**await response.json())
+            await response.json()
 
 
 class ZenodoClient:

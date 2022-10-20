@@ -10,7 +10,14 @@ import aiohttp
 import coloredlogs
 from dotenv import load_dotenv
 
-from pudl_scrapers.archiver.censussp1tract import CensusDp1TractArchiver
+from pudl_scrapers.archiver.censusdp1tract import CensusDp1TractArchiver
+from pudl_scrapers.archiver.eia.eia860 import Eia860Archiver
+from pudl_scrapers.archiver.eia.eia860m import Eia860MArchiver
+from pudl_scrapers.archiver.eia.eia861 import Eia861Archiver
+from pudl_scrapers.archiver.eia.eia923 import Eia923Archiver
+from pudl_scrapers.archiver.eia_bulk_elec import EiaBulkElecArchiver
+from pudl_scrapers.archiver.epacems import EpaCemsArchiver
+from pudl_scrapers.archiver.epacmd_eia import EpaCamdEiaArchiver
 from pudl_scrapers.archiver.ferc.ferc1 import Ferc1Archiver
 from pudl_scrapers.archiver.ferc.ferc2 import Ferc2Archiver
 from pudl_scrapers.archiver.ferc.ferc6 import Ferc6Archiver
@@ -66,6 +73,20 @@ async def archive_dataset(
                 archiver = Ferc714Archiver(session, deposition)
             case "censusdp1tract":
                 archiver = CensusDp1TractArchiver(session, deposition)
+            case "eia860":
+                archiver = Eia860Archiver(session, deposition)
+            case "eia860m":
+                archiver = Eia860MArchiver(session, deposition)
+            case "eia861":
+                archiver = Eia861Archiver(session, deposition)
+            case "eia923":
+                archiver = Eia923Archiver(session, deposition)
+            case "eia_bulk_elec":
+                archiver = EiaBulkElecArchiver(session, deposition)
+            case "epacems":
+                archiver = EpaCemsArchiver(session, deposition)
+            case "epacmd_eia":
+                archiver = EpaCamdEiaArchiver(session, deposition)
             case _:
                 raise RuntimeError("Dataset not supported")
 
@@ -84,7 +105,8 @@ async def archive_datasets():
         upload_key = os.environ["ZENODO_SANDBOX_TOKEN_UPLOAD"]
         publish_key = os.environ["ZENODO_SANDBOX_TOKEN_UPLOAD"]
 
-    async with aiohttp.ClientSession(raise_for_status=True) as session:
+    connector = aiohttp.TCPConnector(limit_per_host=20)
+    async with aiohttp.ClientSession(connector=connector) as session:
         # List to gather all archivers to run asyncronously
         tasks = []
         for dataset in args.datasets:
