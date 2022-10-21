@@ -8,7 +8,7 @@ from pudl_scrapers.archiver.ferc import xbrl
 class Ferc60Archiver(AbstractDatasetArchiver):
     name = "ferc60"
 
-    def get_resources(self) -> ArchiveAwaitable:
+    async def get_resources(self) -> ArchiveAwaitable:
         """Download FERC 60 resources."""
         for year in range(2006, 2021):
             yield self.get_year_dbf(year)

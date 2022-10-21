@@ -7,7 +7,7 @@ from pudl_scrapers.archiver.classes import AbstractDatasetArchiver, ArchiveAwait
 class EiaBulkElecArchiver(AbstractDatasetArchiver):
     name = "eia_bulk_elec"
 
-    def get_resources(self) -> ArchiveAwaitable:
+    async def get_resources(self) -> ArchiveAwaitable:
         """Download EIA bulk electricity resources."""
         yield self.get_bulk_resource()
 

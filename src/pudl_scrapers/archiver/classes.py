@@ -48,11 +48,16 @@ class AbstractDatasetArchiver(ABC):
     def __init__(
         self, session: aiohttp.ClientSession, depostion: ZenodoDepositionInterface
     ):
-        """Initialize Archiver object."""
+        """Initialize Archiver object.
+
+        Args:
+            session: Async HTTP client session manager.
+            deposition: Interface to Zenodo deposition relevant to data source.
+        """
         self.session = session
         self.deposition = depostion
 
-        # Create a temporary directory for downloading
+        # Create a temporary directory for downloading data
         self._download_directory_manager = tempfile.TemporaryDirectory()
         self.download_directory = Path(self._download_directory_manager.name)
 
@@ -69,7 +74,14 @@ class AbstractDatasetArchiver(ABC):
     async def download_zipfile(
         self, url: str, file: Path | io.BytesIO, retries: int = 5, **kwargs
     ):
-        """File to download a zipfile and retry if zipfile is invalid."""
+        """File to download a zipfile and retry if zipfile is invalid.
+
+        Args:
+            url: URL of zipfile.
+            file: Local path to write file to disk or bytes object to save file in memory.
+            retries: Number of times to attempt to download a zipfile.
+            kwargs: Key word args to pass to request.
+        """
         for _ in range(0, retries):
             await self.download_file(url, file, **kwargs)
 
@@ -85,6 +97,7 @@ class AbstractDatasetArchiver(ABC):
         Args:
             url: URL to file to download.
             file: Local path to write file to disk or bytes object to save file in memory.
+            kwargs: Key word args to pass to request.
         """
         async with self.session.get(url, **kwargs) as response:
             if isinstance(file, Path):
@@ -94,7 +107,10 @@ class AbstractDatasetArchiver(ABC):
                 file.write(await response.read())
 
     async def get_hyperlinks(
-        self, url: str, filter_pattern: typing.Pattern | None = None
+        self,
+        url: str,
+        filter_pattern: typing.Pattern | None = None,
+        verify: bool = True,
     ) -> list[str]:
         """Return all hyperlinks from a specific web page.
 
@@ -103,7 +119,7 @@ class AbstractDatasetArchiver(ABC):
             filter_pattern: If present, only return links that contain pattern.
         """
         parser = _HyperlinkExtractor()
-        async with self.session.get(url) as response:
+        async with self.session.get(url, ssl=verify) as response:
             text = await response.text()
             parser.feed(text)
 
@@ -113,10 +129,6 @@ class AbstractDatasetArchiver(ABC):
 
         return hyperlinks
 
-    def current_year(self) -> int:
-        """Helper function to get the current year at run-time."""
-        return datetime.datetime.today().year
-
     async def create_archive(self):
         """Download all resources and create an archive for upload."""
         resources = [resource async for resource in self.get_resources()]
@@ -124,9 +136,7 @@ class AbstractDatasetArchiver(ABC):
 
         for resource_coroutine in asyncio.as_completed(resources):
             resource_path, partitions = await resource_coroutine
-            self.logger.info(
-                f"Downloaded {resource_path} adding resource to zenodo deposition."
-            )
+            self.logger.info(f"Downloaded {resource_path}.")
             resource_info[str(resource_path.name)] = ResourceInfo(
                 local_path=resource_path, partitions=partitions
             )

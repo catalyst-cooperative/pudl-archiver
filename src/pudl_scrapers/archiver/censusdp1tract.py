@@ -7,7 +7,7 @@ from pudl_scrapers.archiver.classes import AbstractDatasetArchiver, ArchiveAwait
 class CensusDp1TractArchiver(AbstractDatasetArchiver):
     name = "censusdp1tract"
 
-    def get_resources(self) -> ArchiveAwaitable:
+    async def get_resources(self) -> ArchiveAwaitable:
         """Download Census DP1 resources."""
         yield self.get_resource()
 

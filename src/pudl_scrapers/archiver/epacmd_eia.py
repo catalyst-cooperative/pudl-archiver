@@ -7,7 +7,7 @@ from pudl_scrapers.archiver.classes import AbstractDatasetArchiver, ArchiveAwait
 class EpaCamdEiaArchiver(AbstractDatasetArchiver):
     name = "epacmd_eia"
 
-    def get_resources(self) -> ArchiveAwaitable:
+    async def get_resources(self) -> ArchiveAwaitable:
         """Download EPA CAMD to EIA crosswalk resources."""
         yield self.get_crosswalk_zip()
 

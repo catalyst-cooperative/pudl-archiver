@@ -8,7 +8,7 @@ from pudl_scrapers.archiver.ferc import xbrl
 class Ferc714Archiver(AbstractDatasetArchiver):
     name = "ferc714"
 
-    def get_resources(self) -> ArchiveAwaitable:
+    async def get_resources(self) -> ArchiveAwaitable:
         """Download FERC 714 resources."""
         yield self.get_bulk_csv()
 

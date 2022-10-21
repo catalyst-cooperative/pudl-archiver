@@ -61,7 +61,6 @@ class ZenodoDepositionInterface:
 
         """
         self.name = name
-        self.logger = logging.getLogger(f"catalystcoop.{__name__}")
 
         self.api_root = api_root
         self.session = session
@@ -150,7 +149,8 @@ class ZenodoDepositionInterface:
         async with self.session.post(
             url, params=params, data=data, headers=headers
         ) as response:
-            return Deposition(**await response.json())
+            # Ignore content type
+            return Deposition(**await response.json(content_type=None))
 
     async def add_files(self, resources: dict[str, ResourceInfo]):
         """Check if local file already exists in deposition."""
@@ -357,6 +357,8 @@ class ZenodoClient:
         self, data_source_id: str, initialize: bool = False
     ) -> ZenodoDepositionInterface:
         """Return ZenodoDepositionInterface for data source in question."""
+        logger = logging.getLogger(f"catalystcoop.{__name__}")
+
         if initialize:
             doi = None
         else:
@@ -375,30 +377,34 @@ class ZenodoClient:
 
         try:
             yield deposition_interface
-        finally:
-            deposition = await deposition_interface.publish()
+        except aiohttp.client_exceptions.ClientResponseError as e:
+            # Log error and return to avoid interfering with other data sources
+            logger.error(f"Received HTTP error {e.status}: {e.message}")
+            return
 
-            if initialize:
-                # Get new DOI and update settings
-                if self.testing:
-                    sandbox_doi = deposition.conceptdoi
-                    production_doi = self.dataset_settings.get(
-                        data_source_id, DatasetSettings()
-                    ).production_doi
-                else:
-                    production_doi = deposition.conceptdoi
-                    sandbox_doi = self.dataset_settings.get(
-                        data_source_id, DatasetSettings()
-                    ).sandbox_doi
+        deposition = await deposition_interface.publish()
 
-                self.dataset_settings[data_source_id] = DatasetSettings(
-                    sandbox_doi=sandbox_doi, production_doi=production_doi
-                )
+        if initialize:
+            # Get new DOI and update settings
+            if self.testing:
+                sandbox_doi = deposition.conceptdoi
+                production_doi = self.dataset_settings.get(
+                    data_source_id, DatasetSettings()
+                ).production_doi
+            else:
+                production_doi = deposition.conceptdoi
+                sandbox_doi = self.dataset_settings.get(
+                    data_source_id, DatasetSettings()
+                ).sandbox_doi
 
-                # Update doi settings YAML
-                with open(self.deposition_settings_path, "w") as f:
-                    raw_settings = {
-                        name: settings.dict()
-                        for name, settings in self.dataset_settings.items()
-                    }
-                    yaml.dump(raw_settings, f)
+            self.dataset_settings[data_source_id] = DatasetSettings(
+                sandbox_doi=sandbox_doi, production_doi=production_doi
+            )
+
+            # Update doi settings YAML
+            with open(self.deposition_settings_path, "w") as f:
+                raw_settings = {
+                    name: settings.dict()
+                    for name, settings in self.dataset_settings.items()
+                }
+                yaml.dump(raw_settings, f)

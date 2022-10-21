@@ -8,7 +8,7 @@ from pudl_scrapers.archiver.ferc import xbrl
 class Ferc2Archiver(AbstractDatasetArchiver):
     name = "ferc2"
 
-    def get_resources(self) -> ArchiveAwaitable:
+    async def get_resources(self) -> ArchiveAwaitable:
         """Download FERC 2 resources."""
         # Get sub-annually partitioned DBF data
         for year in range(1991, 2000):
