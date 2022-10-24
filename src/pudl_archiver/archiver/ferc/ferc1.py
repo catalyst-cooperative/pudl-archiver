@@ -1,11 +1,13 @@
-"""Defines base class for archiver."""
+"""Download FERC Form 1 data."""
 from pathlib import Path
 
-from pudl_scrapers.archiver.classes import AbstractDatasetArchiver, ArchiveAwaitable
-from pudl_scrapers.archiver.ferc import xbrl
+from pudl_archiver.archiver.classes import AbstractDatasetArchiver, ArchiveAwaitable
+from pudl_archiver.archiver.ferc import xbrl
 
 
 class Ferc1Archiver(AbstractDatasetArchiver):
+    """Ferc Form 1 archiver."""
+
     name = "ferc1"
 
     async def get_resources(self) -> ArchiveAwaitable:

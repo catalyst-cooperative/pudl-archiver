@@ -1,6 +1,5 @@
 """Defines base class for archiver."""
 import asyncio
-import datetime
 import io
 import logging
 import tempfile
@@ -12,8 +11,8 @@ from pathlib import Path
 
 import aiohttp
 
-from pudl_scrapers.frictionless import ResourceInfo
-from pudl_scrapers.zenodo.api_client import ZenodoDepositionInterface
+from pudl_archiver.frictionless import ResourceInfo
+from pudl_archiver.zenodo.api_client import ZenodoDepositionInterface
 
 MEDIA_TYPES: dict[str, str] = {
     "zip": "application/zip",
@@ -46,7 +45,7 @@ class AbstractDatasetArchiver(ABC):
     name: str
 
     def __init__(
-        self, session: aiohttp.ClientSession, depostion: ZenodoDepositionInterface
+        self, session: aiohttp.ClientSession, deposition: ZenodoDepositionInterface
     ):
         """Initialize Archiver object.
 
@@ -55,7 +54,7 @@ class AbstractDatasetArchiver(ABC):
             deposition: Interface to Zenodo deposition relevant to data source.
         """
         self.session = session
-        self.deposition = depostion
+        self.deposition = deposition
 
         # Create a temporary directory for downloading data
         self._download_directory_manager = tempfile.TemporaryDirectory()
@@ -66,15 +65,21 @@ class AbstractDatasetArchiver(ABC):
         self.logger.info(f"Archiving {self.name}")
 
     @abstractmethod
-    async def get_resources(
-        self,
-    ) -> ArchiveAwaitable:
+    async def get_resources(self) -> ArchiveAwaitable:
+        """Abstract method that each data source must implement to download all resources.
+
+        This method should be a generator that yields awaitable objects that will download
+        a single resource and return the path to that resource, and a dictionary of its
+        partitions. What this means in practice is calling an `async` function and yielding
+        the results without awaiting them. This allows the base class to gather all of these
+        awaitables and download the resources concurrently.
+        """
         ...
 
     async def download_zipfile(
         self, url: str, file: Path | io.BytesIO, retries: int = 5, **kwargs
     ):
-        """File to download a zipfile and retry if zipfile is invalid.
+        """Attempt to download a zipfile and retry if zipfile is invalid.
 
         Args:
             url: URL of zipfile.
@@ -114,15 +119,23 @@ class AbstractDatasetArchiver(ABC):
     ) -> list[str]:
         """Return all hyperlinks from a specific web page.
 
+        This is a helper function to perform very basic web-scraping functionality.
+        It extracts all hyperlinks from a web page, and returns those that match
+        a specified pattern. This means it can find all hyperlinks that look like
+        a download link to a single data resource.
+
         Args:
             url: URL of web page.
             filter_pattern: If present, only return links that contain pattern.
+            verify: Verify ssl certificate (EPACEMS https source has bad certificate).
         """
+        # Parse web page to get all hyperlinks
         parser = _HyperlinkExtractor()
         async with self.session.get(url, ssl=verify) as response:
             text = await response.text()
             parser.feed(text)
 
+        # Filter to those that match filter_pattern
         hyperlinks = parser.hyperlinks
         if filter_pattern:
             hyperlinks = {link for link in hyperlinks if filter_pattern.search(link)}
@@ -130,10 +143,17 @@ class AbstractDatasetArchiver(ABC):
         return hyperlinks
 
     async def create_archive(self):
-        """Download all resources and create an archive for upload."""
+        """Download all resources and create an archive for upload.
+
+        This method uses the awaitables returned by `get_resources`. It
+        coordinates downloading all resources concurrently, then creating a
+        new zenodo deposition version containing those resources.
+        """
+        # Get all awaitables from get_resources
         resources = [resource async for resource in self.get_resources()]
         resource_info = {}
 
+        # Download resources concurrently and prepare metadata
         for resource_coroutine in asyncio.as_completed(resources):
             resource_path, partitions = await resource_coroutine
             self.logger.info(f"Downloaded {resource_path}.")
@@ -141,4 +161,5 @@ class AbstractDatasetArchiver(ABC):
                 local_path=resource_path, partitions=partitions
             )
 
+        # Add to zenodo deposition
         await self.deposition.add_files(resource_info)

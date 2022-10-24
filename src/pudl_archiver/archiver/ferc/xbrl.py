@@ -69,6 +69,7 @@ class FercForm(Enum):
 
 class FeedEntry(BaseModel):
     """This is a pydantic model to wrap a parsed entry from the RSS feed.
+
     This model does not include all fields available in the feed, but everything
     necessary for the scraping/archiving process.
     """
@@ -91,6 +92,7 @@ class FeedEntry(BaseModel):
     @validator("published_parsed", pre=True)
     def parse_timestamp(cls, timestamp: time.struct_time):  # noqa: N805
         """Parse timestamp to a standard datetime object.
+
         The published timestamp is only available as a time.struct_time object in the
         feed. Converting to a datetime object makes it much more usable within the
         python ecosystem.
@@ -99,6 +101,7 @@ class FeedEntry(BaseModel):
 
     def __hash__(self):
         """Implement hash so FeedEntry can be used in a set.
+
         Entry ID's are unique, so that's all that is needed for the hash.
         """
         return hash(f"{self.entry_id}")
@@ -111,6 +114,7 @@ FormFilings = dict[Year, set[FeedEntry]]
 @cache
 def index_available_entries() -> dict[FercForm, FormFilings]:
     """Parse all RSS feeds and index the available filings by Form number and year.
+
     FERC provides an RSS feed for accessing XBRL filings. However, primary RSS feed
     only contains the latest 650 filings. To access earlier filings, they also
     provide month specific feeds that contain all filings submitted for a specific
@@ -179,6 +183,7 @@ async def archive_taxonomy(
     form: FercForm, year: Year, archive: zipfile.ZipFile, session: aiohttp.ClientSession
 ):
     """Download taxonomy and archive all files that comprise the taxonomy.
+
     XBRL taxonomies are made up of many different files. Each taxonomy has a single
     file/URL that serves as the entry point to the taxonomy, which will point to those
     other files. FERC does distribute archives of each taxonomy, which can be found here:
@@ -187,10 +192,12 @@ async def archive_taxonomy(
     taxonomies manually. To do this, it uses Arelle to first parse the taxonomy.
     Arelle can then provide a list of URL's pointing to all files that make up the
     taxonomy.
+
     Args:
         form: Ferc form.
         year: Year of taxonomy version.
         archive: zipfile context manager.
+        session: Async http client session.
     """
     # Get date used in entry point URL (first day of year)
     date = datetime.date(year, 1, 1)
@@ -235,11 +242,13 @@ async def archive_year(
     session: aiohttp.ClientSession,
 ):
     """Archive a single year of data for a desired form.
+
     Args:
         year: Year to archive.
         filings: Set of filings indexed from RSS feed.
         form: Ferc form.
         output_dir: Directory to save archived filings in.
+        session: Async http client session.
     """
     # Get form number as integer
     form_number = form.as_int()
@@ -271,7 +280,7 @@ async def archive_year(
                             f"Writing {filing.title} to form{form_number}-{year} archive."
                         )
             except aiohttp.client_exceptions.ClientResponseError as e:
-                logger.warn(
+                logger.warning(
                     f"Failed to download XBRL filing {filing.title} for form{form_number}-{year}: {e.message}"
                 )
 

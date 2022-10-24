@@ -1,10 +1,12 @@
 """Download EIA electricity data in bulk."""
 from pathlib import Path
 
-from pudl_scrapers.archiver.classes import AbstractDatasetArchiver, ArchiveAwaitable
+from pudl_archiver.archiver.classes import AbstractDatasetArchiver, ArchiveAwaitable
 
 
 class EiaBulkElecArchiver(AbstractDatasetArchiver):
+    """EIA bulk electricity archiver."""
+
     name = "eia_bulk_elec"
 
     async def get_resources(self) -> ArchiveAwaitable:

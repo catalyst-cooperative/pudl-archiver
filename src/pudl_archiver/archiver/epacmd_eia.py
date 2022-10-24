@@ -1,10 +1,12 @@
 """Download EPA CAMD data."""
 from pathlib import Path
 
-from pudl_scrapers.archiver.classes import AbstractDatasetArchiver, ArchiveAwaitable
+from pudl_archiver.archiver.classes import AbstractDatasetArchiver, ArchiveAwaitable
 
 
 class EpaCamdEiaArchiver(AbstractDatasetArchiver):
+    """EPA CAMD archiver."""
+
     name = "epacmd_eia"
 
     async def get_resources(self) -> ArchiveAwaitable:

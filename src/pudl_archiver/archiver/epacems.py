@@ -5,7 +5,7 @@ import re
 import zipfile
 from pathlib import Path
 
-from pudl_scrapers.archiver.classes import AbstractDatasetArchiver, ArchiveAwaitable
+from pudl_archiver.archiver.classes import AbstractDatasetArchiver, ArchiveAwaitable
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 STATE_ABBREVIATIONS = [
@@ -66,6 +66,8 @@ BASE_URL = "https://gaftp.epa.gov/DMDnLoad/emissions/hourly/monthly"
 
 
 class EpaCemsArchiver(AbstractDatasetArchiver):
+    """EPA CEMS archiver."""
+
     name = "epacems"
 
     async def get_resources(self) -> ArchiveAwaitable:

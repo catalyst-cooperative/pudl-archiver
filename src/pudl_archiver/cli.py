@@ -10,22 +10,22 @@ import aiohttp
 import coloredlogs
 from dotenv import load_dotenv
 
-from pudl_scrapers.archiver.censusdp1tract import CensusDp1TractArchiver
-from pudl_scrapers.archiver.eia.eia860 import Eia860Archiver
-from pudl_scrapers.archiver.eia.eia860m import Eia860MArchiver
-from pudl_scrapers.archiver.eia.eia861 import Eia861Archiver
-from pudl_scrapers.archiver.eia.eia923 import Eia923Archiver
-from pudl_scrapers.archiver.eia_bulk_elec import EiaBulkElecArchiver
-from pudl_scrapers.archiver.epacems import EpaCemsArchiver
-from pudl_scrapers.archiver.epacmd_eia import EpaCamdEiaArchiver
-from pudl_scrapers.archiver.ferc.ferc1 import Ferc1Archiver
-from pudl_scrapers.archiver.ferc.ferc2 import Ferc2Archiver
-from pudl_scrapers.archiver.ferc.ferc6 import Ferc6Archiver
-from pudl_scrapers.archiver.ferc.ferc60 import Ferc60Archiver
-from pudl_scrapers.archiver.ferc.ferc714 import Ferc714Archiver
-from pudl_scrapers.zenodo.api_client import ZenodoClient
+from pudl_archiver.archiver.censusdp1tract import CensusDp1TractArchiver
+from pudl_archiver.archiver.eia860 import Eia860Archiver
+from pudl_archiver.archiver.eia860m import Eia860MArchiver
+from pudl_archiver.archiver.eia861 import Eia861Archiver
+from pudl_archiver.archiver.eia923 import Eia923Archiver
+from pudl_archiver.archiver.eia_bulk_elec import EiaBulkElecArchiver
+from pudl_archiver.archiver.epacems import EpaCemsArchiver
+from pudl_archiver.archiver.epacmd_eia import EpaCamdEiaArchiver
+from pudl_archiver.archiver.ferc.ferc1 import Ferc1Archiver
+from pudl_archiver.archiver.ferc.ferc2 import Ferc2Archiver
+from pudl_archiver.archiver.ferc.ferc6 import Ferc6Archiver
+from pudl_archiver.archiver.ferc.ferc60 import Ferc60Archiver
+from pudl_archiver.archiver.ferc.ferc714 import Ferc714Archiver
+from pudl_archiver.zenodo.api_client import ZenodoClient
 
-logger = logging.getLogger("catalystcoop.pudl_scrapers")
+logger = logging.getLogger("catalystcoop.pudl_archiver")
 
 
 def parse_main():
@@ -128,6 +128,7 @@ async def archive_datasets():
 
 
 def main():
+    """Run desired archivers."""
     logger.setLevel(logging.INFO)
     log_format = "%(asctime)s [%(levelname)8s] %(name)s:%(lineno)s %(message)s"
     coloredlogs.install(fmt=log_format, level=logging.INFO, logger=logger)

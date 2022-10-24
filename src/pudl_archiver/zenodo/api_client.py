@@ -12,8 +12,8 @@ import semantic_version
 import yaml
 from pydantic import BaseModel
 
-from pudl_scrapers.frictionless import DataPackage, ResourceInfo
-from pudl_scrapers.zenodo.entities import (
+from pudl_archiver.frictionless import DataPackage, ResourceInfo
+from pudl_archiver.zenodo.entities import (
     BucketFile,
     Deposition,
     DepositionFile,
@@ -51,8 +51,7 @@ class ZenodoDepositionInterface:
         publish_key: str,
         api_root: str,
     ):
-        """
-        Prepare the ZenodoStorage interface.
+        """Prepare the ZenodoStorage interface.
 
         Args:
 
@@ -118,8 +117,7 @@ class ZenodoDepositionInterface:
         return {file["filename"]: DepositionFile(**file) for file in raw_json}
 
     async def create_deposition(self, data_source_id: str):
-        """
-        Create a Zenodo deposition resource.
+        """Create a Zenodo deposition resource.
 
         This should only be called once for a given data source.  The deposition will be
         prepared in draft form, so that files can be added prior to publication.
@@ -182,18 +180,15 @@ class ZenodoDepositionInterface:
         await self.update_datapackage(resources)
 
     async def get_deposition(self, concept_doi: str):
-        """
-        Get data for a single Zenodo Deposition based on the provided query.
+        """Get data for a single Zenodo Deposition based on the provided query.
 
         See https://developers.zenodo.org for more information.
 
         Args:
-            path_modifier: Modifier to base api path, such as 'deposition/depositions'
-            query: A Zenodo (elasticsearch) compatible query string.
-                         eg. 'title:"Eia860"' or 'doi:"10.5072/zenodo.415988"'
+            concept_doi: Concept DOI for desired data source.
 
         Returns:
-
+            Deposition metadata pertaining to the latest version returned by Zenodo api.
         """
         url = f"{self.api_root}/deposit/depositions"
         params = {"q": f'conceptdoi:"{concept_doi}"', "access_token": self.upload_key}
@@ -205,8 +200,7 @@ class ZenodoDepositionInterface:
             return Deposition(**raw_json[0])
 
     async def new_deposition_version(self):
-        """
-        Produce a new version for a given deposition archive.
+        """Produce a new version for a given deposition archive.
 
         Returns:
             deposition data as dict, per
@@ -256,8 +250,7 @@ class ZenodoDepositionInterface:
         )
 
     async def upload(self, file: BinaryIO, filename: str) -> BucketFile:
-        """
-        Upload a file for the given deposition.
+        """Upload a file for the given deposition.
 
         Attempt using the bucket api and fall back on the file api.
 

@@ -1,10 +1,12 @@
 """Download US Census DP1 GeoDatabase."""
 from pathlib import Path
 
-from pudl_scrapers.archiver.classes import AbstractDatasetArchiver, ArchiveAwaitable
+from pudl_archiver.archiver.classes import AbstractDatasetArchiver, ArchiveAwaitable
 
 
 class CensusDp1TractArchiver(AbstractDatasetArchiver):
+    """Census DP1 GeoDatabase archiver."""
+
     name = "censusdp1tract"
 
     async def get_resources(self) -> ArchiveAwaitable:

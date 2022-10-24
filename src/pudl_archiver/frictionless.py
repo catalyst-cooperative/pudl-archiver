@@ -6,7 +6,7 @@ from pydantic import AnyHttpUrl, BaseModel, Field
 
 from pudl.metadata.classes import Contributor, DataSource, Datetime, License
 from pudl.metadata.constants import CONTRIBUTORS
-from pudl_scrapers.zenodo.entities import DepositionFile
+from pudl_archiver.zenodo.entities import DepositionFile
 
 MEDIA_TYPES: dict[str, str] = {
     "zip": "application/zip",
@@ -23,8 +23,8 @@ class ResourceInfo(BaseModel):
 
 
 class Resource(BaseModel):
-    """
-    A generic data resource, as per Frictionless Data specs.
+    """A generic data resource, as per Frictionless Data specs.
+
     See https://specs.frictionlessdata.io/data-resource.
     """
 
@@ -41,12 +41,17 @@ class Resource(BaseModel):
     hash_: str = Field(alias="hash")
 
     @classmethod
-    def from_file(self, file: DepositionFile, parts: dict[str, str]) -> "Resource":
-        """Create a resource from a single file with partitions."""
+    def from_file(cls, file: DepositionFile, parts: dict[str, str]) -> "Resource":
+        """Create a resource from a single file with partitions.
+
+        Args:
+            file: Deposition file metadata returned by Zenodo api.
+            parts: Working partitions of current resource.
+        """
         filename = Path(file.filename)
         mt = MEDIA_TYPES[filename.suffix[1:]]
 
-        return Resource(
+        return cls(
             name=file.filename,
             path=file.links.download,
             remote_url=file.links.download,
@@ -60,8 +65,8 @@ class Resource(BaseModel):
 
 
 class DataPackage(BaseModel):
-    """
-    A generic Data Package, as per Frictionless Data specs.
+    """A generic Data Package, as per Frictionless Data specs.
+
     See https://specs.frictionlessdata.io/data-package.
     """
 
@@ -81,7 +86,14 @@ class DataPackage(BaseModel):
     def from_filelist(
         cls, name: str, files: list[DepositionFile], resources: dict[str, ResourceInfo]
     ) -> "DataPackage":
-        """Create a frictionless datapackage from a list of files and partitions."""
+        """Create a frictionless datapackage from a list of files and partitions.
+
+        Args:
+            name: Data source id.
+            files: List file metadata returned by zenodo api.
+            resources: A dictionary mapping file names to a ResourceInfo object containing
+                       the local path to the resource, and its working partitions.
+        """
         data_source = DataSource.from_id(name)
 
         return DataPackage(

@@ -4,12 +4,14 @@ import re
 import typing
 from pathlib import Path
 
-from pudl_scrapers.archiver.classes import AbstractDatasetArchiver, ArchiveAwaitable
+from pudl_archiver.archiver.classes import AbstractDatasetArchiver, ArchiveAwaitable
 
 BASE_URL = "https://www.eia.gov/electricity/data/eia860m"
 
 
 class Eia860MArchiver(AbstractDatasetArchiver):
+    """EIA-860M archiver."""
+
     name = "eia860m"
     month_map = {
         name.lower(): number for number, name in enumerate(calendar.month_name)

@@ -62,7 +62,8 @@ class DepositionMetadata(BaseModel):
     version: str | None = None
 
     @validator("doi", pre=True)
-    def check_empty_string(cls, doi: str):
+    def check_empty_string(cls, doi: str):  # noqa: N805
+        """Sometimes zenodo returns an empty string for the `doi`. Convert to None."""
         if doi == "":
             return None
 

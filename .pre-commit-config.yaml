@@ -126,17 +126,17 @@ repos:
   ########################################################################################
   # Custom local hooks
   ########################################################################################
-  - repo: local
-    hooks:
-      # Run the unit tests
-      - id: unit-tests
-        name: unit-tests
-        stages: [commit]
-        language: system
-        verbose: false
-        pass_filenames: false
-        always_run: true
-        entry: pytest
+  #- repo: local
+  #  hooks:
+  #    # Run the unit tests
+  #    - id: unit-tests
+  #      name: unit-tests
+  #      stages: [commit]
+  #      language: system
+  #      verbose: false
+  #      pass_filenames: false
+  #      always_run: true
+  #      entry: pytest
 
 # Configuration for pre-commit.ci
 ci:

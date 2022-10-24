@@ -1,9 +1,9 @@
 #!/usr/bin/env python
-"""Setup script to install the PUDL scrapers repo as a package."""
+"""Setup script to install the PUDL archiver repo as a package."""
 from setuptools import find_packages, setup
 
 setup(
-    name="pudl_scrapers",
+    name="pudl_archiver",
     version="0.2.0",
     author="PUDL",
     python_requires=">=3.10,<3.11",
@@ -79,7 +79,7 @@ setup(
     # Can also be used for other resource deployments, like intake catalogs.
     entry_points={
         "console_scripts": [
-            "pudl_archiver=pudl_scrapers.cli:main",
+            "pudl_archiver=pudl_archiver.cli:main",
         ]
     },
 )

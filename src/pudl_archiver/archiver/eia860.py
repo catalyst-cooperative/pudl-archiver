@@ -3,12 +3,14 @@ import re
 import typing
 from pathlib import Path
 
-from pudl_scrapers.archiver.classes import AbstractDatasetArchiver, ArchiveAwaitable
+from pudl_archiver.archiver.classes import AbstractDatasetArchiver, ArchiveAwaitable
 
 BASE_URL = "https://www.eia.gov/electricity/data/eia860"
 
 
 class Eia860Archiver(AbstractDatasetArchiver):
+    """EIA 860 archiver."""
+
     name = "eia860"
 
     async def get_resources(self) -> ArchiveAwaitable:
