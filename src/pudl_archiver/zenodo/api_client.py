@@ -22,6 +22,8 @@ from pudl_archiver.zenodo.entities import (
     SandboxDoi,
 )
 
+logger = logging.getLogger(f"catalystcoop.{__name__}")
+
 
 class DatasetSettings(BaseModel):
     """Simple model to validate doi's in settings."""
@@ -155,7 +157,7 @@ class ZenodoDepositionInterface:
         for name, resource in resources.items():
             if name not in self.deposition_files:
                 self.changed = True
-                self.logger.info(f"Uploading {name}")
+                logger.info(f"Uploading {name}")
 
                 with open(resource.local_path, "rb") as f:
                     await self.upload(f, resource.local_path.name)
@@ -165,7 +167,7 @@ class ZenodoDepositionInterface:
                 # If file is not exact match for existing file, update with new file
                 if not _compute_md5(resource.local_path) == file_info.checksum:
                     self.changed = True
-                    self.logger.info(f"Updating {name}")
+                    logger.info(f"Updating {name}")
                     await self.delete_file(file_info)
 
                     with open(resource.local_path, "rb") as f:
@@ -245,6 +247,7 @@ class ZenodoDepositionInterface:
 
     async def delete_file(self, file: DepositionFile):
         """Delete file from zenodo deposition."""
+        logger.info(f"Deleting file {file.filename} from zenodo deposition.")
         await self.session.delete(
             file.links.self, params={"access_token": self.upload_key}
         )
@@ -273,6 +276,7 @@ class ZenodoDepositionInterface:
             raise RuntimeError("No file or bucket link available for deposition.")
 
         async with self.session.put(url, params=params, data=file) as response:
+            logger.info(f"Uploading file {filename} to zenodo deposition.")
             return await response.json()
 
     async def update_datapackage(self, resources: dict[str, ResourceInfo]):
@@ -280,7 +284,7 @@ class ZenodoDepositionInterface:
         if not self.changed:
             return None
 
-        self.logger.info(f"Creating new datapackage.json for {self.name}")
+        logger.info(f"Creating new datapackage.json for {self.name}")
         url = self.new_deposition.links.files
         params = {"access_token": self.upload_key}
 
@@ -305,7 +309,7 @@ class ZenodoDepositionInterface:
         if not self.changed:
             return None
 
-        self.logger.info(f"Publishing deposition for {self.name}")
+        logger.info(f"Publishing deposition for {self.name}")
         url = self.new_deposition.links.publish
         params = {"access_token": self.publish_key}
         headers = {"Content-Type": "application/json"}
@@ -326,6 +330,7 @@ class ZenodoClient:
         testing: bool = False,
     ):
         """Initialize zenodo client interface."""
+        # Load DOI's from settings file
         self.deposition_settings_path = deposition_settings
         with open(deposition_settings) as f:
             self.dataset_settings = {
@@ -350,8 +355,6 @@ class ZenodoClient:
         self, data_source_id: str, initialize: bool = False
     ) -> ZenodoDepositionInterface:
         """Return ZenodoDepositionInterface for data source in question."""
-        logger = logging.getLogger(f"catalystcoop.{__name__}")
-
         if initialize:
             doi = None
         else:
