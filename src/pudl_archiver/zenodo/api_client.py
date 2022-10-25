@@ -157,7 +157,7 @@ class ZenodoDepositionInterface:
         for name, resource in resources.items():
             if name not in self.deposition_files:
                 self.changed = True
-                logger.info(f"Uploading {name}")
+                logger.info(f"Adding {name} to deposition.")
 
                 with open(resource.local_path, "rb") as f:
                     await self.upload(f, resource.local_path.name)
@@ -276,7 +276,7 @@ class ZenodoDepositionInterface:
             raise RuntimeError("No file or bucket link available for deposition.")
 
         async with self.session.put(url, params=params, data=file) as response:
-            logger.info(f"Uploading file {filename} to zenodo deposition.")
+            logger.info(f"Uploaded file {filename} to zenodo deposition.")
             return await response.json()
 
     async def update_datapackage(self, resources: dict[str, ResourceInfo]):
@@ -315,7 +315,7 @@ class ZenodoDepositionInterface:
         headers = {"Content-Type": "application/json"}
 
         async with self.session.post(url, params=params, headers=headers) as response:
-            await response.json()
+            return Deposition(**await response.json())
 
 
 class ZenodoClient:
