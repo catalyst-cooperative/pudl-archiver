@@ -103,8 +103,8 @@ async def archive_datasets():
         upload_key = os.environ["ZENODO_SANDBOX_TOKEN_UPLOAD"]
         publish_key = os.environ["ZENODO_SANDBOX_TOKEN_UPLOAD"]
     else:
-        upload_key = os.environ["ZENODO_SANDBOX_TOKEN_UPLOAD"]
-        publish_key = os.environ["ZENODO_SANDBOX_TOKEN_UPLOAD"]
+        upload_key = os.environ["ZENODO_TOKEN_UPLOAD"]
+        publish_key = os.environ["ZENODO_TOKEN_UPLOAD"]
 
     connector = aiohttp.TCPConnector(limit_per_host=20)
     async with aiohttp.ClientSession(connector=connector) as session:
