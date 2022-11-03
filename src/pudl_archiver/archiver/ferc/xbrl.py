@@ -18,6 +18,7 @@ import pydantic
 from arelle import Cntlr, ModelManager, ModelXbrl
 from dateutil import rrule
 from pydantic import BaseModel, Field, HttpUrl, root_validator, validator
+from tqdm import tqdm
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
@@ -262,7 +263,7 @@ async def archive_year(
         if year > 2019:
             await archive_taxonomy(form, year, archive, session)
 
-        for filing in filings:
+        for filing in tqdm(filings, desc=f"FERC {form.value} {year} XBRL"):
             # Add filing metadata
             filing_name = f"{filing.title}{filing.ferc_period}"
             if filing_name in metadata:
@@ -276,9 +277,6 @@ async def archive_year(
                     # Write to zipfile
                     with archive.open(f"{filing.entry_id}.xbrl", "w") as f:
                         f.write(await response.content.read())
-                        logger.info(
-                            f"Writing {filing.title} to form{form_number}-{year} archive."
-                        )
             except aiohttp.client_exceptions.ClientResponseError as e:
                 logger.warning(
                     f"Failed to download XBRL filing {filing.title} for form{form_number}-{year}: {e.message}"

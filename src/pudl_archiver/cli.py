@@ -9,6 +9,7 @@ import os
 import aiohttp
 import coloredlogs
 from dotenv import load_dotenv
+from tqdm.contrib.logging import logging_redirect_tqdm
 
 from pudl_archiver.archiver.censusdp1tract import CensusDp1TractArchiver
 from pudl_archiver.archiver.eia860 import Eia860Archiver
@@ -133,7 +134,8 @@ def main():
     log_format = "%(asctime)s [%(levelname)8s] %(name)s:%(lineno)s %(message)s"
     coloredlogs.install(fmt=log_format, level=logging.INFO, logger=logger)
 
-    asyncio.run(archive_datasets())
+    with logging_redirect_tqdm():
+        asyncio.run(archive_datasets())
 
 
 if __name__ == "main":
