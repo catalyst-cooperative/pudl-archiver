@@ -375,7 +375,9 @@ class ZenodoClient:
             yield deposition_interface
         except aiohttp.client_exceptions.ClientResponseError as e:
             # Log error and return to avoid interfering with other data sources
-            logger.error(f"Received HTTP error {e.status}: {e.message}")
+            logger.error(
+                f"Received HTTP error while archiving {data_source_id} with status {e.status}: {e.message}"
+            )
             return
 
         deposition = await deposition_interface.publish()
