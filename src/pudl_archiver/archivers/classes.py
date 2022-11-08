@@ -6,13 +6,14 @@ import tempfile
 import typing
 import zipfile
 from abc import ABC, abstractmethod
+from collections import namedtuple
 from html.parser import HTMLParser
 from pathlib import Path
 
 import aiohttp
 
-from pudl_archiver.frictionless import ResourceInfo
-from pudl_archiver.zenodo.api_client import ZenodoDepositionInterface
+ResourceInfo = namedtuple("ResourceInfo", ["local_path", "partitions"])
+"""Tuple to wrap info about downloaded resource."""
 
 MEDIA_TYPES: dict[str, str] = {
     "zip": "application/zip",
@@ -20,7 +21,14 @@ MEDIA_TYPES: dict[str, str] = {
     "csv": "text/csv",
 }
 
-ArchiveAwaitable = typing.Generator[typing.Awaitable[tuple[Path, dict]], None, None]
+ArchiveAwaitable = typing.Generator[typing.Awaitable[ResourceInfo], None, None]
+"""Return type of method get_resources.
+
+The method get_resources should yield an awaitable that returns a ResourceInfo named tuple.
+The awaitable should be an `async` function that will download a resource, then return the
+ResourceInfo. This contains a path to the downloaded resource, and the working partitions
+pertaining to the resource.
+"""
 
 
 class _HyperlinkExtractor(HTMLParser):
@@ -41,6 +49,8 @@ class _HyperlinkExtractor(HTMLParser):
 
 class AbstractDatasetArchiver(ABC):
     """An abstract base archiver class."""
+
+    from pudl_archiver.zenodo.api_client import ZenodoDepositionInterface
 
     name: str
 
@@ -140,6 +150,10 @@ class AbstractDatasetArchiver(ABC):
         if filter_pattern:
             hyperlinks = {link for link in hyperlinks if filter_pattern.search(link)}
 
+        # Warn if no links are found
+        if not hyperlinks:
+            self.logger.warning(f"No links found matching pattern from link: {url}")
+
         return hyperlinks
 
     async def create_archive(self):
@@ -151,15 +165,13 @@ class AbstractDatasetArchiver(ABC):
         """
         # Get all awaitables from get_resources
         resources = [resource async for resource in self.get_resources()]
-        resource_info = {}
 
         # Download resources concurrently and prepare metadata
+        resource_dict = {}
         for resource_coroutine in asyncio.as_completed(resources):
-            resource_path, partitions = await resource_coroutine
-            self.logger.info(f"Downloaded {resource_path}.")
-            resource_info[str(resource_path.name)] = ResourceInfo(
-                local_path=resource_path, partitions=partitions
-            )
+            resource_info = await resource_coroutine
+            self.logger.info(f"Downloaded {resource_info.local_path}.")
+            resource_dict[str(resource_info.local_path.name)] = resource_info
 
         # Add to zenodo deposition
-        await self.deposition.add_files(resource_info)
+        await self.deposition.add_files(resource_dict)

@@ -1,7 +1,11 @@
 """Download EIA electricity data in bulk."""
 from pathlib import Path
 
-from pudl_archiver.archiver.classes import AbstractDatasetArchiver, ArchiveAwaitable
+from pudl_archiver.archivers.classes import (
+    AbstractDatasetArchiver,
+    ArchiveAwaitable,
+    ResourceInfo,
+)
 
 
 class EiaBulkElecArchiver(AbstractDatasetArchiver):
@@ -20,4 +24,4 @@ class EiaBulkElecArchiver(AbstractDatasetArchiver):
         download_path = self.download_directory / "eia_bulk_elec.zip"
         await self.download_zipfile(url, download_path)
 
-        return download_path, {}
+        return ResourceInfo(local_path=download_path, partitions={})

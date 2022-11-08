@@ -1,8 +1,12 @@
 """Download FERC Form 714 data."""
 from pathlib import Path
 
-from pudl_archiver.archiver.classes import AbstractDatasetArchiver, ArchiveAwaitable
-from pudl_archiver.archiver.ferc import xbrl
+from pudl_archiver.archivers.classes import (
+    AbstractDatasetArchiver,
+    ArchiveAwaitable,
+    ResourceInfo,
+)
+from pudl_archiver.archivers.ferc import xbrl
 
 
 class Ferc714Archiver(AbstractDatasetArchiver):
@@ -26,7 +30,9 @@ class Ferc714Archiver(AbstractDatasetArchiver):
             year, filings, xbrl.FercForm.FORM_714, self.download_directory, self.session
         )
 
-        return download_path, {"year": year, "data_format": "XBRL"}
+        return ResourceInfo(
+            local_path=download_path, partitions={"year": year, "data_format": "XBRL"}
+        )
 
     async def get_bulk_csv(self) -> tuple[Path, dict]:
         """Download a single year of FERC Form 714 data."""
@@ -34,4 +40,4 @@ class Ferc714Archiver(AbstractDatasetArchiver):
         download_path = self.download_directory / "ferc714.zip"
         await self.download_zipfile(url, download_path)
 
-        return download_path, {}
+        return ResourceInfo(local_path=download_path, partitions={})

@@ -1,7 +1,11 @@
 """Download EPA CAMD data."""
 from pathlib import Path
 
-from pudl_archiver.archiver.classes import AbstractDatasetArchiver, ArchiveAwaitable
+from pudl_archiver.archivers.classes import (
+    AbstractDatasetArchiver,
+    ArchiveAwaitable,
+    ResourceInfo,
+)
 
 
 class EpaCamdEiaArchiver(AbstractDatasetArchiver):
@@ -21,4 +25,4 @@ class EpaCamdEiaArchiver(AbstractDatasetArchiver):
         download_path = self.download_directory / "epacamd_eia.zip"
         await self.download_zipfile(url, download_path)
 
-        return download_path, {}
+        return ResourceInfo(local_path=download_path, partitions={})

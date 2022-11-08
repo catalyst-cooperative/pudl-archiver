@@ -9,21 +9,20 @@ import os
 import aiohttp
 import coloredlogs
 from dotenv import load_dotenv
-from tqdm.contrib.logging import logging_redirect_tqdm
 
-from pudl_archiver.archiver.censusdp1tract import CensusDp1TractArchiver
-from pudl_archiver.archiver.eia860 import Eia860Archiver
-from pudl_archiver.archiver.eia860m import Eia860MArchiver
-from pudl_archiver.archiver.eia861 import Eia861Archiver
-from pudl_archiver.archiver.eia923 import Eia923Archiver
-from pudl_archiver.archiver.eia_bulk_elec import EiaBulkElecArchiver
-from pudl_archiver.archiver.epacems import EpaCemsArchiver
-from pudl_archiver.archiver.epacmd_eia import EpaCamdEiaArchiver
-from pudl_archiver.archiver.ferc.ferc1 import Ferc1Archiver
-from pudl_archiver.archiver.ferc.ferc2 import Ferc2Archiver
-from pudl_archiver.archiver.ferc.ferc6 import Ferc6Archiver
-from pudl_archiver.archiver.ferc.ferc60 import Ferc60Archiver
-from pudl_archiver.archiver.ferc.ferc714 import Ferc714Archiver
+from pudl_archiver.archivers.censusdp1tract import CensusDp1TractArchiver
+from pudl_archiver.archivers.eia860 import Eia860Archiver
+from pudl_archiver.archivers.eia860m import Eia860MArchiver
+from pudl_archiver.archivers.eia861 import Eia861Archiver
+from pudl_archiver.archivers.eia923 import Eia923Archiver
+from pudl_archiver.archivers.eia_bulk_elec import EiaBulkElecArchiver
+from pudl_archiver.archivers.epacems import EpaCemsArchiver
+from pudl_archiver.archivers.epacmd_eia import EpaCamdEiaArchiver
+from pudl_archiver.archivers.ferc.ferc1 import Ferc1Archiver
+from pudl_archiver.archivers.ferc.ferc2 import Ferc2Archiver
+from pudl_archiver.archivers.ferc.ferc6 import Ferc6Archiver
+from pudl_archiver.archivers.ferc.ferc60 import Ferc60Archiver
+from pudl_archiver.archivers.ferc.ferc714 import Ferc714Archiver
 from pudl_archiver.zenodo.api_client import ZenodoClient
 
 logger = logging.getLogger("catalystcoop.pudl_archiver")
@@ -134,8 +133,7 @@ def main():
     log_format = "%(asctime)s [%(levelname)8s] %(name)s:%(lineno)s %(message)s"
     coloredlogs.install(fmt=log_format, level=logging.INFO, logger=logger)
 
-    with logging_redirect_tqdm():
-        asyncio.run(archive_datasets())
+    asyncio.run(archive_datasets())
 
 
 if __name__ == "main":

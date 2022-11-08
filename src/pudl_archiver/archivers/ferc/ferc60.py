@@ -1,8 +1,12 @@
 """Defines base class for archiver."""
 from pathlib import Path
 
-from pudl_archiver.archiver.classes import AbstractDatasetArchiver, ArchiveAwaitable
-from pudl_archiver.archiver.ferc import xbrl
+from pudl_archiver.archivers.classes import (
+    AbstractDatasetArchiver,
+    ArchiveAwaitable,
+    ResourceInfo,
+)
+from pudl_archiver.archivers.ferc import xbrl
 
 
 class Ferc60Archiver(AbstractDatasetArchiver):
@@ -12,7 +16,7 @@ class Ferc60Archiver(AbstractDatasetArchiver):
 
     async def get_resources(self) -> ArchiveAwaitable:
         """Download FERC 60 resources."""
-        for year in range(2006, 2021):
+        for year in range(2006, 2020):
             yield self.get_year_dbf(year)
 
         filings = xbrl.index_available_entries()[xbrl.FercForm.FORM_60]
@@ -27,7 +31,9 @@ class Ferc60Archiver(AbstractDatasetArchiver):
             year, filings, xbrl.FercForm.FORM_60, self.download_directory, self.session
         )
 
-        return download_path, {"year": year, "data_format": "XBRL"}
+        return ResourceInfo(
+            local_path=download_path, partitions={"year": year, "data_format": "XBRL"}
+        )
 
     async def get_year_dbf(self, year: int) -> tuple[Path, dict]:
         """Download a single year of FERC Form 60 data."""
@@ -35,4 +41,6 @@ class Ferc60Archiver(AbstractDatasetArchiver):
         download_path = self.download_directory / f"ferc60-{year}.zip"
         await self.download_zipfile(url, download_path)
 
-        return download_path, {"year": year, "data_format": "DBF"}
+        return ResourceInfo(
+            local_path=download_path, partitions={"year": year, "data_format": "DBF"}
+        )

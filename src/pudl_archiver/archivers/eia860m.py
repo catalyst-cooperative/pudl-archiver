@@ -4,7 +4,11 @@ import re
 import typing
 from pathlib import Path
 
-from pudl_archiver.archiver.classes import AbstractDatasetArchiver, ArchiveAwaitable
+from pudl_archiver.archivers.classes import (
+    AbstractDatasetArchiver,
+    ArchiveAwaitable,
+    ResourceInfo,
+)
 
 BASE_URL = "https://www.eia.gov/electricity/data/eia860m"
 
@@ -34,4 +38,6 @@ class Eia860MArchiver(AbstractDatasetArchiver):
         download_path = self.download_directory / f"eia860m-{year}-{month}.zip"
         await self.download_zipfile(url, download_path)
 
-        return download_path, {"year": year, "month": month}
+        return ResourceInfo(
+            local_path=download_path, partitions={"year": year, "month": month}
+        )

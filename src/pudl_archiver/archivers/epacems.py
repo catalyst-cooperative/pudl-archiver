@@ -5,7 +5,11 @@ import re
 import zipfile
 from pathlib import Path
 
-from pudl_archiver.archiver.classes import AbstractDatasetArchiver, ArchiveAwaitable
+from pudl_archiver.archivers.classes import (
+    AbstractDatasetArchiver,
+    ArchiveAwaitable,
+    ResourceInfo,
+)
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 STATE_ABBREVIATIONS = [
@@ -112,4 +116,6 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
                     with archive.open(filename, "w") as f_disk:
                         f_disk.write(f_memory.read())
 
-        return archive_path, {"year": year, "state": state}
+        return ResourceInfo(
+            local_path=archive_path, partitions={"year": year, "state": state}
+        )

@@ -1,8 +1,12 @@
 """Defines base class for archiver."""
 from pathlib import Path
 
-from pudl_archiver.archiver.classes import AbstractDatasetArchiver, ArchiveAwaitable
-from pudl_archiver.archiver.ferc import xbrl
+from pudl_archiver.archivers.classes import (
+    AbstractDatasetArchiver,
+    ArchiveAwaitable,
+    ResourceInfo,
+)
+from pudl_archiver.archivers.ferc import xbrl
 
 
 class Ferc2Archiver(AbstractDatasetArchiver):
@@ -21,6 +25,7 @@ class Ferc2Archiver(AbstractDatasetArchiver):
         for year in range(1996, 2022):
             yield self.get_year_dbf(year)
 
+        # Get XBRL filings
         filings = xbrl.index_available_entries()[xbrl.FercForm.FORM_2]
         for year, year_filings in filings.items():
             yield self.get_year_xbrl(year, year_filings)
@@ -33,7 +38,9 @@ class Ferc2Archiver(AbstractDatasetArchiver):
             year, filings, xbrl.FercForm.FORM_2, self.download_directory, self.session
         )
 
-        return download_path, {"year": year, "data_format": "XBRL"}
+        return ResourceInfo(
+            local_path=download_path, partitions={"year": year, "data_format": "XBRL"}
+        )
 
     async def get_year_dbf(
         self, year: int, part: int | None = None
@@ -71,4 +78,7 @@ class Ferc2Archiver(AbstractDatasetArchiver):
 
         await self.download_zipfile(url, download_path)
 
-        return download_path, {"year": year, "data_format": "DBF", "part": part}
+        return ResourceInfo(
+            local_path=download_path,
+            partitions={"year": year, "data_format": "DBF", "part": part},
+        )

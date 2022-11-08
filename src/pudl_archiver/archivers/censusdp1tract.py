@@ -1,7 +1,11 @@
 """Download US Census DP1 GeoDatabase."""
 from pathlib import Path
 
-from pudl_archiver.archiver.classes import AbstractDatasetArchiver, ArchiveAwaitable
+from pudl_archiver.archivers.classes import (
+    AbstractDatasetArchiver,
+    ArchiveAwaitable,
+    ResourceInfo,
+)
 
 
 class CensusDp1TractArchiver(AbstractDatasetArchiver):
@@ -19,4 +23,4 @@ class CensusDp1TractArchiver(AbstractDatasetArchiver):
         download_path = self.download_directory / "censusdp1tract-2010.zip"
         await self.download_zipfile(url, download_path)
 
-        return download_path, {"year": 2010}
+        return ResourceInfo(local_path=download_path, partitions={"year": 2010})
