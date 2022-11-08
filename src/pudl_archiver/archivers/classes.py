@@ -152,7 +152,10 @@ class AbstractDatasetArchiver(ABC):
 
         # Warn if no links are found
         if not hyperlinks:
-            self.logger.warning(f"No links found matching pattern from link: {url}")
+            self.logger.warning(
+                f"The archiver couldn't find any hyperlinks that match {filter_pattern}."
+                f"Make sure your filter_pattern is correct or if the structure of the {url} page changed."
+            )
 
         return hyperlinks
 
