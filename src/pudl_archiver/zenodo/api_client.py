@@ -12,7 +12,8 @@ import semantic_version
 import yaml
 from pydantic import BaseModel
 
-from pudl_archiver.frictionless import DataPackage, ResourceInfo
+from pudl_archiver.archivers.classes import ResourceInfo
+from pudl_archiver.frictionless import DataPackage
 from pudl_archiver.zenodo.entities import (
     BucketFile,
     Deposition,
@@ -43,11 +44,11 @@ def _compute_md5(file_path: Path) -> str:
 
 
 class ZenodoDepositionInterface:
-    """Thin interface to store data with zenodo.org via their API."""
+    """Interface to a single Zenodo Deposition."""
 
     def __init__(
         self,
-        name: str,
+        data_source_id: str,
         session: aiohttp.ClientSession,
         upload_key: str,
         publish_key: str,
@@ -56,12 +57,17 @@ class ZenodoDepositionInterface:
         """Prepare the ZenodoStorage interface.
 
         Args:
+            data_source_id: Data source ID.
+            session: Async http client session manager.
+            upload_key: Zenodo API upload key.
+            publish_key: Zenodo API publish key.
+            api_root: Zenodo API root URL. Points to sandbox or production API.
 
         Returns:
-            ZenodoStorage
+            ZenodoDepositionInterface
 
         """
-        self.name = name
+        self.data_source_id = data_source_id
 
         self.api_root = api_root
         self.session = session
@@ -80,7 +86,7 @@ class ZenodoDepositionInterface:
     @classmethod
     async def open_interface(
         cls,
-        name: str,
+        data_source_id: str,
         session: aiohttp.ClientSession,
         upload_key: str,
         publish_key: str,
@@ -88,11 +94,25 @@ class ZenodoDepositionInterface:
         doi: str | None = None,
         create_new: bool = False,
     ):
-        """Create deposition interface to existing zenodo deposition."""
-        interface = cls(name, session, upload_key, publish_key, api_root)
+        """Create deposition interface to existing zenodo deposition.
+
+        Args:
+            data_source_id: Data source ID.
+            session: Async http client session manager.
+            upload_key: Zenodo API upload key.
+            publish_key: Zenodo API publish key.
+            api_root: Zenodo API root URL. Points to sandbox or production API.
+            doi: Concept DOI pointing to deposition. If none, create_new should be true.
+            create_new: Create new zenodo deposition.
+
+        Returns:
+            ZenodoDepositionInterface
+
+        """
+        interface = cls(data_source_id, session, upload_key, publish_key, api_root)
 
         if create_new:
-            interface.deposition = await interface.create_deposition(name)
+            interface.deposition = await interface.create_deposition(data_source_id)
         else:
             if not doi:
                 raise RuntimeError("Must pass a valid DOI if create_new is False")
@@ -109,7 +129,14 @@ class ZenodoDepositionInterface:
         return interface
 
     async def remote_fileinfo(self, deposition: Deposition):
-        """Return info on all files contained in deposition."""
+        """Return info on all files contained in deposition.
+
+        Args:
+            deposition: Deposition for which to return file info.
+
+        Returns:
+            Dictionary mapping filenames to DepositionFile metadata objects.
+        """
         url = deposition.links.files
         params = {"access_token": self.upload_key}
 
@@ -125,11 +152,11 @@ class ZenodoDepositionInterface:
         prepared in draft form, so that files can be added prior to publication.
 
         Args:
-            metadata: deposition metadata as a dict, per
-            https://developers.zenodo.org/?python#representation
+            data_source_id: Data source ID that will be used to generate zenodo metadata
+            from data source metadata.
 
         Returns:
-            deposition data as dict, per
+            Deposition object, per
             https://developers.zenodo.org/?python#depositions
         """
         url = f"{self.api_root}/deposit/depositions"
@@ -153,7 +180,20 @@ class ZenodoDepositionInterface:
             return Deposition(**await response.json(content_type=None))
 
     async def add_files(self, resources: dict[str, ResourceInfo]):
-        """Check if local file already exists in deposition."""
+        """Add all downloaded files to zenodo deposition.
+
+        This method will check local files against remote files which already
+        exist in Zenodo deposition. If local file name matches remote file name,
+        checksums will be used to determine if file has changed. It will also
+        create and upload a new datapackage.
+
+        Args:
+            resources: Dictionary mapping filenames to ResourceInfo objects,
+            which contain local path to resource and working partitions.
+
+        Returns:
+            Updated Deposition object.
+        """
         for name, resource in resources.items():
             if name not in self.deposition_files:
                 self.changed = True
@@ -205,7 +245,7 @@ class ZenodoDepositionInterface:
         """Produce a new version for a given deposition archive.
 
         Returns:
-            deposition data as dict, per
+            Deposition object, per
             https://developers.zenodo.org/?python#depositions
         """
         if not self.deposition.submitted:
@@ -246,7 +286,11 @@ class ZenodoDepositionInterface:
             return Deposition(**await response.json())
 
     async def delete_file(self, file: DepositionFile):
-        """Delete file from zenodo deposition."""
+        """Delete file from zenodo deposition.
+
+        Args:
+            file: DepositionFile metadata pertaining to file to be deleted.
+        """
         logger.info(f"Deleting file {file.filename} from zenodo deposition.")
         await self.session.delete(
             file.links.self, params={"access_token": self.upload_key}
@@ -258,10 +302,8 @@ class ZenodoDepositionInterface:
         Attempt using the bucket api and fall back on the file api.
 
         Args:
-            deposition: dict of the deposition resource
-            file_name: the desired file name
-            file_handle: an open file handle or bytes like object.
-                Must be < 100MB
+            file: File like object.
+            filename: the desired file name.
 
         Returns:
             dict of the deposition file resource, per
@@ -277,14 +319,22 @@ class ZenodoDepositionInterface:
 
         async with self.session.put(url, params=params, data=file) as response:
             logger.info(f"Uploaded file {filename} to zenodo deposition.")
-            return await response.json()
+            return await response.json(content_type=None)
 
     async def update_datapackage(self, resources: dict[str, ResourceInfo]):
-        """Create new frictionless datapackage for deposition."""
+        """Create new frictionless datapackage for deposition.
+
+        Args:
+            resources: Dictionary mapping resources to ResourceInfo which is used to
+            generate new datapackage
+        Returns:
+            Updated Deposition.
+        """
+        # If nothing has changed, don't add new datapackage
         if not self.changed:
             return None
 
-        logger.info(f"Creating new datapackage.json for {self.name}")
+        logger.info(f"Creating new datapackage.json for {self.data_source_id}")
         url = self.new_deposition.links.files
         params = {"access_token": self.upload_key}
 
@@ -298,18 +348,24 @@ class ZenodoDepositionInterface:
             await self.delete_file(files["datapackage.json"])
             files.pop("datapackage.json")
 
-        datapackage = DataPackage.from_filelist(self.name, files.values(), resources)
+        datapackage = DataPackage.from_filelist(
+            self.data_source_id, files.values(), resources
+        )
 
         datapackage_json = io.BytesIO(bytes(datapackage.json(), encoding="utf-8"))
 
         await self.upload(datapackage_json, "datapackage.json")
 
     async def publish(self):
-        """Publish new deposition or discard if it hasn't been updated."""
+        """Publish new deposition or discard if it hasn't been updated.
+
+        Returns:
+            Published Deposition.
+        """
         if not self.changed:
             return None
 
-        logger.info(f"Publishing deposition for {self.name}")
+        logger.info(f"Publishing deposition for {self.data_source_id}")
         url = self.new_deposition.links.publish
         params = {"access_token": self.publish_key}
         headers = {"Content-Type": "application/json"}
@@ -354,7 +410,12 @@ class ZenodoClient:
     async def deposition_interface(
         self, data_source_id: str, initialize: bool = False
     ) -> ZenodoDepositionInterface:
-        """Return ZenodoDepositionInterface for data source in question."""
+        """Provides an async context manager that returns a ZenodoDepositionInterface.
+
+        Args:
+            data_source_id: Data source ID that will be used to generate zenodo metadata.
+            initialize: Flag to create new deposition.
+        """
         if initialize:
             doi = None
         else:

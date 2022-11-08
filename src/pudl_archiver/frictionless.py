@@ -6,6 +6,7 @@ from pydantic import AnyHttpUrl, BaseModel, Field
 
 from pudl.metadata.classes import Contributor, DataSource, Datetime, License
 from pudl.metadata.constants import CONTRIBUTORS
+from pudl_archiver.archivers.classes import ResourceInfo
 from pudl_archiver.zenodo.entities import DepositionFile
 
 MEDIA_TYPES: dict[str, str] = {
@@ -13,13 +14,6 @@ MEDIA_TYPES: dict[str, str] = {
     "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     "csv": "text/csv",
 }
-
-
-class ResourceInfo(BaseModel):
-    """Basic class to provide info about a single resource."""
-
-    local_path: Path
-    partitions: dict
 
 
 class Resource(BaseModel):
