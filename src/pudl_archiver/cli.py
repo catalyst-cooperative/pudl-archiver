@@ -105,8 +105,10 @@ async def archive_datasets():
         upload_key = os.environ["ZENODO_TOKEN_UPLOAD"]
         publish_key = os.environ["ZENODO_TOKEN_UPLOAD"]
 
-    connector = aiohttp.TCPConnector(limit_per_host=20)
-    async with aiohttp.ClientSession(connector=connector) as session:
+    connector = aiohttp.TCPConnector(limit_per_host=20, force_close=True)
+    async with aiohttp.ClientSession(
+        connector=connector, raise_for_status=True
+    ) as session:
         # List to gather all archivers to run asyncronously
         tasks = []
         for dataset in args.datasets:

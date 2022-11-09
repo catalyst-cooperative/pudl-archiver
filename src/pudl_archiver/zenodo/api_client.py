@@ -15,7 +15,6 @@ from pydantic import BaseModel
 from pudl_archiver.archivers.classes import ResourceInfo
 from pudl_archiver.frictionless import DataPackage
 from pudl_archiver.zenodo.entities import (
-    BucketFile,
     Deposition,
     DepositionFile,
     DepositionMetadata,
@@ -296,7 +295,7 @@ class ZenodoDepositionInterface:
             file.links.self, params={"access_token": self.upload_key}
         )
 
-    async def upload(self, file: BinaryIO, filename: str) -> BucketFile:
+    async def upload(self, file: BinaryIO, filename: str):
         """Upload a file for the given deposition.
 
         Attempt using the bucket api and fall back on the file api.
@@ -304,10 +303,6 @@ class ZenodoDepositionInterface:
         Args:
             file: File like object.
             filename: the desired file name.
-
-        Returns:
-            dict of the deposition file resource, per
-                https://developers.zenodo.org/#deposition-files
         """
         params = {"access_token": self.upload_key}
         if self.new_deposition.links.bucket:
@@ -317,9 +312,8 @@ class ZenodoDepositionInterface:
         else:
             raise RuntimeError("No file or bucket link available for deposition.")
 
-        async with self.session.put(url, params=params, data=file) as response:
-            logger.info(f"Uploaded file {filename} to zenodo deposition.")
-            return await response.json(content_type=None)
+        logger.info(f"Uploading file {filename} to zenodo deposition.")
+        await self.session.put(url, params=params, data=file)
 
     async def update_datapackage(self, resources: dict[str, ResourceInfo]):
         """Create new frictionless datapackage for deposition.
