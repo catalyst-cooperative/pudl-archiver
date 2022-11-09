@@ -16,8 +16,8 @@ from pudl_archiver.archivers.eia860m import Eia860MArchiver
 from pudl_archiver.archivers.eia861 import Eia861Archiver
 from pudl_archiver.archivers.eia923 import Eia923Archiver
 from pudl_archiver.archivers.eia_bulk_elec import EiaBulkElecArchiver
+from pudl_archiver.archivers.epacamd_eia import EpaCamdEiaArchiver
 from pudl_archiver.archivers.epacems import EpaCemsArchiver
-from pudl_archiver.archivers.epacmd_eia import EpaCamdEiaArchiver
 from pudl_archiver.archivers.ferc.ferc1 import Ferc1Archiver
 from pudl_archiver.archivers.ferc.ferc2 import Ferc2Archiver
 from pudl_archiver.archivers.ferc.ferc6 import Ferc6Archiver
@@ -85,7 +85,7 @@ async def archive_dataset(
                 archiver = EiaBulkElecArchiver(session, deposition)
             case "epacems":
                 archiver = EpaCemsArchiver(session, deposition)
-            case "epacmd_eia":
+            case "epacamd_eia":
                 archiver = EpaCamdEiaArchiver(session, deposition)
             case _:
                 raise RuntimeError("Dataset not supported")
