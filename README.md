@@ -50,11 +50,11 @@ conda activate pudl-archiver
 A CLI is provided for creating and updating archives. The basic usage looks like:
 
 ```
-pudl_archiver {list_of_datasets}
+pudl_archiver {list_of_datasources}
 ```
 
 This command will download the latest available data and create archives for each
-requested dataset. The supported datasets include `eia860`, `eia861`, `eia923`,
+requested datasource requested. The supported datasources include `eia860`, `eia861`, `eia923`,
 `eia_bulk_elec`, `epacems`, `epacamd_eia`, `ferc1`, `ferc2`, `ferc6`, `ferc60`,
 `ferc714`, `eia860m`.
 
