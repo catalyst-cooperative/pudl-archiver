@@ -68,7 +68,7 @@ If successful, this command will automatically add the new Zenodo DOI to the
 
 ## Adding a new dataset
 ### Step 1: Implement archiver interface
-All of the archivers inheret from the `AbstractDatasetArchiver` base class (defined
+All of the archivers inherit from the `AbstractDatasetArchiver` base class (defined
 in `src/pudl_archiver/archiver/classes.py`. There is only a single method that each
 archiver needs to implement. That is the `get_resources` method. This method will be
 called by the base class to coordinate downloading all data-resources. It should be
