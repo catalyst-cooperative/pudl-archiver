@@ -31,7 +31,7 @@ class Resource(BaseModel):
     encoding: str = "utf-8"
     mediatype: str
     format_: str = Field(alias="format")
-    bytes_: str = Field(alias="bytes")
+    bytes_: int = Field(alias="bytes")
     hash_: str = Field(alias="hash")
 
     @classmethod

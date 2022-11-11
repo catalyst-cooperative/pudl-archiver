@@ -348,7 +348,9 @@ class ZenodoDepositionInterface:
             self.data_source_id, files.values(), resources
         )
 
-        datapackage_json = io.BytesIO(bytes(datapackage.json(), encoding="utf-8"))
+        datapackage_json = io.BytesIO(
+            bytes(datapackage.json(by_alias=True), encoding="utf-8")
+        )
 
         await self.upload(datapackage_json, "datapackage.json")
 
