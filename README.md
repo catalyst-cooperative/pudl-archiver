@@ -50,11 +50,11 @@ conda activate pudl-archiver
 A CLI is provided for creating and updating archives. The basic usage looks like:
 
 ```
-pudl_archiver {list_of_datasets}
+pudl_archiver {list_of_datasources}
 ```
 
 This command will download the latest available data and create archives for each
-requested dataset. The supported datasets include `eia860`, `eia861`, `eia923`,
+requested datasource requested. The supported datasources include `eia860`, `eia861`, `eia923`,
 `eia_bulk_elec`, `epacems`, `epacamd_eia`, `ferc1`, `ferc2`, `ferc6`, `ferc60`,
 `ferc714`, `eia860m`.
 
@@ -68,7 +68,7 @@ If successful, this command will automatically add the new Zenodo DOI to the
 
 ## Adding a new dataset
 ### Step 1: Implement archiver interface
-All of the archivers inheret from the `AbstractDatasetArchiver` base class (defined
+All of the archivers inherit from the `AbstractDatasetArchiver` base class (defined
 in `src/pudl_archiver/archiver/classes.py`. There is only a single method that each
 archiver needs to implement. That is the `get_resources` method. This method will be
 called by the base class to coordinate downloading all data-resources. It should be
