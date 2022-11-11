@@ -1,22 +1,21 @@
 #!/usr/bin/env python
-"""Setup script to install the PUDL scrapers repo as a package."""
+"""Setup script to install the PUDL archiver repo as a package."""
 from setuptools import find_packages, setup
 
 setup(
-    name="pudl_scrapers",
+    name="pudl_archiver",
     version="0.2.0",
     author="PUDL",
-    # Directory to search recursively for __init__.py files defining Python packages
-    packages=find_packages("src"),
-    # Location of the "root" package:
-    package_dir={"": "src"},
     python_requires=">=3.10,<3.11",
     install_requires=[
+        "catalystcoop.pudl @ git+https://github.com/catalyst-cooperative/pudl.git@xbrl_integration",
+        "coloredlogs~=15.0",
         "factory_boy>=2.12",
         "feedparser>=6.0",
-        "scrapy>=1.7",
         "tqdm>=4.64",
         "catalystcoop.arelle-mirror==1.3.0",
+        "python-dotenv~=0.21.0",
+        "semantic_version>=2.8,<3",
     ],
     extras_require={
         "dev": [
@@ -53,11 +52,34 @@ setup(
             "rstcheck[sphinx]>=5.0,<6.2",  # ReStructuredText linter
         ],
     },
+    # A controlled vocabulary of tags used by the Python Package Index.
+    # Make sure the license and python versions are consistent with other arguments.
+    # The full list of recognized classifiers is here: https://pypi.org/classifiers/
+    classifiers=[
+        "Development Status :: 3 - Alpha",
+        "Environment :: Console",
+        "License :: OSI Approved :: MIT License",
+        "Natural Language :: English",
+        "Operating System :: OS Independent",
+        "Programming Language :: Python",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3 :: Only",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+    ],
+    # Directory to search recursively for __init__.py files defining Python packages
+    packages=find_packages("src"),
+    # Location of the "root" package:
+    package_dir={"": "src"},
+    # package_data is data that is deployed within the python package on the
+    # user's system. setuptools will get whatever is listed in MANIFEST.in
+    include_package_data=True,
+    # entry_points defines interfaces to command line scripts we distribute.
+    # Can also be used for other resource deployments, like intake catalogs.
     entry_points={
         "console_scripts": [
-            "epacems=pudl_scrapers.bin.epacems:main",
-            "eia_bulk_elec=pudl_scrapers.bin.eia_bulk_elec:main",
-            "ferc_xbrl=pudl_scrapers.bin.ferc_xbrl:main",
+            "pudl_archiver=pudl_archiver.cli:main",
         ]
     },
 )
