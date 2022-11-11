@@ -181,10 +181,12 @@ class ZenodoDepositionInterface:
     async def add_files(self, resources: dict[str, ResourceInfo]):
         """Add all downloaded files to zenodo deposition.
 
-        This method will check local files against remote files which already
-        exist in Zenodo deposition. If local file name matches remote file name,
-        checksums will be used to determine if file has changed. It will also
-        create and upload a new datapackage.
+        The new Zenodo deposition (self.new_deposition) contains all of the files
+        from the previous version. This function will loop through all downloaded
+        files and compare them by name and checksum to the remote files already
+        contained in the deposition. It will then upload new files, update files that
+        already exist, and delete any files that are no longer contained in the new
+        deposition.
 
         Args:
             resources: Dictionary mapping filenames to ResourceInfo objects,
