@@ -237,8 +237,14 @@ class ZenodoDepositionInterface:
         params = {"q": f'conceptdoi:"{concept_doi}"', "access_token": self.upload_key}
 
         async with self.session.get(url, params=params) as response:
-            # Deposition should be first element in json response
+            # Zenodo will return a list of depositions
             raw_json = await response.json()
+
+            # By using the conceptdoi query there should only be a single deposition returned
+            if len(raw_json) > 1:
+                raise RuntimeError(
+                    "Error Zenodo should only return a single deposition"
+                )
 
             return Deposition(**raw_json[0])
 
