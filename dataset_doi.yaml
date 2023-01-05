@@ -14,26 +14,26 @@ ferc714:
   production_doi: 10.5281/zenodo.4127100
   sandbox_doi: 10.5072/zenodo.1114673
 censusdp1tract:
-  production_doi: null
+  production_doi: 10.5281/zenodo.4127048
   sandbox_doi: 10.5072/zenodo.674991
 eia860:
-  production_doi: null
+  production_doi: 10.5281/zenodo.4127026
   sandbox_doi: 10.5072/zenodo.672209
 eia860m:
-  production_doi: null
+  production_doi: 10.5281/zenodo.4281336
   sandbox_doi: 10.5072/zenodo.692654
 eia861:
-  production_doi: null
+  production_doi: 10.5281/zenodo.4127028
   sandbox_doi: 10.5072/zenodo.672198
 eia923:
-  production_doi: null
+  production_doi: 10.5281/zenodo.4127039
   sandbox_doi: 10.5072/zenodo.672220
 eia_bulk_elec:
-  production_doi: null
+  production_doi: 10.5281/zenodo.7067366
   sandbox_doi: 10.5072/zenodo.1103571
 epacems:
-  production_doi: null
+  production_doi: 10.5281/zenodo.4127054
   sandbox_doi: 10.5072/zenodo.672962
 epacmd_eia:
-  production_doi: null
+  production_doi: 10.5281/zenodo.6633769
   sandbox_doi: 10.5072/zenodo.1072000
