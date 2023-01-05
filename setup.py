@@ -8,7 +8,7 @@ setup(
     author="PUDL",
     python_requires=">=3.10,<3.11",
     install_requires=[
-        "catalystcoop.pudl @ git+https://github.com/catalyst-cooperative/pudl.git@xbrl_integration",
+        "catalystcoop.pudl @ git+https://github.com/catalyst-cooperative/pudl.git@dev",
         "coloredlogs~=15.0",
         "factory_boy>=2.12",
         "feedparser>=6.0",
