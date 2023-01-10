@@ -21,11 +21,16 @@ import pathlib
 
 def all_archivers():
     dirpath = pathlib.Path(__file__).parent
-    pyfiles = [path.relative_to(dirpath) for path in dirpath.glob("archivers/**/*.py") if "__init__" != path.stem]
-    module_names = [f"pudl_archiver.{str(p).replace('/', '.')[:-3]}" for p in pyfiles ]
+    pyfiles = [
+        path.relative_to(dirpath)
+        for path in dirpath.glob("archivers/**/*.py")
+        if "__init__" != path.stem
+    ]
+    module_names = [f"pudl_archiver.{str(p).replace('/', '.')[:-3]}" for p in pyfiles]
     for module in module_names:
         __import__(module)
     return AbstractDatasetArchiver.__subclasses__()
+
 
 ARCHIVERS = {archiver.name: archiver for archiver in all_archivers()}
 
@@ -37,7 +42,7 @@ def parse_main():
         "datasets",
         nargs="*",
         help="Name of the Zenodo deposition.",
-        choices=list(ARCHIVERS.keys())
+        choices=list(ARCHIVERS.keys()),
     )
     parser.add_argument(
         "--sandbox",
@@ -59,7 +64,7 @@ async def archive_dataset(
     initialize: bool = False,
 ):
     """Download and archive dataset on zenodo."""
-    
+
     async with zenodo_client.deposition_interface(name, initialize) as deposition:
         # Create new deposition then return
         cls = ARCHIVERS.get(name)
