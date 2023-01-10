@@ -28,6 +28,7 @@ def all_archivers():
     ]
     module_names = [f"pudl_archiver.{str(p).replace('/', '.')[:-3]}" for p in pyfiles]
     for module in module_names:
+        # AbstractDatasetArchiver won't know about the subclasses unless they are imported
         __import__(module)
     return AbstractDatasetArchiver.__subclasses__()
 
