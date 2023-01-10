@@ -10,22 +10,24 @@ import aiohttp
 import coloredlogs
 from dotenv import load_dotenv
 
-from pudl_archiver.archivers.censusdp1tract import CensusDp1TractArchiver
-from pudl_archiver.archivers.eia860 import Eia860Archiver
-from pudl_archiver.archivers.eia860m import Eia860MArchiver
-from pudl_archiver.archivers.eia861 import Eia861Archiver
-from pudl_archiver.archivers.eia923 import Eia923Archiver
-from pudl_archiver.archivers.eia_bulk_elec import EiaBulkElecArchiver
-from pudl_archiver.archivers.epacamd_eia import EpaCamdEiaArchiver
-from pudl_archiver.archivers.epacems import EpaCemsArchiver
-from pudl_archiver.archivers.ferc.ferc1 import Ferc1Archiver
-from pudl_archiver.archivers.ferc.ferc2 import Ferc2Archiver
-from pudl_archiver.archivers.ferc.ferc6 import Ferc6Archiver
-from pudl_archiver.archivers.ferc.ferc60 import Ferc60Archiver
-from pudl_archiver.archivers.ferc.ferc714 import Ferc714Archiver
+from pudl_archiver.archivers.classes import AbstractDatasetArchiver
 from pudl_archiver.zenodo.api_client import ZenodoClient
 
 logger = logging.getLogger("catalystcoop.pudl_archiver")
+
+
+import pathlib
+
+
+def all_archivers():
+    dirpath = pathlib.Path(__file__).parent
+    pyfiles = [path.relative_to(dirpath) for path in dirpath.glob("archivers/**/*.py") if "__init__" != path.stem]
+    module_names = [f"pudl_archiver.{str(p).replace('/', '.')[:-3]}" for p in pyfiles ]
+    for module in module_names:
+        __import__(module)
+    return AbstractDatasetArchiver.__subclasses__()
+
+ARCHIVERS = {archiver.name: archiver for archiver in all_archivers()}
 
 
 def parse_main():
@@ -34,9 +36,8 @@ def parse_main():
     parser.add_argument(
         "datasets",
         nargs="*",
-        help="Name of the Zenodo deposition. Supported: censusdp1tract, "
-        "eia860, eia861, eia923, eia_bulk_elec, epacems, epacamd_eia, "
-        "ferc1, ferc2, ferc6, ferc60, ferc714, eia860m",
+        help="Name of the Zenodo deposition.",
+        choices=list(ARCHIVERS.keys())
     )
     parser.add_argument(
         "--sandbox",
@@ -58,38 +59,14 @@ async def archive_dataset(
     initialize: bool = False,
 ):
     """Download and archive dataset on zenodo."""
+    
     async with zenodo_client.deposition_interface(name, initialize) as deposition:
         # Create new deposition then return
-        match name:
-            case "ferc1":
-                archiver = Ferc1Archiver(session, deposition)
-            case "ferc2":
-                archiver = Ferc2Archiver(session, deposition)
-            case "ferc6":
-                archiver = Ferc6Archiver(session, deposition)
-            case "ferc60":
-                archiver = Ferc60Archiver(session, deposition)
-            case "ferc714":
-                archiver = Ferc714Archiver(session, deposition)
-            case "censusdp1tract":
-                archiver = CensusDp1TractArchiver(session, deposition)
-            case "eia860":
-                archiver = Eia860Archiver(session, deposition)
-            case "eia860m":
-                archiver = Eia860MArchiver(session, deposition)
-            case "eia861":
-                archiver = Eia861Archiver(session, deposition)
-            case "eia923":
-                archiver = Eia923Archiver(session, deposition)
-            case "eia_bulk_elec":
-                archiver = EiaBulkElecArchiver(session, deposition)
-            case "epacems":
-                archiver = EpaCemsArchiver(session, deposition)
-            case "epacamd_eia":
-                archiver = EpaCamdEiaArchiver(session, deposition)
-            case _:
-                raise RuntimeError("Dataset not supported")
-
+        cls = ARCHIVERS.get(name)
+        if not cls:
+            raise RuntimeError("Dataset not supported")
+        else:
+            archiver = cls(session, deposition)
         await archiver.create_archive()
 
 

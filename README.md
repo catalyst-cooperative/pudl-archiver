@@ -106,13 +106,8 @@ hyperlinks matching the pattern on the page pointed to by the URL. This is usefu
 there's a page containing links to a series of data resources that have somewhat
 structured names.
 
-### Step 2: Add dataset to CLI
-To add support for the dataset in the CLI you have to update the method
-`archive_dataset` in `src/pudl_archiver/cli.py`. Just follow the pattern of the
-other datasets to add this option.
-
-### Step 3: Run --initialize command
-Finally, you will need to run the initialize command to create a new zenodo deposition, and
+### Step 2: Run --initialize command
+You will need to run the initialize command to create a new zenodo deposition, and
 update the config file with the new DOI:
 
 ```
