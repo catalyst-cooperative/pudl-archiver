@@ -1,0 +1,46 @@
+---
+name: run-archiver
+
+on: push
+
+jobs:
+  run-archiver:
+    strategy:
+      matrix:
+        dataset_group:
+          - [eia860, eia861]
+          - [ferc1, ferc2]
+      fail-fast: false
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 2
+
+      - name: Set up conda environment for testing
+        uses: conda-incubator/setup-miniconda@v2.1.1
+        with:
+          miniforge-variant: Mambaforge
+          miniforge-version: latest
+          use-mamba: true
+          mamba-version: "*"
+          channels: conda-forge,defaults
+          channel-priority: true
+          python-version: "3.10"
+          activate-environment: pudl-archiver
+          environment-file: environment.yml
+
+      - shell: bash -l {0}
+        run: |
+          conda info
+          conda list
+          conda config --show-sources
+          conda config --show
+          printenv | sort
+
+      - name: Run archiver for ${{ matrix.dataset_group }}
+        env:
+          ZENODO_SANDBOX_TOKEN_UPLOAD: ${{ secrets.ZENODO_SANDBOX_TOKEN_UPLOAD }}
+          ZENODO_SANDBOX_TOKEN_PUBLISH: ${{ secrets.ZENODO_SANDBOX_TOKEN_PUBLISH }}
+        run: |
+          conda run -n pudl-archiver pudl_archiver --sandbox --datasets ${{ join(matrix.dataset_group, ' ') }}

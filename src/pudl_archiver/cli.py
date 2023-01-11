@@ -17,10 +17,15 @@ def parse_main():
     """Process base commands from the CLI."""
     parser = argparse.ArgumentParser(description="Upload PUDL data archives to Zenodo")
     parser.add_argument(
-        "datasets",
+        "--datasets",
         nargs="*",
         help="Name of the Zenodo deposition.",
         choices=list(ARCHIVERS.keys()),
+    )
+    parser.add_argument(
+        "--all",
+        action="store_true",
+        help="Run all defined archivers.",
     )
     parser.add_argument(
         "--sandbox",
@@ -46,8 +51,11 @@ def main():
     logger.setLevel(logging.INFO)
     log_format = "%(asctime)s [%(levelname)8s] %(name)s:%(lineno)s %(message)s"
     coloredlogs.install(fmt=log_format, level=logging.INFO, logger=logger)
-
-    asyncio.run(archive_datasets(**vars(parse_main())))
+    args = parse_main()
+    if args.all:
+        args.datasets = ARCHIVERS.keys()
+    del args.all
+    asyncio.run(archive_datasets(**vars(args)))
 
 
 if __name__ == "__main__":
