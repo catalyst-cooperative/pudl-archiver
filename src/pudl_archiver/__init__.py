@@ -32,9 +32,12 @@ async def archive_dataset(
     zenodo_client: ZenodoClient,
     session: aiohttp.ClientSession,
     initialize: bool = False,
+    dry_run: bool = True,
 ):
     """Download and archive dataset on zenodo."""
-    async with zenodo_client.deposition_interface(name, initialize) as deposition:
+    async with zenodo_client.deposition_interface(
+        name, initialize, dry_run=dry_run
+    ) as deposition:
         # Create new deposition then return
         cls = ARCHIVERS.get(name)
         if not cls:
@@ -44,7 +47,12 @@ async def archive_dataset(
         await archiver.create_archive()
 
 
-async def archive_datasets(datasets, sandbox, initialize):
+async def archive_datasets(
+    datasets: list[str],
+    sandbox: bool = True,
+    initialize: bool = False,
+    dry_run: bool = True,
+):
     """A CLI for the PUDL Zenodo Storage system."""
     if sandbox:
         upload_key = os.environ["ZENODO_SANDBOX_TOKEN_UPLOAD"]
@@ -69,7 +77,13 @@ async def archive_datasets(datasets, sandbox, initialize):
             )
 
             tasks.append(
-                archive_dataset(dataset, zenodo_client, session, initialize=initialize)
+                archive_dataset(
+                    dataset,
+                    zenodo_client,
+                    session,
+                    initialize=initialize,
+                    dry_run=dry_run,
+                )
             )
 
         await asyncio.gather(*tasks)

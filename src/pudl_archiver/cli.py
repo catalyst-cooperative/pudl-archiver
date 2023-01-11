@@ -32,6 +32,11 @@ def parse_main():
         action="store_true",
         help="Initialize new deposition by preserving a DOI",
     )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Skip actually uploading to Zenodo",
+    )
     return parser.parse_args()
 
 

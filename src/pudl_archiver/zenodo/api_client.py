@@ -52,6 +52,7 @@ class ZenodoDepositionInterface:
         upload_key: str,
         publish_key: str,
         api_root: str,
+        dry_run: bool = True,
     ):
         """Prepare the ZenodoStorage interface.
 
@@ -80,7 +81,14 @@ class ZenodoDepositionInterface:
         self.deposition: Deposition = None
         self.new_deposition: Deposition = None
         self.deposition_files: dict[str, DepositionFile] = {}
-        self.changed = False
+
+        self.dry_run = dry_run
+        # We accumulate changes in a changeset, then apply - makes dry runs and testing easier.
+        # upload takes (source: IOBase | Path, dest: str) tuples; delete just takes the str key to delete.
+        self.changeset: dict[str, tuple[io.IOBase | Path, str] | str] = {
+            "upload": [],
+            "delete": [],
+        }
 
     @classmethod
     async def open_interface(
@@ -92,6 +100,7 @@ class ZenodoDepositionInterface:
         api_root: str,
         doi: str | None = None,
         create_new: bool = False,
+        dry_run: bool = True,
     ):
         """Create deposition interface to existing zenodo deposition.
 
@@ -108,7 +117,9 @@ class ZenodoDepositionInterface:
             ZenodoDepositionInterface
 
         """
-        interface = cls(data_source_id, session, upload_key, publish_key, api_root)
+        interface = cls(
+            data_source_id, session, upload_key, publish_key, api_root, dry_run=dry_run
+        )
 
         if create_new:
             interface.deposition = await interface.create_deposition(data_source_id)
@@ -178,6 +189,10 @@ class ZenodoDepositionInterface:
             # Ignore content type
             return Deposition(**await response.json(content_type=None))
 
+    def changed(self):
+        """Whether there are changes between the old deposition and the new one."""
+        return self.changeset["upload"] or self.changeset["delete"]
+
     async def add_files(self, resources: dict[str, ResourceInfo]):
         """Add all downloaded files to zenodo deposition.
 
@@ -196,31 +211,42 @@ class ZenodoDepositionInterface:
             Updated Deposition object.
         """
         for name, resource in resources.items():
+            filepath = resource.local_path.name
             if name not in self.deposition_files:
-                self.changed = True
                 logger.info(f"Adding {name} to deposition.")
 
-                with open(resource.local_path, "rb") as f:
-                    await self.upload(f, resource.local_path.name)
+                self.changeset["upload"].append((Path(filepath), filepath))
             else:
                 file_info = self.deposition_files[name]
 
                 # If file is not exact match for existing file, update with new file
                 if not _compute_md5(resource.local_path) == file_info.checksum:
-                    self.changed = True
                     logger.info(f"Updating {name}")
-                    await self.delete_file(file_info)
-
-                    with open(resource.local_path, "rb") as f:
-                        await self.upload(f, resource.local_path.name)
+                    self.changeset["delete"].append(file_info)
+                    self.changeset["upload"].append((Path(filepath), filepath))
 
         # Delete files not included in new deposition
-        for filename, file in self.deposition_files.items():
+        for filename, file_info in self.deposition_files.items():
             if filename not in resources and filename != "datapackage.json":
-                self.changed = True
-                await self.delete_file(file)
+                self.changeset["delete"].append(file_info)
 
         await self.update_datapackage(resources)
+
+        await self._apply_changeset()
+
+    async def _apply_changeset(self):
+        logger.info(f"Applying changeset: {self.changeset}")
+        if self.dry_run:
+            logger.info("Dry run, aborting.")
+            return
+        for file_info in self.changeset["delete"]:
+            await self.delete_file(file_info)
+        for (source, dest) in self.changeset["upload"]:
+            if isinstance(source, io.IOBase):
+                await self.upload(source, dest)
+            else:
+                with source.open("rb") as f:
+                    await self.upload(f, dest)
 
     async def get_deposition(self, concept_doi: str):
         """Get data for a single Zenodo Deposition based on the provided query.
@@ -333,7 +359,7 @@ class ZenodoDepositionInterface:
             Updated Deposition.
         """
         # If nothing has changed, don't add new datapackage
-        if not self.changed:
+        if not self.changed():
             return None
 
         logger.info(f"Creating new datapackage.json for {self.data_source_id}")
@@ -358,7 +384,7 @@ class ZenodoDepositionInterface:
             bytes(datapackage.json(by_alias=True), encoding="utf-8")
         )
 
-        await self.upload(datapackage_json, "datapackage.json")
+        self.changeset.append((datapackage_json, "datapackage.json"))
 
     async def publish(self):
         """Publish new deposition or discard if it hasn't been updated.
@@ -366,8 +392,13 @@ class ZenodoDepositionInterface:
         Returns:
             Published Deposition.
         """
-        if not self.changed:
-            return None
+        if not self.changed():
+            logger.info("Nothing changed, not publishing.")
+            return
+
+        if self.dry_run:
+            logger.info(f"Dry run, not publishing changeset {self.changeset}.")
+            return
 
         logger.info(f"Publishing deposition for {self.data_source_id}")
         url = self.new_deposition.links.publish
@@ -412,13 +443,14 @@ class ZenodoClient:
 
     @asynccontextmanager
     async def deposition_interface(
-        self, data_source_id: str, initialize: bool = False
+        self, data_source_id: str, initialize: bool = False, dry_run: bool = True
     ) -> ZenodoDepositionInterface:
         """Provides an async context manager that returns a ZenodoDepositionInterface.
 
         Args:
             data_source_id: Data source ID that will be used to generate zenodo metadata.
             initialize: Flag to create new deposition.
+            dry_run: True skips all Zenodo writes.
         """
         if initialize:
             doi = None
@@ -434,6 +466,7 @@ class ZenodoClient:
             self.api_root,
             doi=doi,
             create_new=initialize,
+            dry_run=dry_run,
         )
 
         try:
