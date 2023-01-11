@@ -5,6 +5,7 @@ import argparse
 import asyncio
 import logging
 import os
+import pathlib
 
 import aiohttp
 import coloredlogs
@@ -16,10 +17,8 @@ from pudl_archiver.zenodo.api_client import ZenodoClient
 logger = logging.getLogger("catalystcoop.pudl_archiver")
 
 
-import pathlib
-
-
 def all_archivers():
+    """List all Archivers that have been defined."""
     dirpath = pathlib.Path(__file__).parent
     pyfiles = [
         path.relative_to(dirpath)
@@ -65,7 +64,6 @@ async def archive_dataset(
     initialize: bool = False,
 ):
     """Download and archive dataset on zenodo."""
-
     async with zenodo_client.deposition_interface(name, initialize) as deposition:
         # Create new deposition then return
         cls = ARCHIVERS.get(name)
