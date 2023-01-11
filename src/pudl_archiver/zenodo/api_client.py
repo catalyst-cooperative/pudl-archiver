@@ -25,6 +25,16 @@ from pudl_archiver.zenodo.entities import (
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 
+class _UploadSpec(BaseModel):
+    """Defines an upload that will be done by ZenodoDepositionInterface."""
+
+    source: io.IOBase | Path
+    dest: str
+
+    class Config:
+        arbitrary_types_allowed = True
+
+
 class DatasetSettings(BaseModel):
     """Simple model to validate doi's in settings."""
 
@@ -85,10 +95,8 @@ class ZenodoDepositionInterface:
         self.dry_run = dry_run
         # We accumulate changes in a changeset, then apply - makes dry runs and testing easier.
         # upload takes (source: IOBase | Path, dest: str) tuples; delete just takes the str key to delete.
-        self.changeset: dict[str, tuple[io.IOBase | Path, str] | str] = {
-            "upload": [],
-            "delete": [],
-        }
+        self.uploads: list[_UploadSpec] = []
+        self.deletes: list[str] = []
 
     @classmethod
     async def open_interface(
@@ -189,9 +197,9 @@ class ZenodoDepositionInterface:
             # Ignore content type
             return Deposition(**await response.json(content_type=None))
 
-    def changed(self):
+    def changed(self) -> bool:
         """Whether there are changes between the old deposition and the new one."""
-        return self.changeset["upload"] or self.changeset["delete"]
+        return self.uploads or self.deletes
 
     async def add_files(self, resources: dict[str, ResourceInfo]):
         """Add all downloaded files to zenodo deposition.
@@ -215,33 +223,37 @@ class ZenodoDepositionInterface:
             if name not in self.deposition_files:
                 logger.info(f"Adding {name} to deposition.")
 
-                self.changeset["upload"].append((Path(filepath), filepath))
+                self.uploads.append(_UploadSpec(source=Path(filepath), dest=filepath))
             else:
                 file_info = self.deposition_files[name]
 
                 # If file is not exact match for existing file, update with new file
                 if not _compute_md5(resource.local_path) == file_info.checksum:
                     logger.info(f"Updating {name}")
-                    self.changeset["delete"].append(file_info)
-                    self.changeset["upload"].append((Path(filepath), filepath))
+                    self.deletes.append(file_info)
+                    self.uploads.append(
+                        _UploadSpec(source=Path(filepath), dest=filepath)
+                    )
 
         # Delete files not included in new deposition
         for filename, file_info in self.deposition_files.items():
             if filename not in resources and filename != "datapackage.json":
-                self.changeset["delete"].append(file_info)
+                self.deletes.append(file_info)
 
         await self.update_datapackage(resources)
 
-        await self._apply_changeset()
+        await self._apply_changes()
 
-    async def _apply_changeset(self):
-        logger.info(f"Applying changeset: {self.changeset}")
+    async def _apply_changes(self):
+        """Actually upload and delete what we listed in self.uploads/deletes."""
+        logger.info(f"To delete: {self.deletes}")
+        logger.info(f"To upload: {self.uploads}")
         if self.dry_run:
             logger.info("Dry run, aborting.")
             return
-        for file_info in self.changeset["delete"]:
+        for file_info in self.deletes:
             await self.delete_file(file_info)
-        for (source, dest) in self.changeset["upload"]:
+        for (source, dest) in self.uploads:
             if isinstance(source, io.IOBase):
                 await self.upload(source, dest)
             else:
@@ -373,7 +385,7 @@ class ZenodoDepositionInterface:
             }
 
         if "datapackage.json" in files:
-            await self.delete_file(files["datapackage.json"])
+            self.deletes.append("datapackage.json")
             files.pop("datapackage.json")
 
         datapackage = DataPackage.from_filelist(
@@ -384,7 +396,7 @@ class ZenodoDepositionInterface:
             bytes(datapackage.json(by_alias=True), encoding="utf-8")
         )
 
-        self.changeset.append((datapackage_json, "datapackage.json"))
+        self.uploads.append((datapackage_json, "datapackage.json"))
 
     async def publish(self):
         """Publish new deposition or discard if it hasn't been updated.
@@ -397,7 +409,9 @@ class ZenodoDepositionInterface:
             return
 
         if self.dry_run:
-            logger.info(f"Dry run, not publishing changeset {self.changeset}.")
+            logger.info(
+                f"Dry run, not publishing uploads {self.uploads} and deletes {self.deletes}."
+            )
             return
 
         logger.info(f"Publishing deposition for {self.data_source_id}")
