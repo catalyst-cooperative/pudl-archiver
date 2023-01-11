@@ -68,7 +68,7 @@ async def archive_dataset(
         # Create new deposition then return
         cls = ARCHIVERS.get(name)
         if not cls:
-            raise RuntimeError("Dataset not supported")
+            raise RuntimeError(f"Dataset {name} not supported")
         else:
             archiver = cls(session, deposition)
         await archiver.create_archive()
@@ -81,10 +81,10 @@ async def archive_datasets():
 
     if args.sandbox:
         upload_key = os.environ["ZENODO_SANDBOX_TOKEN_UPLOAD"]
-        publish_key = os.environ["ZENODO_SANDBOX_TOKEN_UPLOAD"]
+        publish_key = os.environ["ZENODO_SANDBOX_TOKEN_PUBLISH"]
     else:
         upload_key = os.environ["ZENODO_TOKEN_UPLOAD"]
-        publish_key = os.environ["ZENODO_TOKEN_UPLOAD"]
+        publish_key = os.environ["ZENODO_TOKEN_PUBLISH"]
 
     connector = aiohttp.TCPConnector(limit_per_host=20, force_close=True)
     async with aiohttp.ClientSession(
