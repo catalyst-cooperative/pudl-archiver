@@ -4,35 +4,13 @@
 import argparse
 import asyncio
 import logging
-import os
-import pathlib
 
-import aiohttp
 import coloredlogs
 from dotenv import load_dotenv
 
-from pudl_archiver.archivers.classes import AbstractDatasetArchiver
-from pudl_archiver.zenodo.api_client import ZenodoClient
+from pudl_archiver import ARCHIVERS, archive_datasets
 
 logger = logging.getLogger("catalystcoop.pudl_archiver")
-
-
-def all_archivers():
-    """List all Archivers that have been defined."""
-    dirpath = pathlib.Path(__file__).parent
-    pyfiles = [
-        path.relative_to(dirpath)
-        for path in dirpath.glob("archivers/**/*.py")
-        if "__init__" != path.stem
-    ]
-    module_names = [f"pudl_archiver.{str(p).replace('/', '.')[:-3]}" for p in pyfiles]
-    for module in module_names:
-        # AbstractDatasetArchiver won't know about the subclasses unless they are imported
-        __import__(module)
-    return AbstractDatasetArchiver.__subclasses__()
-
-
-ARCHIVERS = {archiver.name: archiver for archiver in all_archivers()}
 
 
 def parse_main():
@@ -57,67 +35,15 @@ def parse_main():
     return parser.parse_args()
 
 
-async def archive_dataset(
-    name: str,
-    zenodo_client: ZenodoClient,
-    session: aiohttp.ClientSession,
-    initialize: bool = False,
-):
-    """Download and archive dataset on zenodo."""
-    async with zenodo_client.deposition_interface(name, initialize) as deposition:
-        # Create new deposition then return
-        cls = ARCHIVERS.get(name)
-        if not cls:
-            raise RuntimeError(f"Dataset {name} not supported")
-        else:
-            archiver = cls(session, deposition)
-        await archiver.create_archive()
-
-
-async def archive_datasets():
-    """A CLI for the PUDL Zenodo Storage system."""
-    args = parse_main()
-    load_dotenv()
-
-    if args.sandbox:
-        upload_key = os.environ["ZENODO_SANDBOX_TOKEN_UPLOAD"]
-        publish_key = os.environ["ZENODO_SANDBOX_TOKEN_PUBLISH"]
-    else:
-        upload_key = os.environ["ZENODO_TOKEN_UPLOAD"]
-        publish_key = os.environ["ZENODO_TOKEN_PUBLISH"]
-
-    connector = aiohttp.TCPConnector(limit_per_host=20, force_close=True)
-    async with aiohttp.ClientSession(
-        connector=connector, raise_for_status=True
-    ) as session:
-        # List to gather all archivers to run asyncronously
-        tasks = []
-        for dataset in args.datasets:
-            zenodo_client = ZenodoClient(
-                "dataset_doi.yaml",
-                session,
-                upload_key,
-                publish_key,
-                testing=args.sandbox,
-            )
-
-            tasks.append(
-                archive_dataset(
-                    dataset, zenodo_client, session, initialize=args.initialize
-                )
-            )
-
-        await asyncio.gather(*tasks)
-
-
 def main():
     """Run desired archivers."""
+    load_dotenv()
     logger.setLevel(logging.INFO)
     log_format = "%(asctime)s [%(levelname)8s] %(name)s:%(lineno)s %(message)s"
     coloredlogs.install(fmt=log_format, level=logging.INFO, logger=logger)
 
-    asyncio.run(archive_datasets())
+    asyncio.run(archive_datasets(**vars(parse_main())))
 
 
-if __name__ == "main":
+if __name__ == "__main__":
     main()
