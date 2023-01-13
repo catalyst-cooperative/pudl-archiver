@@ -387,9 +387,13 @@ class ZenodoDepositionInterface:
         Args:
             file: DepositionFile metadata pertaining to file to be deleted.
         """
-        logger.info(f"Deleting file {file.filename} from zenodo deposition.")
-        await self.session.delete(
-            file.links.self, params={"access_token": self.upload_key}
+        logger.info(
+            f"Deleting file {file.filename} from zenodo doi {self.new_deposition.doi}."
+        )
+        self._check_resp(
+            await self.session.delete(
+                file.links.self, params={"access_token": self.upload_key}
+            )
         )
 
     async def upload(self, file: BinaryIO, filename: str):
@@ -403,14 +407,19 @@ class ZenodoDepositionInterface:
         """
         params = {"access_token": self.upload_key}
         if self.new_deposition.links.bucket:
-            url = f"{self.new_deposition.links.bucket}/{filename}"
+            url = f"{self.new_deposition.links.bucket}"
         elif self.new_deposition.links.files:
-            url = f"{self.new_deposition.links.files}/{filename}"
+            url = f"{self.new_deposition.links.files}"
         else:
             raise RuntimeError("No file or bucket link available for deposition.")
 
-        logger.info(f"Uploading file {filename} to zenodo deposition.")
-        await self.session.put(url, params=params, data=file)
+        logger.info(f"POSTing file {filename} to Zenodo url {url}.")
+        raw_json = await self._check_resp(
+            await self.session.post(
+                url, params=params, data={"file": file, "name": filename}
+            )
+        )
+        logger.debug(f"Response json: {raw_json}")
 
     async def update_datapackage(self, resources: dict[str, ResourceInfo]):
         """Create new frictionless datapackage for deposition.
@@ -468,7 +477,9 @@ class ZenodoDepositionInterface:
             )
             return
 
-        logger.info(f"Publishing deposition for {self.data_source_id}")
+        logger.info(
+            f"Publishing doi {self.new_deposition.links.publish} for {self.data_source_id}"
+        )
         url = self.new_deposition.links.publish
         params = {"access_token": self.publish_key}
         headers = {"Content-Type": "application/json"}
