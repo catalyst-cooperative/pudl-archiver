@@ -219,11 +219,11 @@ class ZenodoDepositionInterface:
             Updated Deposition object.
         """
         for name, resource in resources.items():
-            filepath = resource.local_path.name
+            filepath = resource.local_path
             if name not in self.deposition_files:
                 logger.info(f"Adding {name} to deposition.")
 
-                self.uploads.append(_UploadSpec(source=Path(filepath), dest=filepath))
+                self.uploads.append(_UploadSpec(source=filepath, dest=filepath.name))
             else:
                 file_info = self.deposition_files[name]
 
@@ -232,7 +232,7 @@ class ZenodoDepositionInterface:
                     logger.info(f"Updating {name}")
                     self.deletes.append(file_info)
                     self.uploads.append(
-                        _UploadSpec(source=Path(filepath), dest=filepath)
+                        _UploadSpec(source=filepath, dest=filepath.name)
                     )
 
         # Delete files not included in new deposition
@@ -253,12 +253,12 @@ class ZenodoDepositionInterface:
             return
         for file_info in self.deletes:
             await self.delete_file(file_info)
-        for (source, dest) in self.uploads:
-            if isinstance(source, io.IOBase):
-                await self.upload(source, dest)
+        for upload in self.uploads:
+            if isinstance(upload.source, io.IOBase):
+                await self.upload(upload.source, upload.dest)
             else:
-                with source.open("rb") as f:
-                    await self.upload(f, dest)
+                with upload.source.open("rb") as f:
+                    await self.upload(f, upload.dest)
 
     async def get_deposition(self, concept_doi: str):
         """Get data for a single Zenodo Deposition based on the provided query.
@@ -385,7 +385,7 @@ class ZenodoDepositionInterface:
             }
 
         if "datapackage.json" in files:
-            self.deletes.append("datapackage.json")
+            self.deletes.append(files["datapackage.json"])
             files.pop("datapackage.json")
 
         datapackage = DataPackage.from_filelist(
@@ -396,7 +396,9 @@ class ZenodoDepositionInterface:
             bytes(datapackage.json(by_alias=True), encoding="utf-8")
         )
 
-        self.uploads.append((datapackage_json, "datapackage.json"))
+        self.uploads.append(
+            _UploadSpec(source=datapackage_json, dest="datapackage.json")
+        )
 
     async def publish(self):
         """Publish new deposition or discard if it hasn't been updated.
