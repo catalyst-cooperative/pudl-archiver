@@ -387,9 +387,7 @@ class ZenodoDepositionInterface:
         Args:
             file: DepositionFile metadata pertaining to file to be deleted.
         """
-        logger.info(
-            f"Deleting file {file.filename} from zenodo doi {self.new_deposition.doi}."
-        )
+        logger.info(f"DELETE file {file.filename} from {file.links.self}")
         self._check_resp(
             await self.session.delete(
                 file.links.self, params={"access_token": self.upload_key}
