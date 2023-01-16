@@ -126,17 +126,17 @@ repos:
   ########################################################################################
   # Custom local hooks
   ########################################################################################
-  #- repo: local
-  #  hooks:
-  #    # Run the unit tests
-  #    - id: unit-tests
-  #      name: unit-tests
-  #      stages: [commit]
-  #      language: system
-  #      verbose: false
-  #      pass_filenames: false
-  #      always_run: true
-  #      entry: pytest
+  - repo: local
+    hooks:
+      # Run the unit tests
+      - id: unit-tests
+        name: unit-tests
+        stages: [commit]
+        language: system
+        verbose: false
+        pass_filenames: false
+        always_run: true
+        entry: pytest tests/unit
 
 # Configuration for pre-commit.ci
 ci:
@@ -148,5 +148,5 @@ ci:
   autoupdate_branch: main
   autoupdate_commit_msg: "[pre-commit.ci] pre-commit autoupdate"
   autoupdate_schedule: weekly
-  # skip: [unit-tests]
+  skip: [unit-tests]
   submodules: false
