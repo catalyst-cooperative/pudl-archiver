@@ -51,7 +51,7 @@ def get_datapackage():
         sources=[],
         licenses=[],
         resources=[],
-        created=datetime.now(),
+        created=str(datetime.now()),
     )
 
 
