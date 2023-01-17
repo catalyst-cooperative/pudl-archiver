@@ -77,7 +77,7 @@ async def test_download_zipfile(mocker, bad_zipfile, good_zipfile):
     """
     print(bad_zipfile)
     # Patch download_file
-    mocker.patch(
+    mocked_download_file = mocker.patch(
         "pudl_archiver.archivers.classes.AbstractDatasetArchiver.download_file"
     )
 
@@ -88,13 +88,17 @@ async def test_download_zipfile(mocker, bad_zipfile, good_zipfile):
     with pytest.raises(
         RuntimeError, match=f"Failed to download valid zipfile from {url}"
     ):
-        await archiver.download_zipfile(url, bad_zipfile)
+        await archiver.download_zipfile(url, bad_zipfile, retries=4)
+        # though - if we retry 4 times, technically shouldn't we have called 5?
+    assert mocked_download_file.call_count == 4
 
     # Test function succeeds with path to zipfile
     assert not await archiver.download_zipfile(url, good_zipfile)
+    assert mocked_download_file.call_count == 5
 
     # Test function succeeds with file object
     assert not await archiver.download_zipfile(url, good_zipfile.open(mode="rb"))
+    assert mocked_download_file.call_count == 6
 
 
 @pytest.mark.asyncio
