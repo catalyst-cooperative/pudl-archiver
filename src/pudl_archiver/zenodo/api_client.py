@@ -158,6 +158,7 @@ class ZenodoDepositionInterface:
         url = deposition.links.files
         params = {"access_token": self.upload_key}
 
+        logger.info(f"GET {url}")
         async with self.session.get(url, params=params) as response:
             raw_json = await response.json()
 
@@ -190,7 +191,7 @@ class ZenodoDepositionInterface:
                 )
             }
         )
-
+        logger.info(f"POST {url} - create deposition")
         async with self.session.post(
             url, params=params, data=data, headers=headers
         ) as response:
@@ -274,6 +275,7 @@ class ZenodoDepositionInterface:
         url = f"{self.api_root}/deposit/depositions"
         params = {"q": f'conceptdoi:"{concept_doi}"', "access_token": self.upload_key}
 
+        logger.info(f"GET {url} - get deposition")
         async with self.session.get(url, params=params) as response:
             # Zenodo will return a list of depositions
             raw_json = await response.json()
@@ -300,12 +302,13 @@ class ZenodoDepositionInterface:
 
         # Create the new version
         params = {"access_token": self.upload_key}
+        logger.info(f"POST to {url} - create new version")
         async with self.session.post(url, params=params) as response:
-            new_deposition = Deposition(**await response.json())
+            old_deposition = Deposition(**await response.json())
 
         # When the API creates a new version, it does not return the new one.
         # It returns the old one with a link to the new one.
-        source_metadata = new_deposition.metadata.dict(by_alias=True)
+        source_metadata = old_deposition.metadata.dict(by_alias=True)
         metadata = {}
 
         for key, val in source_metadata.items():
@@ -314,6 +317,9 @@ class ZenodoDepositionInterface:
 
         previous = semantic_version.Version(source_metadata["version"])
         version_info = previous.next_major()
+        logger.info(
+            f"Previous version (in deposition {old_deposition.id_}) was {previous}, bumped to {version_info}"
+        )
 
         metadata["version"] = str(version_info)
 
@@ -321,10 +327,12 @@ class ZenodoDepositionInterface:
         data = json.dumps({"metadata": metadata})
 
         # Get url to newest deposition
-        deposition = await self.get_deposition(new_deposition.conceptdoi)
+        logger.info("Getting URL to newest deposition")
+        deposition = await self.get_deposition(old_deposition.conceptdoi)
         url = deposition.links.self
         headers = {"Content-Type": "application/json"}
 
+        logger.info(f"PUT to {url} - create new version")
         async with self.session.put(
             url, params=params, data=data, headers=headers
         ) as response:
@@ -378,6 +386,7 @@ class ZenodoDepositionInterface:
         url = self.new_deposition.links.files
         params = {"access_token": self.upload_key}
 
+        logger.info(f"GET {url} - getting file list for datapackage")
         async with self.session.get(url, params=params) as response:
             files = {
                 file["filename"]: DepositionFile(**file)
@@ -421,6 +430,7 @@ class ZenodoDepositionInterface:
         params = {"access_token": self.publish_key}
         headers = {"Content-Type": "application/json"}
 
+        logger.info(f"POST {url}")
         async with self.session.post(url, params=params, headers=headers) as response:
             return Deposition(**await response.json())
 
