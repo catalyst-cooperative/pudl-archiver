@@ -4,7 +4,7 @@ from pathlib import Path
 
 from pydantic import AnyHttpUrl, BaseModel, Field
 
-from pudl.metadata.classes import Contributor, DataSource, Datetime, License
+from pudl.metadata.classes import Contributor, DataSource, License
 from pudl.metadata.constants import CONTRIBUTORS
 from pudl_archiver.archivers.classes import ResourceInfo
 from pudl_archiver.zenodo.entities import DepositionFile
