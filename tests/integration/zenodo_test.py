@@ -16,13 +16,13 @@ from pudl_archiver.frictionless import DataPackage
 from pudl_archiver.zenodo.entities import DepositionCreator, DepositionMetadata
 
 
-@pytest.fixture(name="dotenv")
+@pytest.fixture()
 def dotenv():
     """Load dotenv to get API keys."""
     load_dotenv()
 
 
-@pytest.fixture(name="deposition_metadata")
+@pytest.fixture()
 def deposition_metadata():
     """Create fake DepositionMetadata model."""
     return DepositionMetadata(
@@ -39,8 +39,8 @@ def deposition_metadata():
     )
 
 
-@pytest.fixture(name="datapackage")
-def get_datapackage():
+@pytest.fixture()
+def datapackage():
     """Create test datapackage descriptor."""
     return DataPackage(
         name="pudl_test",
@@ -55,27 +55,27 @@ def get_datapackage():
     )
 
 
-@pytest.fixture(name="upload_key")
+@pytest.fixture()
 def upload_key(dotenv):
     """Get upload key."""
     return os.environ["ZENODO_SANDBOX_TOKEN_UPLOAD"]
 
 
-@pytest.fixture(name="publish_key")
+@pytest.fixture()
 def publish_key(dotenv):
     """Get publish key."""
     return os.environ["ZENODO_SANDBOX_TOKEN_PUBLISH"]
 
 
-@pytest_asyncio.fixture(name="session")
-async def get_http_session():
+@pytest_asyncio.fixture()
+async def session():
     """Create async http session."""
     async with aiohttp.ClientSession(raise_for_status=True) as session:
         yield session
 
 
-@pytest_asyncio.fixture(name="test_files")
-def create_test_files():
+@pytest_asyncio.fixture()
+def test_files():
     """Create files for testing in temporary directory."""
     file_data = {
         "unchanged_file.txt": {
@@ -120,8 +120,8 @@ def create_test_files():
         yield files
 
 
-@pytest.fixture(name="test_settings")
-def create_test_settings_file():
+@pytest.fixture()
+def test_settings():
     """Create temporary DOI settings file."""
     with tempfile.TemporaryDirectory() as tmp_dir:
         settings_file = Path(tmp_dir) / "settings.yaml"

@@ -10,16 +10,16 @@ import pytest
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver, ArchiveAwaitable
 
 
-@pytest.fixture(name="bad_zipfile")
-def create_bad_zipfile():
+@pytest.fixture()
+def bad_zipfile():
     """Create a fake bad zipfile in temporary directory."""
     with tempfile.TemporaryFile() as file:
         file.write(b"Fake non-zipfile data")
         yield file
 
 
-@pytest.fixture(name="good_zipfile")
-def create_good_zipfile():
+@pytest.fixture()
+def good_zipfile():
     """Create a fake bad zipfile in temporary directory."""
     with tempfile.TemporaryDirectory() as path:
         zip_path = Path(path) / "test.zip"
@@ -30,8 +30,8 @@ def create_good_zipfile():
         yield zip_path
 
 
-@pytest.fixture(name="file_data")
-def create_test_file():
+@pytest.fixture()
+def file_data():
     """Create test file data for download_file test."""
     return b"Junk test file data"
 
