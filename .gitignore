@@ -8,3 +8,4 @@ commit.txt
 .tox/
 coverage.xml
 .env_tox
+.env
