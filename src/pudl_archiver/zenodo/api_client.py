@@ -334,14 +334,12 @@ class ZenodoDepositionInterface:
         data = json.dumps({"metadata": metadata})
 
         # Get url to newest deposition
-        logger.info("Getting URL to newest deposition")
-        deposition = await self.get_deposition(old_deposition.conceptdoi)
-        url = deposition.links.self
+        new_deposition_url = old_deposition.links.latest_draft
         headers = {"Content-Type": "application/json"}
 
-        logger.info(f"PUT to {url} - create new version")
+        logger.info(f"PUT to {new_deposition_url} - create new version")
         async with self.session.put(
-            url, params=params, data=data, headers=headers
+            new_deposition_url, params=params, data=data, headers=headers
         ) as response:
             return Deposition(**await response.json())
 
