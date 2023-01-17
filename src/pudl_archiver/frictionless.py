@@ -4,7 +4,7 @@ from pathlib import Path
 
 from pydantic import AnyHttpUrl, BaseModel, Field
 
-from pudl.metadata.classes import Contributor, DataSource, Datetime, License
+from pudl.metadata.classes import Contributor, DataSource, License
 from pudl.metadata.constants import CONTRIBUTORS
 from pudl_archiver.archivers.classes import ResourceInfo
 from pudl_archiver.zenodo.entities import DepositionFile
@@ -74,7 +74,7 @@ class DataPackage(BaseModel):
     homepage: str = "https://catalyst.coop/pudl/"
     licenses: list[License]
     resources: list[Resource]
-    created: Datetime
+    created: str
 
     @classmethod
     def from_filelist(
@@ -100,7 +100,7 @@ class DataPackage(BaseModel):
                 for file in files
             ],
             contributors=[CONTRIBUTORS["catalyst-cooperative"]],
-            created=datetime.utcnow(),
+            created=str(datetime.utcnow()),
             keywords=data_source.keywords,
             description=data_source.description,
         )
