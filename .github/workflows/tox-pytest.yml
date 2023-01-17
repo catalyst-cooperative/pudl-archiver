@@ -35,6 +35,9 @@ jobs:
           printenv | sort
 
       - name: Run PyTest
+        env:
+          ZENODO_SANDBOX_TOKEN_PUBLISH: ${{ secrets.ZENODO_SANDBOX_TOKEN_PUBLISH }}
+          ZENODO_SANDBOX_TOKEN_UPLOAD: ${{ secrets.ZENODO_SANDBOX_TOKEN_UPLOAD }}
         run: |
           conda run -n pudl-scrapers tox
 
