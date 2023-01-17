@@ -113,3 +113,15 @@ update the config file with the new DOI:
 ```
 pudl_archiver {new_dataset_name} --initialize
 ```
+
+
+## Development
+
+We only have one development specific tool, which is the Zenodo Postman collection in `/devtools`.
+
+To use it:
+
+1. download [Postman](https://www.postman.com/) (or use their web client)
+2. import this collection
+3. set up a `publish_token` Postman environment variable like in the [docs](https://learning.postman.com/docs/sending-requests/variables/#variable-scopes)
+4. send stuff to Zenodo by clicking buttons in Postman!
