@@ -63,7 +63,7 @@ async def archive_datasets(
 
     connector = aiohttp.TCPConnector(limit_per_host=20, force_close=True)
     async with aiohttp.ClientSession(
-        connector=connector, raise_for_status=True
+        connector=connector, raise_for_status=False
     ) as session:
         # List to gather all archivers to run asyncronously
         tasks = []
@@ -86,4 +86,14 @@ async def archive_datasets(
                 )
             )
 
-        await asyncio.gather(*tasks)
+        results = zip(datasets, await asyncio.gather(*tasks, return_exceptions=True))
+        exceptions = [
+            (dataset, result)
+            for dataset, result in results
+            if isinstance(result, Exception)
+        ]
+        if exceptions:
+            print(
+                f"Encountered exceptions, showing traceback for last one: {[repr(e) for e in exceptions]}"
+            )
+            raise exceptions[-1][1]

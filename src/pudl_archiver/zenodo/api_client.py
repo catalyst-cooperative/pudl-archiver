@@ -25,6 +25,30 @@ from pudl_archiver.zenodo.entities import (
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 
+class ZenodoClientException(Exception):
+    """Captures the JSON error information from Zenodo."""
+
+    def __init__(self, kwargs):
+        """Constructor.
+
+        Args:
+            kwargs: dictionary with "response" mapping to the actual
+                aiohttp.ClientResponse and "json" mapping to the JSON content.
+        """
+        self.kwargs = kwargs
+        self.status = kwargs["response"].status
+        self.message = kwargs["json"].get("message", {})
+        self.errors = kwargs["json"].get("errors", {})
+
+    def __str__(self):
+        """The JSON has all we really care about."""
+        return f"ZenodoClientException({self.kwargs['json']})"
+
+    def __repr__(self):
+        """But the kwargs are useful for recreating this object."""
+        return f"ZenodoClientException({repr(self.kwargs)})"
+
+
 class _UploadSpec(BaseModel):
     """Defines an upload that will be done by ZenodoDepositionInterface."""
 
@@ -147,6 +171,17 @@ class ZenodoDepositionInterface:
 
         return interface
 
+    async def _check_resp(self, response, **kwargs):
+        """Checks Zenodo responses for extra error information.
+
+        It's hard to pass this back into the aiohttp.ClientResponseError so
+        we do this instead.
+        """
+        resp_json = await response.json(**kwargs)
+        if response.status >= 400:
+            raise ZenodoClientException({"response": response, "json": resp_json})
+        return resp_json
+
     async def remote_fileinfo(self, deposition: Deposition):
         """Return info on all files contained in deposition.
 
@@ -161,7 +196,7 @@ class ZenodoDepositionInterface:
 
         logger.info(f"GET {url}")
         async with self.session.get(url, params=params) as response:
-            raw_json = await response.json()
+            raw_json = await self._check_resp(response)
 
         return {file["filename"]: DepositionFile(**file) for file in raw_json}
 
@@ -184,20 +219,18 @@ class ZenodoDepositionInterface:
         headers = {"Content-Type": "application/json"}
 
         metadata = DepositionMetadata.from_data_source(data_source_id)
-        data = json.dumps(
-            {
-                "metadata": metadata.dict(
-                    by_alias=True,
-                    exclude={"publication_date", "doi", "prereserve_doi"},
-                )
-            }
-        )
-        logger.info(f"POST {url} - create deposition")
+        payload = {
+            "metadata": metadata.dict(
+                by_alias=True,
+                exclude={"publication_date", "doi", "prereserve_doi"},
+            )
+        }
+
         async with self.session.post(
-            url, params=params, data=data, headers=headers
+            url, params=params, json=payload, headers=headers
         ) as response:
             # Ignore content type
-            return Deposition(**await response.json(content_type=None))
+            return Deposition(**await self._check_resp(response, content_type=None))
 
     def changed(self) -> bool:
         """Whether there are changes between the old deposition and the new one."""
@@ -230,8 +263,13 @@ class ZenodoDepositionInterface:
                 file_info = self.deposition_files[name]
 
                 # If file is not exact match for existing file, update with new file
-                if not _compute_md5(resource.local_path) == file_info.checksum:
-                    logger.info(f"Updating {name}")
+                if (
+                    not (local_md5 := _compute_md5(resource.local_path))
+                    == file_info.checksum
+                ):
+                    logger.info(
+                        f"Updating {name}: local hash {local_md5} vs. remote {file_info.checksum}"
+                    )
                     self.deletes.append(file_info)
                     self.uploads.append(
                         _UploadSpec(source=filepath, dest=filepath.name)
@@ -279,7 +317,7 @@ class ZenodoDepositionInterface:
         logger.info(f"GET {url} - get deposition")
         async with self.session.get(url, params=params) as response:
             # Zenodo will return a list of depositions
-            raw_json = await response.json()
+            raw_json = await self._check_resp(response)
 
             # By using the conceptdoi query there should only be a single deposition returned
             if len(raw_json) > 1:
@@ -311,7 +349,7 @@ class ZenodoDepositionInterface:
         params = {"access_token": self.upload_key}
         logger.info(f"POST to {url} - create new version")
         async with self.session.post(url, params=params) as response:
-            old_deposition = Deposition(**await response.json())
+            old_deposition = Deposition(**await self._check_resp(response))
 
         # When the API creates a new version, it does not return the new one.
         # It returns the old one with a link to the new one.
@@ -341,7 +379,7 @@ class ZenodoDepositionInterface:
         async with self.session.put(
             new_deposition_url, params=params, data=data, headers=headers
         ) as response:
-            return Deposition(**await response.json())
+            return Deposition(**await self._check_resp(response))
 
     async def delete_file(self, file: DepositionFile):
         """Delete file from zenodo deposition.
@@ -349,9 +387,11 @@ class ZenodoDepositionInterface:
         Args:
             file: DepositionFile metadata pertaining to file to be deleted.
         """
-        logger.info(f"Deleting file {file.filename} from zenodo deposition.")
-        await self.session.delete(
-            file.links.self, params={"access_token": self.upload_key}
+        logger.info(f"DELETE file {file.filename} from {file.links.self}")
+        self._check_resp(
+            await self.session.delete(
+                file.links.self, params={"access_token": self.upload_key}
+            )
         )
 
     async def upload(self, file: BinaryIO, filename: str):
@@ -366,13 +406,22 @@ class ZenodoDepositionInterface:
         params = {"access_token": self.upload_key}
         if self.new_deposition.links.bucket:
             url = f"{self.new_deposition.links.bucket}/{filename}"
+            logger.info(f"PUT file {filename} to Zenodo url {url}.")
+            raw_json = await self._check_resp(
+                await self.session.put(url, params=params, data=file)
+            )
+            logger.debug(f"Response json: {raw_json}")
         elif self.new_deposition.links.files:
-            url = f"{self.new_deposition.links.files}/{filename}"
+            url = f"{self.new_deposition.links.files}"
+            logger.info(f"POSTing file {filename} to Zenodo url {url}.")
+            raw_json = await self._check_resp(
+                await self.session.post(
+                    url, params=params, data={"file": file, "name": filename}
+                )
+            )
+            logger.debug(f"Response json: {raw_json}")
         else:
             raise RuntimeError("No file or bucket link available for deposition.")
-
-        logger.info(f"Uploading file {filename} to zenodo deposition.")
-        await self.session.put(url, params=params, data=file)
 
     async def update_datapackage(self, resources: dict[str, ResourceInfo]):
         """Create new frictionless datapackage for deposition.
@@ -395,7 +444,7 @@ class ZenodoDepositionInterface:
         async with self.session.get(url, params=params) as response:
             files = {
                 file["filename"]: DepositionFile(**file)
-                for file in await response.json()
+                for file in await self._check_resp(response)
             }
 
         if "datapackage.json" in files:
@@ -421,7 +470,7 @@ class ZenodoDepositionInterface:
             Published Deposition.
         """
         if not self.changed():
-            logger.info("Nothing changed, not publishing.")
+            logger.info(f"Nothing changed in {self.data_source_id}, not publishing.")
             return
 
         if self.dry_run:
@@ -430,14 +479,16 @@ class ZenodoDepositionInterface:
             )
             return
 
-        logger.info(f"Publishing deposition for {self.data_source_id}")
+        logger.info(
+            f"Publishing doi {self.new_deposition.links.publish} for {self.data_source_id}"
+        )
         url = self.new_deposition.links.publish
         params = {"access_token": self.publish_key}
         headers = {"Content-Type": "application/json"}
 
         logger.info(f"POST {url}")
         async with self.session.post(url, params=params, headers=headers) as response:
-            return Deposition(**await response.json())
+            return Deposition(**await self._check_resp(response))
 
 
 class ZenodoClient:
@@ -503,11 +554,10 @@ class ZenodoClient:
         try:
             yield deposition_interface
         except aiohttp.client_exceptions.ClientResponseError as e:
-            # Log error and return to avoid interfering with other data sources
             logger.error(
                 f"Received HTTP error while archiving {data_source_id} with status {e.status}: {e.message}"
             )
-            return
+            raise e
 
         deposition = await deposition_interface.publish()
 
