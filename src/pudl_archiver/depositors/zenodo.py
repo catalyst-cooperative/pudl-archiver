@@ -1,10 +1,13 @@
 """Handle all deposition actions within Zenodo."""
 # TODO (daz): fix flake8 so it stops asking for so many repetitive docstrings.
+import logging
 from typing import IO
 
 import aiohttp
 
 from pudl_archiver.zenodo.entities import Deposition, DepositionMetadata
+
+logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 
 # TODO (daz): start using mypy on this file.
@@ -40,7 +43,11 @@ class ZenodoDepositor:
     """
 
     def __init__(
-        self, upload_key: str, publish_key: str, session: aiohttp.ClientSession
+        self,
+        upload_key: str,
+        publish_key: str,
+        session: aiohttp.ClientSession,
+        sandbox: bool = True,
     ):
         """Constructor.
 
@@ -48,18 +55,28 @@ class ZenodoDepositor:
             upload_key: the Zenodo API key that gives you upload rights.
             publish_key: the Zenodo API key that gives you publish rights.
             session: HTTP handler - we don't use it directly, it's wrapped in self.request.
+            sandbox: whether to hit the sandbox Zenodo instance or the real one. Default True.
         """
         self.upload_key = upload_key
         self.publish_key = publish_key
-        self.requester = self._make_requester(session)
+        self.request = self._make_requester(session)
+
+        self.sandbox = sandbox
+
+        if sandbox:
+            self.api_root = "https://sandbox.zenodo.org/api"
+        else:
+            self.api_root = "https://zenodo.org/api"
 
     def _make_requester(self, session):
         """Wraps our session requests with some Zenodo-specific error handling."""
 
         async def requester(*args, **kwargs):
             # Doesn't get a reference to self!
-            async with session.get(*args, **kwargs) as response:
-                resp_json = await response.json(**kwargs)
+            method, url = args
+            logger.info(f"{method} {url}")
+            async with session.request(method, url, **kwargs) as response:
+                resp_json = await response.json()
                 if response.status >= 400:
                     raise ZenodoClientException(
                         {"response": response, "json": resp_json}
@@ -68,13 +85,28 @@ class ZenodoDepositor:
 
         return requester
 
-    def create_deposition(self, deposition_metadata: DepositionMetadata) -> Deposition:
+    async def create_deposition(self, metadata: DepositionMetadata) -> Deposition:
         """Create a whole new deposition.
 
         Args:
-            deposition_metadata: a metadata, to make a deposition with.
+            metadata: a metadata, to make a deposition with.
         """
-        raise NotImplementedError
+        url = f"{self.api_root}/deposit/depositions"
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"bearer {self.upload_key}",
+        }
+
+        payload = {
+            "metadata": metadata.dict(
+                by_alias=True,
+                exclude={"publication_date", "doi", "prereserve_doi"},
+            )
+        }
+
+        response = await self.request("POST", url, json=payload, headers=headers)
+        # Ignore content type
+        return Deposition(**response)
 
     def get_deposition(self, concept_doi: str) -> Deposition:
         """Get a deposition from a concept DOI.
@@ -103,7 +135,6 @@ class ZenodoDepositor:
         """
         raise NotImplementedError
 
-    # TODO (daz): should we represent the edit/no-edit state in the Deposition?
     # TODO (daz): should we return a success/failure flag instead of None/error?
     def discard_deposition(self, deposition: Deposition) -> None:
         """Discard a deposition.
