@@ -49,6 +49,26 @@ class MockArchiver(AbstractDatasetArchiver):
         pass
 
 
+@pytest.fixture()
+def html_docs():
+    """Define html docs for parser test."""
+    return {
+        "simple": """<!doctype html>
+        <html>
+            <body>
+                <h1>random heading</h1>
+                <p>paragraph</p>
+                <a href='https://www.fake.link.com/test_2019.zip'>text</a>
+                <div>
+                    <a href='https://www.fake.link.com/test_2020.zip'>text</a>
+                </div>
+                <a href='https://www.fake.link.com/not/a/match/'>text</a>
+            </body>
+        </html>
+        """,
+    }
+
+
 @pytest.mark.asyncio
 async def test_download_zipfile(mocker, bad_zipfile, good_zipfile):
     """Test download zipfile.
@@ -117,23 +137,10 @@ async def test_download_file(mocker, file_data):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "html,pattern,links",
+    "docname,pattern,links",
     [
         (
-            """
-        <!DOCTYPE html>
-        <html>
-            <body>
-                <h1>random heading</h1>
-                <p>paragraph</p>
-                <a href='https://www.fake.link.com/test_2019.zip'>Text</a>
-                <div>
-                    <a href='https://www.fake.link.com/test_2020.zip'>Text</a>
-                </div>
-                <a href='https://www.fake.link.com/not/a/match/'>Text</a>
-            </body>
-        </html>
-        """,
+            "simple",
             re.compile(r"test_\d{4}.zip"),
             [
                 "https://www.fake.link.com/test_2019.zip",
@@ -141,21 +148,7 @@ async def test_download_file(mocker, file_data):
             ],
         ),
         (
-            """
-        <!DOCTYPE html>
-        <html>
-            <body>
-                <h1>random heading</h1>
-                <div>
-                    <p>paragraph</p>
-                <a href='https://www.fake.link.com/test_2019.zip'>Text</a>
-                <div>
-                    <a href='https://www.fake.link.com/test_2020.zip'>Text</a>
-                </div>
-                <a href='https://www.fake.link.com/not/a/match/'>Text</a>
-            </body>
-        </html>
-        """,
+            "simple",
             None,
             [
                 "https://www.fake.link.com/test_2019.zip",
@@ -165,8 +158,11 @@ async def test_download_file(mocker, file_data):
         ),
     ],
 )
-async def test_get_hyperlinks(html, pattern, links, request):
+async def test_get_hyperlinks(docname, pattern, links, request, html_docs):
     """Test get hyperlinks function."""
+    # Get desired html doc
+    html = html_docs[docname]
+
     # Initialize MockArchiver class
     archiver = MockArchiver(None, None)
 
