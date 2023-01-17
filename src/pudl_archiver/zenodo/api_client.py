@@ -405,19 +405,23 @@ class ZenodoDepositionInterface:
         """
         params = {"access_token": self.upload_key}
         if self.new_deposition.links.bucket:
-            url = f"{self.new_deposition.links.bucket}"
+            url = f"{self.new_deposition.links.bucket}/{filename}"
+            logger.info(f"PUT file {filename} to Zenodo url {url}.")
+            raw_json = await self._check_resp(
+                await self.session.put(url, params=params, data=file)
+            )
+            logger.debug(f"Response json: {raw_json}")
         elif self.new_deposition.links.files:
             url = f"{self.new_deposition.links.files}"
+            logger.info(f"POSTing file {filename} to Zenodo url {url}.")
+            raw_json = await self._check_resp(
+                await self.session.post(
+                    url, params=params, data={"file": file, "name": filename}
+                )
+            )
+            logger.debug(f"Response json: {raw_json}")
         else:
             raise RuntimeError("No file or bucket link available for deposition.")
-
-        logger.info(f"POSTing file {filename} to Zenodo url {url}.")
-        raw_json = await self._check_resp(
-            await self.session.post(
-                url, params=params, data={"file": file, "name": filename}
-            )
-        )
-        logger.debug(f"Response json: {raw_json}")
 
     async def update_datapackage(self, resources: dict[str, ResourceInfo]):
         """Create new frictionless datapackage for deposition.
