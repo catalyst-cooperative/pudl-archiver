@@ -12,15 +12,18 @@ from pudl_archiver.archivers.classes import AbstractDatasetArchiver, ArchiveAwai
 
 @pytest.fixture()
 def bad_zipfile():
-    """Create a fake bad zipfile in temporary directory."""
-    with tempfile.TemporaryFile() as file:
-        file.write(b"Fake non-zipfile data")
-        yield file
+    """Create a fake bad zipfile as a temp file."""
+    with tempfile.TemporaryDirectory() as path:
+        zip_path = Path(path) / "test.zip"
+        with open(zip_path, "wb") as archive:
+            archive.write(b"Fake non-zipfile data")
+
+        yield zip_path
 
 
 @pytest.fixture()
 def good_zipfile():
-    """Create a fake bad zipfile in temporary directory."""
+    """Create a fake good zipfile in temporary directory."""
     with tempfile.TemporaryDirectory() as path:
         zip_path = Path(path) / "test.zip"
         with ZipFile(zip_path, "w") as archive:
@@ -52,6 +55,7 @@ async def test_download_zipfile(mocker, bad_zipfile, good_zipfile):
 
     Tests the zipfile validation, does not actually download any files.
     """
+    print(bad_zipfile)
     # Patch download_file
     mocker.patch(
         "pudl_archiver.archivers.classes.AbstractDatasetArchiver.download_file"
@@ -66,8 +70,10 @@ async def test_download_zipfile(mocker, bad_zipfile, good_zipfile):
     ):
         await archiver.download_zipfile(url, bad_zipfile)
 
+    # Test function succeeds with path to zipfile
     assert not await archiver.download_zipfile(url, good_zipfile)
 
+    # Test function succeeds with file object
     assert not await archiver.download_zipfile(url, good_zipfile.open(mode="rb"))
 
 
