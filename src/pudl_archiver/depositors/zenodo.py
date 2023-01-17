@@ -71,10 +71,8 @@ class ZenodoDepositor:
     def _make_requester(self, session):
         """Wraps our session requests with some Zenodo-specific error handling."""
 
-        async def requester(*args, **kwargs):
-            # Doesn't get a reference to self!
-            method, url = args
-            logger.info(f"{method} {url}")
+        async def requester(method, url, log_label, **kwargs):
+            logger.info(f"{method} {url} - {log_label}")
             async with session.request(method, url, **kwargs) as response:
                 resp_json = await response.json()
                 if response.status >= 400:
@@ -104,18 +102,38 @@ class ZenodoDepositor:
             )
         }
 
-        response = await self.request("POST", url, json=payload, headers=headers)
+        response = await self.request(
+            "POST", url, "Create new deposition", json=payload, headers=headers
+        )
         # Ignore content type
         return Deposition(**response)
 
-    def get_deposition(self, concept_doi: str) -> Deposition:
+    # TODO (daz): this is more "query" deposition than "get" deposition, right?
+    async def get_deposition(self, concept_doi: str) -> Deposition:
         """Get a deposition from a concept DOI.
 
         Args:
             concept_doi: the DOI for the concept - gets the latest associated DOI.
         """
-        # TODO (daz): do we ever need to get a deposition from a normal DOI?
-        raise NotImplementedError
+        url = f"{self.api_root}/deposit/depositions"
+        params = {"q": f'conceptdoi:"{concept_doi}"'}
+        headers = {
+            "Authorization": f"bearer {self.upload_key}",
+        }
+
+        response = await self.request(
+            "GET",
+            url,
+            "Query depositions for {concept_doi}",
+            params=params,
+            headers=headers,
+        )
+        if len(response) > 1 and not self.sandbox:
+            # TODO (daz): not convinced we can't just always pick the most recent one.
+            raise RuntimeError("Zenodo should only return a single deposition")
+
+        latest_deposition = sorted(response, key=lambda d: d["id"])[-1]
+        return Deposition(**latest_deposition)
 
     def get_new_version(self, deposition: Deposition) -> Deposition:
         """Get a new version of a deposition.

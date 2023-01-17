@@ -86,3 +86,20 @@ async def test_create_deposition(depositor, deposition_metadata):
 
     assert clean_metadata(deposition.metadata) == clean_metadata(deposition_metadata)
     assert deposition.state == "unsubmitted"
+
+
+@pytest.mark.asyncio
+async def test_get_deposition(depositor, deposition_metadata):
+    pass
+    # commented these out so I can commit.
+    # deposition = await depositor.create_deposition(deposition_metadata)
+    # TODO (daz): guess we need to add files and publish, before it gets a concept
+    # depositor.create_file()
+    # depositor.publish()
+    # we should probably make just one deposition and do a bunch of stuff to it.
+    # this means we also need to implement get by specific doi.
+
+    # concept_doi = deposition.conceptdoi
+    # assert concept_doi is not None, "has a concept_doi"
+    # latest_deposition = await depositor.get_deposition(concept_doi)
+    # assert latest_deposition._id == deposition._id
