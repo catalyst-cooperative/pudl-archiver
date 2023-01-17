@@ -77,6 +77,7 @@ class ZenodoDepositionInterface:
             ZenodoDepositionInterface
 
         """
+        self.testing = "sandbox" in api_root
         self.data_source_id = data_source_id
 
         self.api_root = api_root
@@ -282,11 +283,17 @@ class ZenodoDepositionInterface:
 
             # By using the conceptdoi query there should only be a single deposition returned
             if len(raw_json) > 1:
-                raise RuntimeError(
-                    "Error Zenodo should only return a single deposition"
-                )
+                if self.testing:
+                    sorted_json = sorted(raw_json, key=lambda d: d["id"])
+                    dep_json = sorted_json[-1]
+                else:
+                    raise RuntimeError(
+                        "Error Zenodo should only return a single deposition"
+                    )
+            else:
+                dep_json = raw_json[0]
 
-            return Deposition(**raw_json[0])
+            return Deposition(**dep_json)
 
     async def new_deposition_version(self):
         """Produce a new version for a given deposition archive.
