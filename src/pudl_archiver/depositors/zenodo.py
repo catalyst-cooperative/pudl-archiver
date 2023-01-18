@@ -1,9 +1,10 @@
 """Handle all deposition actions within Zenodo."""
-# TODO (daz): fix flake8 so it stops asking for so many repetitive docstrings.
+import json
 import logging
-from typing import IO
+from typing import BinaryIO
 
 import aiohttp
+import semantic_version
 
 from pudl_archiver.zenodo.entities import Deposition, DepositionMetadata
 
@@ -71,15 +72,18 @@ class ZenodoDepositor:
     def _make_requester(self, session):
         """Wraps our session requests with some Zenodo-specific error handling."""
 
-        async def requester(method, url, log_label, **kwargs):
+        async def requester(
+            method: str, url: str, log_label: str, parse_json: bool = True, **kwargs
+        ):
             logger.info(f"{method} {url} - {log_label}")
             async with session.request(method, url, **kwargs) as response:
-                resp_json = await response.json()
                 if response.status >= 400:
                     raise ZenodoClientException(
-                        {"response": response, "json": resp_json}
+                        {"response": response, "json": await response.json()}
                     )
-                return resp_json
+                if parse_json:
+                    return await response.json()
+                return response
 
         return requester
 
@@ -124,7 +128,7 @@ class ZenodoDepositor:
         response = await self.request(
             "GET",
             url,
-            "Query depositions for {concept_doi}",
+            f"Query depositions for {concept_doi}",
             params=params,
             headers=headers,
         )
@@ -132,18 +136,73 @@ class ZenodoDepositor:
             # TODO (daz): not convinced we can't just always pick the most recent one.
             raise RuntimeError("Zenodo should only return a single deposition")
 
-        latest_deposition = sorted(response, key=lambda d: d["id"])[-1]
-        return Deposition(**latest_deposition)
+        latest_deposition = Deposition(**sorted(response, key=lambda d: d["id"])[-1])
+        full_deposition_json = await self.request(
+            "GET",
+            f"{url}/{latest_deposition.id_}",
+            log_label=f"Get freshest data for {latest_deposition.id_}",
+            headers=headers,
+        )
+        return Deposition(**full_deposition_json)
 
-    def get_new_version(self, deposition: Deposition) -> Deposition:
+    async def get_new_version(self, deposition: Deposition) -> Deposition:
         """Get a new version of a deposition.
 
         Args:
             deposition: the deposition you want to get the new version of.
-        """
-        raise NotImplementedError
 
-    def publish_deposition(self, deposition: Deposition) -> Deposition:
+        Returns:
+            A new Deposition that is a snapshot of the old one you passed in,
+            with a new major version number.
+        """
+        if not deposition.submitted:
+            return deposition
+
+        url = f"{self.api_root}/deposit/depositions/{deposition.id_}/actions/newversion"
+
+        # Create the new version
+        headers = {
+            "Authorization": f"bearer {self.upload_key}",
+        }
+
+        # When the API creates a new version, it does not return the new one.
+        # It returns the old one with a link to the new one.
+        response = await self.request(
+            "POST", url, log_label="Creating new version", headers=headers
+        )
+        old_deposition = Deposition(**response)
+
+        source_metadata = old_deposition.metadata.dict(by_alias=True)
+        metadata = {}
+        for key, val in source_metadata.items():
+            if key not in ["doi", "prereserve_doi", "publication_date"]:
+                metadata[key] = val
+
+        previous = semantic_version.Version(source_metadata["version"])
+        version_info = previous.next_major()
+
+        metadata["version"] = str(version_info)
+
+        # Update metadata of new deposition with new version info
+        data = json.dumps({"metadata": metadata})
+
+        # Get url to newest deposition
+        new_deposition_url = old_deposition.links.latest_draft
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"bearer {self.upload_key}",
+        }
+
+        response = await self.request(
+            "PUT",
+            new_deposition_url,
+            log_label=f"Updating version number from {previous} ({old_deposition.id_}) to {version_info}",
+            data=data,
+            headers=headers,
+        )
+        return Deposition(**response)
+
+    async def publish_deposition(self, deposition: Deposition) -> Deposition:
         """Publish a deposition.
 
         Needs to have at least one file, and needs to not already be published.
@@ -151,10 +210,17 @@ class ZenodoDepositor:
         Args:
             deposition: the deposition you want to publish.
         """
-        raise NotImplementedError
+        url = deposition.links.publish
+        headers = {
+            "Authorization": f"bearer {self.publish_key}",
+            "Content-Type": "application/json",
+        }
+        response = await self.request(
+            "POST", url, log_label="Publishing deposition", headers=headers
+        )
+        return Deposition(**response)
 
-    # TODO (daz): should we return a success/failure flag instead of None/error?
-    def discard_deposition(self, deposition: Deposition) -> None:
+    async def discard_deposition(self, deposition: Deposition) -> None:
         """Discard a deposition.
 
         This deposition must either be un-published or in the editing state.
@@ -165,9 +231,17 @@ class ZenodoDepositor:
         Returns:
             None if success.
         """
-        raise NotImplementedError
+        url = deposition.links.discard
+        headers = {
+            "Authorization": f"bearer {self.publish_key}",
+            "Content-Type": "application/json",
+        }
+        response = await self.request(
+            "POST", url, log_label="Discarding deposition", headers=headers
+        )
+        return Deposition(**response)
 
-    def delete_file(self, deposition: Deposition, target: str) -> None:
+    async def delete_file(self, deposition: Deposition, target: str) -> None:
         """Delete a file from a deposition.
 
         Args:
@@ -177,23 +251,68 @@ class ZenodoDepositor:
         Returns:
             None if success.
         """
-        raise NotImplementedError
+        candidates = [f for f in deposition.files if f.filename == target]
+        if len(candidates) > 1:
+            raise RuntimeError(
+                f"More than one file matches the name {target}: {candidates}"
+            )
+        if len(candidates) == 0:
+            logger.info(f"No files matched {target}.")
+            return None
 
-    # TODO (daz): is data actually type BinaryIO?
-    def create_file(self, deposition: Deposition, target: str, data: IO) -> None:
+        response = await self.request(
+            "DELETE",
+            candidates[0].links.self,
+            parse_json=False,
+            log_label=f"Deleting {target} from deposition {deposition.id_}",
+            headers={"Authorization": f"bearer {self.upload_key}"},
+        )
+        return response
+
+    async def create_file(
+        self,
+        deposition: Deposition,
+        target: str,
+        data: BinaryIO,
+        force_api: str | None = None,
+    ) -> None:
         """Create a file in a deposition.
 
         Args:
             deposition: the deposition you are applying this change to.
             target: the filename of the file you want to delete.
             data: the actual data associated with the file.
+            force_api: force using one files API over another. The options are
+                "bucket" and "files"
 
         Returns:
             None if success.
         """
-        raise NotImplementedError
+        headers = {"Authorization": f"bearer {self.upload_key}"}
+        if deposition.links.bucket and force_api != "files":
+            url = f"{deposition.links.bucket}/{target}"
+            return await self.request(
+                "PUT",
+                url,
+                log_label=f"Uploading {target} to bucket",
+                data=data,
+                headers=headers,
+            )
+        elif deposition.links.files and force_api != "bucket":
+            url = f"{deposition.links.files}"
+            return await self.request(
+                "POST",
+                url,
+                log_label=f"Uploading {target} to files API",
+                data={"file": data, "name": target},
+                headers=headers,
+            )
+        else:
+            raise RuntimeError("No file or bucket link available for deposition.")
 
-    def update_file(self, deposition: Deposition, target: str, data: IO) -> None:
+    async def update_file(
+        self, deposition: Deposition, target: str, data: BinaryIO
+    ) -> None:
         """Update a file in a deposition.
 
         Args:
@@ -204,5 +323,5 @@ class ZenodoDepositor:
         Returns:
             None if success.
         """
-        self.delete_file(deposition, target)
-        self.create_file(deposition, target, data)
+        await self.delete_file(deposition, target)
+        return await self.create_file(deposition, target, data)
