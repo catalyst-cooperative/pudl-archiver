@@ -50,7 +50,7 @@ conda activate pudl-archiver
 A CLI is provided for creating and updating archives. The basic usage looks like:
 
 ```
-pudl_archiver {list_of_datasources}
+pudl_archiver --datasets {list_of_datasources}
 ```
 
 This command will download the latest available data and create archives for each
@@ -58,12 +58,15 @@ requested datasource requested. The supported datasources include `eia860`, `eia
 `eia_bulk_elec`, `epacems`, `epacamd_eia`, `ferc1`, `ferc2`, `ferc6`, `ferc60`,
 `ferc714`, `eia860m`.
 
-There are also two optional flags available, `--sandbox` and `--initialize`. The
-sandbox flag is used for testing. It will only interact with Zenodo's
-[sandbox](https://sandbox.zenodo.org/) instance. The initialize flag is used when
-creating an archive for a new dataset that doesn't currently exist on zenodo.
-If successful, this command will automatically add the new Zenodo DOI to the
-`dataset_doi.yaml` file.
+There are also four optional flags available:
+* `--sandbox`: used for testing. It will only interact with Zenodo's
+  [sandbox](https://sandbox.zenodo.org/) instance.
+* `--initialize`: used for creating an archive for a new dataset that doesn't
+  currently exist on zenodo. If successful, this command will automatically add
+  the new Zenodo DOI to the `dataset_doi.yaml` file.
+* `--dry-run`: used for testing, it ignores all Zenodo write operations.
+* `--all`: shortcut for archiving all datasets that we have defined archivers
+  for. Overrides `--datasets`.
 
 
 ## Adding a new dataset
@@ -111,5 +114,5 @@ You will need to run the initialize command to create a new zenodo deposition, a
 update the config file with the new DOI:
 
 ```
-pudl_archiver {new_dataset_name} --initialize
+pudl_archiver --datasets {new_dataset_name} --initialize
 ```
