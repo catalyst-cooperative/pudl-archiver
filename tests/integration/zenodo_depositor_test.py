@@ -155,7 +155,7 @@ async def test_full_zenodo_flow(depositor, deposition_metadata, upload_key):
     assert latest_deposition.state == "unsubmitted"
     assert latest_deposition.id_ == new_deposition.id_
 
-    # verify that the first version has the files we expect
+    # verify that the second version has the files we expect
     v2_files = latest_deposition.files
     assert len(v2_files) == 1
 
@@ -167,5 +167,3 @@ async def test_full_zenodo_flow(depositor, deposition_metadata, upload_key):
             download_link, headers={"Authorization": f"bearer {upload_key}"}
         )
         assert expected_contents == remote_contents.text.encode("utf-8")
-
-    # TODO (daz): tried discarding but ran into an internal server error... revisit someday

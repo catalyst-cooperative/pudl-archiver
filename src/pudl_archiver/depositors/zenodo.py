@@ -4,14 +4,13 @@ import logging
 from typing import BinaryIO
 
 import aiohttp
-import semantic_version
+import semantic_version  # type: ignore
 
 from pudl_archiver.zenodo.entities import Deposition, DepositionMetadata
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 
-# TODO (daz): start using mypy on this file.
 class ZenodoClientException(Exception):
     """Captures the JSON error information from Zenodo."""
 
@@ -58,8 +57,8 @@ class ZenodoDepositor:
             session: HTTP handler - we don't use it directly, it's wrapped in self.request.
             sandbox: whether to hit the sandbox Zenodo instance or the real one. Default True.
         """
-        self.upload_key = upload_key
-        self.publish_key = publish_key
+        self.auth_write = {"Authorization": f"Bearer {upload_key}"}
+        self.auth_actions = {"Authorization": f"Bearer {publish_key}"}
         self.request = self._make_requester(session)
 
         self.sandbox = sandbox
@@ -96,8 +95,7 @@ class ZenodoDepositor:
         url = f"{self.api_root}/deposit/depositions"
         headers = {
             "Content-Type": "application/json",
-            "Authorization": f"bearer {self.upload_key}",
-        }
+        } | self.auth_write
 
         payload = {
             "metadata": metadata.dict(
@@ -121,16 +119,13 @@ class ZenodoDepositor:
         """
         url = f"{self.api_root}/deposit/depositions"
         params = {"q": f'conceptdoi:"{concept_doi}"'}
-        headers = {
-            "Authorization": f"bearer {self.upload_key}",
-        }
 
         response = await self.request(
             "GET",
             url,
             f"Query depositions for {concept_doi}",
             params=params,
-            headers=headers,
+            headers=self.auth_write,
         )
         if len(response) > 1 and not self.sandbox:
             # TODO (daz): not convinced we can't just always pick the most recent one.
@@ -141,7 +136,7 @@ class ZenodoDepositor:
             "GET",
             f"{url}/{latest_deposition.id_}",
             log_label=f"Get freshest data for {latest_deposition.id_}",
-            headers=headers,
+            headers=self.auth_write,
         )
         return Deposition(**full_deposition_json)
 
@@ -161,14 +156,10 @@ class ZenodoDepositor:
         url = f"{self.api_root}/deposit/depositions/{deposition.id_}/actions/newversion"
 
         # Create the new version
-        headers = {
-            "Authorization": f"bearer {self.upload_key}",
-        }
-
         # When the API creates a new version, it does not return the new one.
         # It returns the old one with a link to the new one.
         response = await self.request(
-            "POST", url, log_label="Creating new version", headers=headers
+            "POST", url, log_label="Creating new version", headers=self.auth_write
         )
         old_deposition = Deposition(**response)
 
@@ -190,8 +181,7 @@ class ZenodoDepositor:
         new_deposition_url = old_deposition.links.latest_draft
         headers = {
             "Content-Type": "application/json",
-            "Authorization": f"bearer {self.upload_key}",
-        }
+        } | self.auth_write
 
         response = await self.request(
             "PUT",
@@ -212,32 +202,10 @@ class ZenodoDepositor:
         """
         url = deposition.links.publish
         headers = {
-            "Authorization": f"bearer {self.publish_key}",
             "Content-Type": "application/json",
-        }
+        } | self.auth_actions
         response = await self.request(
             "POST", url, log_label="Publishing deposition", headers=headers
-        )
-        return Deposition(**response)
-
-    async def discard_deposition(self, deposition: Deposition) -> None:
-        """Discard a deposition.
-
-        This deposition must either be un-published or in the editing state.
-
-        Args:
-            deposition: the deposition you want to discard.
-
-        Returns:
-            None if success.
-        """
-        url = deposition.links.discard
-        headers = {
-            "Authorization": f"bearer {self.publish_key}",
-            "Content-Type": "application/json",
-        }
-        response = await self.request(
-            "POST", url, log_label="Discarding deposition", headers=headers
         )
         return Deposition(**response)
 
@@ -265,7 +233,7 @@ class ZenodoDepositor:
             candidates[0].links.self,
             parse_json=False,
             log_label=f"Deleting {target} from deposition {deposition.id_}",
-            headers={"Authorization": f"bearer {self.upload_key}"},
+            headers=self.auth_write,
         )
         return response
 
@@ -288,7 +256,6 @@ class ZenodoDepositor:
         Returns:
             None if success.
         """
-        headers = {"Authorization": f"bearer {self.upload_key}"}
         if deposition.links.bucket and force_api != "files":
             url = f"{deposition.links.bucket}/{target}"
             return await self.request(
@@ -296,7 +263,7 @@ class ZenodoDepositor:
                 url,
                 log_label=f"Uploading {target} to bucket",
                 data=data,
-                headers=headers,
+                headers=self.auth_write,
             )
         elif deposition.links.files and force_api != "bucket":
             url = f"{deposition.links.files}"
@@ -305,7 +272,7 @@ class ZenodoDepositor:
                 url,
                 log_label=f"Uploading {target} to files API",
                 data={"file": data, "name": target},
-                headers=headers,
+                headers=self.auth_write,
             )
         else:
             raise RuntimeError("No file or bucket link available for deposition.")
