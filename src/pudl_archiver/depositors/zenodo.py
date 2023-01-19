@@ -36,11 +36,7 @@ class ZenodoClientException(Exception):
 
 
 class ZenodoDepositor:
-    """Deposition actions within Zenodo.
-
-    * manipulate depositions & their versions
-    * manipulate files within depositions
-    """
+    """Act on depositions & deposition files within Zenodo."""
 
     def __init__(
         self,
@@ -49,7 +45,7 @@ class ZenodoDepositor:
         session: aiohttp.ClientSession,
         sandbox: bool = True,
     ):
-        """Constructor.
+        """Create a new ZenodoDepositor.
 
         Args:
             upload_key: the Zenodo API key that gives you upload rights.
@@ -73,7 +69,20 @@ class ZenodoDepositor:
 
         async def requester(
             method: str, url: str, log_label: str, parse_json: bool = True, **kwargs
-        ):
+        ) -> dict | aiohttp.ClientResponse:
+            """Make requests to Zenodo.
+
+            Args:
+                method: HTTP method - "GET", "POST", etc.
+                url: the URL you are going to hit.
+                log_label: a string describing what this request does, for
+                    logging purposes.
+                parse_json: whether or not to always parse the response as a
+                    JSON object. Default to True.
+
+            Returns:
+                Either the parsed JSON or the raw aiohttp.ClientResponse object.
+            """
             logger.info(f"{method} {url} - {log_label}")
             async with session.request(method, url, **kwargs) as response:
                 if response.status >= 400:
@@ -91,6 +100,9 @@ class ZenodoDepositor:
 
         Args:
             metadata: a metadata, to make a deposition with.
+
+        Returns:
+            The brand new deposition - unpublished and with no files in it.
         """
         url = f"{self.api_root}/deposit/depositions"
         headers = {
@@ -110,12 +122,19 @@ class ZenodoDepositor:
         # Ignore content type
         return Deposition(**response)
 
-    # TODO (daz): this is more "query" deposition than "get" deposition, right?
     async def get_deposition(self, concept_doi: str) -> Deposition:
-        """Get a deposition from a concept DOI.
+        """Get the latest deposition associated with a concept DOI.
+
+        Sometimes the deposition information that comes back from the concept
+        DOI query is incomplete, so we use the record ID that is returned from
+        that to make another request for the "full" data.
 
         Args:
-            concept_doi: the DOI for the concept - gets the latest associated DOI.
+            concept_doi: the DOI for the concept - gets the latest associated
+                DOI.
+
+        Returns:
+            The latest deposition associated with the concept DOI.
         """
         url = f"{self.api_root}/deposit/depositions"
         params = {"q": f'conceptdoi:"{concept_doi}"'}
@@ -142,6 +161,9 @@ class ZenodoDepositor:
 
     async def get_new_version(self, deposition: Deposition) -> Deposition:
         """Get a new version of a deposition.
+
+        First creates a new version, which is a snapshot of the old one, then
+        updates that version with a new version number.
 
         Args:
             deposition: the deposition you want to get the new version of.
@@ -245,6 +267,9 @@ class ZenodoDepositor:
         force_api: str | None = None,
     ) -> None:
         """Create a file in a deposition.
+
+        Attempts to use the new "bucket" API over the "files" API, but you can
+        force it to use "files" if desired.
 
         Args:
             deposition: the deposition you are applying this change to.
