@@ -8,6 +8,7 @@ from typing import Literal
 from pydantic import AnyHttpUrl, BaseModel, Field, constr, validator
 
 from pudl.metadata.classes import Contributor, DataSource
+from pudl.metadata.constants import CONTRIBUTORS
 
 Doi = constr(regex=r"10\.5281/zenodo\.\d{6,7}")
 SandboxDoi = constr(regex=r"10\.5072/zenodo\.\d{6,7}")
@@ -71,6 +72,15 @@ class DepositionMetadata(BaseModel):
     def from_data_source(cls, data_source_id: str) -> "DepositionMetadata":
         """Construct deposition metadata object from PUDL DataSource model."""
         data_source = DataSource.from_id(data_source_id)
+        creators = [
+            DepositionCreator.from_contributor(contributor)
+            for contributor in data_source.contributors
+        ]
+
+        if not creators:
+            creators = [
+                DepositionCreator.from_contributor(CONTRIBUTORS["catalyst-cooperative"])
+            ]
 
         return cls(
             title=f"PUDL Raw {data_source.title}",
