@@ -90,9 +90,7 @@ class DepositionMetadata(BaseModel):
 
         if not creators:
             creators = [
-                DepositionCreator.from_contributor(
-                    Contributor.from_id("catalyst-cooperative")
-                )
+                DepositionCreator.from_contributor(CONTRIBUTORS["catalyst-cooperative"])
             ]
 
         return cls(
