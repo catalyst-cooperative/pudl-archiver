@@ -35,7 +35,7 @@ class Eia860MArchiver(AbstractDatasetArchiver):
         url = f"https://eia.gov/{link}"
         year = match.group(2)
         month = self.month_map[match.group(1)]
-        download_path = self.download_directory / f"eia860m-{year}-{month}.zip"
+        download_path = self.download_directory / f"eia860m-{year}-{month:02}.zip"
         await self.download_zipfile(url, download_path)
 
         return ResourceInfo(
