@@ -9,6 +9,7 @@ from typing import Literal
 from pydantic import AnyHttpUrl, BaseModel, ConstrainedStr, Field, validator
 
 from pudl.metadata.classes import Contributor, DataSource
+from pudl.metadata.constants import CONTRIBUTORS
 
 
 class Doi(ConstrainedStr):
