@@ -1,7 +1,7 @@
 """Handle all deposition actions within Zenodo."""
 import json
 import logging
-from typing import BinaryIO
+from typing import BinaryIO, Literal
 
 import aiohttp
 import semantic_version  # type: ignore
@@ -68,7 +68,11 @@ class ZenodoDepositor:
         """Wraps our session requests with some Zenodo-specific error handling."""
 
         async def requester(
-            method: str, url: str, log_label: str, parse_json: bool = True, **kwargs
+            method: Literal["GET", "POST", "PUT", "DELETE"],
+            url: str,
+            log_label: str,
+            parse_json: bool = True,
+            **kwargs,
         ) -> dict | aiohttp.ClientResponse:
             """Make requests to Zenodo.
 
@@ -264,7 +268,7 @@ class ZenodoDepositor:
         deposition: Deposition,
         target: str,
         data: BinaryIO,
-        force_api: str | None = None,
+        force_api: Literal["bucket", "files"] | None = None,
     ) -> None:
         """Create a file in a deposition.
 
