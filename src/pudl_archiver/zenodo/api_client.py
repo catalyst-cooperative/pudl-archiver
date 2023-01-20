@@ -388,10 +388,8 @@ class ZenodoDepositionInterface:
             file: DepositionFile metadata pertaining to file to be deleted.
         """
         logger.info(f"DELETE file {file.filename} from {file.links.self}")
-        await self._check_resp(
-            await self.session.delete(
-                file.links.self, params={"access_token": self.upload_key}
-            )
+        await self.session.delete(
+            file.links.self, params={"access_token": self.upload_key}
         )
 
     async def upload(self, file: BinaryIO, filename: str):
