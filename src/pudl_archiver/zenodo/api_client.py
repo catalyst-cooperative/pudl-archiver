@@ -1,6 +1,5 @@
 """Core routines for archiving raw data packages on Zenodo."""
 import io
-import json
 import logging
 from contextlib import asynccontextmanager
 from hashlib import md5
@@ -8,11 +7,11 @@ from pathlib import Path
 from typing import BinaryIO
 
 import aiohttp
-import semantic_version
 import yaml
 from pydantic import BaseModel
 
 from pudl_archiver.archivers.classes import ResourceInfo
+from pudl_archiver.depositors import ZenodoDepositor
 from pudl_archiver.frictionless import DataPackage
 from pudl_archiver.zenodo.entities import (
     Deposition,
@@ -110,11 +109,13 @@ class ZenodoDepositionInterface:
         self.upload_key = upload_key
         self.publish_key = publish_key
 
+        self.depositor = ZenodoDepositor(upload_key, publish_key, session, self.testing)
+
         # Map resource name to resource partitions
         self.resource_parts: dict[str, dict] = {}
 
-        self.deposition: Deposition = None
-        self.new_deposition: Deposition = None
+        self.deposition: Deposition | None = None
+        self.new_deposition: Deposition | None = None
         self.deposition_files: dict[str, DepositionFile] = {}
 
         self.dry_run = dry_run
@@ -161,9 +162,11 @@ class ZenodoDepositionInterface:
             if not doi:
                 raise RuntimeError("Must pass a valid DOI if create_new is False")
 
-            interface.deposition = await interface.get_deposition(doi)
+            interface.deposition = await interface.depositor.get_deposition(doi)
 
-        interface.new_deposition = await interface.new_deposition_version()
+        interface.new_deposition = await interface.depositor.get_new_version(
+            interface.deposition
+        )
 
         # Map file name to file metadata for all files in deposition
         interface.deposition_files = await interface.remote_fileinfo(
@@ -201,7 +204,7 @@ class ZenodoDepositionInterface:
 
         return {file["filename"]: DepositionFile(**file) for file in raw_json}
 
-    async def create_deposition(self, data_source_id: str):
+    async def create_deposition(self, data_source_id: str) -> Deposition:
         """Create a Zenodo deposition resource.
 
         This should only be called once for a given data source.  The deposition will be
@@ -215,23 +218,8 @@ class ZenodoDepositionInterface:
             Deposition object, per
             https://developers.zenodo.org/?python#depositions
         """
-        url = f"{self.api_root}/deposit/depositions"
-        params = {"access_token": self.upload_key}
-        headers = {"Content-Type": "application/json"}
-
         metadata = DepositionMetadata.from_data_source(data_source_id)
-        payload = {
-            "metadata": metadata.dict(
-                by_alias=True,
-                exclude={"publication_date", "doi", "prereserve_doi"},
-            )
-        }
-
-        async with self.session.post(
-            url, params=params, json=payload, headers=headers
-        ) as response:
-            # Ignore content type
-            return Deposition(**await self._check_resp(response, content_type=None))
+        return await self.depositor.create_deposition(metadata)
 
     async def add_files(self, resources: dict[str, ResourceInfo]):
         """Add all downloaded files to zenodo deposition.
@@ -300,87 +288,6 @@ class ZenodoDepositionInterface:
                 with upload.source.open("rb") as f:
                     await self.upload(f, upload.dest)
         self.uploads = []
-
-    async def get_deposition(self, concept_doi: str):
-        """Get data for a single Zenodo Deposition based on the provided query.
-
-        See https://developers.zenodo.org for more information.
-
-        Args:
-            concept_doi: Concept DOI for desired data source.
-
-        Returns:
-            Deposition metadata pertaining to the latest version returned by Zenodo api.
-        """
-        url = f"{self.api_root}/deposit/depositions"
-        params = {"q": f'conceptdoi:"{concept_doi}"', "access_token": self.upload_key}
-
-        logger.info(f"GET {url} - get deposition")
-        async with self.session.get(url, params=params) as response:
-            # Zenodo will return a list of depositions
-            raw_json = await self._check_resp(response)
-
-            # By using the conceptdoi query there should only be a single deposition returned
-            if len(raw_json) > 1:
-                if self.testing:
-                    sorted_json = sorted(raw_json, key=lambda d: d["id"])
-                    dep_json = sorted_json[-1]
-                else:
-                    raise RuntimeError(
-                        "Error Zenodo should only return a single deposition"
-                    )
-            else:
-                dep_json = raw_json[0]
-
-            return Deposition(**dep_json)
-
-    async def new_deposition_version(self):
-        """Produce a new version for a given deposition archive.
-
-        Returns:
-            Deposition object, per
-            https://developers.zenodo.org/?python#depositions
-        """
-        if not self.deposition.submitted:
-            return self.deposition
-
-        url = f"{self.api_root}/deposit/depositions/{self.deposition.id_}/actions/newversion"
-
-        # Create the new version
-        params = {"access_token": self.upload_key}
-        logger.info(f"POST to {url} - create new version")
-        async with self.session.post(url, params=params) as response:
-            old_deposition = Deposition(**await self._check_resp(response))
-
-        # When the API creates a new version, it does not return the new one.
-        # It returns the old one with a link to the new one.
-        source_metadata = old_deposition.metadata.dict(by_alias=True)
-        metadata = {}
-
-        for key, val in source_metadata.items():
-            if key not in ["doi", "prereserve_doi", "publication_date"]:
-                metadata[key] = val
-
-        previous = semantic_version.Version(source_metadata["version"])
-        version_info = previous.next_major()
-        logger.info(
-            f"Previous version (in deposition {old_deposition.id_}) was {previous}, bumped to {version_info}"
-        )
-
-        metadata["version"] = str(version_info)
-
-        # Update metadata of new deposition with new version info
-        data = json.dumps({"metadata": metadata})
-
-        # Get url to newest deposition
-        new_deposition_url = old_deposition.links.latest_draft
-        headers = {"Content-Type": "application/json"}
-
-        logger.info(f"PUT to {new_deposition_url} - create new version")
-        async with self.session.put(
-            new_deposition_url, params=params, data=data, headers=headers
-        ) as response:
-            return Deposition(**await self._check_resp(response))
 
     async def delete_file(self, file: DepositionFile):
         """Delete file from zenodo deposition.
