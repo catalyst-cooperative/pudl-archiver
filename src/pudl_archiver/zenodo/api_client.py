@@ -278,29 +278,17 @@ class ZenodoDepositionInterface:
             logger.info("Dry run, aborting.")
             return
         for file_info in self.deletes:
-            await self.delete_file(file_info)
+            await self.depositor.delete_file(self.deposition, file_info.filename)
         self.deletes = []
-
         for upload in self.uploads:
             if isinstance(upload.source, io.IOBase):
-                await self.upload(upload.source, upload.dest)
+                await self.depositor.create_file(
+                    self.deposition, upload.dest, upload.source
+                )
             else:
                 with upload.source.open("rb") as f:
-                    await self.upload(f, upload.dest)
+                    await self.depositor.create_file(self.deposition, upload.dest, f)
         self.uploads = []
-
-    async def delete_file(self, file: DepositionFile):
-        """Delete file from zenodo deposition.
-
-        Args:
-            file: DepositionFile metadata pertaining to file to be deleted.
-        """
-        logger.info(f"DELETE file {file.filename} from {file.links.self}")
-        await self._check_resp(
-            await self.session.delete(
-                file.links.self, params={"access_token": self.upload_key}
-            )
-        )
 
     async def upload(self, file: BinaryIO, filename: str):
         """Upload a file for the given deposition.
