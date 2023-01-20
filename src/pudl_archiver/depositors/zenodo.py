@@ -150,9 +150,10 @@ class ZenodoDepositor:
             params=params,
             headers=self.auth_write,
         )
-        if len(response) > 1 and not self.sandbox:
-            # TODO (daz): not convinced we can't just always pick the most recent one.
-            raise RuntimeError("Zenodo should only return a single deposition")
+        if len(response) > 1:
+            logger.info(
+                f"{concept_doi} points at multiple records: {[r['id'] for r in response]}"
+            )
 
         latest_deposition = Deposition(**sorted(response, key=lambda d: d["id"])[-1])
         full_deposition_json = await self.request(
