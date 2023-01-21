@@ -23,30 +23,6 @@ from pudl_archiver.zenodo.entities import (
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 
-class ZenodoClientException(Exception):
-    """Captures the JSON error information from Zenodo."""
-
-    def __init__(self, kwargs):
-        """Constructor.
-
-        Args:
-            kwargs: dictionary with "response" mapping to the actual
-                aiohttp.ClientResponse and "json" mapping to the JSON content.
-        """
-        self.kwargs = kwargs
-        self.status = kwargs["response"].status
-        self.message = kwargs["json"].get("message", {})
-        self.errors = kwargs["json"].get("errors", {})
-
-    def __str__(self):
-        """The JSON has all we really care about."""
-        return f"ZenodoClientException({self.kwargs['json']})"
-
-    def __repr__(self):
-        """But the kwargs are useful for recreating this object."""
-        return f"ZenodoClientException({repr(self.kwargs)})"
-
-
 class _UploadSpec(BaseModel):
     """Defines an upload that will be done by ZenodoDepositionInterface."""
 
@@ -173,17 +149,6 @@ class ZenodoDepositionInterface:
         )
 
         return interface
-
-    async def _check_resp(self, response, **kwargs):
-        """Checks Zenodo responses for extra error information.
-
-        It's hard to pass this back into the aiohttp.ClientResponseError so
-        we do this instead.
-        """
-        resp_json = await response.json(**kwargs)
-        if response.status >= 400:
-            raise ZenodoClientException({"response": response, "json": resp_json})
-        return resp_json
 
     async def remote_fileinfo(self, deposition: Deposition):
         """Return info on all files contained in deposition.
