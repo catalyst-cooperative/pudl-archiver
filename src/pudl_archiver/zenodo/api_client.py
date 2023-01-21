@@ -271,16 +271,18 @@ class ZenodoDepositionInterface:
             logger.info("Dry run, aborting.")
             return
         for file_info in self.deletes:
-            await self.depositor.delete_file(self.deposition, file_info.filename)
+            await self.depositor.delete_file(self.new_deposition, file_info.filename)
         self.deletes = []
         for upload in self.uploads:
             if isinstance(upload.source, io.IOBase):
                 await self.depositor.create_file(
-                    self.deposition, upload.dest, upload.source
+                    self.new_deposition, upload.dest, upload.source
                 )
             else:
                 with upload.source.open("rb") as f:
-                    await self.depositor.create_file(self.deposition, upload.dest, f)
+                    await self.depositor.create_file(
+                        self.new_deposition, upload.dest, f
+                    )
         self.uploads = []
 
     async def update_datapackage(self, resources: dict[str, ResourceInfo]):
@@ -387,9 +389,10 @@ class ZenodoClient:
             )
             raise e
 
-        deposition = await deposition_interface.depositor.publish_deposition(
-            deposition_interface.new_deposition
-        )
+        if deposition_interface.changed:
+            deposition = await deposition_interface.depositor.publish_deposition(
+                deposition_interface.new_deposition
+            )
 
         if initialize:
             # Get new DOI and update settings
