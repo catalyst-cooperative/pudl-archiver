@@ -4,7 +4,6 @@ import logging
 from contextlib import asynccontextmanager
 from hashlib import md5
 from pathlib import Path
-from typing import BinaryIO
 
 import aiohttp
 import yaml
@@ -267,6 +266,7 @@ class ZenodoDepositionInterface:
 
         self.changed = len(self.uploads or self.deletes) > 0
         await self._apply_changes()
+        self.new_deposition = await self.depositor.get_record(self.new_deposition.id_)
         await self.update_datapackage(resources)
         await self._apply_changes()
 
@@ -290,35 +290,6 @@ class ZenodoDepositionInterface:
                     await self.depositor.create_file(self.deposition, upload.dest, f)
         self.uploads = []
 
-    async def upload(self, file: BinaryIO, filename: str):
-        """Upload a file for the given deposition.
-
-        Attempt using the bucket api and fall back on the file api.
-
-        Args:
-            file: File like object.
-            filename: the desired file name.
-        """
-        params = {"access_token": self.upload_key}
-        if self.new_deposition.links.bucket:
-            url = f"{self.new_deposition.links.bucket}/{filename}"
-            logger.info(f"PUT file {filename} to Zenodo url {url}.")
-            raw_json = await self._check_resp(
-                await self.session.put(url, params=params, data=file)
-            )
-            logger.debug(f"Response json: {raw_json}")
-        elif self.new_deposition.links.files:
-            url = f"{self.new_deposition.links.files}"
-            logger.info(f"POSTing file {filename} to Zenodo url {url}.")
-            raw_json = await self._check_resp(
-                await self.session.post(
-                    url, params=params, data={"file": file, "name": filename}
-                )
-            )
-            logger.debug(f"Response json: {raw_json}")
-        else:
-            raise RuntimeError("No file or bucket link available for deposition.")
-
     async def update_datapackage(self, resources: dict[str, ResourceInfo]):
         """Create new frictionless datapackage for deposition.
 
@@ -332,16 +303,11 @@ class ZenodoDepositionInterface:
         if not self.changed:
             return None
 
-        logger.info(f"Creating new datapackage.json for {self.data_source_id}")
-        url = self.new_deposition.links.files
-        params = {"access_token": self.upload_key}
+        if self.new_deposition is None:
+            return
 
-        logger.info(f"GET {url} - getting file list for datapackage")
-        async with self.session.get(url, params=params) as response:
-            files = {
-                file["filename"]: DepositionFile(**file)
-                for file in await self._check_resp(response)
-            }
+        logger.info(f"Creating new datapackage.json for {self.data_source_id}")
+        files = {file.filename: file for file in self.new_deposition.files}
 
         if "datapackage.json" in files:
             self.deletes.append(files["datapackage.json"])
@@ -358,33 +324,6 @@ class ZenodoDepositionInterface:
         self.uploads.append(
             _UploadSpec(source=datapackage_json, dest="datapackage.json")
         )
-
-    async def publish(self):
-        """Publish new deposition or discard if it hasn't been updated.
-
-        Returns:
-            Published Deposition.
-        """
-        if not self.changed:
-            logger.info(f"Nothing changed in {self.data_source_id}, not publishing.")
-            return
-
-        if self.dry_run:
-            logger.info(
-                f"Dry run, not publishing uploads {self.uploads} and deletes {self.deletes}."
-            )
-            return
-
-        logger.info(
-            f"Publishing doi {self.new_deposition.links.publish} for {self.data_source_id}"
-        )
-        url = self.new_deposition.links.publish
-        params = {"access_token": self.publish_key}
-        headers = {"Content-Type": "application/json"}
-
-        logger.info(f"POST {url}")
-        async with self.session.post(url, params=params, headers=headers) as response:
-            return Deposition(**await self._check_resp(response))
 
 
 class ZenodoClient:
@@ -455,7 +394,9 @@ class ZenodoClient:
             )
             raise e
 
-        deposition = await deposition_interface.publish()
+        deposition = await deposition_interface.depositor.publish_deposition(
+            deposition_interface.new_deposition
+        )
 
         if initialize:
             # Get new DOI and update settings
