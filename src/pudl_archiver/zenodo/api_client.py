@@ -194,14 +194,7 @@ class ZenodoDepositionInterface:
         Returns:
             Dictionary mapping filenames to DepositionFile metadata objects.
         """
-        url = deposition.links.files
-        params = {"access_token": self.upload_key}
-
-        logger.info(f"GET {url}")
-        async with self.session.get(url, params=params) as response:
-            raw_json = await self._check_resp(response)
-
-        return {file["filename"]: DepositionFile(**file) for file in raw_json}
+        return {f.filename: f for f in deposition.files}
 
     async def create_deposition(self, data_source_id: str) -> Deposition:
         """Create a Zenodo deposition resource.
