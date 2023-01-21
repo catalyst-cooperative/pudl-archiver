@@ -122,6 +122,7 @@ class ZenodoDepositionInterface:
         # upload takes (source: IOBase | Path, dest: str) tuples; delete just takes the str key to delete.
         self.uploads: list[_UploadSpec] = []
         self.deletes: list[str] = []
+        self.changed = False
 
     @classmethod
     async def open_interface(
