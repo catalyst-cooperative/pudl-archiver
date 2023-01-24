@@ -5,12 +5,22 @@ See https://developers.zenodo.org/#entities for more info.
 import datetime
 from typing import Literal
 
-from pydantic import AnyHttpUrl, BaseModel, Field, constr, validator
+from pydantic import AnyHttpUrl, BaseModel, ConstrainedStr, Field, validator
 
 from pudl.metadata.classes import Contributor, DataSource
 
-Doi = constr(regex=r"10\.5281/zenodo\.\d{6,7}")
-SandboxDoi = constr(regex=r"10\.5072/zenodo\.\d{6,7}")
+
+class Doi(ConstrainedStr):
+    """The DOI format for production Zenodo."""
+
+    regex = r"10\.5281/zenodo\.\d{6,7}"
+
+
+class SandboxDoi(ConstrainedStr):
+    """The DOI format for sandbox Zenodo."""
+
+    regex = r"10\.5072/zenodo\.\d{6,7}"
+
 
 PUDL_DESCRIPTION = """
 <p>This archive contains raw input data for the Public Utility Data Liberation (PUDL)

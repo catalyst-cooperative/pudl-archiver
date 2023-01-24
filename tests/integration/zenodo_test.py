@@ -70,7 +70,7 @@ def publish_key(dotenv):
 @pytest_asyncio.fixture()
 async def session():
     """Create async http session."""
-    async with aiohttp.ClientSession(raise_for_status=True) as session:
+    async with aiohttp.ClientSession(raise_for_status=False) as session:
         yield session
 
 

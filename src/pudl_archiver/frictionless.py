@@ -1,4 +1,5 @@
 """Core routines for frictionless data package construction."""
+from collections.abc import Iterable
 from datetime import datetime
 from pathlib import Path
 
@@ -78,7 +79,10 @@ class DataPackage(BaseModel):
 
     @classmethod
     def from_filelist(
-        cls, name: str, files: list[DepositionFile], resources: dict[str, ResourceInfo]
+        cls,
+        name: str,
+        files: Iterable[DepositionFile],
+        resources: dict[str, ResourceInfo],
     ) -> "DataPackage":
         """Create a frictionless datapackage from a list of files and partitions.
 

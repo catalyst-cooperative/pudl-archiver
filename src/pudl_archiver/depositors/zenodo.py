@@ -156,13 +156,21 @@ class ZenodoDepositor:
             )
 
         latest_deposition = Deposition(**sorted(response, key=lambda d: d["id"])[-1])
-        full_deposition_json = await self.request(
+        return await self.get_record(latest_deposition.id_)
+
+    async def get_record(self, rec_id: int) -> Deposition:
+        """Get a deposition by its record ID directly instead of through concept.
+
+        Args:
+            rec_id: The record ID of the deposition you would like to get.
+        """
+        response = await self.request(
             "GET",
-            f"{url}/{latest_deposition.id_}",
-            log_label=f"Get freshest data for {latest_deposition.id_}",
+            f"{self.api_root}/deposit/depositions/{rec_id}",
+            log_label=f"Get deposition for {rec_id}",
             headers=self.auth_write,
         )
-        return Deposition(**full_deposition_json)
+        return Deposition(**response)
 
     async def get_new_version(self, deposition: Deposition) -> Deposition:
         """Get a new version of a deposition.
