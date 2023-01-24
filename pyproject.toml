@@ -33,6 +33,8 @@ dev = [
     "isort>=5.0,<5.11",  # Standardized import sorting
     "tox>=3.20,<3.27",  # Python test environment manager
     "twine>=3.3,<4.1",  # Used to make releases to PyPI
+    "mypy",
+    "types-requests",
 ]
 
 
