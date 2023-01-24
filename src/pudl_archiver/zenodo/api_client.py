@@ -122,6 +122,7 @@ class ZenodoDepositionInterface:
         # upload takes (source: IOBase | Path, dest: str) tuples; delete just takes the str key to delete.
         self.uploads: list[_UploadSpec] = []
         self.deletes: list[str] = []
+        self.changed = False
 
     @classmethod
     async def open_interface(
@@ -232,10 +233,6 @@ class ZenodoDepositionInterface:
             # Ignore content type
             return Deposition(**await self._check_resp(response, content_type=None))
 
-    def changed(self) -> bool:
-        """Whether there are changes between the old deposition and the new one."""
-        return self.uploads or self.deletes
-
     async def add_files(self, resources: dict[str, ResourceInfo]):
         """Add all downloaded files to zenodo deposition.
 
@@ -280,8 +277,9 @@ class ZenodoDepositionInterface:
             if filename not in resources and filename != "datapackage.json":
                 self.deletes.append(file_info)
 
+        self.changed = len(self.uploads or self.deletes) > 0
+        await self._apply_changes()
         await self.update_datapackage(resources)
-
         await self._apply_changes()
 
     async def _apply_changes(self):
@@ -293,12 +291,15 @@ class ZenodoDepositionInterface:
             return
         for file_info in self.deletes:
             await self.delete_file(file_info)
+        self.deletes = []
+
         for upload in self.uploads:
             if isinstance(upload.source, io.IOBase):
                 await self.upload(upload.source, upload.dest)
             else:
                 with upload.source.open("rb") as f:
                     await self.upload(f, upload.dest)
+        self.uploads = []
 
     async def get_deposition(self, concept_doi: str):
         """Get data for a single Zenodo Deposition based on the provided query.
@@ -388,10 +389,8 @@ class ZenodoDepositionInterface:
             file: DepositionFile metadata pertaining to file to be deleted.
         """
         logger.info(f"DELETE file {file.filename} from {file.links.self}")
-        self._check_resp(
-            await self.session.delete(
-                file.links.self, params={"access_token": self.upload_key}
-            )
+        await self.session.delete(
+            file.links.self, params={"access_token": self.upload_key}
         )
 
     async def upload(self, file: BinaryIO, filename: str):
@@ -433,7 +432,7 @@ class ZenodoDepositionInterface:
             Updated Deposition.
         """
         # If nothing has changed, don't add new datapackage
-        if not self.changed():
+        if not self.changed:
             return None
 
         logger.info(f"Creating new datapackage.json for {self.data_source_id}")
@@ -469,7 +468,7 @@ class ZenodoDepositionInterface:
         Returns:
             Published Deposition.
         """
-        if not self.changed():
+        if not self.changed:
             logger.info(f"Nothing changed in {self.data_source_id}, not publishing.")
             return
 
