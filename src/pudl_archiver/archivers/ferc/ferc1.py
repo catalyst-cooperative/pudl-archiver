@@ -42,5 +42,5 @@ class Ferc1Archiver(AbstractDatasetArchiver):
         await self.download_zipfile(url, download_path)
 
         return ResourceInfo(
-            local_path=download_path, partitions={"year": year, "data_format": "dbf"}
+            local_path=download_path, partitions={"year": year, "data_format": "DBF"}
         )

@@ -31,13 +31,13 @@ class Eia860MArchiver(AbstractDatasetArchiver):
     async def get_year_month_resource(
         self, link: str, match: typing.Match
     ) -> tuple[Path, dict]:
-        """Download zip file."""
+        """Download xlsx file."""
         url = f"https://eia.gov/{link}"
         year = match.group(2)
         month = self.month_map[match.group(1)]
-        download_path = self.download_directory / f"eia860m-{year}-{month}.zip"
-        await self.download_zipfile(url, download_path)
+        download_path = self.download_directory / f"eia860m-{year}-{month:02}.xlsx"
+        await self.download_file(url, download_path)
 
         return ResourceInfo(
-            local_path=download_path, partitions={"year": year, "month": month}
+            local_path=download_path, partitions={"year_month": f"{year}-{month:02}"}
         )
