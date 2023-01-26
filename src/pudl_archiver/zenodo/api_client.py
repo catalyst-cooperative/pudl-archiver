@@ -60,6 +60,9 @@ class ZenodoDepositionInterface:
         upload_key: str,
         publish_key: str,
         api_root: str,
+        dataset_settings: dict[str, DatasetSettings],
+        deposition_settings_path: Path,
+        create_new: bool = False,
         dry_run: bool = True,
     ):
         """Prepare the ZenodoStorage interface.
@@ -97,8 +100,12 @@ class ZenodoDepositionInterface:
         # We accumulate changes in a changeset, then apply - makes dry runs and testing easier.
         # upload takes (source: IOBase | Path, dest: str) tuples; delete just takes the str key to delete.
         self.uploads: list[_UploadSpec] = []
-        self.deletes: list[str] = []
+        self.deletes: list[DepositionFile] = []
         self.changed = False
+
+        self.create_new = create_new
+        self.dataset_settings = dataset_settings
+        self.deposition_settings_path = deposition_settings_path
 
     @classmethod
     async def open_interface(
@@ -108,9 +115,12 @@ class ZenodoDepositionInterface:
         upload_key: str,
         publish_key: str,
         api_root: str,
+        dataset_settings: dict[str, DatasetSettings],
+        deposition_settings_path: Path,
         doi: str | None = None,
         create_new: bool = False,
         dry_run: bool = True,
+        testing: bool = True,
     ):
         """Create deposition interface to existing zenodo deposition.
 
@@ -125,15 +135,25 @@ class ZenodoDepositionInterface:
 
         Returns:
             ZenodoDepositionInterface
-
         """
         interface = cls(
-            data_source_id, session, upload_key, publish_key, api_root, dry_run=dry_run
+            data_source_id,
+            session,
+            upload_key,
+            publish_key,
+            api_root,
+            dataset_settings,
+            deposition_settings_path,
+            create_new=create_new,
+            dry_run=dry_run,
         )
 
         if create_new:
+            doi = None
             interface.deposition = await interface.create_deposition(data_source_id)
         else:
+            settings = dataset_settings[data_source_id]
+            doi = settings.sandbox_doi if testing else settings.production_doi
             if not doi:
                 raise RuntimeError("Must pass a valid DOI if create_new is False")
 
@@ -195,6 +215,18 @@ class ZenodoDepositionInterface:
         Returns:
             Updated Deposition object.
         """
+        self._generate_changes(resources)
+        await self._apply_changes()
+        self.new_deposition = await self.depositor.get_record(self.new_deposition.id_)
+        await self.update_datapackage(resources)
+        await self._apply_changes()
+
+        if self.changed:
+            published = await self.depositor.publish_deposition(self.new_deposition)
+            if self.create_new:
+                self._update_dataset_settings(published)
+
+    def _generate_changes(self, resources):
         for name, resource in resources.items():
             filepath = resource.local_path
             if name not in self.deposition_files:
@@ -223,10 +255,6 @@ class ZenodoDepositionInterface:
                 self.deletes.append(file_info)
 
         self.changed = len(self.uploads or self.deletes) > 0
-        await self._apply_changes()
-        self.new_deposition = await self.depositor.get_record(self.new_deposition.id_)
-        await self.update_datapackage(resources)
-        await self._apply_changes()
 
     async def _apply_changes(self):
         """Actually upload and delete what we listed in self.uploads/deletes."""
@@ -249,6 +277,32 @@ class ZenodoDepositionInterface:
                         self.new_deposition, upload.dest, f
                     )
         self.uploads = []
+
+    def _update_dataset_settings(self, published_deposition):
+        # Get new DOI and update settings
+        # TODO (daz): split this IO out too.
+        if self.testing:
+            sandbox_doi = published_deposition.conceptdoi
+            production_doi = self.dataset_settings.get(
+                self.data_source_id, DatasetSettings()
+            ).production_doi
+        else:
+            production_doi = published_deposition.conceptdoi
+            sandbox_doi = self.dataset_settings.get(
+                self.data_source_id, DatasetSettings()
+            ).sandbox_doi
+
+        self.dataset_settings[self.data_source_id] = DatasetSettings(
+            sandbox_doi=sandbox_doi, production_doi=production_doi
+        )
+
+        # Update doi settings YAML
+        with open(self.deposition_settings_path, "w") as f:
+            raw_settings = {
+                name: settings.dict()
+                for name, settings in self.dataset_settings.items()
+            }
+            yaml.dump(raw_settings, f)
 
     async def update_datapackage(self, resources: dict[str, ResourceInfo]):
         """Create new frictionless datapackage for deposition.
@@ -329,57 +383,16 @@ class ZenodoClient:
             initialize: Flag to create new deposition.
             dry_run: True skips all Zenodo writes.
         """
-        if initialize:
-            doi = None
-        else:
-            settings = self.dataset_settings[data_source_id]
-            doi = settings.sandbox_doi if self.testing else settings.production_doi
-
         deposition_interface = await ZenodoDepositionInterface.open_interface(
             data_source_id,
             self.session,
             self.upload_key,
             self.publish_key,
             self.api_root,
-            doi=doi,
+            self.dataset_settings,
+            self.deposition_settings_path,
             create_new=initialize,
             dry_run=dry_run,
+            testing=self.testing,
         )
-
-        try:
-            yield deposition_interface
-        except aiohttp.client_exceptions.ClientResponseError as e:
-            logger.error(
-                f"Received HTTP error while archiving {data_source_id} with status {e.status}: {e.message}"
-            )
-            raise e
-
-        if deposition_interface.changed:
-            deposition = await deposition_interface.depositor.publish_deposition(
-                deposition_interface.new_deposition
-            )
-
-        if initialize:
-            # Get new DOI and update settings
-            if self.testing:
-                sandbox_doi = deposition.conceptdoi
-                production_doi = self.dataset_settings.get(
-                    data_source_id, DatasetSettings()
-                ).production_doi
-            else:
-                production_doi = deposition.conceptdoi
-                sandbox_doi = self.dataset_settings.get(
-                    data_source_id, DatasetSettings()
-                ).sandbox_doi
-
-            self.dataset_settings[data_source_id] = DatasetSettings(
-                sandbox_doi=sandbox_doi, production_doi=production_doi
-            )
-
-            # Update doi settings YAML
-            with open(self.deposition_settings_path, "w") as f:
-                raw_settings = {
-                    name: settings.dict()
-                    for name, settings in self.dataset_settings.items()
-                }
-                yaml.dump(raw_settings, f)
+        yield deposition_interface
