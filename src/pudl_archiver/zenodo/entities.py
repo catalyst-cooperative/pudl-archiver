@@ -3,6 +3,7 @@
 See https://developers.zenodo.org/#entities for more info.
 """
 import datetime
+import re
 from typing import Literal
 
 from pydantic import AnyHttpUrl, BaseModel, ConstrainedStr, Field, validator
@@ -13,13 +14,13 @@ from pudl.metadata.classes import Contributor, DataSource
 class Doi(ConstrainedStr):
     """The DOI format for production Zenodo."""
 
-    regex = r"10\.5281/zenodo\.\d{6,7}"
+    regex = re.compile(r"10\.5281/zenodo\.\d{6,7}")
 
 
 class SandboxDoi(ConstrainedStr):
     """The DOI format for sandbox Zenodo."""
 
-    regex = r"10\.5072/zenodo\.\d{6,7}"
+    regex = re.compile(r"10\.5072/zenodo\.\d{6,7}")
 
 
 PUDL_DESCRIPTION = """
