@@ -1,6 +1,4 @@
 """Download FERC EQR data."""
-import re
-import typing
 from pathlib import Path
 
 from pudl_archiver.archivers.classes import (
@@ -19,7 +17,6 @@ class FercEQRArchiver(AbstractDatasetArchiver):
 
     async def get_resources(self) -> ArchiveAwaitable:
         """Download FERC EQR resources."""
-
         # Get non-transaction data (pre-2013)
         yield self.get_bulk_csv()
 
@@ -47,7 +44,11 @@ class FercEQRArchiver(AbstractDatasetArchiver):
         year: int,
         quarter: int | None = None,
     ) -> tuple[Path, dict]:
+        """Download FERC EQR transaction data (quarterly or annual).
 
+        Download a year (2002-2013) of FERC EQR transaction data,
+        or a quarter of 2014-present data.
+        """
         # For 2014 - present data
         if quarter is not None:
             part = None
