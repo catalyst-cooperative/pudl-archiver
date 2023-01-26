@@ -8,7 +8,6 @@ from typing import Literal
 from pydantic import AnyHttpUrl, BaseModel, ConstrainedStr, Field, validator
 
 from pudl.metadata.classes import Contributor, DataSource
-from pudl.metadata.constants import CONTRIBUTORS
 
 
 class Doi(ConstrainedStr):
@@ -89,7 +88,9 @@ class DepositionMetadata(BaseModel):
 
         if not creators:
             creators = [
-                DepositionCreator.from_contributor(CONTRIBUTORS["catalyst-cooperative"])
+                DepositionCreator.from_contributor(
+                    Contributor.from_id("catalyst-cooperative")
+                )
             ]
 
         return cls(
@@ -99,10 +100,7 @@ class DepositionMetadata(BaseModel):
                 f'<a href="{data_source.path}">{data_source.path}</a></p>'
                 f"{PUDL_DESCRIPTION}"
             ),
-            creators=[
-                DepositionCreator.from_contributor(contributor)
-                for contributor in data_source.contributors
-            ],
+            creators=creators,
             license=data_source.license_raw.name,
             keywords=data_source.keywords,
             version="1.0.0",
