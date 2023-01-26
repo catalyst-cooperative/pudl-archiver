@@ -8,7 +8,7 @@ import aiohttp
 import yaml
 from pydantic import BaseModel
 
-from pudl_archiver.archivers.classes import ResourceInfo
+from pudl_archiver.archivers.classes import AbstractDatasetArchiver, ResourceInfo
 from pudl_archiver.depositors import ZenodoDepositor
 from pudl_archiver.frictionless import DataPackage
 from pudl_archiver.zenodo.entities import (
@@ -55,6 +55,7 @@ class ZenodoDepositionInterface:
     def __init__(
         self,
         data_source_id: str,
+        downloader: AbstractDatasetArchiver,
         session: aiohttp.ClientSession,
         upload_key: str,
         publish_key: str,
@@ -91,6 +92,7 @@ class ZenodoDepositionInterface:
         self.publish_key = publish_key
 
         self.depositor = ZenodoDepositor(upload_key, publish_key, session, self.sandbox)
+        self.downloader = downloader
 
         # Map resource name to resource partitions
         self.resource_parts: dict[str, dict] = {}
@@ -117,7 +119,6 @@ class ZenodoDepositionInterface:
         self.async_initialized = False
 
     async def _initialize(self):
-        # TODO (daz): move this into the run() method, then we don't need the factory method at all.
         self.async_initialized = True
         if self.create_new:
             doi = None
@@ -135,44 +136,6 @@ class ZenodoDepositionInterface:
         # TODO (daz): stop using self.deposition_files, use the files lists on the depositions
         # Map file name to file metadata for all files in deposition
         self.deposition_files = await self._remote_fileinfo(self.new_deposition)
-
-    @classmethod
-    async def create(
-        cls,
-        data_source_id: str,
-        session: aiohttp.ClientSession,
-        upload_key: str,
-        publish_key: str,
-        deposition_settings: Path,
-        create_new: bool = False,
-        dry_run: bool = True,
-        sandbox: bool = True,
-    ):
-        """Create deposition interface to existing zenodo deposition.
-
-        Args:
-            data_source_id: Data source ID.
-            session: Async http client session manager.
-            upload_key: Zenodo API upload key.
-            publish_key: Zenodo API publish key.
-            doi: Concept DOI pointing to deposition. If none, create_new should be true.
-            create_new: Create new zenodo deposition.
-
-        Returns:
-            ZenodoDepositionInterface
-        """
-        interface = cls(
-            data_source_id,
-            session,
-            upload_key,
-            publish_key,
-            deposition_settings,
-            create_new=create_new,
-            dry_run=dry_run,
-            sandbox=sandbox,
-        )
-        await interface._initialize()
-        return interface
 
     async def _remote_fileinfo(self, deposition: Deposition):
         """Return info on all files contained in deposition.
@@ -202,27 +165,24 @@ class ZenodoDepositionInterface:
         metadata = DepositionMetadata.from_data_source(data_source_id)
         return await self.depositor.create_deposition(metadata)
 
-    async def add_files(self, resources: dict[str, ResourceInfo]):
-        """Add all downloaded files to zenodo deposition.
+    async def run(self):
+        """Run the entire deposition update process.
 
-        The new Zenodo deposition (self.new_deposition) contains all of the files
-        from the previous version. This function will loop through all downloaded
-        files and compare them by name and checksum to the remote files already
-        contained in the deposition. It will then upload new files, update files that
-        already exist, and delete any files that are no longer contained in the new
-        deposition.
-
-        Args:
-            resources: Dictionary mapping filenames to ResourceInfo objects,
-            which contain local path to resource and working partitions.
+        1. Create pending deposition version to stage changes.
+        2. Download resources.
+        3. Update pending deposition version.
+        4. If there were updates, publish.
+        5. Update the dataset settings if this was a new deposition.
 
         Returns:
-            Updated Deposition object.
+            Updated Deposition object - if published, then return that; else
+            return the pending deposition version. Distinguishable by `state`
+            field being 'done' and 'unsubmitted', respectively.
         """
-        if not self.async_initialized:
-            raise RuntimeError(
-                "You must run the async initialization before adding files!"
-            )
+        await self._initialize()
+        resources = await self.downloader.download_all_resources()
+        # TODO (daz): pass around changesets instead of persisting them on the instance, this
+        # makes the ordering/dependency more explicit
         self._generate_changes(resources)
         await self._apply_changes()
         self.new_deposition = await self.depositor.get_record(self.new_deposition.id_)
@@ -233,6 +193,9 @@ class ZenodoDepositionInterface:
             published = await self.depositor.publish_deposition(self.new_deposition)
             if self.create_new:
                 self._update_dataset_settings(published)
+            return published
+        else:
+            return self.new_deposition
 
     def _generate_changes(self, resources):
         for name, resource in resources.items():

@@ -27,21 +27,6 @@ def all_archivers():
 ARCHIVERS = {archiver.name: archiver for archiver in all_archivers()}
 
 
-async def archive_dataset(
-    name: str,
-    zenodo_deposition_interface: ZenodoDepositionInterface,
-    session: aiohttp.ClientSession,
-):
-    """Download and archive dataset on zenodo."""
-    cls = ARCHIVERS.get(name)
-    if not cls:
-        raise RuntimeError(f"Dataset {name} not supported")
-    else:
-        archiver = cls(session, zenodo_deposition_interface)
-    # TODO (daz): instead - pass the archiver into the ZDI, then hit the MF run button.
-    await archiver.create_archive()
-
-
 async def archive_datasets(
     datasets: list[str],
     sandbox: bool = True,
@@ -63,8 +48,14 @@ async def archive_datasets(
         # List to gather all archivers to run asyncronously
         tasks = []
         for dataset in datasets:
-            zenodo_deposition_interface = await ZenodoDepositionInterface.create(
+            cls = ARCHIVERS.get(dataset)
+            if not cls:
+                raise RuntimeError(f"Dataset {dataset} not supported")
+            else:
+                downloader = cls(session)
+            zenodo_deposition_interface = ZenodoDepositionInterface(
                 dataset,
+                downloader,
                 session,
                 upload_key,
                 publish_key,
@@ -74,13 +65,7 @@ async def archive_datasets(
                 sandbox=sandbox,
             )
 
-            tasks.append(
-                archive_dataset(
-                    dataset,
-                    zenodo_deposition_interface,
-                    session,
-                )
-            )
+            tasks.append(zenodo_deposition_interface.run())
 
         results = zip(datasets, await asyncio.gather(*tasks, return_exceptions=True))
         exceptions = [
