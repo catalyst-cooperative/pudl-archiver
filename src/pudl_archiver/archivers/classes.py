@@ -157,7 +157,7 @@ class AbstractDatasetArchiver(ABC):
                 f"Make sure your filter_pattern is correct or if the structure of the {url} page changed."
             )
 
-        return hyperlinks
+        return list(hyperlinks)[:1]
 
     async def create_archive(self):
         """Download all resources and create an archive for upload.

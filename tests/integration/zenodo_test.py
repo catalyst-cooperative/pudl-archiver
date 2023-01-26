@@ -171,7 +171,7 @@ async def test_zenodo_workflow(
 
     # Create new deposition and add files
 
-    interface = await ZenodoDepositionInterface.open_interface(
+    interface = await ZenodoDepositionInterface.create(
         **(deposition_interface_args | {"create_new": True})
     )
     resources = {
@@ -184,9 +184,7 @@ async def test_zenodo_workflow(
 
     # Wait before trying to access newly created deposition
     time.sleep(1.0)
-    interface = await ZenodoDepositionInterface.open_interface(
-        **deposition_interface_args
-    )
+    interface = await ZenodoDepositionInterface.create(**deposition_interface_args)
     # Get files from first version of deposition
     for file_data in test_files["original"]:
         # Verify that all expected files are in deposition
@@ -210,9 +208,7 @@ async def test_zenodo_workflow(
 
     # Wait before trying to access newly created deposition
     time.sleep(1.0)
-    interface = await ZenodoDepositionInterface.open_interface(
-        **(deposition_interface_args | {"create_new": True})
-    )
+    interface = await ZenodoDepositionInterface.create(**deposition_interface_args)
     # Get files from updated version of deposition
     for file_data in test_files["updated"]:
         assert file_data["path"].name in interface.deposition_files

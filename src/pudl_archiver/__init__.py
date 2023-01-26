@@ -31,8 +31,6 @@ async def archive_dataset(
     name: str,
     zenodo_deposition_interface: ZenodoDepositionInterface,
     session: aiohttp.ClientSession,
-    initialize: bool = False,
-    dry_run: bool = True,
 ):
     """Download and archive dataset on zenodo."""
     cls = ARCHIVERS.get(name)
@@ -65,17 +63,15 @@ async def archive_datasets(
         # List to gather all archivers to run asyncronously
         tasks = []
         for dataset in datasets:
-            zenodo_deposition_interface = (
-                await ZenodoDepositionInterface.open_interface(
-                    dataset,
-                    session,
-                    upload_key,
-                    publish_key,
-                    deposition_settings=pathlib.Path("dataset_doi.yaml"),
-                    create_new=initialize,
-                    dry_run=dry_run,
-                    sandbox=sandbox,
-                )
+            zenodo_deposition_interface = await ZenodoDepositionInterface.create(
+                dataset,
+                session,
+                upload_key,
+                publish_key,
+                deposition_settings=pathlib.Path("dataset_doi.yaml"),
+                create_new=initialize,
+                dry_run=dry_run,
+                sandbox=sandbox,
             )
 
             tasks.append(
@@ -83,8 +79,6 @@ async def archive_datasets(
                     dataset,
                     zenodo_deposition_interface,
                     session,
-                    initialize=initialize,
-                    dry_run=dry_run,
                 )
             )
 
