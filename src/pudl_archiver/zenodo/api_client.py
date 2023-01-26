@@ -1,7 +1,6 @@
 """Core routines for archiving raw data packages on Zenodo."""
 import io
 import logging
-from contextlib import asynccontextmanager
 from hashlib import md5
 from pathlib import Path
 
@@ -59,11 +58,11 @@ class ZenodoDepositionInterface:
         session: aiohttp.ClientSession,
         upload_key: str,
         publish_key: str,
-        api_root: str,
         dataset_settings: dict[str, DatasetSettings],
-        deposition_settings_path: Path,
+        deposition_settings: Path,
         create_new: bool = False,
         dry_run: bool = True,
+        sandbox: bool = True,
     ):
         """Prepare the ZenodoStorage interface.
 
@@ -72,22 +71,24 @@ class ZenodoDepositionInterface:
             session: Async http client session manager.
             upload_key: Zenodo API upload key.
             publish_key: Zenodo API publish key.
-            api_root: Zenodo API root URL. Points to sandbox or production API.
 
         Returns:
             ZenodoDepositionInterface
-
         """
-        self.testing = "sandbox" in api_root
+        if sandbox:
+            self.api_root = "https://sandbox.zenodo.org/api"
+        else:
+            self.api_root = "https://zenodo.org/api"
+
+        self.sandbox = sandbox
         self.data_source_id = data_source_id
 
-        self.api_root = api_root
         self.session = session
 
         self.upload_key = upload_key
         self.publish_key = publish_key
 
-        self.depositor = ZenodoDepositor(upload_key, publish_key, session, self.testing)
+        self.depositor = ZenodoDepositor(upload_key, publish_key, session, self.sandbox)
 
         # Map resource name to resource partitions
         self.resource_parts: dict[str, dict] = {}
@@ -105,7 +106,7 @@ class ZenodoDepositionInterface:
 
         self.create_new = create_new
         self.dataset_settings = dataset_settings
-        self.deposition_settings_path = deposition_settings_path
+        self.deposition_settings_path = deposition_settings
 
     @classmethod
     async def open_interface(
@@ -114,13 +115,11 @@ class ZenodoDepositionInterface:
         session: aiohttp.ClientSession,
         upload_key: str,
         publish_key: str,
-        api_root: str,
-        dataset_settings: dict[str, DatasetSettings],
-        deposition_settings_path: Path,
+        deposition_settings: Path,
         doi: str | None = None,
         create_new: bool = False,
         dry_run: bool = True,
-        testing: bool = True,
+        sandbox: bool = True,
     ):
         """Create deposition interface to existing zenodo deposition.
 
@@ -129,23 +128,27 @@ class ZenodoDepositionInterface:
             session: Async http client session manager.
             upload_key: Zenodo API upload key.
             publish_key: Zenodo API publish key.
-            api_root: Zenodo API root URL. Points to sandbox or production API.
             doi: Concept DOI pointing to deposition. If none, create_new should be true.
             create_new: Create new zenodo deposition.
 
         Returns:
             ZenodoDepositionInterface
         """
+        with open(deposition_settings) as f:
+            dataset_settings = {
+                name: DatasetSettings(**dois)
+                for name, dois in yaml.safe_load(f).items()
+            }
         interface = cls(
             data_source_id,
             session,
             upload_key,
             publish_key,
-            api_root,
             dataset_settings,
-            deposition_settings_path,
+            deposition_settings,
             create_new=create_new,
             dry_run=dry_run,
+            sandbox=sandbox,
         )
 
         if create_new:
@@ -153,7 +156,7 @@ class ZenodoDepositionInterface:
             interface.deposition = await interface.create_deposition(data_source_id)
         else:
             settings = dataset_settings[data_source_id]
-            doi = settings.sandbox_doi if testing else settings.production_doi
+            doi = settings.sandbox_doi if sandbox else settings.production_doi
             if not doi:
                 raise RuntimeError("Must pass a valid DOI if create_new is False")
 
@@ -281,7 +284,7 @@ class ZenodoDepositionInterface:
     def _update_dataset_settings(self, published_deposition):
         # Get new DOI and update settings
         # TODO (daz): split this IO out too.
-        if self.testing:
+        if self.sandbox:
             sandbox_doi = published_deposition.conceptdoi
             production_doi = self.dataset_settings.get(
                 self.data_source_id, DatasetSettings()
@@ -338,61 +341,3 @@ class ZenodoDepositionInterface:
         self.uploads.append(
             _UploadSpec(source=datapackage_json, dest="datapackage.json")
         )
-
-
-class ZenodoClient:
-    """Thin interface to store data with zenodo.org via their API."""
-
-    def __init__(
-        self,
-        deposition_settings: Path,
-        session: aiohttp.ClientSession,
-        upload_key: str,
-        publish_key: str,
-        testing: bool = False,
-    ):
-        """Initialize zenodo client interface."""
-        # Load DOI's from settings file
-        self.deposition_settings_path = deposition_settings
-        with open(deposition_settings) as f:
-            self.dataset_settings = {
-                name: DatasetSettings(**dois)
-                for name, dois in yaml.safe_load(f).items()
-            }
-
-        self.session = session
-
-        self.upload_key = upload_key
-        self.publish_key = publish_key
-
-        self.testing = testing
-
-        if testing:
-            self.api_root = "https://sandbox.zenodo.org/api"
-        else:
-            self.api_root = "https://zenodo.org/api"
-
-    @asynccontextmanager
-    async def deposition_interface(
-        self, data_source_id: str, initialize: bool = False, dry_run: bool = True
-    ) -> ZenodoDepositionInterface:
-        """Provides an async context manager that returns a ZenodoDepositionInterface.
-
-        Args:
-            data_source_id: Data source ID that will be used to generate zenodo metadata.
-            initialize: Flag to create new deposition.
-            dry_run: True skips all Zenodo writes.
-        """
-        deposition_interface = await ZenodoDepositionInterface.open_interface(
-            data_source_id,
-            self.session,
-            self.upload_key,
-            self.publish_key,
-            self.api_root,
-            self.dataset_settings,
-            self.deposition_settings_path,
-            create_new=initialize,
-            dry_run=dry_run,
-            testing=self.testing,
-        )
-        yield deposition_interface
