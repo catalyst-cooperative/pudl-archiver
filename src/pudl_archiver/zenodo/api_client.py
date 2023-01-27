@@ -66,9 +66,6 @@ class ZenodoDepositionInterface:
     ):
         """Prepare the ZenodoStorage interface.
 
-        Do not call this directly, use .create(). There's async stuff that needs to happen
-        for initialization.
-
         Args:
             data_source_id: Data source ID.
             session: Async http client session manager.
