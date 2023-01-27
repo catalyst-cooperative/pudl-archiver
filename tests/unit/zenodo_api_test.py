@@ -2,7 +2,7 @@
 import pydantic
 import pytest
 
-from pudl_archiver.zenodo.api_client import DatasetSettings
+from pudl_archiver.orchestrator import DatasetSettings
 
 
 def test_dataset_settings():

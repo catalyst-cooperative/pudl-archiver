@@ -1,4 +1,4 @@
-"""Core routines for archiving raw data packages on Zenodo."""
+"""Core routines for archiving raw data packages."""
 import io
 import logging
 from hashlib import md5
@@ -49,8 +49,8 @@ def _compute_md5(file_path: Path) -> str:
     return hash_md5.hexdigest()
 
 
-class ZenodoDepositionInterface:
-    """Interface to a single Zenodo Deposition."""
+class DepositionOrchestrator:
+    """Interface to a single Deposition."""
 
     def __init__(
         self,
@@ -73,7 +73,7 @@ class ZenodoDepositionInterface:
             publish_key: Zenodo API publish key.
 
         Returns:
-            ZenodoDepositionInterface
+            DepositionOrchestrator
         """
         if sandbox:
             self.api_root = "https://sandbox.zenodo.org/api"
@@ -83,6 +83,7 @@ class ZenodoDepositionInterface:
         self.sandbox = sandbox
         self.data_source_id = data_source_id
 
+        # TODO (daz): pass in the depositor separately too - no reason to couple this class to Zenodo
         self.session = session
 
         self.upload_key = upload_key
@@ -94,6 +95,7 @@ class ZenodoDepositionInterface:
         # Map resource name to resource partitions
         self.resource_parts: dict[str, dict] = {}
 
+        # TODO (daz): don't hold references to the depositions at the instance level.
         self.deposition: Deposition | None = None
         self.new_deposition: Deposition | None = None
         self.deposition_files: dict[str, DepositionFile] = {}
@@ -134,6 +136,7 @@ class ZenodoDepositionInterface:
         # Map file name to file metadata for all files in deposition
         self.deposition_files = await self._remote_fileinfo(self.new_deposition)
 
+    # TODO (daz): inline this.
     async def _remote_fileinfo(self, deposition: Deposition):
         """Return info on all files contained in deposition.
 
@@ -145,6 +148,7 @@ class ZenodoDepositionInterface:
         """
         return {f.filename: f for f in deposition.files}
 
+    # TODO (daz): inline this.
     async def _create_deposition(self, data_source_id: str) -> Deposition:
         """Create a Zenodo deposition resource.
 

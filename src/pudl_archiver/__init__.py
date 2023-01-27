@@ -5,8 +5,9 @@ import pathlib
 
 import aiohttp
 
+import pudl_archiver.orchestrator  # noqa: 401
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver
-from pudl_archiver.zenodo.api_client import ZenodoDepositionInterface
+from pudl_archiver.orchestrator import DepositionOrchestrator
 
 
 def all_archivers():
@@ -53,7 +54,7 @@ async def archive_datasets(
                 raise RuntimeError(f"Dataset {dataset} not supported")
             else:
                 downloader = cls(session)
-            zenodo_deposition_interface = ZenodoDepositionInterface(
+            orchestrator = DepositionOrchestrator(
                 dataset,
                 downloader,
                 session,
@@ -65,7 +66,7 @@ async def archive_datasets(
                 sandbox=sandbox,
             )
 
-            tasks.append(zenodo_deposition_interface.run())
+            tasks.append(orchestrator.run())
 
         results = zip(datasets, await asyncio.gather(*tasks, return_exceptions=True))
         exceptions = [

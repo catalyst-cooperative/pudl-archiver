@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver, ResourceInfo
 from pudl_archiver.frictionless import DataPackage
-from pudl_archiver.zenodo.api_client import ZenodoDepositionInterface
+from pudl_archiver.orchestrator import DepositionOrchestrator
 from pudl_archiver.zenodo.entities import (
     Deposition,
     DepositionCreator,
@@ -188,14 +188,14 @@ async def test_zenodo_workflow(
     # Mock out creating deposition metadata with fake data source
     deposition_metadata_mock = mocker.MagicMock(return_value=deposition_metadata)
     mocker.patch(
-        "pudl_archiver.zenodo.api_client.DepositionMetadata.from_data_source",
+        "pudl_archiver.orchestrator.DepositionMetadata.from_data_source",
         new=deposition_metadata_mock,
     )
 
     # Mock out creating datapackage with fake data source
     datapackage_mock = mocker.MagicMock(return_value=datapackage)
     mocker.patch(
-        "pudl_archiver.zenodo.api_client.DataPackage.from_filelist",
+        "pudl_archiver.orchestrator.DataPackage.from_filelist",
         new=datapackage_mock,
     )
 
@@ -207,7 +207,7 @@ async def test_zenodo_workflow(
         )
         for file_data in test_files["original"]
     }
-    interface = ZenodoDepositionInterface(
+    orchestrator = DepositionOrchestrator(
         **(
             deposition_interface_args
             | {
@@ -216,8 +216,8 @@ async def test_zenodo_workflow(
             }
         )
     )
-    v1 = await interface.run()
-    v1_refreshed = await interface.depositor.get_record(v1.id_)
+    v1 = await orchestrator.run()
+    v1_refreshed = await orchestrator.depositor.get_record(v1.id_)
     verify_files(test_files["original"], v1_refreshed)
 
     # Update files
@@ -227,7 +227,7 @@ async def test_zenodo_workflow(
         )
         for file_data in test_files["updated"]
     }
-    interface = ZenodoDepositionInterface(
+    orchestrator = DepositionOrchestrator(
         **(
             deposition_interface_args
             | {
@@ -236,6 +236,6 @@ async def test_zenodo_workflow(
         )
     )
 
-    v2 = await interface.run()
-    v2_refreshed = await interface.depositor.get_record(v2.id_)
+    v2 = await orchestrator.run()
+    v2_refreshed = await orchestrator.depositor.get_record(v2.id_)
     verify_files(test_files["updated"], v2_refreshed)
