@@ -1,0 +1,204 @@
+{
+	"info": {
+		"_postman_id": "94da0a65-3428-451d-b05d-59caaadaa99a",
+		"name": "Zenodo",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "25334351"
+	},
+	"item": [
+		{
+			"name": "List depositions",
+			"request": {
+				"method": "GET",
+				"header": []
+			},
+			"response": []
+		},
+		{
+			"name": "Get deposition",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://sandbox.zenodo.org/api/deposit/depositions/:id",
+					"protocol": "https",
+					"host": [
+						"sandbox",
+						"zenodo",
+						"org"
+					],
+					"path": [
+						"api",
+						"deposit",
+						"depositions",
+						":id"
+					],
+					"variable": [
+						{
+							"key": "id",
+							"value": "1113941"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "List deposition files",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://sandbox.zenodo.org/api/deposit/depositions/:id",
+					"protocol": "https",
+					"host": [
+						"sandbox",
+						"zenodo",
+						"org"
+					],
+					"path": [
+						"api",
+						"deposit",
+						"depositions",
+						":id"
+					],
+					"variable": [
+						{
+							"key": "id",
+							"value": "1113941"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Publish deposition",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "https://sandbox.zenodo.org/api/deposit/depositions/1113941/actions/publish",
+					"protocol": "https",
+					"host": [
+						"sandbox",
+						"zenodo",
+						"org"
+					],
+					"path": [
+						"api",
+						"deposit",
+						"depositions",
+						"1113941",
+						"actions",
+						"publish"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create file (bucket)",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "https://sandbox.zenodo.org/api/files/:bucket",
+					"protocol": "https",
+					"host": [
+						"sandbox",
+						"zenodo",
+						"org"
+					],
+					"path": [
+						"api",
+						"files",
+						":bucket"
+					],
+					"variable": [
+						{
+							"key": "bucket",
+							"value": null
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create file (files API)",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "name",
+							"value": "manual-test.txt",
+							"type": "text"
+						},
+						{
+							"key": "file",
+							"value": "This is a manual test.",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "https://sandbox.zenodo.org/api/deposit/depositions/:doi/files",
+					"protocol": "https",
+					"host": [
+						"sandbox",
+						"zenodo",
+						"org"
+					],
+					"path": [
+						"api",
+						"deposit",
+						"depositions",
+						":doi",
+						"files"
+					],
+					"variable": [
+						{
+							"key": "doi",
+							"value": "1146821"
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{publish_token}}",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	]
+}

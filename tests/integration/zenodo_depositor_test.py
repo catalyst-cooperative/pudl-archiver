@@ -142,6 +142,11 @@ async def test_full_zenodo_flow(depositor, deposition_metadata, upload_key):
     assert latest_deposition.id_ == published_deposition.id_
 
     new_deposition = await depositor.get_new_version(published_deposition)
+    doubly_new_deposition = await depositor.get_new_version(new_deposition)
+
+    # if we call get_new_version on an unsubmitted deposition, we should just get
+    # that one back.
+    assert new_deposition.id_ == doubly_new_deposition.id_
 
     updated_files = {
         "to_update": b"I am up to date",

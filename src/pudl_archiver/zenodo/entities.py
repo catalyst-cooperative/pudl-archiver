@@ -3,14 +3,25 @@
 See https://developers.zenodo.org/#entities for more info.
 """
 import datetime
+import re
 from typing import Literal
 
-from pydantic import AnyHttpUrl, BaseModel, Field, constr, validator
+from pydantic import AnyHttpUrl, BaseModel, ConstrainedStr, Field, validator
 
 from pudl.metadata.classes import Contributor, DataSource
 
-Doi = constr(regex=r"10\.5281/zenodo\.\d{6,7}")
-SandboxDoi = constr(regex=r"10\.5072/zenodo\.\d{6,7}")
+
+class Doi(ConstrainedStr):
+    """The DOI format for production Zenodo."""
+
+    regex = re.compile(r"10\.5281/zenodo\.\d{6,7}")
+
+
+class SandboxDoi(ConstrainedStr):
+    """The DOI format for sandbox Zenodo."""
+
+    regex = re.compile(r"10\.5072/zenodo\.\d{6,7}")
+
 
 PUDL_DESCRIPTION = """
 <p>This archive contains raw input data for the Public Utility Data Liberation (PUDL)
@@ -71,6 +82,17 @@ class DepositionMetadata(BaseModel):
     def from_data_source(cls, data_source_id: str) -> "DepositionMetadata":
         """Construct deposition metadata object from PUDL DataSource model."""
         data_source = DataSource.from_id(data_source_id)
+        creators = [
+            DepositionCreator.from_contributor(contributor)
+            for contributor in data_source.contributors
+        ]
+
+        if not creators:
+            creators = [
+                DepositionCreator.from_contributor(
+                    Contributor.from_id("catalyst-cooperative")
+                )
+            ]
 
         return cls(
             title=f"PUDL Raw {data_source.title}",
@@ -79,10 +101,7 @@ class DepositionMetadata(BaseModel):
                 f'<a href="{data_source.path}">{data_source.path}</a></p>'
                 f"{PUDL_DESCRIPTION}"
             ),
-            creators=[
-                DepositionCreator.from_contributor(contributor)
-                for contributor in data_source.contributors
-            ],
+            creators=creators,
             license=data_source.license_raw.name,
             keywords=data_source.keywords,
             version="1.0.0",
