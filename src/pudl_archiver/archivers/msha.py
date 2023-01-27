@@ -16,7 +16,7 @@ BASE_URL = "https://arlweb.msha.gov/OpenGovernmentData/DataSets"
 class MshaArchiver(AbstractDatasetArchiver):
     """MSHA archiver."""
 
-    name = "msha"
+    name = "mshamines"
 
     async def get_resources(self) -> ArchiveAwaitable:
         """Download MSHA resources."""
@@ -31,7 +31,7 @@ class MshaArchiver(AbstractDatasetArchiver):
         """Download zip file."""
         # Use archive link if year is not most recent year
         url = f"{BASE_URL}/{link}"
-        dataset = int(match.group(1))
+        dataset = match.group(1)
         download_path = self.download_directory / f"msha-{dataset}.zip"
         await self.download_zipfile(url, download_path)
 
