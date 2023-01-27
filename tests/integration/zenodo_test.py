@@ -1,7 +1,6 @@
 """Test zenodo client api."""
 import os
 import tempfile
-import time
 from datetime import datetime
 from pathlib import Path
 
@@ -11,9 +10,14 @@ import pytest_asyncio
 import requests
 from dotenv import load_dotenv
 
-from pudl_archiver.archivers.classes import ResourceInfo
+from pudl_archiver.archivers.classes import AbstractDatasetArchiver, ResourceInfo
 from pudl_archiver.frictionless import DataPackage
-from pudl_archiver.zenodo.entities import DepositionCreator, DepositionMetadata
+from pudl_archiver.zenodo.api_client import ZenodoDepositionInterface
+from pudl_archiver.zenodo.entities import (
+    Deposition,
+    DepositionCreator,
+    DepositionMetadata,
+)
 
 
 @pytest.fixture()
@@ -143,9 +147,43 @@ async def test_zenodo_workflow(
     mocker,
 ):
     """Test the entire zenodo client workflow."""
-    from pudl_archiver.zenodo.api_client import ZenodoClient
 
-    client = ZenodoClient(test_settings, session, upload_key, publish_key, testing=True)
+    def verify_files(expected, deposition: Deposition):
+        deposition_files = {f.filename: f for f in deposition.files}
+        for file_data in expected:
+            # Verify that all expected files are in deposition
+            assert file_data["path"].name in deposition_files
+
+            # Download each file
+            file_link = deposition_files[file_data["path"].name].links.download
+            res = requests.get(file_link, params={"access_token": upload_key})
+
+            # Verify that contents of file are correct
+            assert res.text.encode() == file_data["contents"]
+
+    deposition_interface_args = {
+        "data_source_id": "pudl_test",
+        "session": session,
+        "upload_key": upload_key,
+        "publish_key": publish_key,
+        "deposition_settings": test_settings,
+        "dry_run": False,
+        "sandbox": True,
+    }
+
+    class TestDownloader(AbstractDatasetArchiver):
+        name = "Test Downloader"
+
+        def __init__(self, resources, **kwargs):
+            super().__init__(**kwargs)
+            self.resources = resources
+
+        async def get_resources(self):
+            async def identity(x):
+                return x
+
+            for info in self.resources.values():
+                yield identity(info)
 
     # Mock out creating deposition metadata with fake data source
     deposition_metadata_mock = mocker.MagicMock(return_value=deposition_metadata)
@@ -162,51 +200,42 @@ async def test_zenodo_workflow(
     )
 
     # Create new deposition and add files
-    async with client.deposition_interface(
-        "pudl_test", initialize=True, dry_run=False
-    ) as interface:
-        resources = {
-            file_data["path"].name: ResourceInfo(
-                local_path=file_data["path"], partitions={}
-            )
-            for file_data in test_files["original"]
-        }
-        await interface.add_files(resources)
 
-    # Wait before trying to access newly created deposition
-    time.sleep(1.0)
-    async with client.deposition_interface("pudl_test", dry_run=False) as interface:
-        # Get files from first version of deposition
-        for file_data in test_files["original"]:
-            # Verify that all expected files are in deposition
-            assert file_data["path"].name in interface.deposition_files
+    v1_resources = {
+        file_data["path"].name: ResourceInfo(
+            local_path=file_data["path"], partitions={}
+        )
+        for file_data in test_files["original"]
+    }
+    interface = ZenodoDepositionInterface(
+        **(
+            deposition_interface_args
+            | {
+                "create_new": True,
+                "downloader": TestDownloader(v1_resources, session=session),
+            }
+        )
+    )
+    v1 = await interface.run()
+    v1_refreshed = await interface.depositor.get_record(v1.id_)
+    verify_files(test_files["original"], v1_refreshed)
 
-            # Download each file
-            file_link = interface.deposition_files[
-                file_data["path"].name
-            ].links.download
-            res = requests.get(file_link, params={"access_token": upload_key})
+    # Update files
+    v2_resources = {
+        file_data["path"].name: ResourceInfo(
+            local_path=file_data["path"], partitions={}
+        )
+        for file_data in test_files["updated"]
+    }
+    interface = ZenodoDepositionInterface(
+        **(
+            deposition_interface_args
+            | {
+                "downloader": TestDownloader(v2_resources, session=session),
+            }
+        )
+    )
 
-            # Verify that contents of file are correct
-            assert res.text.encode() == file_data["contents"]
-
-        # Update files
-        resources = {
-            file_data["path"].name: ResourceInfo(
-                local_path=file_data["path"], partitions={}
-            )
-            for file_data in test_files["updated"]
-        }
-        await interface.add_files(resources)
-
-    # Wait before trying to access newly created deposition
-    time.sleep(1.0)
-    async with client.deposition_interface("pudl_test", dry_run=False) as interface:
-        # Get files from updated version of deposition
-        for file_data in test_files["updated"]:
-            assert file_data["path"].name in interface.deposition_files
-            file_link = interface.deposition_files[
-                file_data["path"].name
-            ].links.download
-            res = requests.get(file_link, params={"access_token": upload_key})
-            assert res.text.encode() == file_data["contents"]
+    v2 = await interface.run()
+    v2_refreshed = await interface.depositor.get_record(v2.id_)
+    verify_files(test_files["updated"], v2_refreshed)

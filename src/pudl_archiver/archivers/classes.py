@@ -50,21 +50,15 @@ class _HyperlinkExtractor(HTMLParser):
 class AbstractDatasetArchiver(ABC):
     """An abstract base archiver class."""
 
-    from pudl_archiver.zenodo.api_client import ZenodoDepositionInterface
-
     name: str
 
-    def __init__(
-        self, session: aiohttp.ClientSession, deposition: ZenodoDepositionInterface
-    ):
+    def __init__(self, session: aiohttp.ClientSession):
         """Initialize Archiver object.
 
         Args:
             session: Async HTTP client session manager.
-            deposition: Interface to Zenodo deposition relevant to data source.
         """
         self.session = session
-        self.deposition = deposition
 
         # Create a temporary directory for downloading data
         self._download_directory_manager = tempfile.TemporaryDirectory()
@@ -159,12 +153,11 @@ class AbstractDatasetArchiver(ABC):
 
         return hyperlinks
 
-    async def create_archive(self):
-        """Download all resources and create an archive for upload.
+    async def download_all_resources(self) -> dict[str, ResourceInfo]:
+        """Download all resources.
 
         This method uses the awaitables returned by `get_resources`. It
-        coordinates downloading all resources concurrently, then creating a
-        new zenodo deposition version containing those resources.
+        coordinates downloading all resources concurrently.
         """
         # Get all awaitables from get_resources
         resources = [resource async for resource in self.get_resources()]
@@ -176,5 +169,4 @@ class AbstractDatasetArchiver(ABC):
             self.logger.info(f"Downloaded {resource_info.local_path}.")
             resource_dict[str(resource_info.local_path.name)] = resource_info
 
-        # Add to zenodo deposition
-        await self.deposition.add_files(resource_dict)
+        return resource_dict

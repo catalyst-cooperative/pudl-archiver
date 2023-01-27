@@ -82,7 +82,7 @@ async def test_download_zipfile(mocker, bad_zipfile, good_zipfile):
     )
 
     # Initialize MockArchiver class
-    archiver = MockArchiver(None, None)
+    archiver = MockArchiver(None)
 
     url = "www.fake.url.com"
     with pytest.raises(
@@ -109,7 +109,7 @@ async def test_download_file(mocker, file_data):
     actually download any files.
     """
     # Initialize MockArchiver class
-    archiver = MockArchiver(None, None)
+    archiver = MockArchiver(None)
 
     session_mock = mocker.MagicMock(name="session_mock")
     archiver.session = session_mock
@@ -168,7 +168,7 @@ async def test_get_hyperlinks(docname, pattern, links, request, html_docs):
     html = html_docs[docname]
 
     # Initialize MockArchiver class
-    archiver = MockArchiver(None, None)
+    archiver = MockArchiver(None)
 
     mocker = request.getfixturevalue("mocker")
 
