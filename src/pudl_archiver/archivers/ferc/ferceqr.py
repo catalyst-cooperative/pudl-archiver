@@ -1,8 +1,6 @@
 """Download FERC EQR data."""
 from pathlib import Path
 
-import requests
-
 from pudl_archiver.archivers.classes import (
     AbstractDatasetArchiver,
     ArchiveAwaitable,
@@ -49,10 +47,6 @@ class FercEQRArchiver(AbstractDatasetArchiver):
         """Download a year (2002-2013) of FERC EQR transaction data."""
         url = f"https://eqrdds.ferc.gov/eqrdbdownloads/eqr_transaction_{year}.zip"
         download_path = self.download_directory / f"ferceqr-{year}-trans.zip"
-
-        response = requests.head(url)
-        print(response.ok)
-        exit()
 
         await self.download_zipfile(url, download_path)
 
