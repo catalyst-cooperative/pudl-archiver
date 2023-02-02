@@ -1,18 +1,3 @@
-ferc1:
-  production_doi: null
-  sandbox_doi: 10.5072/zenodo.1114564
-ferc2:
-  production_doi: 10.5281/zenodo.5879542
-  sandbox_doi: 10.5072/zenodo.1096046
-ferc6:
-  production_doi: 10.5281/zenodo.7126395
-  sandbox_doi: 10.5072/zenodo.1114637
-ferc60:
-  production_doi: 10.5281/zenodo.7126434
-  sandbox_doi: 10.5072/zenodo.1114668
-ferc714:
-  production_doi: 10.5281/zenodo.4127100
-  sandbox_doi: 10.5072/zenodo.1114673
 censusdp1tract:
   production_doi: 10.5281/zenodo.4127048
   sandbox_doi: 10.5072/zenodo.674991
@@ -37,3 +22,21 @@ epacems:
 epacmd_eia:
   production_doi: 10.5281/zenodo.6633769
   sandbox_doi: 10.5072/zenodo.1072000
+ferc1:
+  production_doi: null
+  sandbox_doi: 10.5072/zenodo.1114564
+ferc2:
+  production_doi: 10.5281/zenodo.5879542
+  sandbox_doi: 10.5072/zenodo.1096046
+ferc6:
+  production_doi: 10.5281/zenodo.7126395
+  sandbox_doi: 10.5072/zenodo.1114637
+ferc60:
+  production_doi: 10.5281/zenodo.7126434
+  sandbox_doi: 10.5072/zenodo.1114668
+ferc714:
+  production_doi: 10.5281/zenodo.4127100
+  sandbox_doi: 10.5072/zenodo.1114673
+mshamines:
+  production_doi: null
+  sandbox_doi: 10.5072/zenodo.1158828
