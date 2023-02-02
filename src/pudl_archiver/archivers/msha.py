@@ -69,7 +69,7 @@ class MshaArchiver(AbstractDatasetArchiver):
         dataset = match.group(1)
 
         """Dataset names do not match between data and definition files,
-        so we fix this manually."""
+        so we fix this manually. is tis okay"""
         dataset = dataset[0].upper() + dataset[1:]
         dataset = (
             dataset.replace("_", "")
