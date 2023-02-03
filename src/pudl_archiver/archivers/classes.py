@@ -3,6 +3,7 @@ import asyncio
 import io
 import logging
 import tempfile
+import time
 import typing
 import zipfile
 from abc import ABC, abstractmethod
@@ -100,7 +101,31 @@ class AbstractDatasetArchiver(ABC):
         # If it makes it here that means it couldn't download a valid zipfile
         raise RuntimeError(f"Failed to download valid zipfile from {url}")
 
-    async def download_file(self, url: str, file: Path | io.BytesIO, **kwargs):
+    async def _get_with_retries(
+        self, url, retry_count: int = 5, retry_base_s: int = 1, **kwargs
+    ):
+        for try_count in range(1, retry_count + 1):
+            # try count is 1 indexed for logging clarity
+            try:
+                self.logger.info(f"GET {url} (try #{try_count})")
+                response = await self.session.get(url, **kwargs)
+                break
+            except aiohttp.ClientError as e:
+                if try_count == retry_count:
+                    raise e
+                retry_delay_s = retry_base_s * 2**try_count
+                self.logger.info(
+                    f"ClientError while getting {url} (try #{try_count}, retry in {retry_delay_s}s): {e}"
+                )
+                time.sleep(retry_delay_s)
+        return response
+
+    async def download_file(
+        self,
+        url: str,
+        file: Path | io.BytesIO,
+        **kwargs,
+    ):
         """Download a file using async session manager.
 
         Args:
@@ -108,12 +133,13 @@ class AbstractDatasetArchiver(ABC):
             file: Local path to write file to disk or bytes object to save file in memory.
             kwargs: Key word args to pass to request.
         """
-        async with self.session.get(url, **kwargs) as response:
-            if isinstance(file, Path):
-                with open(file, "wb") as f:
-                    f.write(await response.read())
-            elif isinstance(file, io.BytesIO):
-                file.write(await response.read())
+        response = await self._get_with_retries(url, **kwargs)
+
+        if isinstance(file, Path):
+            with open(file, "wb") as f:
+                f.write(await response.read())
+        elif isinstance(file, io.BytesIO):
+            file.write(await response.read())
 
     async def get_hyperlinks(
         self,
@@ -135,9 +161,9 @@ class AbstractDatasetArchiver(ABC):
         """
         # Parse web page to get all hyperlinks
         parser = _HyperlinkExtractor()
-        async with self.session.get(url, ssl=verify) as response:
-            text = await response.text()
-            parser.feed(text)
+        response = await self._get_with_retries(url, ssl=verify)
+        text = await response.text()
+        parser.feed(text)
 
         # Filter to those that match filter_pattern
         hyperlinks = parser.hyperlinks
