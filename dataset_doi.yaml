@@ -34,6 +34,6 @@ eia_bulk_elec:
 epacems:
   production_doi: 10.5281/zenodo.4127054
   sandbox_doi: 10.5072/zenodo.672962
-epacmd_eia:
+epacamd_eia:
   production_doi: 10.5281/zenodo.6633769
   sandbox_doi: 10.5072/zenodo.1072000
