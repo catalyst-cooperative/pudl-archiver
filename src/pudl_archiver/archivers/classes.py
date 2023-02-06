@@ -109,14 +109,12 @@ class AbstractDatasetArchiver(ABC):
                 self.logger.info(f"GET {url} (try #{try_count})")
                 response = await self.session.get(url, **kwargs)
                 break
-            # aiohttp client can either throw ClientError or TimeoutError
-            # see https://github.com/aio-libs/aiohttp/issues/7122
-            except (aiohttp.ClientError, asyncio.TimeoutError) as e:
+            except aiohttp.ClientError as e:
                 if try_count == retry_count:
                     raise e
                 retry_delay_s = retry_base_s * 2**try_count
                 self.logger.info(
-                    f"Error while getting {url} (try #{try_count}, retry in {retry_delay_s}s): {e}"
+                    f"ClientError while getting {url} (try #{try_count}, retry in {retry_delay_s}s): {e}"
                 )
                 await asyncio.sleep(retry_delay_s)
         return response

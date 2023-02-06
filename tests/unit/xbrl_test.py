@@ -1,5 +1,3 @@
-from asyncio import TimeoutError
-
 import pytest
 from aiohttp import ClientError
 
@@ -11,15 +9,7 @@ async def test_retries(mocker):
     session_mock = mocker.Mock(name="session_mock")
     sleep_mock = mocker.AsyncMock()
     mocker.patch("asyncio.sleep", sleep_mock)
-    session_mock.get = mocker.AsyncMock(
-        side_effect=[
-            ClientError("test error"),
-            TimeoutError("test error"),
-            TimeoutError("test error"),
-            ClientError("test error"),
-            ClientError("test error"),
-        ]
-    )
+    session_mock.get = mocker.AsyncMock(side_effect=ClientError("test error"))
 
     with pytest.raises(ClientError):
         await _get_with_retries(session_mock, "foo")
