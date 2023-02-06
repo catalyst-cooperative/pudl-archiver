@@ -3,7 +3,6 @@ import asyncio
 import io
 import logging
 import tempfile
-import time
 import typing
 import zipfile
 from abc import ABC, abstractmethod
@@ -102,7 +101,7 @@ class AbstractDatasetArchiver(ABC):
         raise RuntimeError(f"Failed to download valid zipfile from {url}")
 
     async def _get_with_retries(
-        self, url, retry_count: int = 5, retry_base_s: int = 1, **kwargs
+        self, url: str, retry_count: int = 5, retry_base_s: int = 1, **kwargs
     ):
         for try_count in range(1, retry_count + 1):
             # try count is 1 indexed for logging clarity
@@ -117,7 +116,7 @@ class AbstractDatasetArchiver(ABC):
                 self.logger.info(
                     f"ClientError while getting {url} (try #{try_count}, retry in {retry_delay_s}s): {e}"
                 )
-                time.sleep(retry_delay_s)
+                await asyncio.sleep(retry_delay_s)
         return response
 
     async def download_file(

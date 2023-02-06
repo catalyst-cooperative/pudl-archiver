@@ -293,7 +293,11 @@ async def archive_year(
 
 
 async def _get_with_retries(
-    session, url, retry_count: int = 5, retry_base_s: int = 1, **kwargs
+    session: aiohttp.ClientSession,
+    url: str,
+    retry_count: int = 5,
+    retry_base_s: int = 1,
+    **kwargs,
 ):
     for try_count in range(1, retry_count + 1):
         # try count is 1 indexed for logging clarity
@@ -308,5 +312,5 @@ async def _get_with_retries(
             logger.info(
                 f"ClientError while getting {url} (try #{try_count}, retry in {retry_delay_s}s): {e}"
             )
-            time.sleep(retry_delay_s)
+            await asyncio.sleep(retry_delay_s)
     return response

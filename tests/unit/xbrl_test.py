@@ -7,8 +7,8 @@ from pudl_archiver.archivers.ferc.xbrl import _get_with_retries
 @pytest.mark.asyncio
 async def test_retries(mocker):
     session_mock = mocker.Mock(name="session_mock")
-    sleep_mock = mocker.Mock()
-    mocker.patch("time.sleep", sleep_mock)
+    sleep_mock = mocker.AsyncMock()
+    mocker.patch("asyncio.sleep", sleep_mock)
     session_mock.get = mocker.AsyncMock(side_effect=ClientError("test error"))
 
     with pytest.raises(ClientError):

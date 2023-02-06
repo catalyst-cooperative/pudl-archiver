@@ -193,8 +193,8 @@ async def test_retries(mocker):
     archiver = MockArchiver(None)
     session_mock = mocker.Mock(name="session_mock")
     archiver.session = session_mock
-    sleep_mock = mocker.Mock()
-    mocker.patch("time.sleep", sleep_mock)
+    sleep_mock = mocker.AsyncMock()
+    mocker.patch("asyncio.sleep", sleep_mock)
     session_mock.get = mocker.Mock(side_effect=ClientError("test error"))
 
     with pytest.raises(ClientError):
