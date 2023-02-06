@@ -30,39 +30,22 @@ class PhmsaGasArchiver(AbstractDatasetArchiver):
         self, link: str, match: typing.Match
     ) -> tuple[Path, dict]:
         """Download zip file."""
-        # Use archive link if year is not most recent year
-
         url = f"https://www.phmsa.dot.gov/{link}"
-        file = str(match.group(1)).replace("_", "-")  # Get file name
+        file = str(match.group(1)).replace("-", "_")  # Get file name
 
-        # Set data_type partition
-        if "distribution" in file:
-            data_type = "distribution"
-        elif "transmission" in file:
-            data_type = "transmission"
-        elif "liquefied" in file:
-            data_type = "LNG"
-        elif "hazardous" in file:
-            data_type = "hazliq"
-        elif "underground" in file:
-            data_type = "UNGS"
-        else:
-            data_type = None
+        # Set dataset partition
+        dataset = "_".join(file.lower().split("_")[0:-2])
 
-        # Set start and end years
-        start_year = int(file.split("-")[-2])
-        end_year = file.split("-")[-1]
-        if "present" in end_year:
-            end_year = current_year
+        # Set start year
+        start_year = int(file.split("_")[-2])
 
-        download_path = self.download_directory / f"phmsagas-{file}.zip"
+        download_path = self.download_directory / f"phmsagas_{file}.zip"
         await self.download_zipfile(url, download_path)
 
         return ResourceInfo(
             local_path=download_path,
             partitions={
                 "start_year": start_year,
-                "end_year": end_year,
-                "data_type": data_type,
+                "dataset": dataset,
             },
         )
