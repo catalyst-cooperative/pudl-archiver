@@ -85,6 +85,7 @@ class MshaArchiver(AbstractDatasetArchiver):
         full_links_107a = [URL_BASE + "107a/" + link for link in links_107a]
 
         full_links += full_links_107a
+        logger.debug(full_links)
 
         if any(item not in list(set(datasets.values())) for item in full_links):
             """If a link to a new dataset is found, raise error."""
