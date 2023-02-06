@@ -14,7 +14,7 @@ logger = logging.getLogger(f"catalystcoop.{__name__}")
 BASE_URL = "https://www.eia.gov/electricity/data/water"
 
 
-class Eia923Archiver(AbstractDatasetArchiver):
+class EiaWaterArchiver(AbstractDatasetArchiver):
     """EIA Thermal Cooling Water archiver."""
 
     name = "eiawater"
