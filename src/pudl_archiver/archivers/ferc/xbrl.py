@@ -228,11 +228,11 @@ async def archive_taxonomy(
             continue
 
         # Download file
-        async with session.get(url) as response:
-            path = Path(url_parsed.path).relative_to("/")
+        response = await _get_with_retries(session, url)
+        path = Path(url_parsed.path).relative_to("/")
 
-            with archive.open(str(path), "w") as f:
-                f.write(await response.content.read())
+        with archive.open(str(path), "w") as f:
+            f.write(await response.content.read())
 
 
 async def archive_year(
@@ -273,14 +273,14 @@ async def archive_year(
 
             # Download filing
             try:
-                async with session.get(filing.download_url) as response:
-                    # Write to zipfile
-                    with archive.open(f"{filing.entry_id}.xbrl", "w") as f:
-                        f.write(await response.content.read())
+                response = await _get_with_retries(session, filing.download_url)
             except aiohttp.client_exceptions.ClientResponseError as e:
                 logger.warning(
                     f"Failed to download XBRL filing {filing.title} for form{form_number}-{year}: {e.message}"
                 )
+            # Write to zipfile
+            with archive.open(f"{filing.entry_id}.xbrl", "w") as f:
+                f.write(await response.content.read())
 
         # Save snapshot of RSS feed
         with archive.open("rssfeed", "w") as f:
@@ -290,3 +290,27 @@ async def archive_year(
     logger.info(f"Finished scraping ferc{form_number}-{year}.")
 
     return archive_path
+
+
+async def _get_with_retries(
+    session: aiohttp.ClientSession,
+    url: str,
+    retry_count: int = 5,
+    retry_base_s: int = 1,
+    **kwargs,
+):
+    for try_count in range(1, retry_count + 1):
+        # try count is 1 indexed for logging clarity
+        try:
+            logger.info(f"GET {url} (try #{try_count})")
+            response = await session.get(url, **kwargs)
+            break
+        except aiohttp.ClientError as e:
+            if try_count == retry_count:
+                raise e
+            retry_delay_s = retry_base_s * 2**try_count
+            logger.info(
+                f"ClientError while getting {url} (try #{try_count}, retry in {retry_delay_s}s): {e}"
+            )
+            await asyncio.sleep(retry_delay_s)
+    return response
