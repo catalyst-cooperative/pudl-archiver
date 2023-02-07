@@ -2,6 +2,7 @@
 import asyncio
 import io
 import logging
+import random
 import tempfile
 import typing
 import zipfile
@@ -108,6 +109,15 @@ class AbstractDatasetArchiver(ABC):
             try:
                 self.logger.info(f"GET {url} (try #{try_count})")
                 response = await self.session.get(url, **kwargs)
+                # TODO (daz): rip this out lol
+                if try_count != retry_count:
+                    raise random.choice(
+                        [
+                            aiohttp.ClientConnectionError,
+                            aiohttp.ClientPayloadError,
+                            asyncio.TimeoutError,
+                        ]
+                    )
                 break
             # aiohttp client can either throw ClientError or TimeoutError
             # see https://github.com/aio-libs/aiohttp/issues/7122

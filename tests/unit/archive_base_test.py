@@ -7,7 +7,7 @@ from pathlib import Path
 from zipfile import ZipFile
 
 import pytest
-from aiohttp import ClientError, ClientSession
+from aiohttp import ClientError, ClientPayloadError, ClientSession
 
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver, ArchiveAwaitable
 
@@ -200,7 +200,7 @@ async def test_retries(mocker):
         side_effect=[
             ClientError("test error"),
             TimeoutError("test error"),
-            ClientError("test error"),
+            ClientPayloadError("test error"),
             ClientError("test error"),
             ClientError("test error"),
         ]
