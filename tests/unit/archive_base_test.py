@@ -2,6 +2,7 @@
 import io
 import re
 import tempfile
+from asyncio import TimeoutError
 from pathlib import Path
 from zipfile import ZipFile
 
@@ -195,7 +196,15 @@ async def test_retries(mocker):
     archiver.session = session_mock
     sleep_mock = mocker.AsyncMock()
     mocker.patch("asyncio.sleep", sleep_mock)
-    session_mock.get = mocker.Mock(side_effect=ClientError("test error"))
+    session_mock.get = mocker.Mock(
+        side_effect=[
+            ClientError("test error"),
+            TimeoutError("test error"),
+            ClientError("test error"),
+            ClientError("test error"),
+            ClientError("test error"),
+        ]
+    )
 
     with pytest.raises(ClientError):
         await archiver.download_file("foo", io.BytesIO())
