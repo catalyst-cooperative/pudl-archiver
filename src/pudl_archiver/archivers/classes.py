@@ -101,17 +101,22 @@ class AbstractDatasetArchiver(ABC):
         raise RuntimeError(f"Failed to download valid zipfile from {url}")
 
     async def _get_with_retries(
-        self, url: str, retry_count: int = 5, retry_base_s: int = 1, **kwargs
+        self,
+        url: str,
+        retry_count: int = 5,
+        retry_base_s: int = 1,
+        decode=False,
+        **kwargs,
     ):
         for try_count in range(1, retry_count + 1):
             # try count is 1 indexed for logging clarity
             try:
                 self.logger.info(f"GET {url} (try #{try_count})")
                 response = await self.session.get(url, **kwargs)
-                # TODO (daz): rip this out lol
-                if try_count == 1:
-                    raise asyncio.TimeoutError
-                break
+                if decode:
+                    return await response.text()
+                else:
+                    return await response.read()
             # aiohttp client can either throw ClientError or TimeoutError
             # see https://github.com/aio-libs/aiohttp/issues/7122
             except (aiohttp.ClientError, asyncio.TimeoutError) as e:
@@ -138,13 +143,13 @@ class AbstractDatasetArchiver(ABC):
             file: Local path to write file to disk or bytes object to save file in memory.
             kwargs: Key word args to pass to request.
         """
-        response = await self._get_with_retries(url, **kwargs)
+        response_bytes = await self._get_with_retries(url, **kwargs)
 
         if isinstance(file, Path):
             with open(file, "wb") as f:
-                f.write(await response.read())
+                f.write(response_bytes)
         elif isinstance(file, io.BytesIO):
-            file.write(await response.read())
+            file.write(response_bytes)
 
     async def get_hyperlinks(
         self,
@@ -166,8 +171,7 @@ class AbstractDatasetArchiver(ABC):
         """
         # Parse web page to get all hyperlinks
         parser = _HyperlinkExtractor()
-        response = await self._get_with_retries(url, ssl=verify)
-        text = await response.text()
+        text = await self._get_with_retries(url, ssl=verify, decode=True)
         parser.feed(text)
 
         # Filter to those that match filter_pattern

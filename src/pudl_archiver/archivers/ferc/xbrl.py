@@ -228,11 +228,11 @@ async def archive_taxonomy(
             continue
 
         # Download file
-        response = await _get_with_retries(session, url)
+        response_bytes = await _get_with_retries(session, url)
         path = Path(url_parsed.path).relative_to("/")
 
         with archive.open(str(path), "w") as f:
-            f.write(await response.content.read())
+            f.write(response_bytes)
 
 
 async def archive_year(
@@ -273,14 +273,14 @@ async def archive_year(
 
             # Download filing
             try:
-                response = await _get_with_retries(session, filing.download_url)
+                response_bytes = await _get_with_retries(session, filing.download_url)
             except aiohttp.client_exceptions.ClientResponseError as e:
                 logger.warning(
                     f"Failed to download XBRL filing {filing.title} for form{form_number}-{year}: {e.message}"
                 )
             # Write to zipfile
             with archive.open(f"{filing.entry_id}.xbrl", "w") as f:
-                f.write(await response.content.read())
+                f.write(response_bytes)
 
         # Save snapshot of RSS feed
         with archive.open("rssfeed", "w") as f:
@@ -304,7 +304,7 @@ async def _get_with_retries(
         try:
             logger.info(f"GET {url} (try #{try_count})")
             response = await session.get(url, **kwargs)
-            break
+            return await response.content.read()
         # aiohttp client can either throw ClientError or TimeoutError
         # see https://github.com/aio-libs/aiohttp/issues/7122
         except (aiohttp.ClientError, asyncio.TimeoutError) as e:
@@ -315,4 +315,3 @@ async def _get_with_retries(
                 f"Error while getting {url} (try #{try_count}, retry in {retry_delay_s}s): {e}"
             )
             await asyncio.sleep(retry_delay_s)
-    return response
