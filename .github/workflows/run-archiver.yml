@@ -7,14 +7,25 @@ on:
     - cron: "21 4 * * 0" # Sundays 4:21 AM UTC
   push:
     branches:
-      - daz/debug-retries
+      - "daz/**"
 
 jobs:
   archive-run:
     strategy:
       matrix:
         dataset:
+          - censusdp1tract
           - eia860
+          - eia861
+          - eia860m
+          - eia_bulk_elec
+          - epacems
+          - epacamd_eia
+          - ferc1
+          - ferc2
+          - ferc6
+          - ferc60
+          - ferc714
 
       fail-fast: false
     runs-on: ubuntu-latest
