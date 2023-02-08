@@ -2,10 +2,12 @@
 import io
 import re
 import tempfile
+from asyncio import TimeoutError
 from pathlib import Path
 from zipfile import ZipFile
 
 import pytest
+from aiohttp import ClientError, ClientSession
 
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver, ArchiveAwaitable
 
@@ -111,11 +113,13 @@ async def test_download_file(mocker, file_data):
     # Initialize MockArchiver class
     archiver = MockArchiver(None)
 
-    session_mock = mocker.MagicMock(name="session_mock")
+    session_mock = mocker.AsyncMock(name="session_mock")
     archiver.session = session_mock
 
     # Set return value
-    session_mock.get.return_value.__aenter__.return_value.read.return_value = file_data
+    response_mock = mocker.AsyncMock()
+    response_mock.read = mocker.AsyncMock(return_value=file_data)
+    session_mock.get = mocker.AsyncMock(return_value=response_mock)
 
     # Prepare args
     url = "www.fake.url.com"
@@ -172,11 +176,39 @@ async def test_get_hyperlinks(docname, pattern, links, request, html_docs):
 
     mocker = request.getfixturevalue("mocker")
 
-    session_mock = mocker.MagicMock(name="session_mock")
+    session_mock = mocker.AsyncMock(name="session_mock", spec=ClientSession)
     archiver.session = session_mock
 
     # Set return value
-    session_mock.get.return_value.__aenter__.return_value.text.return_value = html
+    response_mock = mocker.AsyncMock()
+    response_mock.text = mocker.AsyncMock(return_value=html)
+    session_mock.get = mocker.AsyncMock(return_value=response_mock)
 
     found_links = await archiver.get_hyperlinks("fake_url", pattern)
     assert set(found_links) == set(links)
+
+
+@pytest.mark.asyncio
+async def test_retries(mocker):
+    # Initialize MockArchiver class
+    archiver = MockArchiver(None)
+    session_mock = mocker.Mock(name="session_mock")
+    archiver.session = session_mock
+    sleep_mock = mocker.AsyncMock()
+    mocker.patch("asyncio.sleep", sleep_mock)
+    session_mock.get = mocker.Mock(
+        side_effect=[
+            ClientError("test error"),
+            TimeoutError("test error"),
+            ClientError("test error"),
+            ClientError("test error"),
+            ClientError("test error"),
+        ]
+    )
+
+    with pytest.raises(ClientError):
+        await archiver.download_file("foo", io.BytesIO())
+
+    assert session_mock.get.call_count == 5
+    assert sleep_mock.call_count == 4
+    sleep_mock.assert_has_calls([mocker.call(x) for x in [2, 4, 8, 16]])
