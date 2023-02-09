@@ -40,6 +40,9 @@ ferc60:
 ferc714:
   production_doi: 10.5281/zenodo.4127100
   sandbox_doi: 10.5072/zenodo.1114673
+mshamines:
+  production_doi: null
+  sandbox_doi: 10.5072/zenodo.1158828
 phmsagas:
   production_doi: null
   sandbox_doi: 10.5072/zenodo.1161321

@@ -34,15 +34,15 @@ One last thing-- Zenodo archives for particular datasets are referred to as
 first uploaded to Zenodo and versioned as the source releases new data that gets
 uploaded to Zenodo.
 
-
 ## Installation
 
 We recommend using conda to create and manage your environment.
 
 Run:
+
 ```
 conda env create -f environment.yml
-conda activate pudl-archiver
+conda activate pudl-cataloger
 ```
 
 ## Usage
@@ -56,21 +56,23 @@ pudl_archiver --datasets {list_of_datasources}
 This command will download the latest available data and create archives for each
 requested datasource requested. The supported datasources include `eia860`, `eia861`, `eia923`,
 `eia_bulk_elec`, `epacems`, `epacamd_eia`, `ferc1`, `ferc2`, `ferc6`, `ferc60`,
-`ferc714`, `eia860m`.
+`ferc714`, `eia860m`, `mshamines`.
 
 There are also four optional flags available:
-* `--sandbox`: used for testing. It will only interact with Zenodo's
+
+- `--sandbox`: used for testing. It will only interact with Zenodo's
   [sandbox](https://sandbox.zenodo.org/) instance.
-* `--initialize`: used for creating an archive for a new dataset that doesn't
+- `--initialize`: used for creating an archive for a new dataset that doesn't
   currently exist on zenodo. If successful, this command will automatically add
   the new Zenodo DOI to the `dataset_doi.yaml` file.
-* `--dry-run`: used for testing, it ignores all Zenodo write operations.
-* `--all`: shortcut for archiving all datasets that we have defined archivers
+- `--dry-run`: used for testing, it ignores all Zenodo write operations.
+- `--all`: shortcut for archiving all datasets that we have defined archivers
   for. Overrides `--datasets`.
 
-
 ## Adding a new dataset
+
 ### Step 1: Implement archiver interface
+
 All of the archivers inherit from the `AbstractDatasetArchiver` base class (defined
 in `src/pudl_archiver/archiver/classes.py`. There is only a single method that each
 archiver needs to implement. That is the `get_resources` method. This method will be
@@ -110,13 +112,13 @@ there's a page containing links to a series of data resources that have somewhat
 structured names.
 
 ### Step 2: Run --initialize command
+
 You will need to run the initialize command to create a new zenodo deposition, and
 update the config file with the new DOI:
 
 ```
 pudl_archiver --datasets {new_dataset_name} --initialize
 ```
-
 
 ## Development
 
