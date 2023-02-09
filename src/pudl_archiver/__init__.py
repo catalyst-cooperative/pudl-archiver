@@ -5,8 +5,9 @@ import pathlib
 
 import aiohttp
 
+import pudl_archiver.orchestrator  # noqa: 401
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver
-from pudl_archiver.zenodo.api_client import ZenodoClient
+from pudl_archiver.orchestrator import DepositionOrchestrator
 
 
 def all_archivers():
@@ -25,26 +26,6 @@ def all_archivers():
 
 
 ARCHIVERS = {archiver.name: archiver for archiver in all_archivers()}
-
-
-async def archive_dataset(
-    name: str,
-    zenodo_client: ZenodoClient,
-    session: aiohttp.ClientSession,
-    initialize: bool = False,
-    dry_run: bool = True,
-):
-    """Download and archive dataset on zenodo."""
-    async with zenodo_client.deposition_interface(
-        name, initialize, dry_run=dry_run
-    ) as deposition:
-        # Create new deposition then return
-        cls = ARCHIVERS.get(name)
-        if not cls:
-            raise RuntimeError(f"Dataset {name} not supported")
-        else:
-            archiver = cls(session, deposition)
-        await archiver.create_archive()
 
 
 async def archive_datasets(
@@ -68,23 +49,24 @@ async def archive_datasets(
         # List to gather all archivers to run asyncronously
         tasks = []
         for dataset in datasets:
-            zenodo_client = ZenodoClient(
-                "dataset_doi.yaml",
+            cls = ARCHIVERS.get(dataset)
+            if not cls:
+                raise RuntimeError(f"Dataset {dataset} not supported")
+            else:
+                downloader = cls(session)
+            orchestrator = DepositionOrchestrator(
+                dataset,
+                downloader,
                 session,
                 upload_key,
                 publish_key,
-                testing=sandbox,
+                deposition_settings=pathlib.Path("dataset_doi.yaml"),
+                create_new=initialize,
+                dry_run=dry_run,
+                sandbox=sandbox,
             )
 
-            tasks.append(
-                archive_dataset(
-                    dataset,
-                    zenodo_client,
-                    session,
-                    initialize=initialize,
-                    dry_run=dry_run,
-                )
-            )
+            tasks.append(orchestrator.run())
 
         results = zip(datasets, await asyncio.gather(*tasks, return_exceptions=True))
         exceptions = [

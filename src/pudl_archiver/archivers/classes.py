@@ -50,21 +50,15 @@ class _HyperlinkExtractor(HTMLParser):
 class AbstractDatasetArchiver(ABC):
     """An abstract base archiver class."""
 
-    from pudl_archiver.zenodo.api_client import ZenodoDepositionInterface
-
     name: str
 
-    def __init__(
-        self, session: aiohttp.ClientSession, deposition: ZenodoDepositionInterface
-    ):
+    def __init__(self, session: aiohttp.ClientSession):
         """Initialize Archiver object.
 
         Args:
             session: Async HTTP client session manager.
-            deposition: Interface to Zenodo deposition relevant to data source.
         """
         self.session = session
-        self.deposition = deposition
 
         # Create a temporary directory for downloading data
         self._download_directory_manager = tempfile.TemporaryDirectory()
@@ -106,7 +100,33 @@ class AbstractDatasetArchiver(ABC):
         # If it makes it here that means it couldn't download a valid zipfile
         raise RuntimeError(f"Failed to download valid zipfile from {url}")
 
-    async def download_file(self, url: str, file: Path | io.BytesIO, **kwargs):
+    async def _get_with_retries(
+        self, url: str, retry_count: int = 5, retry_base_s: int = 1, **kwargs
+    ):
+        for try_count in range(1, retry_count + 1):
+            # try count is 1 indexed for logging clarity
+            try:
+                self.logger.info(f"GET {url} (try #{try_count})")
+                response = await self.session.get(url, **kwargs)
+                break
+            # aiohttp client can either throw ClientError or TimeoutError
+            # see https://github.com/aio-libs/aiohttp/issues/7122
+            except (aiohttp.ClientError, asyncio.TimeoutError) as e:
+                if try_count == retry_count:
+                    raise e
+                retry_delay_s = retry_base_s * 2**try_count
+                self.logger.info(
+                    f"Error while getting {url} (try #{try_count}, retry in {retry_delay_s}s): {e}"
+                )
+                await asyncio.sleep(retry_delay_s)
+        return response
+
+    async def download_file(
+        self,
+        url: str,
+        file: Path | io.BytesIO,
+        **kwargs,
+    ):
         """Download a file using async session manager.
 
         Args:
@@ -114,12 +134,13 @@ class AbstractDatasetArchiver(ABC):
             file: Local path to write file to disk or bytes object to save file in memory.
             kwargs: Key word args to pass to request.
         """
-        async with self.session.get(url, **kwargs) as response:
-            if isinstance(file, Path):
-                with open(file, "wb") as f:
-                    f.write(await response.read())
-            elif isinstance(file, io.BytesIO):
-                file.write(await response.read())
+        response = await self._get_with_retries(url, **kwargs)
+
+        if isinstance(file, Path):
+            with open(file, "wb") as f:
+                f.write(await response.read())
+        elif isinstance(file, io.BytesIO):
+            file.write(await response.read())
 
     async def get_hyperlinks(
         self,
@@ -141,9 +162,9 @@ class AbstractDatasetArchiver(ABC):
         """
         # Parse web page to get all hyperlinks
         parser = _HyperlinkExtractor()
-        async with self.session.get(url, ssl=verify) as response:
-            text = await response.text()
-            parser.feed(text)
+        response = await self._get_with_retries(url, ssl=verify)
+        text = await response.text()
+        parser.feed(text)
 
         # Filter to those that match filter_pattern
         hyperlinks = parser.hyperlinks
@@ -159,12 +180,11 @@ class AbstractDatasetArchiver(ABC):
 
         return hyperlinks
 
-    async def create_archive(self):
-        """Download all resources and create an archive for upload.
+    async def download_all_resources(self) -> dict[str, ResourceInfo]:
+        """Download all resources.
 
         This method uses the awaitables returned by `get_resources`. It
-        coordinates downloading all resources concurrently, then creating a
-        new zenodo deposition version containing those resources.
+        coordinates downloading all resources concurrently.
         """
         # Get all awaitables from get_resources
         resources = [resource async for resource in self.get_resources()]
@@ -176,5 +196,4 @@ class AbstractDatasetArchiver(ABC):
             self.logger.info(f"Downloaded {resource_info.local_path}.")
             resource_dict[str(resource_info.local_path.name)] = resource_info
 
-        # Add to zenodo deposition
-        await self.deposition.add_files(resource_dict)
+        return resource_dict
