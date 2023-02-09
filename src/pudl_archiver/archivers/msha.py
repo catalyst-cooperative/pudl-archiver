@@ -18,7 +18,7 @@ EXT_BASE = "OGIMSHA.asp"
 URL_107A = "https://arlweb.msha.gov/OpenGovernmentData/107a/"
 EXT_107A = "107aOrders.asp"
 
-datasets = {
+MSHA_DATASETS = {
     "accidents": "https://arlweb.msha.gov/OpenGovernmentData/DataSets/Accidents.zip",
     "accidents_definitions": "https://arlweb.msha.gov/OpenGovernmentData/DataSets/Accidents_Definition_File.txt",
     "address_of_record": "https://arlweb.msha.gov/OpenGovernmentData/DataSets/AddressofRecord.zip",
@@ -73,12 +73,12 @@ class MshaArchiver(AbstractDatasetArchiver):
             r"(?:DataSets\/)([a-zA-Z0-7_]+)(.zip|_Definition_File.txt)"
         )
 
-        """Get main table links."""
+        # Get main table links.
         links = await self.get_hyperlinks(URL_BASE + EXT_BASE, link_pattern)
         links = [link.split("/")[-1] for link in links]
         full_links = [URL_BASE + "DataSets/" + link for link in links]
 
-        """Get 107a table link from separate webpage."""
+        # Get 107a table link from separate webpage.
         link_pattern_107a = re.compile(r"(?:107a\/)([a-zA-Z0-7]+).xlsx")
         links_107a = await self.get_hyperlinks(URL_107A + EXT_107A, link_pattern_107a)
         links_107a = [link.split("/")[-1] for link in links_107a]
@@ -87,15 +87,17 @@ class MshaArchiver(AbstractDatasetArchiver):
         full_links += full_links_107a
         logger.debug(full_links)
 
-        if any(item not in list(set(datasets.values())) for item in full_links):
-            """If a link to a new dataset is found, raise error."""
-            new_links = " ".join([v for v in full_links if v not in datasets.values()])
+        if any(item not in list(set(MSHA_DATASETS.values())) for item in full_links):
+            # If a link to a new dataset is found, raise error.
+            new_links = " ".join(
+                [v for v in full_links if v not in MSHA_DATASETS.values()]
+            )
             raise ValueError(f"New dataset download links found: {new_links}")
 
-        if not all(item in full_links for item in list(set(datasets.values()))):
-            """If an expected dataset link is missing, raise error."""
+        if not all(item in full_links for item in list(set(MSHA_DATASETS.values()))):
+            # If an expected dataset link is missing, raise error.
             missing_data = ", ".join(
-                [k for k, v in datasets.items() if v not in full_links]
+                [k for k, v in MSHA_DATASETS.items() if v not in full_links]
             )
             raise ValueError(
                 f"Expected dataset download links not found for datasets: {missing_data}"
@@ -106,19 +108,23 @@ class MshaArchiver(AbstractDatasetArchiver):
 
     async def get_dataset_resource(self, link: str) -> tuple[Path, dict]:
         """Download zip and .txt files."""
-        filename = list(datasets.keys())[list(datasets.values()).index(link)]
+        filename = list(MSHA_DATASETS.keys())[list(MSHA_DATASETS.values()).index(link)]
+        # Get file name (dictionary key) from dictionary value.
         dataset = filename.replace("_definitions", "")
 
-        if ".zip" in link:
+        if link.endswith(".zip"):
             download_path = self.download_directory / f"msha_{filename}.zip"
             await self.download_zipfile(link, download_path)
 
-        elif ".txt" in link:
+        elif link.endswith(".txt"):
             download_path = self.download_directory / f"msha_{filename}.txt"
             await self.download_file(link, download_path)
 
-        elif ".xlsx" in link:
+        elif link.endswith(".xlsx"):
             download_path = self.download_directory / f"msha_{filename}.xlsx"
             await self.download_file(link, download_path)
+
+        else:
+            raise ValueError(f"Unexpected file extension: {link}. File not downloaded.")
 
         return ResourceInfo(local_path=download_path, partitions={"dataset": dataset})
