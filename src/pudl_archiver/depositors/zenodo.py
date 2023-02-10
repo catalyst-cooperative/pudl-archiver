@@ -90,7 +90,10 @@ class ZenodoDepositor:
             """
             logger.info(f"{method} {url} - {log_label}")
             response = await retry_async(
-                session.request, args=[method, url], kwargs=kwargs
+                session.request,
+                args=[method, url],
+                kwargs=kwargs,
+                retry_on=(ZenodoClientException,),
             )
             if response.status >= 400:
                 raise ZenodoClientException(
