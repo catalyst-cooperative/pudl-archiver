@@ -1,15 +1,32 @@
 ---
 name: run-archiver
 
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "21 4 * * 0" # Sundays 4:21 AM UTC
+  push:
+    branches:
+      - "daz/**"
 
 jobs:
   archive-run:
     strategy:
       matrix:
-        dataset_group:
-          - [eia860]
-          - [eia861]
+        dataset:
+          - censusdp1tract
+          - eia860
+          - eia861
+          - eia860m
+          - eia_bulk_elec
+          - epacems
+          - epacamd_eia
+          - ferc1
+          - ferc2
+          - ferc6
+          - ferc60
+          - ferc714
+
       fail-fast: false
     runs-on: ubuntu-latest
     steps:
@@ -38,12 +55,12 @@ jobs:
           conda config --show
           printenv | sort
 
-      - name: Run archiver for ${{ join(matrix.dataset_group, ', ') }}
+      - name: Run archiver for ${{ matrix.dataset }}
         env:
           ZENODO_SANDBOX_TOKEN_UPLOAD: ${{ secrets.ZENODO_SANDBOX_TOKEN_UPLOAD }}
           ZENODO_SANDBOX_TOKEN_PUBLISH: ${{ secrets.ZENODO_SANDBOX_TOKEN_PUBLISH }}
         run: |
-          conda run -n pudl-cataloger pudl_archiver --sandbox --datasets ${{ join(matrix.dataset_group, ' ') }}
+          conda run -n pudl-cataloger pudl_archiver --sandbox --datasets ${{ matrix.dataset }}
 
   archive-notify:
     runs-on: ubuntu-latest
