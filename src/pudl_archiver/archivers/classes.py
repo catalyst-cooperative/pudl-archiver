@@ -12,6 +12,8 @@ from pathlib import Path
 
 import aiohttp
 
+from pudl_archiver.utils import retry_async
+
 ResourceInfo = namedtuple("ResourceInfo", ["local_path", "partitions"])
 """Tuple to wrap info about downloaded resource."""
 
@@ -100,36 +102,6 @@ class AbstractDatasetArchiver(ABC):
         # If it makes it here that means it couldn't download a valid zipfile
         raise RuntimeError(f"Failed to download valid zipfile from {url}")
 
-    async def _get_with_retries(
-        self,
-        url: str,
-        retry_count: int = 5,
-        retry_base_s: int = 1,
-        decode=False,
-        **kwargs,
-    ):
-        for try_count in range(1, retry_count + 1):
-            # try count is 1 indexed for logging clarity
-            try:
-                self.logger.info(f"GET {url} (try #{try_count})")
-                response = await self.session.get(url, **kwargs)
-                if decode:
-                    return await response.text()
-                else:
-                    return await response.read()
-            # aiohttp client can either throw ClientError or TimeoutError
-            # see https://github.com/aio-libs/aiohttp/issues/7122
-            except (aiohttp.ClientError, asyncio.TimeoutError) as e:
-                if try_count == retry_count:
-                    self.logger.info(f"Last try (#{retry_count}) failed.")
-                    raise e
-                retry_delay_s = retry_base_s * 2**try_count
-                self.logger.info(
-                    f"Error while getting {url} (try #{try_count}, retry in {retry_delay_s}s): {repr(e)}"
-                )
-                await asyncio.sleep(retry_delay_s)
-        return response
-
     async def download_file(
         self,
         url: str,
@@ -143,7 +115,8 @@ class AbstractDatasetArchiver(ABC):
             file: Local path to write file to disk or bytes object to save file in memory.
             kwargs: Key word args to pass to request.
         """
-        response_bytes = await self._get_with_retries(url, **kwargs)
+        response = await retry_async(lambda: self.session.get(url, **kwargs))
+        response_bytes = await retry_async(response.read)
 
         if isinstance(file, Path):
             with open(file, "wb") as f:
@@ -171,7 +144,9 @@ class AbstractDatasetArchiver(ABC):
         """
         # Parse web page to get all hyperlinks
         parser = _HyperlinkExtractor()
-        text = await self._get_with_retries(url, ssl=verify, decode=True)
+
+        response = await retry_async(lambda: self.session.get(url=url, ssl=verify))
+        text = await retry_async(response.text)
         parser.feed(text)
 
         # Filter to those that match filter_pattern

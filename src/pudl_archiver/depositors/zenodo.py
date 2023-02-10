@@ -6,6 +6,7 @@ from typing import BinaryIO, Literal
 import aiohttp
 import semantic_version  # type: ignore
 
+from pudl_archiver.utils import retry_async
 from pudl_archiver.zenodo.entities import Deposition, DepositionMetadata
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
@@ -88,14 +89,14 @@ class ZenodoDepositor:
                 Either the parsed JSON or the raw aiohttp.ClientResponse object.
             """
             logger.info(f"{method} {url} - {log_label}")
-            async with session.request(method, url, **kwargs) as response:
-                if response.status >= 400:
-                    raise ZenodoClientException(
-                        {"response": response, "json": await response.json()}
-                    )
-                if parse_json:
-                    return await response.json()
-                return response
+            response = await retry_async(lambda: session.request(method, url, **kwargs))
+            if response.status >= 400:
+                raise ZenodoClientException(
+                    {"response": response, "json": await response.json()}
+                )
+            if parse_json:
+                return await retry_async(response.json)
+            return response
 
         return requester
 
