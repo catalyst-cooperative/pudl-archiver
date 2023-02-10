@@ -39,8 +39,6 @@ async def retry_async(
         coro = async_func(*args, **kwargs)
         try:
             return await coro
-        # aiohttp client can either throw ClientError or TimeoutError
-        # see https://github.com/aio-libs/aiohttp/issues/7122
         except retry_on as e:
             if try_count == retry_count:
                 raise e
