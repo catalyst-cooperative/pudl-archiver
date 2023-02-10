@@ -89,7 +89,9 @@ class ZenodoDepositor:
                 Either the parsed JSON or the raw aiohttp.ClientResponse object.
             """
             logger.info(f"{method} {url} - {log_label}")
-            response = await retry_async(lambda: session.request(method, url, **kwargs))
+            response = await retry_async(
+                session.request, args=[method, url], kwargs=kwargs
+            )
             if response.status >= 400:
                 raise ZenodoClientException(
                     {"response": response, "json": await response.json()}

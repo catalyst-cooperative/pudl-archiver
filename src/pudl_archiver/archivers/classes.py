@@ -115,7 +115,7 @@ class AbstractDatasetArchiver(ABC):
             file: Local path to write file to disk or bytes object to save file in memory.
             kwargs: Key word args to pass to request.
         """
-        response = await retry_async(lambda: self.session.get(url, **kwargs))
+        response = await retry_async(self.session.get, args=[url], kwargs=kwargs)
         response_bytes = await retry_async(response.read)
 
         if isinstance(file, Path):
@@ -145,7 +145,9 @@ class AbstractDatasetArchiver(ABC):
         # Parse web page to get all hyperlinks
         parser = _HyperlinkExtractor()
 
-        response = await retry_async(lambda: self.session.get(url=url, ssl=verify))
+        response = await retry_async(
+            self.session.get, args=[url], kwargs={"ssl": verify}
+        )
         text = await retry_async(response.text)
         parser.feed(text)
 

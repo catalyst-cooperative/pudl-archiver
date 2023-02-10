@@ -218,7 +218,8 @@ async def archive_taxonomy(
     cntlr.startLogging(logFileName="logToPrint")
     model_manager = ModelManager.initialize(cntlr)
     taxonomy = await retry_async(
-        lambda: asyncio.to_thread(ModelXbrl.load, model_manager, taxonomy_entry_point),
+        asyncio.to_thread,
+        args=[ModelXbrl.load, model_manager, taxonomy_entry_point],
         retry_on=(FileNotFoundError,),
     )
 
@@ -231,7 +232,7 @@ async def archive_taxonomy(
             continue
 
         # Download file
-        response = await retry_async(lambda: session.get(url))
+        response = await retry_async(session.get, args=[url])
         response_bytes = await retry_async(response.content.read)
         path = Path(url_parsed.path).relative_to("/")
 
@@ -277,9 +278,7 @@ async def archive_year(
 
             # Download filing
             try:
-                response = await retry_async(
-                    lambda: session.get(url=filing.download_url)
-                )
+                response = await retry_async(session.get, args=[filing.download_url])
                 response_bytes = await retry_async(response.content.read)
             except aiohttp.client_exceptions.ClientResponseError as e:
                 logger.warning(
