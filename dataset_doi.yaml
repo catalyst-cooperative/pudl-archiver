@@ -43,3 +43,6 @@ ferc714:
 mshamines:
   production_doi: null
   sandbox_doi: 10.5072/zenodo.1158828
+phmsagas:
+  production_doi: null
+  sandbox_doi: 10.5072/zenodo.1161321
