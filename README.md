@@ -45,6 +45,12 @@ conda env create -f environment.yml
 conda activate pudl-cataloger
 ```
 
+## Setting up environment
+API tokens are required to interact with Zenodo. There is one set of tokens for accessing
+the sandbox server, and one for the production server. The archiver tool expects these tokens
+to be set in the following environment variables: `ZENODO_TOKEN_PUBLISH` and `ZENODO_TOKEN_UPLOAD`
+or `ZENODO_SANDBOX_TOKEN_PUBLISH` and `ZENODO_SANDBOX_TOKEN_UPLOAD` for the sandbox server.
+
 ## Usage
 
 A CLI is provided for creating and updating archives. The basic usage looks like:
@@ -123,6 +129,8 @@ pudl_archiver --datasets {new_dataset_name} --initialize
 ## Development
 
 We only have one development specific tool, which is the Zenodo Postman collection in `/devtools`.
+This tool is used for testing and prototyping Zenodo API calls, it is not needed to use the archiver
+tool itself.
 
 To use it:
 
