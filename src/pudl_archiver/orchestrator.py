@@ -233,6 +233,11 @@ class DepositionOrchestrator:
                 self.deletes.append(file_info)
 
         self.changed = len(self.uploads or self.deletes) > 0
+        if self.changed:
+            logger.info(f"To delete: {self.deletes}")
+            logger.info(f"To upload: {self.uploads}")
+        else:
+            logger.info("No changes detected.")
 
     async def _apply_changes(self):
         """Actually upload and delete what we listed in self.uploads/deletes."""
