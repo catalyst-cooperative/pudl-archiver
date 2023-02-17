@@ -185,6 +185,12 @@ class DepositionOrchestrator:
         # TODO (daz): pass around changesets instead of persisting them on the instance, this
         # makes the ordering/dependency more explicit
         self._generate_changes(resources)
+
+        # Leave immediately after generating changes if dry_run
+        if self.dry_run:
+            logger.info("Dry run, aborting")
+            return self.new_deposition
+
         await self._apply_changes()
         self.new_deposition = await self.depositor.get_record(self.new_deposition.id_)
         await self._update_datapackage(resources)
@@ -227,14 +233,16 @@ class DepositionOrchestrator:
                 self.deletes.append(file_info)
 
         self.changed = len(self.uploads or self.deletes) > 0
+        if self.changed:
+            logger.info(f"To delete: {self.deletes}")
+            logger.info(f"To upload: {self.uploads}")
+        else:
+            logger.info("No changes detected.")
 
     async def _apply_changes(self):
         """Actually upload and delete what we listed in self.uploads/deletes."""
         logger.info(f"To delete: {self.deletes}")
         logger.info(f"To upload: {self.uploads}")
-        if self.dry_run:
-            logger.info("Dry run, aborting.")
-            return
         for file_info in self.deletes:
             await self.depositor.delete_file(self.new_deposition, file_info.filename)
         self.deletes = []
