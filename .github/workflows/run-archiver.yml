@@ -15,17 +15,22 @@ jobs:
       matrix:
         dataset:
           - censusdp1tract
+          - eia176
           - eia860
-          - eia861
           - eia860m
+          - eia861
+          - eia923
           - eia_bulk_elec
-          - epacems
+          - eiawater
           - epacamd_eia
+          - epacems
           - ferc1
           - ferc2
           - ferc6
           - ferc60
           - ferc714
+          - msha
+          - phmsagas
 
       fail-fast: false
     runs-on: ubuntu-latest
