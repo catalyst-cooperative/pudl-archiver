@@ -5,7 +5,7 @@ channels:
   - defaults
 dependencies:
   # Used to set up the environment
-  - pip>=21,<23
+  - pip>=21,<24
   - python>=3.10,<3.11
   - setuptools<66,>=61.0
   # fiona is a transitive dependency which needs GDAL. so we install with conda
