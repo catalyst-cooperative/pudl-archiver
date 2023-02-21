@@ -29,7 +29,7 @@ jobs:
           - ferc6
           - ferc60
           - ferc714
-          - msha
+          - mshamines
           - phmsagas
 
       fail-fast: false
