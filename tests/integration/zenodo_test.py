@@ -239,3 +239,10 @@ async def test_zenodo_workflow(
     v2 = await orchestrator.run()
     v2_refreshed = await orchestrator.depositor.get_record(v2.id_)
     verify_files(test_files["updated"], v2_refreshed)
+
+    # no updates to make, should not leave the conceptdoi pointing at a draft
+    v2_not_updated = await orchestrator.run()
+    latest_for_conceptdoi = await orchestrator.depositor.get_deposition(
+        str(v2_not_updated.conceptdoi), published_only=True
+    )
+    assert latest_for_conceptdoi.id_ == v2_refreshed.id_

@@ -132,7 +132,9 @@ class ZenodoDepositor:
         # Ignore content type
         return Deposition(**response)
 
-    async def get_deposition(self, concept_doi: str) -> Deposition:
+    async def get_deposition(
+        self, concept_doi: str, published_only: bool = False
+    ) -> Deposition:
         """Get the latest deposition associated with a concept DOI.
 
         Sometimes the deposition information that comes back from the concept
@@ -142,6 +144,8 @@ class ZenodoDepositor:
         Args:
             concept_doi: the DOI for the concept - gets the latest associated
                 DOI.
+            published_only: if True, only returns depositions that have been
+                published.
 
         Returns:
             The latest deposition associated with the concept DOI.
@@ -160,8 +164,12 @@ class ZenodoDepositor:
             logger.info(
                 f"{concept_doi} points at multiple records: {[r['id'] for r in response]}"
             )
+        depositions = [Deposition(**dep) for dep in response]
 
-        latest_deposition = Deposition(**sorted(response, key=lambda d: d["id"])[-1])
+        if published_only:
+            depositions = [dep for dep in depositions if dep.submitted]
+
+        latest_deposition = sorted(depositions, key=lambda d: d.id_)[-1]
         return await self.get_record(latest_deposition.id_)
 
     async def get_record(self, rec_id: int) -> Deposition:
@@ -191,18 +199,21 @@ class ZenodoDepositor:
             A new Deposition that is a snapshot of the old one you passed in,
             with a new major version number.
         """
+        # If we try to get a new version of a draft, delete the draft and request a fresh snapshot
         if not deposition.submitted:
             return deposition
 
         url = f"{self.api_root}/deposit/depositions/{deposition.id_}/actions/newversion"
 
-        # Create the new version
-        # When the API creates a new version, it does not return the new one.
-        # It returns the old one with a link to the new one.
+        # create a new unpublished deposition version
         response = await self.request(
-            "POST", url, log_label="Creating new version", headers=self.auth_write
+            "POST",
+            url,
+            log_label="Creating new version",
+            headers=self.auth_write,
         )
         old_deposition = Deposition(**response)
+        new_deposition_url = old_deposition.links.latest_draft
 
         source_metadata = old_deposition.metadata.dict(by_alias=True)
         metadata = {}
@@ -249,6 +260,20 @@ class ZenodoDepositor:
             "POST", url, log_label="Publishing deposition", headers=headers
         )
         return Deposition(**response)
+
+    async def delete_deposition(self, deposition) -> None:
+        """Delete an un-submitted deposition.
+
+        Args:
+            deposition: the deposition you want to delete.
+        """
+        await self.request(
+            "DELETE",
+            deposition.links.self,
+            log_label="Deleting deposition",
+            headers=self.auth_write,
+            parse_json=False,
+        )
 
     async def delete_file(self, deposition: Deposition, target: str) -> None:
         """Delete a file from a deposition.

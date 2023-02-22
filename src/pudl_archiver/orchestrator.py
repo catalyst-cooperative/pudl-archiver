@@ -129,7 +129,6 @@ class DepositionOrchestrator:
                 raise RuntimeError("Must pass a valid DOI if create_new is False")
 
             self.deposition = await self.depositor.get_deposition(doi)
-
         self.new_deposition = await self.depositor.get_new_version(self.deposition)
 
         # TODO (daz): stop using self.deposition_files, use the files lists on the depositions
@@ -202,7 +201,8 @@ class DepositionOrchestrator:
                 self._update_dataset_settings(published)
             return published
         else:
-            return self.new_deposition
+            await self.depositor.delete_deposition(self.new_deposition)
+            return self.deposition
 
     def _generate_changes(self, resources):
         for name, resource in resources.items():
