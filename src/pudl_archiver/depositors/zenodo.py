@@ -199,7 +199,6 @@ class ZenodoDepositor:
             A new Deposition that is a snapshot of the old one you passed in,
             with a new major version number.
         """
-        # If we try to get a new version of a draft, delete the draft and request a fresh snapshot
         if not deposition.submitted:
             return deposition
 
