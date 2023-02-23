@@ -129,7 +129,9 @@ class DepositionOrchestrator:
                 raise RuntimeError("Must pass a valid DOI if create_new is False")
 
             self.deposition = await self.depositor.get_deposition(doi)
-        self.new_deposition = await self.depositor.get_new_version(self.deposition)
+        self.new_deposition = await self.depositor.get_new_version(
+            self.deposition, clobber=not self.create_new
+        )
 
         # TODO (daz): stop using self.deposition_files, use the files lists on the depositions
         # Map file name to file metadata for all files in deposition

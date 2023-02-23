@@ -186,7 +186,9 @@ class ZenodoDepositor:
         )
         return Deposition(**response)
 
-    async def get_new_version(self, deposition: Deposition) -> Deposition:
+    async def get_new_version(
+        self, deposition: Deposition, clobber: bool = False
+    ) -> Deposition:
         """Get a new version of a deposition.
 
         First creates a new version, which is a snapshot of the old one, then
@@ -194,13 +196,20 @@ class ZenodoDepositor:
 
         Args:
             deposition: the deposition you want to get the new version of.
+            clobber: if there is an existing draft, delete it and get a new one.
 
         Returns:
             A new Deposition that is a snapshot of the old one you passed in,
             with a new major version number.
         """
         if not deposition.submitted:
-            return deposition
+            if clobber:
+                await self.delete_deposition(deposition)
+                deposition = await self.get_deposition(
+                    str(deposition.conceptdoi), published_only=True
+                )
+            else:
+                return deposition
 
         url = f"{self.api_root}/deposit/depositions/{deposition.id_}/actions/newversion"
 
