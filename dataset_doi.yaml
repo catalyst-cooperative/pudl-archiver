@@ -1,6 +1,9 @@
 censusdp1tract:
   production_doi: 10.5281/zenodo.4127048
-  sandbox_doi: 10.5072/zenodo.674991
+  sandbox_doi: 10.5072/zenodo.1151526
+eia176:
+  production_doi: null
+  sandbox_doi: 10.5072/zenodo.1155187
 eia860:
   production_doi: 10.5281/zenodo.4127026
   sandbox_doi: 10.5072/zenodo.672209
@@ -19,14 +22,14 @@ eia_bulk_elec:
 eiawater:
   production_doi: null
   sandbox_doi: 10.5072/zenodo.1161347
-epacems:
-  production_doi: 10.5281/zenodo.4127054
-  sandbox_doi: 10.5072/zenodo.672962
 epacamd_eia:
   production_doi: 10.5281/zenodo.6633769
   sandbox_doi: 10.5072/zenodo.1072000
+epacems:
+  production_doi: 10.5281/zenodo.4127054
+  sandbox_doi: 10.5072/zenodo.672962
 ferc1:
-  production_doi: null
+  production_doi: 10.5281/zenodo.4127043
   sandbox_doi: 10.5072/zenodo.1114564
 ferc2:
   production_doi: 10.5281/zenodo.5879542
