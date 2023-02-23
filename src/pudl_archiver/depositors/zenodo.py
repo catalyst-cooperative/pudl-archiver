@@ -1,4 +1,5 @@
 """Handle all deposition actions within Zenodo."""
+import asyncio
 import json
 import logging
 from typing import BinaryIO, Literal
@@ -89,18 +90,25 @@ class ZenodoDepositor:
                 Either the parsed JSON or the raw aiohttp.ClientResponse object.
             """
             logger.info(f"{method} {url} - {log_label}")
+
+            async def run_request():
+                response = await session.request(method, url, **kwargs)
+                if response.status >= 400:
+                    raise ZenodoClientException(
+                        {"response": response, "json": await response.json()}
+                    )
+                if parse_json:
+                    return await response.json()
+                return response
+
             response = await retry_async(
-                session.request,
-                args=[method, url],
-                kwargs=kwargs,
-                retry_on=(ZenodoClientException,),
+                run_request,
+                retry_on=(
+                    aiohttp.ClientError,
+                    asyncio.TimeoutError,
+                    ZenodoClientException,
+                ),
             )
-            if response.status >= 400:
-                raise ZenodoClientException(
-                    {"response": response, "json": await response.json()}
-                )
-            if parse_json:
-                return await retry_async(response.json)
             return response
 
         return requester

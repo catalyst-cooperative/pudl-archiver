@@ -1,4 +1,5 @@
 import os
+import time
 from io import BytesIO
 
 import aiohttp
@@ -83,17 +84,45 @@ def clean_metadata(metadata):
     )
 
 
-@pytest.mark.asyncio
-async def test_full_zenodo_flow(depositor, deposition_metadata, upload_key):
-    # create deposition
+@pytest.fixture()
+def initial_files():
+    return {
+        "to_update": b"I am outdated",
+        "to_delete": b"Delete me!",
+    }
+
+
+@pytest_asyncio.fixture()
+async def empty_deposition(depositor, deposition_metadata):
     deposition = await depositor.create_deposition(deposition_metadata)
 
     assert clean_metadata(deposition.metadata) == clean_metadata(deposition_metadata)
     assert deposition.state == "unsubmitted"
+    return deposition
 
+
+@pytest_asyncio.fixture()
+async def initialized_deposition(depositor, empty_deposition, initial_files):
+    await depositor.create_file(
+        empty_deposition,
+        "to_update",
+        BytesIO(initial_files["to_update"]),
+        force_api="files",
+    )
+    await depositor.create_file(
+        empty_deposition, "to_delete", BytesIO(initial_files["to_delete"])
+    )
+
+    # publish initial deposition
+    return await depositor.publish_deposition(empty_deposition)
+
+
+@pytest.mark.asyncio()
+async def test_publish_empty(depositor, empty_deposition, mocker):
     # try publishing empty
+    mocker.patch("asyncio.sleep", mocker.AsyncMock())
     with pytest.raises(ZenodoClientException) as excinfo:
-        await depositor.publish_deposition(deposition)
+        await depositor.publish_deposition(empty_deposition)
     error_json = excinfo.value.kwargs["json"]
     assert "validation error" in error_json["message"].lower()
     assert (
@@ -101,31 +130,33 @@ async def test_full_zenodo_flow(depositor, deposition_metadata, upload_key):
         in error_json["errors"][0]["message"].lower()
     )
 
-    conceptrecid = deposition.conceptrecid
 
-    # add files to initial deposition
-    initial_files = {
-        "to_update": b"I am outdated",
-        "to_delete": b"Delete me!",
-    }
+@pytest.mark.asyncio()
+async def test_delete_draft(depositor, initialized_deposition):
+    draft = await depositor.get_new_version(initialized_deposition)
+    conceptdoi = initialized_deposition.conceptdoi
 
-    await depositor.create_file(
-        deposition, "to_update", BytesIO(initial_files["to_update"]), force_api="files"
-    )
-    await depositor.create_file(
-        deposition, "to_delete", BytesIO(initial_files["to_delete"])
-    )
+    latest = await depositor.get_deposition(conceptdoi)
+    assert latest.id_ == draft.id_
+    assert not latest.submitted
 
-    # publish initial deposition
-    published_deposition = await depositor.publish_deposition(deposition)
-    assert published_deposition.conceptdoi.rsplit(".", 1)[1] == conceptrecid
-    assert published_deposition.id_ == deposition.id_
-    assert published_deposition.state == "done"
+    await depositor.delete_deposition(draft)
 
-    conceptdoi = published_deposition.conceptdoi
+    time.sleep(1)
+    latest = await depositor.get_deposition(conceptdoi)
+    assert latest.id_ == initialized_deposition.id_
+
+
+@pytest.mark.asyncio
+async def test_update_flow(
+    depositor, initialized_deposition, initial_files, upload_key
+):
+    assert initialized_deposition.state == "done"
+
+    conceptdoi = initialized_deposition.conceptdoi
 
     # verify that the first version has the files we expect
-    v1_files = published_deposition.files
+    v1_files = initialized_deposition.files
     assert len(v1_files) == 2
 
     for deposition_file in v1_files:
@@ -139,9 +170,9 @@ async def test_full_zenodo_flow(depositor, deposition_metadata, upload_key):
 
     # check that the latest deposition in the conceptdoi points at the one we just published
     latest_deposition = await depositor.get_deposition(conceptdoi)
-    assert latest_deposition.id_ == published_deposition.id_
+    assert latest_deposition.id_ == initialized_deposition.id_
 
-    new_deposition = await depositor.get_new_version(published_deposition)
+    new_deposition = await depositor.get_new_version(initialized_deposition)
     doubly_new_deposition = await depositor.get_new_version(new_deposition)
 
     # if we call get_new_version on an unsubmitted deposition, we should just get
