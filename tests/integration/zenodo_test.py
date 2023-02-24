@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver, ResourceInfo
 from pudl_archiver.frictionless import DataPackage
 from pudl_archiver.orchestrator import DepositionOrchestrator
+from pudl_archiver.utils import retry_async
 from pudl_archiver.zenodo.entities import (
     Deposition,
     DepositionCreator,
@@ -242,7 +243,11 @@ async def test_zenodo_workflow(
 
     # no updates to make, should not leave the conceptdoi pointing at a draft
     v2_not_updated = await orchestrator.run()
-    latest_for_conceptdoi = await orchestrator.depositor.get_deposition(
-        str(v2_not_updated.conceptdoi), published_only=True
+    # unfortunately, it looks like Zenodo doesn't propagate deletion instantly - retry this a few times.
+    latest_for_conceptdoi = await retry_async(
+        orchestrator.depositor.get_deposition,
+        args=[str(v2_not_updated.conceptdoi)],
+        kwargs={"published_only": True},
+        retry_base_s=0.5,
     )
     assert latest_for_conceptdoi.id_ == v2_refreshed.id_

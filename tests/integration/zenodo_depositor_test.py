@@ -102,7 +102,7 @@ async def empty_deposition(depositor, deposition_metadata):
 
 
 @pytest_asyncio.fixture()
-async def initialized_deposition(depositor, empty_deposition, initial_files):
+async def initial_deposition(depositor, empty_deposition, initial_files):
     await depositor.create_file(
         empty_deposition,
         "to_update",
@@ -132,9 +132,9 @@ async def test_publish_empty(depositor, empty_deposition, mocker):
 
 
 @pytest.mark.asyncio()
-async def test_delete_draft(depositor, initialized_deposition):
-    draft = await depositor.get_new_version(initialized_deposition)
-    conceptdoi = initialized_deposition.conceptdoi
+async def test_delete_draft(depositor, initial_deposition):
+    draft = await depositor.get_new_version(initial_deposition)
+    conceptdoi = initial_deposition.conceptdoi
 
     latest = await depositor.get_deposition(conceptdoi)
     assert latest.id_ == draft.id_
@@ -144,19 +144,17 @@ async def test_delete_draft(depositor, initialized_deposition):
 
     time.sleep(1)
     latest = await depositor.get_deposition(conceptdoi)
-    assert latest.id_ == initialized_deposition.id_
+    assert latest.id_ == initial_deposition.id_
 
 
 @pytest.mark.asyncio
-async def test_update_flow(
-    depositor, initialized_deposition, initial_files, upload_key
-):
-    assert initialized_deposition.state == "done"
+async def test_update_flow(depositor, initial_deposition, initial_files, upload_key):
+    assert initial_deposition.state == "done"
 
-    conceptdoi = initialized_deposition.conceptdoi
+    conceptdoi = initial_deposition.conceptdoi
 
     # verify that the first version has the files we expect
-    v1_files = initialized_deposition.files
+    v1_files = initial_deposition.files
     assert len(v1_files) == 2
 
     for deposition_file in v1_files:
@@ -170,9 +168,9 @@ async def test_update_flow(
 
     # check that the latest deposition in the conceptdoi points at the one we just published
     latest_deposition = await depositor.get_deposition(conceptdoi)
-    assert latest_deposition.id_ == initialized_deposition.id_
+    assert latest_deposition.id_ == initial_deposition.id_
 
-    new_deposition = await depositor.get_new_version(initialized_deposition)
+    new_deposition = await depositor.get_new_version(initial_deposition)
     doubly_new_deposition = await depositor.get_new_version(new_deposition)
 
     # if we call get_new_version on an unsubmitted deposition, we should just get
