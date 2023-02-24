@@ -1,40 +1,43 @@
+import asyncio
 import os
 from io import BytesIO
 
 import aiohttp
 import pytest
 import pytest_asyncio
-import requests
 from dotenv import load_dotenv
 
 from pudl_archiver.depositors import ZenodoDepositor
 from pudl_archiver.depositors.zenodo import ZenodoClientException
-from pudl_archiver.frictionless import DataPackage
+from pudl_archiver.utils import retry_async
 from pudl_archiver.zenodo.entities import DepositionCreator, DepositionMetadata
 
 
+@pytest_asyncio.fixture()
+async def session():
+    """Create async http session."""
+    async with aiohttp.ClientSession() as session:
+        yield session
+
+
 @pytest.fixture()
-def dotenv():
-    """Load dotenv to get API keys."""
+def depositor(session):
     load_dotenv()
+    upload_key = os.environ["ZENODO_SANDBOX_TOKEN_UPLOAD"]
+    publish_key = os.environ["ZENODO_SANDBOX_TOKEN_PUBLISH"]
+    return ZenodoDepositor(upload_key, publish_key, session, sandbox=True)
 
 
-@pytest.fixture()
-def upload_key(dotenv):
-    """Get upload key."""
-    return os.environ["ZENODO_SANDBOX_TOKEN_UPLOAD"]
+def clean_metadata(metadata):
+    return metadata.dict(
+        by_alias=True,
+        exclude={"publication_date", "doi", "prereserve_doi"},
+    )
 
 
-@pytest.fixture()
-def publish_key(dotenv):
-    """Get publish key."""
-    return os.environ["ZENODO_SANDBOX_TOKEN_PUBLISH"]
-
-
-@pytest.fixture()
-def deposition_metadata():
-    """Create fake DepositionMetadata model."""
-    return DepositionMetadata(
+@pytest_asyncio.fixture()
+async def empty_deposition(depositor):
+    deposition_metadata = DepositionMetadata(
         title="PUDL Test",
         creators=[
             DepositionCreator(
@@ -47,53 +50,53 @@ def deposition_metadata():
         keywords=["test"],
     )
 
-
-@pytest.fixture()
-def datapackage():
-    """Create test datapackage descriptor."""
-    return DataPackage(
-        name="pudl_test",
-        title="PUDL Test",
-        description="Test dataset for the sandbox, thanks!",
-        keywords=[],
-        contributors=[],
-        sources=[],
-        licenses=[],
-        resources=[],
-        created="2023-01-17T20:57:05.000000Z",
-    )
-
-
-@pytest_asyncio.fixture()
-async def session():
-    """Create async http session."""
-    async with aiohttp.ClientSession() as session:
-        yield session
-
-
-@pytest.fixture()
-def depositor(upload_key, publish_key, session):
-    return ZenodoDepositor(upload_key, publish_key, session, sandbox=True)
-
-
-def clean_metadata(metadata):
-    return metadata.dict(
-        by_alias=True,
-        exclude={"publication_date", "doi", "prereserve_doi"},
-    )
-
-
-@pytest.mark.asyncio
-async def test_full_zenodo_flow(depositor, deposition_metadata, upload_key):
-    # create deposition
     deposition = await depositor.create_deposition(deposition_metadata)
 
     assert clean_metadata(deposition.metadata) == clean_metadata(deposition_metadata)
     assert deposition.state == "unsubmitted"
+    return deposition
 
+
+@pytest_asyncio.fixture()
+async def initial_deposition(depositor, empty_deposition):
+    initial_files = {
+        "to_update": b"I am outdated",
+        "to_delete": b"Delete me!",
+    }
+    await depositor.create_file(
+        empty_deposition,
+        "to_update",
+        BytesIO(initial_files["to_update"]),
+        force_api="files",
+    )
+    await depositor.create_file(
+        empty_deposition, "to_delete", BytesIO(initial_files["to_delete"])
+    )
+
+    # publish initial deposition
+    return await depositor.publish_deposition(empty_deposition)
+
+
+async def get_latest(depositor, conceptdoi, published_only=False):
+    return await retry_async(
+        depositor.get_deposition,
+        args=[conceptdoi],
+        kwargs={"published_only": published_only},
+        retry_on=(
+            ZenodoClientException,
+            aiohttp.ClientError,
+            asyncio.TimeoutError,
+            IndexError,
+        ),
+    )
+
+
+@pytest.mark.asyncio()
+async def test_publish_empty(depositor, empty_deposition, mocker):
     # try publishing empty
+    mocker.patch("asyncio.sleep", mocker.AsyncMock())
     with pytest.raises(ZenodoClientException) as excinfo:
-        await depositor.publish_deposition(deposition)
+        await depositor.publish_deposition(empty_deposition)
     error_json = excinfo.value.kwargs["json"]
     assert "validation error" in error_json["message"].lower()
     assert (
@@ -101,74 +104,45 @@ async def test_full_zenodo_flow(depositor, deposition_metadata, upload_key):
         in error_json["errors"][0]["message"].lower()
     )
 
-    conceptrecid = deposition.conceptrecid
 
-    # add files to initial deposition
-    initial_files = {
-        "to_update": b"I am outdated",
-        "to_delete": b"Delete me!",
-    }
+@pytest.mark.asyncio()
+async def test_delete_deposition(depositor, initial_deposition):
+    """Make a new draft, delete it, and see that the conceptdoi still points
+    at the original."""
+    draft = await depositor.get_new_version(initial_deposition)
 
-    await depositor.create_file(
-        deposition, "to_update", BytesIO(initial_files["to_update"]), force_api="files"
+    latest = await get_latest(
+        depositor, initial_deposition.conceptdoi, published_only=False
     )
-    await depositor.create_file(
-        deposition, "to_delete", BytesIO(initial_files["to_delete"])
+    assert latest.id_ == draft.id_
+    assert not latest.submitted
+
+    await depositor.delete_deposition(draft)
+
+    latest = await get_latest(
+        depositor, initial_deposition.conceptdoi, published_only=True
     )
+    assert latest.id_ == initial_deposition.id_
 
-    # publish initial deposition
-    published_deposition = await depositor.publish_deposition(deposition)
-    assert published_deposition.conceptdoi.rsplit(".", 1)[1] == conceptrecid
-    assert published_deposition.id_ == deposition.id_
-    assert published_deposition.state == "done"
 
-    conceptdoi = published_deposition.conceptdoi
+@pytest.mark.asyncio()
+async def test_get_new_version_clobbers(depositor, initial_deposition):
+    """Make a new draft, delete it, and see that the conceptdoi still points
+    at the original."""
 
-    # verify that the first version has the files we expect
-    v1_files = published_deposition.files
-    assert len(v1_files) == 2
+    bad_draft = await depositor.get_new_version(initial_deposition)
+    non_clobbering = await depositor.get_new_version(initial_deposition, clobber=False)
+    assert bad_draft.id_ == non_clobbering.id_
 
-    for deposition_file in v1_files:
-        download_link = deposition_file.links.download
-        expected_contents = initial_files[deposition_file.filename]
-
-        remote_contents = requests.get(
-            download_link, headers={"Authorization": f"bearer {upload_key}"}
-        )
-        assert expected_contents == remote_contents.text.encode("utf-8")
-
-    # check that the latest deposition in the conceptdoi points at the one we just published
-    latest_deposition = await depositor.get_deposition(conceptdoi)
-    assert latest_deposition.id_ == published_deposition.id_
-
-    new_deposition = await depositor.get_new_version(published_deposition)
-    doubly_new_deposition = await depositor.get_new_version(new_deposition)
-
-    # if we call get_new_version on an unsubmitted deposition, we should just get
-    # that one back.
-    assert new_deposition.id_ == doubly_new_deposition.id_
-
-    updated_files = {
-        "to_update": b"I am up to date",
-    }
-    await depositor.delete_file(new_deposition, "to_delete")
-    await depositor.update_file(
-        new_deposition, "to_update", BytesIO(updated_files["to_update"])
+    latest = await get_latest(
+        depositor, initial_deposition.conceptdoi, published_only=False
     )
+    assert latest.id_ == bad_draft.id_
 
-    latest_deposition = await depositor.get_deposition(conceptdoi)
-    assert latest_deposition.state == "unsubmitted"
-    assert latest_deposition.id_ == new_deposition.id_
+    clobbering = await depositor.get_new_version(initial_deposition, clobber=True)
+    assert bad_draft.id_ == clobbering.id_
 
-    # verify that the second version has the files we expect
-    v2_files = latest_deposition.files
-    assert len(v2_files) == 1
-
-    for deposition_file in v2_files:
-        download_link = deposition_file.links.download
-        expected_contents = updated_files[deposition_file.filename]
-
-        remote_contents = requests.get(
-            download_link, headers={"Authorization": f"bearer {upload_key}"}
-        )
-        assert expected_contents == remote_contents.text.encode("utf-8")
+    latest = await get_latest(
+        depositor, initial_deposition.conceptdoi, published_only=False
+    )
+    assert latest.id_ == clobbering.id_

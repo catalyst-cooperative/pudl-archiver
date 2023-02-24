@@ -1,4 +1,5 @@
 """Test zenodo client api."""
+import asyncio
 import os
 import tempfile
 from datetime import datetime
@@ -11,8 +12,10 @@ import requests
 from dotenv import load_dotenv
 
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver, ResourceInfo
+from pudl_archiver.depositors.zenodo import ZenodoClientException
 from pudl_archiver.frictionless import DataPackage
 from pudl_archiver.orchestrator import DepositionOrchestrator
+from pudl_archiver.utils import retry_async
 from pudl_archiver.zenodo.entities import (
     Deposition,
     DepositionCreator,
@@ -239,3 +242,20 @@ async def test_zenodo_workflow(
     v2 = await orchestrator.run()
     v2_refreshed = await orchestrator.depositor.get_record(v2.id_)
     verify_files(test_files["updated"], v2_refreshed)
+
+    # no updates to make, should not leave the conceptdoi pointing at a draft
+    v2_not_updated = await orchestrator.run()
+    # unfortunately, it looks like Zenodo doesn't propagate deletion instantly - retry this a few times.
+    latest_for_conceptdoi = await retry_async(
+        orchestrator.depositor.get_deposition,
+        args=[str(v2_not_updated.conceptdoi)],
+        kwargs={"published_only": True},
+        retry_on=(
+            ZenodoClientException,
+            aiohttp.ClientError,
+            asyncio.TimeoutError,
+            IndexError,
+        ),
+        retry_base_s=0.5,
+    )
+    assert latest_for_conceptdoi.id_ == v2_refreshed.id_
