@@ -1,4 +1,5 @@
 """Test zenodo client api."""
+import asyncio
 import os
 import tempfile
 from datetime import datetime
@@ -11,6 +12,7 @@ import requests
 from dotenv import load_dotenv
 
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver, ResourceInfo
+from pudl_archiver.depositors.zenodo import ZenodoClientException
 from pudl_archiver.frictionless import DataPackage
 from pudl_archiver.orchestrator import DepositionOrchestrator
 from pudl_archiver.utils import retry_async
@@ -248,6 +250,12 @@ async def test_zenodo_workflow(
         orchestrator.depositor.get_deposition,
         args=[str(v2_not_updated.conceptdoi)],
         kwargs={"published_only": True},
+        retry_on=(
+            ZenodoClientException,
+            aiohttp.ClientError,
+            asyncio.TimeoutError,
+            IndexError,
+        ),
         retry_base_s=0.5,
     )
     assert latest_for_conceptdoi.id_ == v2_refreshed.id_
