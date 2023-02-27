@@ -21,7 +21,7 @@ class EiaWaterArchiver(AbstractDatasetArchiver):
 
     async def get_resources(self) -> ArchiveAwaitable:
         """Download EIA Thermal Cooling Water resources."""
-        link_pattern = re.compile(r"cooling_(summary|detail)_(\d{4})\.xlsx")
+        link_pattern = re.compile(r"[Cc]ooling\w+([Ss]ummary|[Dd]etail)_(\d{4})\.xlsx")
 
         for link in await self.get_hyperlinks(BASE_URL, link_pattern):
             yield self.get_year_resource(link, link_pattern.search(link))
@@ -32,7 +32,7 @@ class EiaWaterArchiver(AbstractDatasetArchiver):
         """Download zip file."""
         url = f"{BASE_URL}/{link}"
 
-        table = match.group(1)
+        table = match.group(1).lower()
         year = match.group(2)
 
         download_path = self.download_directory / f"eiawater-{year}-{table}.xlsx"
