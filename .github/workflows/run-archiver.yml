@@ -14,23 +14,23 @@ jobs:
     strategy:
       matrix:
         dataset:
-          - censusdp1tract
-          - eia176
-          - eia860
-          - eia860m
-          - eia861
-          - eia923
-          - eia_bulk_elec
-          - eiawater
-          - epacamd_eia
-          - epacems
-          - ferc1
-          - ferc2
-          - ferc6
-          - ferc60
-          - ferc714
+          # - censusdp1tract
+          # - eia176
+          # - eia860
+          # - eia860m
+          # - eia861
+          # - eia923
+          # - eia_bulk_elec
+          # - eiawater
+          # - epacamd_eia
+          # - epacems
+          # - ferc1
+          # - ferc2
+          # - ferc6
+          # - ferc60
+          # - ferc714
           - mshamines
-          - phmsagas
+          # - phmsagas
 
       fail-fast: false
     runs-on: ubuntu-latest
@@ -64,6 +64,9 @@ jobs:
         env:
           ZENODO_SANDBOX_TOKEN_UPLOAD: ${{ secrets.ZENODO_SANDBOX_TOKEN_UPLOAD }}
           ZENODO_SANDBOX_TOKEN_PUBLISH: ${{ secrets.ZENODO_SANDBOX_TOKEN_PUBLISH }}
+          # They're in the repository secrets, but we're not ready yet...
+          # ZENODO_PRODUCTION_TOKEN_UPLOAD: ${{ secrets.ZENODO_PRODUCTION_TOKEN_UPLOAD }}
+          # ZENODO_PRODUCTION_TOKEN_PUBLISH: ${{ secrets.ZENODO_PRODUCTION_TOKEN_PUBLISH }}
         run: |
           conda run -n pudl-cataloger pudl_archiver --sandbox --datasets ${{ matrix.dataset }}
 
