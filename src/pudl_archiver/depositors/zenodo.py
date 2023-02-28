@@ -1,4 +1,5 @@
 """Handle all deposition actions within Zenodo."""
+import asyncio
 import json
 import logging
 from typing import BinaryIO, Literal
@@ -6,6 +7,7 @@ from typing import BinaryIO, Literal
 import aiohttp
 import semantic_version  # type: ignore
 
+from pudl_archiver.utils import retry_async
 from pudl_archiver.zenodo.entities import Deposition, DepositionMetadata
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
@@ -88,7 +90,9 @@ class ZenodoDepositor:
                 Either the parsed JSON or the raw aiohttp.ClientResponse object.
             """
             logger.info(f"{method} {url} - {log_label}")
-            async with session.request(method, url, **kwargs) as response:
+
+            async def run_request():
+                response = await session.request(method, url, **kwargs)
                 if response.status >= 400:
                     raise ZenodoClientException(
                         {"response": response, "json": await response.json()}
@@ -96,6 +100,16 @@ class ZenodoDepositor:
                 if parse_json:
                     return await response.json()
                 return response
+
+            response = await retry_async(
+                run_request,
+                retry_on=(
+                    aiohttp.ClientError,
+                    asyncio.TimeoutError,
+                    ZenodoClientException,
+                ),
+            )
+            return response
 
         return requester
 
@@ -126,7 +140,9 @@ class ZenodoDepositor:
         # Ignore content type
         return Deposition(**response)
 
-    async def get_deposition(self, concept_doi: str) -> Deposition:
+    async def get_deposition(
+        self, concept_doi: str, published_only: bool = False
+    ) -> Deposition:
         """Get the latest deposition associated with a concept DOI.
 
         Sometimes the deposition information that comes back from the concept
@@ -136,6 +152,8 @@ class ZenodoDepositor:
         Args:
             concept_doi: the DOI for the concept - gets the latest associated
                 DOI.
+            published_only: if True, only returns depositions that have been
+                published.
 
         Returns:
             The latest deposition associated with the concept DOI.
@@ -154,8 +172,12 @@ class ZenodoDepositor:
             logger.info(
                 f"{concept_doi} points at multiple records: {[r['id'] for r in response]}"
             )
+        depositions = [Deposition(**dep) for dep in response]
 
-        latest_deposition = Deposition(**sorted(response, key=lambda d: d["id"])[-1])
+        if published_only:
+            depositions = [dep for dep in depositions if dep.submitted]
+
+        latest_deposition = sorted(depositions, key=lambda d: d.id_)[-1]
         return await self.get_record(latest_deposition.id_)
 
     async def get_record(self, rec_id: int) -> Deposition:
@@ -172,7 +194,9 @@ class ZenodoDepositor:
         )
         return Deposition(**response)
 
-    async def get_new_version(self, deposition: Deposition) -> Deposition:
+    async def get_new_version(
+        self, deposition: Deposition, clobber: bool = False
+    ) -> Deposition:
         """Get a new version of a deposition.
 
         First creates a new version, which is a snapshot of the old one, then
@@ -180,23 +204,32 @@ class ZenodoDepositor:
 
         Args:
             deposition: the deposition you want to get the new version of.
+            clobber: if there is an existing draft, delete it and get a new one.
 
         Returns:
             A new Deposition that is a snapshot of the old one you passed in,
             with a new major version number.
         """
         if not deposition.submitted:
-            return deposition
+            if clobber:
+                await self.delete_deposition(deposition)
+                deposition = await self.get_deposition(
+                    str(deposition.conceptdoi), published_only=True
+                )
+            else:
+                return deposition
 
         url = f"{self.api_root}/deposit/depositions/{deposition.id_}/actions/newversion"
 
-        # Create the new version
-        # When the API creates a new version, it does not return the new one.
-        # It returns the old one with a link to the new one.
+        # create a new unpublished deposition version
         response = await self.request(
-            "POST", url, log_label="Creating new version", headers=self.auth_write
+            "POST",
+            url,
+            log_label="Creating new version",
+            headers=self.auth_write,
         )
         old_deposition = Deposition(**response)
+        new_deposition_url = old_deposition.links.latest_draft
 
         source_metadata = old_deposition.metadata.dict(by_alias=True)
         metadata = {}
@@ -243,6 +276,20 @@ class ZenodoDepositor:
             "POST", url, log_label="Publishing deposition", headers=headers
         )
         return Deposition(**response)
+
+    async def delete_deposition(self, deposition) -> None:
+        """Delete an un-submitted deposition.
+
+        Args:
+            deposition: the deposition you want to delete.
+        """
+        await self.request(
+            "DELETE",
+            deposition.links.self,
+            log_label="Deleting deposition",
+            headers=self.auth_write,
+            parse_json=False,
+        )
 
     async def delete_file(self, deposition: Deposition, target: str) -> None:
         """Delete a file from a deposition.

@@ -129,8 +129,9 @@ class DepositionOrchestrator:
                 raise RuntimeError("Must pass a valid DOI if create_new is False")
 
             self.deposition = await self.depositor.get_deposition(doi)
-
-        self.new_deposition = await self.depositor.get_new_version(self.deposition)
+        self.new_deposition = await self.depositor.get_new_version(
+            self.deposition, clobber=not self.create_new
+        )
 
         # TODO (daz): stop using self.deposition_files, use the files lists on the depositions
         # Map file name to file metadata for all files in deposition
@@ -185,6 +186,12 @@ class DepositionOrchestrator:
         # TODO (daz): pass around changesets instead of persisting them on the instance, this
         # makes the ordering/dependency more explicit
         self._generate_changes(resources)
+
+        # Leave immediately after generating changes if dry_run
+        if self.dry_run:
+            logger.info("Dry run, aborting")
+            return self.new_deposition
+
         await self._apply_changes()
         self.new_deposition = await self.depositor.get_record(self.new_deposition.id_)
         await self._update_datapackage(resources)
@@ -196,7 +203,8 @@ class DepositionOrchestrator:
                 self._update_dataset_settings(published)
             return published
         else:
-            return self.new_deposition
+            await self.depositor.delete_deposition(self.new_deposition)
+            return self.deposition
 
     def _generate_changes(self, resources):
         for name, resource in resources.items():
@@ -227,14 +235,16 @@ class DepositionOrchestrator:
                 self.deletes.append(file_info)
 
         self.changed = len(self.uploads or self.deletes) > 0
+        if self.changed:
+            logger.info(f"To delete: {self.deletes}")
+            logger.info(f"To upload: {self.uploads}")
+        else:
+            logger.info("No changes detected.")
 
     async def _apply_changes(self):
         """Actually upload and delete what we listed in self.uploads/deletes."""
         logger.info(f"To delete: {self.deletes}")
         logger.info(f"To upload: {self.uploads}")
-        if self.dry_run:
-            logger.info("Dry run, aborting.")
-            return
         for file_info in self.deletes:
             await self.depositor.delete_file(self.new_deposition, file_info.filename)
         self.deletes = []

@@ -12,6 +12,8 @@ from pathlib import Path
 
 import aiohttp
 
+from pudl_archiver.utils import retry_async
+
 ResourceInfo = namedtuple("ResourceInfo", ["local_path", "partitions"])
 """Tuple to wrap info about downloaded resource."""
 
@@ -100,7 +102,12 @@ class AbstractDatasetArchiver(ABC):
         # If it makes it here that means it couldn't download a valid zipfile
         raise RuntimeError(f"Failed to download valid zipfile from {url}")
 
-    async def download_file(self, url: str, file: Path | io.BytesIO, **kwargs):
+    async def download_file(
+        self,
+        url: str,
+        file: Path | io.BytesIO,
+        **kwargs,
+    ):
         """Download a file using async session manager.
 
         Args:
@@ -108,12 +115,14 @@ class AbstractDatasetArchiver(ABC):
             file: Local path to write file to disk or bytes object to save file in memory.
             kwargs: Key word args to pass to request.
         """
-        async with self.session.get(url, **kwargs) as response:
-            if isinstance(file, Path):
-                with open(file, "wb") as f:
-                    f.write(await response.read())
-            elif isinstance(file, io.BytesIO):
-                file.write(await response.read())
+        response = await retry_async(self.session.get, args=[url], kwargs=kwargs)
+        response_bytes = await retry_async(response.read)
+
+        if isinstance(file, Path):
+            with open(file, "wb") as f:
+                f.write(response_bytes)
+        elif isinstance(file, io.BytesIO):
+            file.write(response_bytes)
 
     async def get_hyperlinks(
         self,
@@ -135,9 +144,12 @@ class AbstractDatasetArchiver(ABC):
         """
         # Parse web page to get all hyperlinks
         parser = _HyperlinkExtractor()
-        async with self.session.get(url, ssl=verify) as response:
-            text = await response.text()
-            parser.feed(text)
+
+        response = await retry_async(
+            self.session.get, args=[url], kwargs={"ssl": verify}
+        )
+        text = await retry_async(response.text)
+        parser.feed(text)
 
         # Filter to those that match filter_pattern
         hyperlinks = parser.hyperlinks

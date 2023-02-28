@@ -20,6 +20,8 @@ from dateutil import rrule
 from pydantic import BaseModel, Field, HttpUrl, root_validator, validator
 from tqdm import tqdm
 
+from pudl_archiver.utils import retry_async
+
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 XBRL_LINK_PATTERN = re.compile(r'href="(.+\.(xml|xbrl))">(.+(xml|xbrl))<')  # noqa: W605
@@ -215,8 +217,10 @@ async def archive_taxonomy(
     cntlr = Cntlr.Cntlr()
     cntlr.startLogging(logFileName="logToPrint")
     model_manager = ModelManager.initialize(cntlr)
-    taxonomy = await asyncio.to_thread(
-        ModelXbrl.load, model_manager, taxonomy_entry_point
+    taxonomy = await retry_async(
+        asyncio.to_thread,
+        args=[ModelXbrl.load, model_manager, taxonomy_entry_point],
+        retry_on=(FileNotFoundError,),
     )
 
     # Loop through all files and save to appropriate location in archive
@@ -228,11 +232,12 @@ async def archive_taxonomy(
             continue
 
         # Download file
-        async with session.get(url) as response:
-            path = Path(url_parsed.path).relative_to("/")
+        response = await retry_async(session.get, args=[url])
+        response_bytes = await retry_async(response.content.read)
+        path = Path(url_parsed.path).relative_to("/")
 
-            with archive.open(str(path), "w") as f:
-                f.write(await response.content.read())
+        with archive.open(str(path), "w") as f:
+            f.write(response_bytes)
 
 
 async def archive_year(
@@ -273,14 +278,15 @@ async def archive_year(
 
             # Download filing
             try:
-                async with session.get(filing.download_url) as response:
-                    # Write to zipfile
-                    with archive.open(f"{filing.entry_id}.xbrl", "w") as f:
-                        f.write(await response.content.read())
+                response = await retry_async(session.get, args=[filing.download_url])
+                response_bytes = await retry_async(response.content.read)
             except aiohttp.client_exceptions.ClientResponseError as e:
                 logger.warning(
                     f"Failed to download XBRL filing {filing.title} for form{form_number}-{year}: {e.message}"
                 )
+            # Write to zipfile
+            with archive.open(f"{filing.entry_id}.xbrl", "w") as f:
+                f.write(response_bytes)
 
         # Save snapshot of RSS feed
         with archive.open("rssfeed", "w") as f:
