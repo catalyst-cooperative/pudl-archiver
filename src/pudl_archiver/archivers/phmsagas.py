@@ -66,18 +66,18 @@ class PhmsaGasArchiver(AbstractDatasetArchiver):
         For example: annual_underground_natural_gas_storage_2017_present.zip
         """
         url = f"https://www.phmsa.dot.gov/{link}"
-        file = str(match.group(1)).replace("-", "_")  # Get file name
+        filename = str(match.group(1)).replace("-", "_")  # Get file name
 
         # Set dataset partition
-        dataset = "_".join(file.lower().split("_")[0:-2])
+        dataset = "_".join(filename.lower().split("_")[0:-2])
 
         if dataset not in PHMSA_DATASETS:
             logger.warning(f"New dataset type found: {dataset}.")
 
         # Set start year
-        start_year = int(file.split("_")[-2])
+        start_year = int(filename.split("_")[-2])
 
-        download_path = self.download_directory / f"phmsagas_{file}.zip"
+        download_path = self.download_directory / f"{self.name}-{filename}.zip"
         await self.download_zipfile(url, download_path)
 
         return ResourceInfo(
