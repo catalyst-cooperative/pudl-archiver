@@ -59,7 +59,7 @@ MSHA_DATASETS = {
     "violations_definitions": "https://arlweb.msha.gov/OpenGovernmentData/DataSets/violations_Definition_File.txt",
     "107a": "https://arlweb.msha.gov/OpenGovernmentData/107a/107aOrders.xlsx",
 }
-""" Dictionary of expected MSHA tables/definition files and pathways."""
+"""Dictionary of expected MSHA data and definition files, and corresponding URLs."""
 
 
 class MshaArchiver(AbstractDatasetArchiver):
@@ -113,15 +113,15 @@ class MshaArchiver(AbstractDatasetArchiver):
         dataset = filename.replace("_definitions", "")
 
         if link.endswith(".zip"):
-            download_path = self.download_directory / f"msha_{filename}.zip"
+            download_path = self.download_directory / f"{self.name}-{filename}.zip"
             await self.download_zipfile(link, download_path)
 
         elif link.endswith(".txt"):
-            download_path = self.download_directory / f"msha_{filename}.txt"
+            download_path = self.download_directory / f"{self.name}-{filename}.txt"
             await self.download_file(link, download_path)
 
         elif link.endswith(".xlsx"):
-            download_path = self.download_directory / f"msha_{filename}.xlsx"
+            download_path = self.download_directory / f"{self.name}-{filename}.xlsx"
             await self.download_file(link, download_path)
 
         else:
