@@ -65,8 +65,8 @@ jobs:
           ZENODO_SANDBOX_TOKEN_UPLOAD: ${{ secrets.ZENODO_SANDBOX_TOKEN_UPLOAD }}
           ZENODO_SANDBOX_TOKEN_PUBLISH: ${{ secrets.ZENODO_SANDBOX_TOKEN_PUBLISH }}
           # They're in the repository secrets, but we're not ready yet...
-          ZENODO_PRODUCTION_TOKEN_UPLOAD: ${{ secrets.ZENODO_PRODUCTION_TOKEN_UPLOAD }}
-          ZENODO_PRODUCTION_TOKEN_PUBLISH: ${{ secrets.ZENODO_PRODUCTION_TOKEN_PUBLISH }}
+          ZENODO_TOKEN_UPLOAD: ${{ secrets.ZENODO_TOKEN_UPLOAD }}
+          ZENODO_TOKEN_PUBLISH: ${{ secrets.ZENODO_TOKEN_PUBLISH }}
         run: |
           conda run -n pudl-cataloger pudl_archiver --initialize --datasets ${{ matrix.dataset }}
 
