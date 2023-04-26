@@ -9,8 +9,8 @@ dependencies = [
     "coloredlogs~=15.0",
     "feedparser>=6.0",
     "tqdm>=4.64",
+    "python-dotenv~=1.0.0",
     "arelle-release>=2.3,<2.9",
-    "python-dotenv~=0.21.0",
     "semantic_version>=2.8,<3",
 ]
 
