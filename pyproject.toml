@@ -48,7 +48,7 @@ docs = [
 
 tests = [
     "bandit[toml]>=1.6,<1.8",  # Checks code for security issues
-    "coverage>=5.3,<6.6",  # Lets us track what code is being tested
+    "coverage>=5.3,<7.3",  # Lets us track what code is being tested
     "doc8>=0.9,<1.1",  # Ensures clean documentation formatting
     "flake8>=4.0,<6.1",  # A framework for linting & static analysis
     "flake8-builtins>=1.5,<2.2",  # Avoid shadowing Python built-in names
@@ -59,7 +59,7 @@ tests = [
     "mccabe>=0.6,<0.8",  # Checks that code isn't overly complicated
     "pep8-naming>=0.12,<0.14",  # Require PEP8 compliant variable names
     "pre-commit>=2.9,<3.3",  # Allow us to run pre-commit hooks in testing
-    "pydocstyle>=5.1,<6.2",  # Style guidelines for Python documentation
+    "pydocstyle>=5.1,<6.4",  # Style guidelines for Python documentation
     "pytest>=6.2,<7.2",  # Our testing framework
     "pytest-asyncio>=0.20,<0.22",  # Test async functions
     "pytest-console-scripts>=1.1,<1.4",  # Allow automatic testing of scripts
