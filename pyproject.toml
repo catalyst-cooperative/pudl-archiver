@@ -10,7 +10,7 @@ dependencies = [
     "feedparser>=6.0",
     "tqdm>=4.64",
     "python-dotenv~=1.0.0",
-    "arelle-release>=2.3,<2.9",
+    "arelle-release>=2.3,<2.11",
     "semantic_version>=2.8,<3",
 ]
 
@@ -41,7 +41,7 @@ dev = [
 docs = [
     "doc8>=0.9,<1.2",  # Ensures clean documentation formatting
     "furo>=2022.4.7",
-    "sphinx>=4,!=5.1.0,<7.0.1",  # The default Python documentation engine
+    "sphinx>=4,!=5.1.0,<7.0.2",  # The default Python documentation engine
     "sphinx-autoapi>=1.8,<2.2",  # Generates documentation from docstrings
     "sphinx-issues>=1.2,<3.1",  # Allows references to GitHub issues
 ]
@@ -58,7 +58,7 @@ tests = [
     "flake8-use-fstring>=1.0,<1.5",  # Highlight use of old-style string formatting
     "mccabe>=0.6,<0.8",  # Checks that code isn't overly complicated
     "pep8-naming>=0.12,<0.14",  # Require PEP8 compliant variable names
-    "pre-commit>=2.9,<3.3",  # Allow us to run pre-commit hooks in testing
+    "pre-commit>=2.9,<3.4",  # Allow us to run pre-commit hooks in testing
     "pydocstyle>=5.1,<6.4",  # Style guidelines for Python documentation
     "pytest>=6.2,<7.4",  # Our testing framework
     "pytest-asyncio>=0.20,<0.22",  # Test async functions
