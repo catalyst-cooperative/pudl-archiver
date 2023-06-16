@@ -2,6 +2,7 @@
 import asyncio
 import io
 import logging
+import math
 import tempfile
 import typing
 import zipfile
@@ -53,6 +54,7 @@ class AbstractDatasetArchiver(ABC):
     """An abstract base archiver class."""
 
     name: str
+    concurrency_limit: int | None = None
 
     def __init__(self, session: aiohttp.ClientSession):
         """Initialize Archiver object.
@@ -165,7 +167,9 @@ class AbstractDatasetArchiver(ABC):
 
         return hyperlinks
 
-    async def download_all_resources(self) -> dict[str, ResourceInfo]:
+    async def download_all_resources(
+        self,
+    ) -> typing.Generator[tuple[str, ResourceInfo], None, None]:
         """Download all resources.
 
         This method uses the awaitables returned by `get_resources`. It
@@ -174,11 +178,16 @@ class AbstractDatasetArchiver(ABC):
         # Get all awaitables from get_resources
         resources = [resource async for resource in self.get_resources()]
 
-        # Download resources concurrently and prepare metadata
-        resource_dict = {}
-        for resource_coroutine in asyncio.as_completed(resources):
-            resource_info = await resource_coroutine
-            self.logger.info(f"Downloaded {resource_info.local_path}.")
-            resource_dict[str(resource_info.local_path.name)] = resource_info
+        # Split resources into chunks to limit concurrency
+        chunksize = self.concurrency_limit if self.concurrency_limit else len(resources)
+        resource_chunks = [
+            resources[i * chunksize : (i + 1) * chunksize]
+            for i in range(math.ceil(len(resources) / chunksize))
+        ]
 
-        return resource_dict
+        # Download resources concurrently and prepare metadata
+        for resource_chunk in resource_chunks:
+            for resource_coroutine in asyncio.as_completed(resource_chunk):
+                resource_info = await resource_coroutine
+                self.logger.info(f"Downloaded {resource_info.local_path}.")
+                yield str(resource_info.local_path.name), resource_info

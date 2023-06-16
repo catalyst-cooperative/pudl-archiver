@@ -14,6 +14,7 @@ class FercEQRArchiver(AbstractDatasetArchiver):
     """FERC EQR archiver."""
 
     name = "ferceqr"
+    concurrency_limit = 1
 
     async def get_resources(self) -> ArchiveAwaitable:
         """Download FERC EQR resources."""
