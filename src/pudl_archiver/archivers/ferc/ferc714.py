@@ -31,7 +31,7 @@ class Ferc714Archiver(AbstractDatasetArchiver):
         )
 
         return ResourceInfo(
-            local_path=download_path, partitions={"year": year, "data_format": "XBRL"}
+            local_path=download_path, partitions={"year": year, "data_format": "xbrl"}
         )
 
     async def get_bulk_csv(self) -> tuple[Path, dict]:

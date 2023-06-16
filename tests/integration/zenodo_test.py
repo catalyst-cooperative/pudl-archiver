@@ -159,7 +159,11 @@ async def test_zenodo_workflow(
 
             # Download each file
             file_link = deposition_files[file_data["path"].name].links.download
-            res = requests.get(file_link, params={"access_token": upload_key})
+            res = requests.get(
+                file_link,
+                params={"access_token": upload_key},
+                timeout=10.0,
+            )
 
             # Verify that contents of file are correct
             assert res.text.encode() == file_data["contents"]

@@ -32,7 +32,7 @@ class Ferc6Archiver(AbstractDatasetArchiver):
         )
 
         return ResourceInfo(
-            local_path=download_path, partitions={"year": year, "data_format": "XBRL"}
+            local_path=download_path, partitions={"year": year, "data_format": "xbrl"}
         )
 
     async def get_year_dbf(self, year: int) -> tuple[Path, dict]:
@@ -42,5 +42,5 @@ class Ferc6Archiver(AbstractDatasetArchiver):
         await self.download_zipfile(url, download_path)
 
         return ResourceInfo(
-            local_path=download_path, partitions={"year": year, "data_format": "DBF"}
+            local_path=download_path, partitions={"year": year, "data_format": "dbf"}
         )

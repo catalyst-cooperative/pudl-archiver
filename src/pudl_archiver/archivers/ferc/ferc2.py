@@ -39,7 +39,7 @@ class Ferc2Archiver(AbstractDatasetArchiver):
         )
 
         return ResourceInfo(
-            local_path=download_path, partitions={"year": year, "data_format": "XBRL"}
+            local_path=download_path, partitions={"year": year, "data_format": "xbrl"}
         )
 
     async def get_year_dbf(
@@ -80,5 +80,5 @@ class Ferc2Archiver(AbstractDatasetArchiver):
 
         return ResourceInfo(
             local_path=download_path,
-            partitions={"year": year, "data_format": "DBF", "part": part},
+            partitions={"year": year, "data_format": "dbf", "part": part},
         )
