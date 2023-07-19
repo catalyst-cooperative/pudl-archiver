@@ -9,6 +9,7 @@ import pytest
 from aiohttp import ClientSession
 
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver, ArchiveAwaitable
+from pudl_archiver.archivers.validate import ValidationTestResult
 
 
 @pytest.fixture()
@@ -45,9 +46,18 @@ class MockArchiver(AbstractDatasetArchiver):
 
     name = "test_archiver"
 
+    def __init__(self, test_results):
+        self.test_results = test_results
+
     async def get_resources(self) -> ArchiveAwaitable:
         """Create fake resources."""
         pass
+
+    def dataset_validate_archive(
+        self, baseline_datapackage, new_datapackage, resources
+    ) -> list[ValidationTestResult]:
+        """Return fake test results."""
+        return self.test_results
 
 
 @pytest.fixture()
@@ -76,7 +86,6 @@ async def test_download_zipfile(mocker, bad_zipfile, good_zipfile):
 
     Tests the zipfile validation, does not actually download any files.
     """
-    print(bad_zipfile)
     # Patch download_file
     mocked_download_file = mocker.patch(
         "pudl_archiver.archivers.classes.AbstractDatasetArchiver.download_file"
@@ -185,3 +194,45 @@ async def test_get_hyperlinks(docname, pattern, links, request, html_docs):
 
     found_links = await archiver.get_hyperlinks("fake_url", pattern)
     assert set(found_links) == set(links)
+
+
+@pytest.mark.parametrize(
+    "test_results,success",
+    [
+        (
+            [
+                ValidationTestResult(name="test0", description="test0", result=True),
+                ValidationTestResult(name="test1", description="test1", result=True),
+                ValidationTestResult(name="test2", description="test2", result=True),
+            ],
+            True,
+        ),
+        (
+            [
+                ValidationTestResult(name="test0", description="test0", result=True),
+                ValidationTestResult(name="test1", description="test1", result=True),
+                ValidationTestResult(name="test2", description="test2", result=False),
+            ],
+            False,
+        ),
+        (
+            [
+                ValidationTestResult(name="test0", description="test0", result=True),
+                ValidationTestResult(name="test1", description="test1", result=True),
+                ValidationTestResult(
+                    name="test2", description="test2", result=False, ignore_failure=True
+                ),
+            ],
+            True,
+        ),
+    ],
+)
+def test_validate_archive(test_results, success):
+    """Test that validate_archive method handles dataset specific tests properly."""
+    archiver = MockArchiver(test_results)
+    assert (
+        archiver.validate_archive(
+            "baseline_datapackage", "new_datapackage", "resources"
+        )
+        == success
+    )

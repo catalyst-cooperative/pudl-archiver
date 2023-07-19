@@ -6,16 +6,15 @@ import tempfile
 import typing
 import zipfile
 from abc import ABC, abstractmethod
-from collections import namedtuple
+from functools import reduce
 from html.parser import HTMLParser
 from pathlib import Path
 
 import aiohttp
 
+from pudl_archiver.archivers.validate import ValidationTestResult
+from pudl_archiver.frictionless import DataPackage, ResourceInfo
 from pudl_archiver.utils import retry_async
-
-ResourceInfo = namedtuple("ResourceInfo", ["local_path", "partitions"])
-"""Tuple to wrap info about downloaded resource."""
 
 MEDIA_TYPES: dict[str, str] = {
     "zip": "application/zip",
@@ -164,6 +163,42 @@ class AbstractDatasetArchiver(ABC):
             )
 
         return hyperlinks
+
+    def validate_archive(
+        self,
+        baseline_datapackage: DataPackage | None,
+        new_datapackage: DataPackage,
+        resources: dict[str, ResourceInfo],
+    ) -> bool:
+        """Run a series of validation tests for a new archive, and return results.
+
+        Args:
+            baseline_datapackage: DataPackage descriptor from previous version of archive.
+            new_datapackage: DataPackage descriptor from newly generated archive.
+            resources: Dictionary mapping resource name to ResourceInfo.
+
+        Returns:
+            List of tests run, and their results.
+        """
+        validation_tests = self.dataset_validate_archive(
+            baseline_datapackage, new_datapackage, resources
+        )
+        test_results = reduce(
+            lambda result, test: result and (test.result or test.ignore_failure),
+            validation_tests,
+            True,
+        )
+
+        return test_results
+
+    def dataset_validate_archive(
+        self,
+        baseline_datapackage: DataPackage | None,
+        new_datapackage: DataPackage,
+        resources: dict[str, ResourceInfo],
+    ) -> list[ValidationTestResult]:
+        """Hook to add archive validation specific to each dataset."""
+        return []
 
     async def download_all_resources(self) -> dict[str, ResourceInfo]:
         """Download all resources.

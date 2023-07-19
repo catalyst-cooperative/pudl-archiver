@@ -8,9 +8,10 @@ import aiohttp
 import yaml
 from pydantic import BaseModel
 
-from pudl_archiver.archivers.classes import AbstractDatasetArchiver, ResourceInfo
+from pudl_archiver.archivers.classes import AbstractDatasetArchiver
 from pudl_archiver.depositors import ZenodoDepositor
-from pudl_archiver.frictionless import DataPackage
+from pudl_archiver.frictionless import DataPackage, ResourceInfo
+from pudl_archiver.utils import retry_async
 from pudl_archiver.zenodo.entities import (
     Deposition,
     DepositionFile,
@@ -194,10 +195,17 @@ class DepositionOrchestrator:
 
         await self._apply_changes()
         self.new_deposition = await self.depositor.get_record(self.new_deposition.id_)
-        await self._update_datapackage(resources)
+        new_datapackage, old_datapackage = await self._update_datapackage(resources)
         await self._apply_changes()
 
         if self.changed:
+            validation_result = self.downloader.validate_archive(
+                old_datapackage, new_datapackage, resources
+            )
+            if not validation_result:
+                logger.error("Archive validation failed. Not publishing new archive.")
+                return self.deposition
+
             published = await self.depositor.publish_deposition(self.new_deposition)
             if self.create_new:
                 self._update_dataset_settings(published)
@@ -297,15 +305,29 @@ class DepositionOrchestrator:
         """
         # If nothing has changed, don't add new datapackage
         if not self.changed:
-            return None
+            return None, None
 
         if self.new_deposition is None:
-            return
+            return None, None
 
         logger.info(f"Creating new datapackage.json for {self.data_source_id}")
         files = {file.filename: file for file in self.new_deposition.files}
 
+        old_datapackage = None
         if "datapackage.json" in files:
+            # Download old datapackage
+            url = files["datapackage.json"].links.download
+            response = await self.depositor.request(
+                "GET",
+                url,
+                "Download old datapackage",
+                parse_json=False,
+                headers=self.depositor.auth_write,
+            )
+            response_bytes = await retry_async(response.read)
+            old_datapackage = DataPackage.parse_raw(response_bytes)
+
+            # Stage old datapackge to be deleted
             self.deletes.append(files["datapackage.json"])
             files.pop("datapackage.json")
 
@@ -320,3 +342,5 @@ class DepositionOrchestrator:
         self.uploads.append(
             _UploadSpec(source=datapackage_json, dest="datapackage.json")
         )
+
+        return datapackage, old_datapackage
