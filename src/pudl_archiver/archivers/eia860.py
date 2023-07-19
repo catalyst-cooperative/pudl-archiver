@@ -19,7 +19,7 @@ class Eia860Archiver(AbstractDatasetArchiver):
 
     async def get_resources(self) -> ArchiveAwaitable:
         """Download EIA-860 resources."""
-        link_pattern = re.compile(r"eia860(\d{4}(ER)*).zip")
+        link_pattern = re.compile(r"eia860(\d{4})(ER)*.zip")
         for link in await self.get_hyperlinks(BASE_URL, link_pattern):
             yield self.get_year_resource(link, link_pattern.search(link))
 
