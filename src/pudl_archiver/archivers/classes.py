@@ -197,7 +197,7 @@ class AbstractDatasetArchiver(ABC):
         new_datapackage: DataPackage,
         resources: dict[str, ResourceInfo],
     ) -> list[ValidationTestResult]:
-        """Hook to add archive validation specific to each dataset."""
+        """Hook to add archive validation tests specific to each dataset."""
         return []
 
     async def download_all_resources(self) -> dict[str, ResourceInfo]:
