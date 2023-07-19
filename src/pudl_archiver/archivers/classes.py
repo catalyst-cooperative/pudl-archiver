@@ -55,6 +55,7 @@ class AbstractDatasetArchiver(ABC):
 
     name: str
     concurrency_limit: int | None = None
+    directory_per_resource_chunk: bool = False
 
     def __init__(self, session: aiohttp.ClientSession):
         """Initialize Archiver object.
@@ -187,6 +188,11 @@ class AbstractDatasetArchiver(ABC):
 
         # Download resources concurrently and prepare metadata
         for resource_chunk in resource_chunks:
+            # If requested, create a new temporary directory per resource chunk
+            if self.directory_per_resource_chunk:
+                tmp_dir = tempfile.TemporaryDirectory()
+                self.download_directory = Path(tmp_dir.name)
+
             for resource_coroutine in asyncio.as_completed(resource_chunk):
                 resource_info = await resource_coroutine
                 self.logger.info(f"Downloaded {resource_info.local_path}.")

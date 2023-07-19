@@ -71,6 +71,15 @@ def html_docs():
 
 
 @pytest.mark.asyncio
+async def test_dir_per_resource(mocker):
+    """Test AbstractDatasetArchiver can download 1 resource at a time in a tempdir.
+
+    FERC EQR does not work with concurrent downloads, and is too big to have entire
+    dataset on disk at one time. This tests that
+    """
+
+
+@pytest.mark.asyncio
 async def test_download_zipfile(mocker, bad_zipfile, good_zipfile):
     """Test download zipfile.
 
