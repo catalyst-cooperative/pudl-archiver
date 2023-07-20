@@ -215,10 +215,9 @@ class AbstractDatasetArchiver(ABC):
                 self._check_missing_files(baseline_datapackage, new_datapackage)
             )
 
-        dataset_specific_validations = self.dataset_validate_archive(
+        validations += self.dataset_validate_archive(
             baseline_datapackage, new_datapackage, resources
         )
-        validations += dataset_specific_validations
         test_results = [(test.success or test.ignore_failure) for test in validations]
         return all(test_results)
 
