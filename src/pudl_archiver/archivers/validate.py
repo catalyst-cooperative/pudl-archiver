@@ -10,9 +10,9 @@ class ValidationTestResult(BaseModel):
     name: str
     description: str
     ignore_failure: bool = False
-    resource_name: str | None = None
-    result: bool
-    note: str | None = None
+    resource_name: str | None = None  # If test is specific to a single resource
+    success: bool
+    note: str | None = None  # Optional note to provide details like why test failed
 
 
 class FileDiff(BaseModel):

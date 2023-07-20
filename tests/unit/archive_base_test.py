@@ -1,4 +1,5 @@
 """Test archiver abstract base class."""
+import copy
 import io
 import re
 import tempfile
@@ -10,6 +11,7 @@ from aiohttp import ClientSession
 
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver, ArchiveAwaitable
 from pudl_archiver.archivers.validate import ValidationTestResult
+from pudl_archiver.frictionless import Resource
 
 
 @pytest.fixture()
@@ -94,7 +96,7 @@ async def test_download_zipfile(mocker, bad_zipfile, good_zipfile):
     # Initialize MockArchiver class
     archiver = MockArchiver(None)
 
-    url = "www.fake.url.com"
+    url = "https://www.fake.url.com"
     with pytest.raises(
         RuntimeError, match=f"Failed to download valid zipfile from {url}"
     ):
@@ -130,7 +132,7 @@ async def test_download_file(mocker, file_data):
     session_mock.get = mocker.AsyncMock(return_value=response_mock)
 
     # Prepare args
-    url = "www.fake.url.com"
+    url = "https://www.fake.url.com"
     file = io.BytesIO()
 
     # Call method
@@ -201,38 +203,159 @@ async def test_get_hyperlinks(docname, pattern, links, request, html_docs):
     [
         (
             [
-                ValidationTestResult(name="test0", description="test0", result=True),
-                ValidationTestResult(name="test1", description="test1", result=True),
-                ValidationTestResult(name="test2", description="test2", result=True),
+                ValidationTestResult(name="test0", description="test0", success=True),
+                ValidationTestResult(name="test1", description="test1", success=True),
+                ValidationTestResult(name="test2", description="test2", success=True),
             ],
             True,
         ),
         (
             [
-                ValidationTestResult(name="test0", description="test0", result=True),
-                ValidationTestResult(name="test1", description="test1", result=True),
-                ValidationTestResult(name="test2", description="test2", result=False),
+                ValidationTestResult(name="test0", description="test0", success=True),
+                ValidationTestResult(name="test1", description="test1", success=True),
+                ValidationTestResult(name="test2", description="test2", success=False),
             ],
             False,
         ),
         (
             [
-                ValidationTestResult(name="test0", description="test0", result=True),
-                ValidationTestResult(name="test1", description="test1", result=True),
+                ValidationTestResult(name="test0", description="test0", success=True),
+                ValidationTestResult(name="test1", description="test1", success=True),
                 ValidationTestResult(
-                    name="test2", description="test2", result=False, ignore_failure=True
+                    name="test2",
+                    description="test2",
+                    success=False,
+                    ignore_failure=True,
                 ),
             ],
             True,
         ),
     ],
 )
-def test_validate_archive(test_results, success):
+def test_validate_archive(datapackage, test_results, success):
     """Test that validate_archive method handles dataset specific tests properly."""
     archiver = MockArchiver(test_results)
-    assert (
-        archiver.validate_archive(
-            "baseline_datapackage", "new_datapackage", "resources"
-        )
-        == success
+    assert archiver.validate_archive(datapackage, datapackage, "resources") == success
+
+
+@pytest.mark.parametrize(
+    "baseline_resources,new_resources,success",
+    [
+        (
+            [
+                Resource(
+                    name="resource0",
+                    path="https://www.example.com",
+                    remote_url="https://www.example.com",
+                    title="",
+                    parts={},
+                    mediatype="",
+                    format="",
+                    bytes=0,
+                    hash="",
+                ),
+                Resource(
+                    name="resource1",
+                    path="https://www.example.com",
+                    remote_url="https://www.example.com",
+                    title="",
+                    parts={},
+                    mediatype="",
+                    format="",
+                    bytes=0,
+                    hash="",
+                ),
+            ],
+            [
+                Resource(
+                    name="resource0",
+                    path="https://www.example.com",
+                    remote_url="https://www.example.com",
+                    title="",
+                    parts={},
+                    mediatype="",
+                    format="",
+                    bytes=0,
+                    hash="",
+                ),
+                Resource(
+                    name="resource1",
+                    path="https://www.example.com",
+                    remote_url="https://www.example.com",
+                    title="",
+                    parts={},
+                    mediatype="",
+                    format="",
+                    bytes=0,
+                    hash="",
+                ),
+                Resource(
+                    name="resource2",
+                    path="https://www.example.com",
+                    remote_url="https://www.example.com",
+                    title="",
+                    parts={},
+                    mediatype="",
+                    format="",
+                    bytes=0,
+                    hash="",
+                ),
+            ],
+            True,
+        ),
+        (
+            [
+                Resource(
+                    name="resource0",
+                    path="https://www.example.com",
+                    remote_url="https://www.example.com",
+                    title="",
+                    parts={},
+                    mediatype="",
+                    format="",
+                    bytes=0,
+                    hash="",
+                ),
+                Resource(
+                    name="resource1",
+                    path="https://www.example.com",
+                    remote_url="https://www.example.com",
+                    title="",
+                    parts={},
+                    mediatype="",
+                    format="",
+                    bytes=0,
+                    hash="",
+                ),
+            ],
+            [
+                Resource(
+                    name="resource0",
+                    path="https://www.example.com",
+                    remote_url="https://www.example.com",
+                    title="",
+                    parts={},
+                    mediatype="",
+                    format="",
+                    bytes=0,
+                    hash="",
+                ),
+            ],
+            False,
+        ),
+    ],
+)
+def test_check_missing_files(datapackage, baseline_resources, new_resources, success):
+    """Test the ``_check_missing_files`` validation test."""
+    archiver = MockArchiver(None)
+
+    baseline_datapackage = copy.deepcopy(datapackage)
+    baseline_datapackage.resources = baseline_resources
+
+    new_datapackage = copy.deepcopy(datapackage)
+    new_datapackage.resources = new_resources
+
+    validation_result = archiver._check_missing_files(
+        baseline_datapackage, new_datapackage
     )
+    assert validation_result.success == success

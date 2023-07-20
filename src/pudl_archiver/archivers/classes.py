@@ -6,7 +6,6 @@ import tempfile
 import typing
 import zipfile
 from abc import ABC, abstractmethod
-from functools import reduce
 from html.parser import HTMLParser
 from pathlib import Path
 
@@ -52,6 +51,8 @@ class AbstractDatasetArchiver(ABC):
     """An abstract base archiver class."""
 
     name: str
+    # Configurable option to run _check_missing_files during archive validation
+    check_missing_files: bool = True
 
     def __init__(self, session: aiohttp.ClientSession):
         """Initialize Archiver object.
@@ -164,6 +165,34 @@ class AbstractDatasetArchiver(ABC):
 
         return hyperlinks
 
+    def _check_missing_files(
+        self,
+        baseline_datapackage: DataPackage | None,
+        new_datapackage: DataPackage,
+    ) -> ValidationTestResult:
+        """Check for any files from previous archive version missing in new version."""
+        baseline_resources = set()
+        if baseline_datapackage is not None:
+            baseline_resources = {
+                resource.name for resource in baseline_datapackage.resources
+            }
+
+        new_resources = {resource.name for resource in new_datapackage.resources}
+
+        # Check for any files only in baseline_datapackage
+        missing_files = baseline_resources - new_resources
+
+        note = None
+        if len(missing_files) > 0:
+            note = f"The following files would be deleted by new archive version: {missing_files}"
+
+        return ValidationTestResult(
+            name="Missing file test",
+            description="Check for files from previous version of archive that would be deleted by the new version",
+            success=len(missing_files) == 0,
+            note=note,
+        )
+
     def validate_archive(
         self,
         baseline_datapackage: DataPackage | None,
@@ -180,16 +209,18 @@ class AbstractDatasetArchiver(ABC):
         Returns:
             Bool indicating whether or not all tests passed.
         """
-        validation_tests = self.dataset_validate_archive(
+        validations = []
+        if self.check_missing_files:
+            validations.append(
+                self._check_missing_files(baseline_datapackage, new_datapackage)
+            )
+
+        dataset_specific_validations = self.dataset_validate_archive(
             baseline_datapackage, new_datapackage, resources
         )
-        test_results = reduce(
-            lambda result, test: result and (test.result or test.ignore_failure),
-            validation_tests,
-            True,
-        )
-
-        return test_results
+        validations += dataset_specific_validations
+        test_results = [(test.success or test.ignore_failure) for test in validations]
+        return all(test_results)
 
     def dataset_validate_archive(
         self,
