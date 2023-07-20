@@ -178,7 +178,7 @@ class AbstractDatasetArchiver(ABC):
             resources: Dictionary mapping resource name to ResourceInfo.
 
         Returns:
-            List of tests run, and their results.
+            Bool indicating whether or not all tests passed.
         """
         validation_tests = self.dataset_validate_archive(
             baseline_datapackage, new_datapackage, resources
