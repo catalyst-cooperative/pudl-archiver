@@ -1,4 +1,5 @@
 """Core routines for frictionless data package construction."""
+from collections import namedtuple
 from collections.abc import Iterable
 from datetime import datetime
 from pathlib import Path
@@ -7,8 +8,10 @@ from pydantic import AnyHttpUrl, BaseModel, Field
 
 from pudl.metadata.classes import Contributor, DataSource, License
 from pudl.metadata.constants import CONTRIBUTORS
-from pudl_archiver.archivers.classes import ResourceInfo
 from pudl_archiver.zenodo.entities import DepositionFile
+
+ResourceInfo = namedtuple("ResourceInfo", ["local_path", "partitions"])
+"""Tuple to wrap info about downloaded resource."""
 
 MEDIA_TYPES: dict[str, str] = {
     "zip": "application/zip",

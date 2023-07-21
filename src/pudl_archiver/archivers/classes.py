@@ -6,16 +6,14 @@ import tempfile
 import typing
 import zipfile
 from abc import ABC, abstractmethod
-from collections import namedtuple
 from html.parser import HTMLParser
 from pathlib import Path
 
 import aiohttp
 
+from pudl_archiver.archivers.validate import ValidationTestResult
+from pudl_archiver.frictionless import DataPackage, ResourceInfo
 from pudl_archiver.utils import retry_async
-
-ResourceInfo = namedtuple("ResourceInfo", ["local_path", "partitions"])
-"""Tuple to wrap info about downloaded resource."""
 
 MEDIA_TYPES: dict[str, str] = {
     "zip": "application/zip",
@@ -53,6 +51,8 @@ class AbstractDatasetArchiver(ABC):
     """An abstract base archiver class."""
 
     name: str
+    # Configurable option to run _check_missing_files during archive validation
+    check_missing_files: bool = True
 
     def __init__(self, session: aiohttp.ClientSession):
         """Initialize Archiver object.
@@ -164,6 +164,71 @@ class AbstractDatasetArchiver(ABC):
             )
 
         return hyperlinks
+
+    def _check_missing_files(
+        self,
+        baseline_datapackage: DataPackage | None,
+        new_datapackage: DataPackage,
+    ) -> ValidationTestResult:
+        """Check for any files from previous archive version missing in new version."""
+        baseline_resources = set()
+        if baseline_datapackage is not None:
+            baseline_resources = {
+                resource.name for resource in baseline_datapackage.resources
+            }
+
+        new_resources = {resource.name for resource in new_datapackage.resources}
+
+        # Check for any files only in baseline_datapackage
+        missing_files = baseline_resources - new_resources
+
+        note = None
+        if len(missing_files) > 0:
+            note = f"The following files would be deleted by new archive version: {missing_files}"
+
+        return ValidationTestResult(
+            name="Missing file test",
+            description="Check for files from previous version of archive that would be deleted by the new version",
+            success=len(missing_files) == 0,
+            note=note,
+        )
+
+    def validate_archive(
+        self,
+        baseline_datapackage: DataPackage | None,
+        new_datapackage: DataPackage,
+        resources: dict[str, ResourceInfo],
+    ) -> bool:
+        """Run a series of validation tests for a new archive, and return results.
+
+        Args:
+            baseline_datapackage: DataPackage descriptor from previous version of archive.
+            new_datapackage: DataPackage descriptor from newly generated archive.
+            resources: Dictionary mapping resource name to ResourceInfo.
+
+        Returns:
+            Bool indicating whether or not all tests passed.
+        """
+        validations = []
+        if self.check_missing_files:
+            validations.append(
+                self._check_missing_files(baseline_datapackage, new_datapackage)
+            )
+
+        validations += self.dataset_validate_archive(
+            baseline_datapackage, new_datapackage, resources
+        )
+        test_results = [(test.success or test.ignore_failure) for test in validations]
+        return all(test_results)
+
+    def dataset_validate_archive(
+        self,
+        baseline_datapackage: DataPackage | None,
+        new_datapackage: DataPackage,
+        resources: dict[str, ResourceInfo],
+    ) -> list[ValidationTestResult]:
+        """Hook to add archive validation tests specific to each dataset."""
+        return []
 
     async def download_all_resources(self) -> dict[str, ResourceInfo]:
         """Download all resources.
