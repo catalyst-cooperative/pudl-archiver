@@ -199,10 +199,10 @@ class DepositionOrchestrator:
         await self._apply_changes()
 
         if self.changed:
-            validation_success = self.downloader.validate_archive(
+            run_summary = self.downloader.generate_summary(
                 old_datapackage, new_datapackage, resources
             )
-            if not validation_success:
+            if not run_summary.success:
                 logger.error("Archive validation failed. Not publishing new archive.")
                 return self.deposition
 

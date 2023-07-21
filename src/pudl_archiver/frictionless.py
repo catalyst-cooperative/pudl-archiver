@@ -32,7 +32,7 @@ class Resource(BaseModel):
     path: AnyHttpUrl
     remote_url: AnyHttpUrl
     title: str
-    parts: dict
+    parts: dict[str, str]
     encoding: str = "utf-8"
     mediatype: str
     format_: str = Field(alias="format")
@@ -80,6 +80,7 @@ class DataPackage(BaseModel):
     licenses: list[License]
     resources: list[Resource]
     created: str
+    version: str | None = None
 
     @classmethod
     def from_filelist(

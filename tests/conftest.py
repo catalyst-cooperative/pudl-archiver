@@ -19,4 +19,5 @@ def datapackage():
         licenses=[],
         resources=[],
         created=str(datetime.now()),
+        version="1.0.0",
     )

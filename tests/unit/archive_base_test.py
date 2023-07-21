@@ -235,7 +235,10 @@ async def test_get_hyperlinks(docname, pattern, links, request, html_docs):
 def test_validate_archive(datapackage, test_results, success):
     """Test that validate_archive method handles dataset specific tests properly."""
     archiver = MockArchiver(test_results)
-    assert archiver.validate_archive(datapackage, datapackage, "resources") == success
+    assert (
+        archiver.generate_summary(datapackage, datapackage, "resources").success
+        == success
+    )
 
 
 @pytest.mark.parametrize(
