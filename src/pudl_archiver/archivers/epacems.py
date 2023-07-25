@@ -77,7 +77,7 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
     async def get_resources(self) -> ArchiveAwaitable:
         """Download EIA bulk electricity resources."""
         for state in STATE_ABBREVIATIONS:
-            for year in range(1995, 2022):
+            for year in range(1995, 2023):
                 yield self.get_state_year_resource(year=year, state=state)
 
     async def get_state_year_resource(self, year: int, state: str) -> tuple[Path, dict]:
