@@ -35,6 +35,13 @@ class FileDiff(BaseModel):
     partition_changes: list[PartitionDiff] = []
 
 
+class Unchanged(BaseModel):
+    """Alternative model to ``RunSummary`` returned when no changes are detected."""
+
+    dataset_name: str
+    reason: str = "No changes detected."
+
+
 class RunSummary(BaseModel):
     """Model summarizing results of an archiver run that can be easily output as JSON."""
 

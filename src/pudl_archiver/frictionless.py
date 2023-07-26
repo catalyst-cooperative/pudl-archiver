@@ -88,6 +88,7 @@ class DataPackage(BaseModel):
         name: str,
         files: Iterable[DepositionFile],
         resources: dict[str, ResourceInfo],
+        version: str,
     ) -> "DataPackage":
         """Create a frictionless datapackage from a list of files and partitions.
 
@@ -96,6 +97,7 @@ class DataPackage(BaseModel):
             files: List file metadata returned by zenodo api.
             resources: A dictionary mapping file names to a ResourceInfo object containing
                        the local path to the resource, and its working partitions.
+            version: Version string for current deposition version.
         """
         data_source = DataSource.from_id(name)
 
@@ -112,4 +114,5 @@ class DataPackage(BaseModel):
             created=str(datetime.utcnow()),
             keywords=data_source.keywords,
             description=data_source.description,
+            version=version,
         )
