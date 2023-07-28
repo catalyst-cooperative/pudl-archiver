@@ -2,6 +2,7 @@
 import json
 import logging
 import os
+import time
 from pathlib import Path
 
 import requests
@@ -81,8 +82,8 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
         file_list = requests.get(
             "https://api.epa.gov/easey/camd-services/bulk-files",
             params=parameters,
-            timeout=5,
-        )  # FIX ME to use existing classes
+            timeout=30,
+        )
         resjson = file_list.content.decode("utf8").replace("'", '"')
         bulk_files = json.loads(resjson)
         hourly_emissions_files = [
@@ -92,21 +93,21 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
             and (file["metadata"]["dataSubType"] == "Hourly")
         ]
         for file in hourly_emissions_files:
-            if "stateCode" in file["metadata"].keys():
+            if "stateCode" in file["metadata"].keys():  # If data is state-level
                 url = BASE_URL + file["s3Path"]
                 year = file["metadata"]["year"]
                 state = file["metadata"]["stateCode"].lower()
-                # logger.info(url)
                 yield self.get_state_year_resource(year=year, state=state, url=url)
 
     async def get_state_year_resource(
         self, year: int, state: str, url: str
     ) -> tuple[Path, dict]:
         """Download all available data for a single state/year."""
-        logger.info(f"Downloading EPACEMS data for {state.upper()}, {year}")
+        logger.info(f"Downloading {year} EPACEMS data for {state.upper()}")
         download_path = self.download_directory / f"epacems-{year}-{state}.csv"
 
         await self.download_file(url, download_path)
+        time.sleep(5)  # Stall, but clearly there's a better way to do this.
         return ResourceInfo(
             local_path=download_path, partitions={"year": year, "state": state}
         )
