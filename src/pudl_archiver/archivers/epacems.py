@@ -75,7 +75,7 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
     """EPA CEMS archiver."""
 
     name = "epacems"
-    concurrency_limit = 2
+    concurrency_limit = 1
 
     async def get_resources(self) -> ArchiveAwaitable:
         """Download EIA bulk electricity resources."""
