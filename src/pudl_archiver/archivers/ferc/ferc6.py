@@ -17,6 +17,8 @@ class Ferc6Archiver(AbstractDatasetArchiver):
     async def get_resources(self) -> ArchiveAwaitable:
         """Download FERC 6 resources."""
         for year in range(2000, 2022):
+            if not self.valid_year(year):
+                continue
             yield self.get_year_dbf(year)
 
         filings = xbrl.index_available_entries()[xbrl.FercForm.FORM_6]

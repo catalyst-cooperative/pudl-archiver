@@ -22,14 +22,15 @@ class Eia923Archiver(AbstractDatasetArchiver):
         link_pattern = re.compile(r"f((923)|(906920))_(\d{4})\.zip")
 
         for link in await self.get_hyperlinks(BASE_URL, link_pattern):
-            yield self.get_year_resource(link, link_pattern.search(link))
+            year = int(link_pattern.search(link).group(4))
+            if self.valid_year(year):
+                yield self.get_year_resource(link, year)
 
     async def get_year_resource(
-        self, link: str, match: typing.Match
+        self, link: str, year: int
     ) -> tuple[Path, dict]:
         """Download zip file."""
         url = f"{BASE_URL}/{link}"
-        year = match.group(4)
         download_path = self.download_directory / f"eia923-{year}.zip"
         await self.download_zipfile(url, download_path)
 

@@ -26,15 +26,17 @@ class Eia860MArchiver(AbstractDatasetArchiver):
         link_pattern = re.compile(r"([a-z]+)_generator(\d{4}).xlsx")
 
         for link in await self.get_hyperlinks(BASE_URL, link_pattern):
-            yield self.get_year_month_resource(link, link_pattern.search(link))
+            match = link_pattern.search(link)
+            year = int(match.group(2))
+            month = self.month_map[match.group(1)]
+            if self.valid_year(year):
+                yield self.get_year_month_resource(link, year, month)
 
     async def get_year_month_resource(
-        self, link: str, match: typing.Match
+        self, link: str, year: int, month: int
     ) -> tuple[Path, dict]:
         """Download xlsx file."""
         url = f"https://eia.gov/{link}"
-        year = match.group(2)
-        month = self.month_map[match.group(1)]
         download_path = self.download_directory / f"eia860m-{year}-{month:02}.xlsx"
         await self.download_file(url, download_path)
 

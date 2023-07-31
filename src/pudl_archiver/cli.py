@@ -23,6 +23,14 @@ def parse_main():
         choices=list(ARCHIVERS.keys()),
     )
     parser.add_argument(
+        "--only-years",
+        nargs="*",
+        help="Years to download data for. Supported datasets: eia860, "
+        "eia860m, eia861, eia923, eiawater, epacems, ferc1, ferc2, ferc6, "
+        "ferc60, ferc714",
+        type=int,
+    )
+    parser.add_argument(
         "--all",
         action="store_true",
         help="Run all defined archivers.",

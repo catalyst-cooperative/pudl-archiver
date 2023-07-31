@@ -54,7 +54,9 @@ class AbstractDatasetArchiver(ABC):
     # Configurable option to run _check_missing_files during archive validation
     check_missing_files: bool = True
 
-    def __init__(self, session: aiohttp.ClientSession):
+    def __init__(
+        self, session: aiohttp.ClientSession, only_years: list[int] | None = None
+    ):
         """Initialize Archiver object.
 
         Args:
@@ -65,6 +67,9 @@ class AbstractDatasetArchiver(ABC):
         # Create a temporary directory for downloading data
         self._download_directory_manager = tempfile.TemporaryDirectory()
         self.download_directory = Path(self._download_directory_manager.name)
+        if only_years is None:
+            only_years = []
+        self.only_years = only_years
 
         # Create logger
         self.logger = logging.getLogger(f"catalystcoop.{__name__}")
@@ -231,6 +236,9 @@ class AbstractDatasetArchiver(ABC):
     ) -> list[ValidationTestResult]:
         """Hook to add archive validation tests specific to each dataset."""
         return []
+
+    def valid_year(self, year: int | str):
+        return (not self.only_years) or int(year) in self.only_years
 
     async def download_all_resources(self) -> dict[str, ResourceInfo]:
         """Download all resources.
