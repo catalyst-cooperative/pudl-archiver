@@ -2,7 +2,6 @@
 import json
 import logging
 import os
-import time
 from pathlib import Path
 
 import requests
@@ -76,38 +75,42 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
     """EPA CEMS archiver."""
 
     name = "epacems"
+    concurrency_limit = 2
 
     async def get_resources(self) -> ArchiveAwaitable:
         """Download EIA bulk electricity resources."""
         file_list = requests.get(
             "https://api.epa.gov/easey/camd-services/bulk-files",
             params=parameters,
-            timeout=30,
+            timeout=300,
         )
-        resjson = file_list.content.decode("utf8").replace("'", '"')
-        bulk_files = json.loads(resjson)
-        hourly_emissions_files = [
-            file
-            for file in bulk_files
-            if (file["metadata"]["dataType"] == "Emissions")
-            and (file["metadata"]["dataSubType"] == "Hourly")
-        ]
-        for file in hourly_emissions_files:
-            if "stateCode" in file["metadata"].keys():  # If data is state-level
-                url = BASE_URL + file["s3Path"]
-                year = file["metadata"]["year"]
-                state = file["metadata"]["stateCode"].lower()
-                yield self.get_state_year_resource(year=year, state=state, url=url)
+        if file_list.status_code == 200:
+            resjson = file_list.content.decode("utf8").replace("'", '"')
+            file_list.close()  # Close connection.
+            bulk_files = json.loads(resjson)
+            hourly_emissions_files = [
+                file
+                for file in bulk_files
+                if (file["metadata"]["dataType"] == "Emissions")
+                and (file["metadata"]["dataSubType"] == "Hourly")
+            ]
+            for file in hourly_emissions_files:
+                if "stateCode" in file["metadata"].keys():  # If data is state-level
+                    url = BASE_URL + file["s3Path"]
+                    year = file["metadata"]["year"]
+                    state = file["metadata"]["stateCode"].lower()
+                    yield self.get_state_year_resource(year=year, state=state, url=url)
 
     async def get_state_year_resource(
         self, year: int, state: str, url: str
     ) -> tuple[Path, dict]:
         """Download all available data for a single state/year."""
-        logger.info(f"Downloading {year} EPACEMS data for {state.upper()}")
         download_path = self.download_directory / f"epacems-{year}-{state}.csv"
 
-        await self.download_file(url, download_path)
-        time.sleep(5)  # Stall, but clearly there's a better way to do this.
+        await self.download_file(url, download_path, timeout=60 * 60)
+        # Default timeout is 5 minutes, we override this here to be one hour.
+        # This is a known asyncio issue: https://github.com/aio-libs/aiohttp/issues/2249
+        logger.info(f"Downloaded {year} EPACEMS data for {state.upper()}")
         return ResourceInfo(
             local_path=download_path, partitions={"year": year, "state": state}
         )

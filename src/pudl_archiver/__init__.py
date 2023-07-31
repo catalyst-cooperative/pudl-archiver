@@ -42,7 +42,7 @@ async def archive_datasets(
         upload_key = os.environ["ZENODO_TOKEN_UPLOAD"]
         publish_key = os.environ["ZENODO_TOKEN_PUBLISH"]
 
-    connector = aiohttp.TCPConnector(limit_per_host=20, force_close=True)
+    connector = aiohttp.TCPConnector(limit_per_host=3, force_close=True)
     async with aiohttp.ClientSession(
         connector=connector, raise_for_status=False
     ) as session:

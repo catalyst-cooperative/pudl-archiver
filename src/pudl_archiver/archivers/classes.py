@@ -117,6 +117,7 @@ class AbstractDatasetArchiver(ABC):
         """
         response = await retry_async(self.session.get, args=[url], kwargs=kwargs)
         response_bytes = await retry_async(response.read)
+        await asyncio.sleep(0)
 
         if isinstance(file, Path):
             with open(file, "wb") as f:
