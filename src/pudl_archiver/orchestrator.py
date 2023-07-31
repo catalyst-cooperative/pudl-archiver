@@ -1,6 +1,7 @@
 """Core routines for archiving raw data packages."""
 import io
 import logging
+from enum import Enum, auto
 from hashlib import md5
 from pathlib import Path
 
@@ -21,6 +22,12 @@ from pudl_archiver.zenodo.entities import (
 )
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
+
+
+class _DepositionAction(Enum):
+    CREATE = (auto(),)
+    UPDATE = (auto(),)
+    DELETE = (auto(),)
 
 
 class _UploadSpec(BaseModel):
@@ -93,20 +100,12 @@ class DepositionOrchestrator:
         self.depositor = ZenodoDepositor(upload_key, publish_key, session, self.sandbox)
         self.downloader = downloader
 
-        # Map resource name to resource partitions
-        self.resource_parts: dict[str, dict] = {}
-
         # TODO (daz): don't hold references to the depositions at the instance level.
         self.deposition: Deposition | None = None
         self.new_deposition: Deposition | None = None
         self.deposition_files: dict[str, DepositionFile] = {}
 
         self.dry_run = dry_run
-        # We accumulate changes in a changeset, then apply - makes dry runs and testing easier.
-        # upload takes (source: IOBase | Path, dest: str) tuples; delete just takes the DepositionFile.
-        self.uploads: list[_UploadSpec] = []
-        self.deletes: list[DepositionFile] = []
-        self.changed = False
 
         self.create_new = create_new
         self.deposition_settings = deposition_settings
@@ -116,10 +115,7 @@ class DepositionOrchestrator:
                 for name, dois in yaml.safe_load(f).items()
             }
 
-        self.async_initialized = False
-
     async def _initialize(self):
-        self.async_initialized = True
         if self.create_new:
             doi = None
             self.deposition = await self._create_deposition(self.data_source_id)
@@ -183,90 +179,114 @@ class DepositionOrchestrator:
             field being 'done' and 'unsubmitted', respectively.
         """
         await self._initialize()
-        resources = await self.downloader.download_all_resources()
-        # TODO (daz): pass around changesets instead of persisting them on the instance, this
-        # makes the ordering/dependency more explicit
-        self._generate_changes(resources)
 
-        # Leave immediately after generating changes if dry_run
+        resources = {}
+        changed = False
+        async for name, resource in self.downloader.download_all_resources():
+            resources[name] = resource
+            action = self._generate_changes(name, resource)
+
+            # Leave immediately after generating changes if dry_run
+            if self.dry_run:
+                continue
+
+            if action:
+                changed = True
+                await self._apply_changes(action, name, resource)
+
+        # Check for files that should no longer be in deposition
+        files_to_delete = self._get_files_to_delete(resources)
+        changed = changed or len(files_to_delete) > 0
         if self.dry_run:
-            logger.info("Dry run, aborting")
-            return self.new_deposition
+            return None
 
-        await self._apply_changes()
+        # Delete files no longer in deposition
+        [
+            await self._apply_changes(_DepositionAction.DELETE, name)
+            for name in files_to_delete
+        ]
+
         self.new_deposition = await self.depositor.get_record(self.new_deposition.id_)
-        new_datapackage, old_datapackage = await self._update_datapackage(resources)
-        await self._apply_changes()
-
-        if self.changed:
-            validation_success = self.downloader.validate_archive(
-                old_datapackage, new_datapackage, resources
-            )
-            if not validation_success:
-                logger.error("Archive validation failed. Not publishing new archive.")
-                return self.deposition
-
+        if changed:
+            # If there are any changes detected update datapackage and publish
+            await self._update_datapackage(resources)
             published = await self.depositor.publish_deposition(self.new_deposition)
             if self.create_new:
                 self._update_dataset_settings(published)
             return published
         else:
+            logger.info("No changes detected.")
             await self.depositor.delete_deposition(self.new_deposition)
             return self.deposition
 
-    def _generate_changes(self, resources):
-        for name, resource in resources.items():
-            filepath = resource.local_path
-            if name not in self.deposition_files:
-                logger.info(f"Adding {name} to deposition.")
+    def _generate_changes(self, name: str, resource: ResourceInfo) -> _DepositionAction:
+        if name not in self.deposition_files:
+            logger.info(f"Adding {name} to deposition.")
 
-                self.uploads.append(_UploadSpec(source=filepath, dest=filepath.name))
-            else:
-                file_info = self.deposition_files[name]
+            return _DepositionAction.CREATE
+        else:
+            file_info = self.deposition_files[name]
 
-                # If file is not exact match for existing file, update with new file
-                if (
-                    not (local_md5 := _compute_md5(resource.local_path))
-                    == file_info.checksum
-                ):
-                    logger.info(
-                        f"Updating {name}: local hash {local_md5} vs. remote {file_info.checksum}"
-                    )
-                    self.deletes.append(file_info)
-                    self.uploads.append(
-                        _UploadSpec(source=filepath, dest=filepath.name)
-                    )
+            # If file is not exact match for existing file, update with new file
+            if (
+                not (local_md5 := _compute_md5(resource.local_path))
+                == file_info.checksum
+            ):
+                logger.info(
+                    f"Updating {name}: local hash {local_md5} vs. remote {file_info.checksum}"
+                )
+                return _DepositionAction.UPDATE
 
+        return None
+
+    def _get_files_to_delete(self, resources) -> list[str]:
         # Delete files not included in new deposition
+        files_to_delete = []
+        logger.info(f"Depo files: {list(self.deposition_files.keys())}")
         for filename, file_info in self.deposition_files.items():
             if filename not in resources and filename != "datapackage.json":
-                self.deletes.append(file_info)
+                logger.info(f"Deleting {filename} from deposition.")
+                files_to_delete.append(filename)
 
-        self.changed = len(self.uploads or self.deletes) > 0
-        if self.changed:
-            logger.info(f"To delete: {self.deletes}")
-            logger.info(f"To upload: {self.uploads}")
-        else:
-            logger.info("No changes detected.")
+        return files_to_delete
 
-    async def _apply_changes(self):
+    async def _apply_changes(
+        self, action: _DepositionAction, name: str, resource: ResourceInfo | None = None
+    ):
         """Actually upload and delete what we listed in self.uploads/deletes."""
-        logger.info(f"To delete: {self.deletes}")
-        logger.info(f"To upload: {self.uploads}")
-        for file_info in self.deletes:
-            await self.depositor.delete_file(self.new_deposition, file_info.filename)
-        self.deletes = []
-        for upload in self.uploads:
-            if isinstance(upload.source, io.IOBase):
-                await self.depositor.create_file(
-                    self.new_deposition, upload.dest, upload.source
+        match action:
+            case _DepositionAction.DELETE:
+                file_info = self.deposition_files[name]
+                await self.depositor.delete_file(
+                    self.new_deposition, file_info.filename
                 )
-            else:
-                with upload.source.open("rb") as f:
-                    await self.depositor.create_file(
-                        self.new_deposition, upload.dest, f
-                    )
-        self.uploads = []
+            case _DepositionAction.CREATE:
+                if resource is None:
+                    raise RuntimeError("Must pass a resource to be uploaded.")
+
+                await self._upload_file(
+                    _UploadSpec(source=resource.local_path, dest=name)
+                )
+            case _DepositionAction.UPDATE:
+                if resource is None:
+                    raise RuntimeError("Must pass a resource to be uploaded.")
+
+                file_info = self.deposition_files[name]
+                await self.depositor.delete_file(
+                    self.new_deposition, file_info.filename
+                )
+                await self._upload_file(
+                    _UploadSpec(source=resource.local_path, dest=name)
+                )
+
+    async def _upload_file(self, upload: _UploadSpec):
+        if isinstance(upload.source, io.IOBase):
+            await self.depositor.create_file(
+                self.new_deposition, upload.dest, upload.source
+            )
+        else:
+            with upload.source.open("rb") as f:
+                await self.depositor.create_file(self.new_deposition, upload.dest, f)
 
     def _update_dataset_settings(self, published_deposition):
         # Get new DOI and update settings
@@ -303,10 +323,6 @@ class DepositionOrchestrator:
         Returns:
             Updated Deposition.
         """
-        # If nothing has changed, don't add new datapackage
-        if not self.changed:
-            return None, None
-
         if self.new_deposition is None:
             return None, None
 
@@ -315,20 +331,7 @@ class DepositionOrchestrator:
 
         old_datapackage = None
         if "datapackage.json" in files:
-            # Download old datapackage
-            url = files["datapackage.json"].links.download
-            response = await self.depositor.request(
-                "GET",
-                url,
-                "Download old datapackage",
-                parse_json=False,
-                headers=self.depositor.auth_write,
-            )
-            response_bytes = await retry_async(response.read)
-            old_datapackage = DataPackage.parse_raw(response_bytes)
-
-            # Stage old datapackge to be deleted
-            self.deletes.append(files["datapackage.json"])
+            await self._apply_changes(_DepositionAction.DELETE, "datapackage.json")
             files.pop("datapackage.json")
 
         datapackage = DataPackage.from_filelist(
@@ -339,7 +342,7 @@ class DepositionOrchestrator:
             bytes(datapackage.json(by_alias=True), encoding="utf-8")
         )
 
-        self.uploads.append(
+        await self._upload_file(
             _UploadSpec(source=datapackage_json, dest="datapackage.json")
         )
 

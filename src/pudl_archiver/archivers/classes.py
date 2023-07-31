@@ -2,6 +2,7 @@
 import asyncio
 import io
 import logging
+import math
 import tempfile
 import typing
 import zipfile
@@ -51,8 +52,8 @@ class AbstractDatasetArchiver(ABC):
     """An abstract base archiver class."""
 
     name: str
-    # Configurable option to run _check_missing_files during archive validation
-    check_missing_files: bool = True
+    concurrency_limit: int | None = None
+    directory_per_resource_chunk: bool = False
 
     def __init__(self, session: aiohttp.ClientSession):
         """Initialize Archiver object.
@@ -166,72 +167,9 @@ class AbstractDatasetArchiver(ABC):
 
         return hyperlinks
 
-    def _check_missing_files(
+    async def download_all_resources(
         self,
-        baseline_datapackage: DataPackage | None,
-        new_datapackage: DataPackage,
-    ) -> ValidationTestResult:
-        """Check for any files from previous archive version missing in new version."""
-        baseline_resources = set()
-        if baseline_datapackage is not None:
-            baseline_resources = {
-                resource.name for resource in baseline_datapackage.resources
-            }
-
-        new_resources = {resource.name for resource in new_datapackage.resources}
-
-        # Check for any files only in baseline_datapackage
-        missing_files = baseline_resources - new_resources
-
-        note = None
-        if len(missing_files) > 0:
-            note = f"The following files would be deleted by new archive version: {missing_files}"
-
-        return ValidationTestResult(
-            name="Missing file test",
-            description="Check for files from previous version of archive that would be deleted by the new version",
-            success=len(missing_files) == 0,
-            note=note,
-        )
-
-    def validate_archive(
-        self,
-        baseline_datapackage: DataPackage | None,
-        new_datapackage: DataPackage,
-        resources: dict[str, ResourceInfo],
-    ) -> bool:
-        """Run a series of validation tests for a new archive, and return results.
-
-        Args:
-            baseline_datapackage: DataPackage descriptor from previous version of archive.
-            new_datapackage: DataPackage descriptor from newly generated archive.
-            resources: Dictionary mapping resource name to ResourceInfo.
-
-        Returns:
-            Bool indicating whether or not all tests passed.
-        """
-        validations = []
-        if self.check_missing_files:
-            validations.append(
-                self._check_missing_files(baseline_datapackage, new_datapackage)
-            )
-
-        validations += self.dataset_validate_archive(
-            baseline_datapackage, new_datapackage, resources
-        )
-        test_results = [(test.success or test.ignore_failure) for test in validations]
-        return all(test_results)
-
-    def dataset_validate_archive(
-        self,
-        baseline_datapackage: DataPackage | None,
-        new_datapackage: DataPackage,
-        resources: dict[str, ResourceInfo],
-    ) -> list[ValidationTestResult]:
-        """Hook to add archive validation tests specific to each dataset."""
-        return []
-
-    async def download_all_resources(self) -> dict[str, ResourceInfo]:
+    ) -> typing.Generator[tuple[str, ResourceInfo], None, None]:
         """Download all resources.
 
         This method uses the awaitables returned by `get_resources`. It
@@ -240,11 +178,21 @@ class AbstractDatasetArchiver(ABC):
         # Get all awaitables from get_resources
         resources = [resource async for resource in self.get_resources()]
 
-        # Download resources concurrently and prepare metadata
-        resource_dict = {}
-        for resource_coroutine in asyncio.as_completed(resources):
-            resource_info = await resource_coroutine
-            self.logger.info(f"Downloaded {resource_info.local_path}.")
-            resource_dict[str(resource_info.local_path.name)] = resource_info
+        # Split resources into chunks to limit concurrency
+        chunksize = self.concurrency_limit if self.concurrency_limit else len(resources)
+        resource_chunks = [
+            resources[i * chunksize : (i + 1) * chunksize]
+            for i in range(math.ceil(len(resources) / chunksize))
+        ]
 
-        return resource_dict
+        # Download resources concurrently and prepare metadata
+        for resource_chunk in resource_chunks:
+            # If requested, create a new temporary directory per resource chunk
+            if self.directory_per_resource_chunk:
+                tmp_dir = tempfile.TemporaryDirectory()
+                self.download_directory = Path(tmp_dir.name)
+
+            for resource_coroutine in asyncio.as_completed(resource_chunk):
+                resource_info = await resource_coroutine
+                self.logger.info(f"Downloaded {resource_info.local_path}.")
+                yield str(resource_info.local_path.name), resource_info
