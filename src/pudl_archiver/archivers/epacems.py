@@ -1,9 +1,11 @@
 """Download EPACEMS data."""
+import asyncio
 import json
 import logging
 import os
 from pathlib import Path
 
+import numpy as np
 import requests
 
 from pudl_archiver.archivers.classes import (
@@ -94,22 +96,49 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
                 if (file["metadata"]["dataType"] == "Emissions")
                 and (file["metadata"]["dataSubType"] == "Hourly")
             ]
-            for file in hourly_emissions_files:
-                if "stateCode" in file["metadata"].keys():  # If data is state-level
-                    url = BASE_URL + file["s3Path"]
-                    year = file["metadata"]["year"]
-                    state = file["metadata"]["stateCode"].lower()
-                    yield self.get_state_year_resource(year=year, state=state, url=url)
+            hourly_state_emissions_files = [
+                file
+                for file in hourly_emissions_files
+                if "stateCode" in file["metadata"].keys()
+            ]
+            logger.info(
+                f"Downloading {len(hourly_state_emissions_files)} total files. This will take more than one hour to respect API rate limits."
+            )
+            if len(hourly_state_emissions_files) > 1000:
+                # Implement request counting to avoid rate limit of 1000 requests/hour
+                request_counter = 0
+            else:
+                request_counter = np.nan
+            for cems_file in hourly_state_emissions_files:
+                if request_counter is not None:
+                    request_counter += 1
+                yield self.get_state_year_resource(
+                    file=cems_file, request_count=request_counter
+                )
 
     async def get_state_year_resource(
-        self, year: int, state: str, url: str
+        self, file: dict[str, str | dict[str, str]], request_count: int | None
     ) -> tuple[Path, dict]:
-        """Download all available data for a single state/year."""
-        download_path = self.download_directory / f"epacems-{year}-{state}.csv"
+        """Download all available data for a single state/year.
 
-        await self.download_file(url, download_path, timeout=60 * 60)
-        # Default timeout is 5 minutes, we override this here to be one hour.
-        # This is a known asyncio issue: https://github.com/aio-libs/aiohttp/issues/2249
+        Args:
+            file: a dictionary containing file characteristics from the EPA API.
+            request_count: the number of the request.
+        """
+        url = BASE_URL + file["s3Path"]
+        year = file["metadata"]["year"]
+        state = file["metadata"]["stateCode"].lower()
+        # file_size = file["megaBytes"]
+        download_path = self.download_directory / f"epacems-{year}-{state}.csv"
+        if (
+            request_count > 950
+        ):  # Give a bit of buffer room for the 1000 requests per hour limit
+            await asyncio.sleep(60 * 60)
+        await self.download_file(
+            url=url, file=download_path, retry_base_s=60 * 5, timeout=60 * 14
+        )
+        # Override the default asyncio timeout to 14 minutes, just under the API limit.
+        # Add a custom 5 minute retry time for timed out requests.
         logger.info(f"Downloaded {year} EPACEMS data for {state.upper()}")
         return ResourceInfo(
             local_path=download_path, partitions={"year": year, "state": state}

@@ -106,17 +106,23 @@ class AbstractDatasetArchiver(ABC):
         self,
         url: str,
         file: Path | io.BytesIO,
+        retry_base_s: int = 2,
         **kwargs,
     ):
         """Download a file using async session manager.
 
         Args:
             url: URL to file to download.
+            retry_time: custom base retry time for failed downloads (in seconds).
             file: Local path to write file to disk or bytes object to save file in memory.
+            retry_base_s: how many seconds to wait the first time we retry.
             kwargs: Key word args to pass to request.
         """
-        response = await retry_async(self.session.get, args=[url], kwargs=kwargs)
+        response = await retry_async(
+            self.session.get, args=[url], retry_base_s=retry_base_s, kwargs=kwargs
+        )
         response_bytes = await retry_async(response.read)
+        await asyncio.sleep(0)
 
         if isinstance(file, Path):
             with open(file, "wb") as f:
