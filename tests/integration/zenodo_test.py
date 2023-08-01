@@ -2,7 +2,6 @@
 import asyncio
 import os
 import tempfile
-from datetime import datetime
 from pathlib import Path
 
 import aiohttp
@@ -43,22 +42,6 @@ def deposition_metadata():
         version="1.0.0",
         license="cc-zero",
         keywords=["test"],
-    )
-
-
-@pytest.fixture()
-def datapackage():
-    """Create test datapackage descriptor."""
-    return DataPackage(
-        name="pudl_test",
-        title="PUDL Test",
-        description="Test dataset for the sandbox, thanks!",
-        keywords=[],
-        contributors=[],
-        sources=[],
-        licenses=[],
-        resources=[],
-        created=str(datetime.now()),
     )
 
 
