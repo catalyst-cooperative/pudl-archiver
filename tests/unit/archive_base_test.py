@@ -232,7 +232,7 @@ async def test_get_hyperlinks(docname, pattern, links, request, html_docs):
         ),
     ],
 )
-def test_validate_archive(datapackage, test_results, success):
+def test_generate_summary(datapackage, test_results, success):
     """Test that validate_archive method handles dataset specific tests properly."""
     archiver = MockArchiver(test_results)
     assert (
