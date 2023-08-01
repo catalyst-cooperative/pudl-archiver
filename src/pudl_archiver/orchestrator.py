@@ -207,9 +207,17 @@ class DepositionOrchestrator:
         ]
 
         self.new_deposition = await self.depositor.get_record(self.new_deposition.id_)
-        if changed:
-            # If there are any changes detected update datapackage and publish
-            await self._update_datapackage(resources)
+        new_datapackage, old_datapackage = await self._update_datapackage(resources)
+        await self._apply_changes()
+
+        if self.changed:
+            validation_success = self.downloader.validate_archive(
+                old_datapackage, new_datapackage, resources
+            )
+            if not validation_success:
+                logger.error("Archive validation failed. Not publishing new archive.")
+                return self.deposition
+
             published = await self.depositor.publish_deposition(self.new_deposition)
             if self.create_new:
                 self._update_dataset_settings(published)
@@ -323,6 +331,10 @@ class DepositionOrchestrator:
         Returns:
             Updated Deposition.
         """
+        # If nothing has changed, don't add new datapackage
+        if not self.changed:
+            return None, None
+
         if self.new_deposition is None:
             return None, None
 
@@ -331,7 +343,20 @@ class DepositionOrchestrator:
 
         old_datapackage = None
         if "datapackage.json" in files:
-            await self._apply_changes(_DepositionAction.DELETE, "datapackage.json")
+            # Download old datapackage
+            url = files["datapackage.json"].links.download
+            response = await self.depositor.request(
+                "GET",
+                url,
+                "Download old datapackage",
+                parse_json=False,
+                headers=self.depositor.auth_write,
+            )
+            response_bytes = await retry_async(response.read)
+            old_datapackage = DataPackage.parse_raw(response_bytes)
+
+            # Stage old datapackge to be deleted
+            self.deletes.append(files["datapackage.json"])
             files.pop("datapackage.json")
 
         datapackage = DataPackage.from_filelist(
