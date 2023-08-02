@@ -77,7 +77,7 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
     """EPA CEMS archiver."""
 
     name = "epacems"
-    concurrency_limit = 1
+    concurrency_limit = 10  # Number of files to concurrently download
 
     async def get_resources(self) -> ArchiveAwaitable:
         """Download EIA bulk electricity resources."""
@@ -134,11 +134,8 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
             request_count > 950
         ):  # Give a bit of buffer room for the 1000 requests per hour limit
             await asyncio.sleep(60 * 60)
-        await self.download_file(
-            url=url, file=download_path, retry_base_s=60 * 5, timeout=60 * 14
-        )
+        await self.download_file(url=url, file=download_path, timeout=60 * 14)
         # Override the default asyncio timeout to 14 minutes, just under the API limit.
-        # Add a custom 5 minute retry time for timed out requests.
         logger.info(f"Downloaded {year} EPACEMS data for {state.upper()}")
         return ResourceInfo(
             local_path=download_path, partitions={"year": year, "state": state}

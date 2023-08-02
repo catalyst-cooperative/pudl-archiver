@@ -2,6 +2,7 @@
 import asyncio
 import io
 import logging
+import math
 import tempfile
 import typing
 import zipfile
@@ -51,6 +52,8 @@ class AbstractDatasetArchiver(ABC):
     """An abstract base archiver class."""
 
     name: str
+    concurrency_limit: int | None = None
+    directory_per_resource_chunk: bool = False
     # Configurable option to run _check_missing_files during archive validation
     check_missing_files: bool = True
 
@@ -106,7 +109,6 @@ class AbstractDatasetArchiver(ABC):
         self,
         url: str,
         file: Path | io.BytesIO,
-        retry_base_s: int = 2,
         **kwargs,
     ):
         """Download a file using async session manager.
@@ -115,15 +117,10 @@ class AbstractDatasetArchiver(ABC):
             url: URL to file to download.
             retry_time: custom base retry time for failed downloads (in seconds).
             file: Local path to write file to disk or bytes object to save file in memory.
-            retry_base_s: how many seconds to wait the first time we retry.
             kwargs: Key word args to pass to request.
         """
-        response = await retry_async(
-            self.session.get, args=[url], retry_base_s=retry_base_s, kwargs=kwargs
-        )
+        response = await retry_async(self.session.get, args=[url], kwargs=kwargs)
         response_bytes = await retry_async(response.read)
-        await asyncio.sleep(0)
-
         if isinstance(file, Path):
             with open(file, "wb") as f:
                 f.write(response_bytes)
@@ -245,11 +242,19 @@ class AbstractDatasetArchiver(ABC):
         # Get all awaitables from get_resources
         resources = [resource async for resource in self.get_resources()]
 
+        # Split resources into chunks to limit concurrency
+        chunksize = self.concurrency_limit if self.concurrency_limit else len(resources)
+        resource_chunks = [
+            resources[i * chunksize : (i + 1) * chunksize]
+            for i in range(math.ceil(len(resources) / chunksize))
+        ]
+
         # Download resources concurrently and prepare metadata
         resource_dict = {}
-        for resource_coroutine in asyncio.as_completed(resources):
-            resource_info = await resource_coroutine
-            self.logger.info(f"Downloaded {resource_info.local_path}.")
-            resource_dict[str(resource_info.local_path.name)] = resource_info
+        for chunk in resource_chunks:
+            for resource_coroutine in asyncio.as_completed(chunk):
+                resource_info = await resource_coroutine
+                self.logger.info(f"Downloaded {resource_info.local_path}.")
+                resource_dict[str(resource_info.local_path.name)] = resource_info
 
         return resource_dict
