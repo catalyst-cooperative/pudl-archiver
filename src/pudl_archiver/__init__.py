@@ -1,5 +1,6 @@
 """Tool to download data resources and create archives on Zenodo for use in PUDL."""
 import asyncio
+import json
 import os
 import pathlib
 
@@ -33,6 +34,7 @@ async def archive_datasets(
     sandbox: bool = True,
     initialize: bool = False,
     dry_run: bool = True,
+    summary_file: str | None = None,
 ):
     """A CLI for the PUDL Zenodo Storage system."""
     if sandbox:
@@ -79,3 +81,13 @@ async def archive_datasets(
                 f"Encountered exceptions, showing traceback for last one: {[repr(e) for e in exceptions]}"
             )
             raise exceptions[-1][1]
+
+    if summary_file is not None:
+        run_summaries = [result.dict() for _, result in results]
+
+        with open(summary_file, "w") as f:
+            json.dump(run_summaries, f, indent=2)
+
+    validation_results = [result.success for _, result in results]
+    if not all(validation_results):
+        raise RuntimeError("Error: archive validation tests failed.")

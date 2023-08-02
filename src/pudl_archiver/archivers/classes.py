@@ -11,7 +11,7 @@ from pathlib import Path
 
 import aiohttp
 
-from pudl_archiver.archivers.validate import ValidationTestResult
+from pudl_archiver.archivers.validate import RunSummary, ValidationTestResult
 from pudl_archiver.frictionless import DataPackage, ResourceInfo
 from pudl_archiver.utils import retry_async
 
@@ -193,12 +193,12 @@ class AbstractDatasetArchiver(ABC):
             note=note,
         )
 
-    def validate_archive(
+    def generate_summary(
         self,
         baseline_datapackage: DataPackage | None,
         new_datapackage: DataPackage,
         resources: dict[str, ResourceInfo],
-    ) -> bool:
+    ) -> RunSummary:
         """Run a series of validation tests for a new archive, and return results.
 
         Args:
@@ -218,8 +218,10 @@ class AbstractDatasetArchiver(ABC):
         validations += self.dataset_validate_archive(
             baseline_datapackage, new_datapackage, resources
         )
-        test_results = [(test.success or test.ignore_failure) for test in validations]
-        return all(test_results)
+
+        return RunSummary.create_summary(
+            self.name, baseline_datapackage, new_datapackage, validations
+        )
 
     def dataset_validate_archive(
         self,

@@ -9,6 +9,7 @@ import yaml
 from pydantic import BaseModel
 
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver
+from pudl_archiver.archivers.validate import RunSummary, Unchanged
 from pudl_archiver.depositors import ZenodoDepositor
 from pudl_archiver.frictionless import DataPackage, ResourceInfo
 from pudl_archiver.utils import retry_async
@@ -168,7 +169,7 @@ class DepositionOrchestrator:
         metadata = DepositionMetadata.from_data_source(data_source_id)
         return await self.depositor.create_deposition(metadata)
 
-    async def run(self):
+    async def run(self) -> RunSummary | Unchanged:
         """Run the entire deposition update process.
 
         1. Create pending deposition version to stage changes.
@@ -178,9 +179,7 @@ class DepositionOrchestrator:
         5. Update the dataset settings if this was a new deposition.
 
         Returns:
-            Updated Deposition object - if published, then return that; else
-            return the pending deposition version. Distinguishable by `state`
-            field being 'done' and 'unsubmitted', respectively.
+            RunSummary object or Unchanged if no changes are detected or run is a dry run.
         """
         await self._initialize()
         resources = await self.downloader.download_all_resources()
@@ -191,7 +190,7 @@ class DepositionOrchestrator:
         # Leave immediately after generating changes if dry_run
         if self.dry_run:
             logger.info("Dry run, aborting")
-            return self.new_deposition
+            return Unchanged(dataset_name=self.data_source_id, reason="Dry run.")
 
         await self._apply_changes()
         self.new_deposition = await self.depositor.get_record(self.new_deposition.id_)
@@ -199,20 +198,21 @@ class DepositionOrchestrator:
         await self._apply_changes()
 
         if self.changed:
-            validation_success = self.downloader.validate_archive(
+            run_summary = self.downloader.generate_summary(
                 old_datapackage, new_datapackage, resources
             )
-            if not validation_success:
+            if not run_summary.success:
                 logger.error("Archive validation failed. Not publishing new archive.")
-                return self.deposition
+                await self.depositor.delete_deposition(self.new_deposition)
+                return run_summary
 
             published = await self.depositor.publish_deposition(self.new_deposition)
             if self.create_new:
                 self._update_dataset_settings(published)
-            return published
+            return run_summary
         else:
             await self.depositor.delete_deposition(self.new_deposition)
-            return self.deposition
+            return Unchanged(dataset_name=self.data_source_id)
 
     def _generate_changes(self, resources):
         for name, resource in resources.items():
@@ -332,7 +332,10 @@ class DepositionOrchestrator:
             files.pop("datapackage.json")
 
         datapackage = DataPackage.from_filelist(
-            self.data_source_id, files.values(), resources
+            self.data_source_id,
+            files.values(),
+            resources,
+            self.new_deposition.metadata.version,
         )
 
         datapackage_json = io.BytesIO(
