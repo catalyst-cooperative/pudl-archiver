@@ -55,57 +55,32 @@ def test_process_partition_diffs(baseline_partitions, new_partitions, diffs):
     assert test_diffs == diffs
 
 
+def _fake_resource(num=0, **kwargs):
+    params = {
+        "name": f"resource{num}",
+        "path": "https://www.fake.link",
+        "remote_url": "https://www.fake.link",
+        "title": f"Resource {num}",
+        "parts": {},
+        "mediatype": "zip",
+        "format": "format",
+        "bytes": 10,
+        "hash": f"hash{num}",
+    } | kwargs
+    return Resource(**params)
+
+
 @pytest.mark.parametrize(
     "baseline_resources,new_resources,diffs",
     [
         (
             [
-                Resource(
-                    name="resource0",
-                    path="https://www.fake.link",
-                    remote_url="https://www.fake.link",
-                    bytes=10,
-                    hash="hash0",
-                    title="Resource 0",
-                    parts={},
-                    mediatype="zip",
-                    format="format",
-                ),
-                Resource(
-                    name="resource1",
-                    path="https://www.fake.link",
-                    remote_url="https://www.fake.link",
-                    bytes=20,
-                    hash="hash1",
-                    title="Resource 0",
-                    parts={},
-                    mediatype="zip",
-                    format="format",
-                ),
+                _fake_resource(num=0),
+                _fake_resource(num=1, bytes=20),
             ],
             [
-                Resource(
-                    name="resource0",
-                    path="https://www.fake.link",
-                    remote_url="https://www.fake.link",
-                    bytes=10,
-                    hash="hash0",
-                    title="Resource 0",
-                    parts={},
-                    mediatype="zip",
-                    format="format",
-                ),
-                Resource(
-                    name="resource1",
-                    path="https://www.fake.link",
-                    remote_url="https://www.fake.link",
-                    bytes=40,
-                    hash="hash1_changed",
-                    title="Resource 0",
-                    parts={},
-                    mediatype="zip",
-                    format="format",
-                ),
+                _fake_resource(num=0),
+                _fake_resource(num=1, bytes=40, hash="hash1_changed"),
             ],
             [
                 validate.FileDiff(
@@ -117,41 +92,11 @@ def test_process_partition_diffs(baseline_partitions, new_partitions, diffs):
         ),
         (
             [
-                Resource(
-                    name="resource0",
-                    path="https://www.fake.link",
-                    remote_url="https://www.fake.link",
-                    bytes=10,
-                    hash="hash0",
-                    title="Resource 0",
-                    parts={},
-                    mediatype="zip",
-                    format="format",
-                ),
-                Resource(
-                    name="resource1",
-                    path="https://www.fake.link",
-                    remote_url="https://www.fake.link",
-                    bytes=20,
-                    hash="hash1",
-                    title="Resource 0",
-                    parts={},
-                    mediatype="zip",
-                    format="format",
-                ),
+                _fake_resource(num=0),
+                _fake_resource(num=1, bytes=20),
             ],
             [
-                Resource(
-                    name="resource0",
-                    path="https://www.fake.link",
-                    remote_url="https://www.fake.link",
-                    bytes=10,
-                    hash="hash0",
-                    title="Resource 0",
-                    parts={},
-                    mediatype="zip",
-                    format="format",
-                ),
+                _fake_resource(num=0),
             ],
             [
                 validate.FileDiff(
@@ -163,41 +108,11 @@ def test_process_partition_diffs(baseline_partitions, new_partitions, diffs):
         ),
         (
             [
-                Resource(
-                    name="resource0",
-                    path="https://www.fake.link",
-                    remote_url="https://www.fake.link",
-                    bytes=10,
-                    hash="hash0",
-                    title="Resource 0",
-                    parts={},
-                    mediatype="zip",
-                    format="format",
-                ),
+                _fake_resource(num=0),
             ],
             [
-                Resource(
-                    name="resource0",
-                    path="https://www.fake.link",
-                    remote_url="https://www.fake.link",
-                    bytes=10,
-                    hash="hash0",
-                    title="Resource 0",
-                    parts={},
-                    mediatype="zip",
-                    format="format",
-                ),
-                Resource(
-                    name="resource1",
-                    path="https://www.fake.link",
-                    remote_url="https://www.fake.link",
-                    bytes=20,
-                    hash="hash1_created",
-                    title="Resource 0",
-                    parts={},
-                    mediatype="zip",
-                    format="format",
-                ),
+                _fake_resource(num=0),
+                _fake_resource(num=1, bytes=20),
             ],
             [
                 validate.FileDiff(
@@ -209,52 +124,12 @@ def test_process_partition_diffs(baseline_partitions, new_partitions, diffs):
         ),
         (
             [
-                Resource(
-                    name="resource0",
-                    path="https://www.fake.link",
-                    remote_url="https://www.fake.link",
-                    bytes=10,
-                    hash="hash0",
-                    title="Resource 0",
-                    parts={},
-                    mediatype="zip",
-                    format="format",
-                ),
-                Resource(
-                    name="resource1",
-                    path="https://www.fake.link",
-                    remote_url="https://www.fake.link",
-                    bytes=20,
-                    hash="hash1",
-                    title="Resource 0",
-                    parts={},
-                    mediatype="zip",
-                    format="format",
-                ),
+                _fake_resource(num=0),
+                _fake_resource(num=1, bytes=20),
             ],
             [
-                Resource(
-                    name="resource0",
-                    path="https://www.fake.link",
-                    remote_url="https://www.fake.link",
-                    bytes=10,
-                    hash="hash0",
-                    title="Resource 0",
-                    parts={},
-                    mediatype="zip",
-                    format="format",
-                ),
-                Resource(
-                    name="resource1",
-                    path="https://www.fake.link",
-                    remote_url="https://www.fake.link",
-                    bytes=20,
-                    hash="hash1",
-                    title="Resource 0",
-                    parts={},
-                    mediatype="zip",
-                    format="format",
-                ),
+                _fake_resource(num=0),
+                _fake_resource(num=1, bytes=20),
             ],
             [],
         ),
