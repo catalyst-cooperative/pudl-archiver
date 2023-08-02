@@ -82,8 +82,6 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
         # Loop through all available years of data
         for year in await self.get_hyperlinks(BASE_URL, year_pattern, verify=False):
             year = int(year[:-1])
-            if not self.valid(year):
-                continue
             # Store months available for each state
             states = {state: [] for state in STATE_ABBREVIATIONS}
             for link in await self.get_hyperlinks(

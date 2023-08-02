@@ -26,7 +26,7 @@ def parse_main():
         "--only-years",
         nargs="*",
         help="Years to download data for. Supported datasets: eia860, "
-        "eia860m, eia861, eia923, eiawater, epacems, ferc1, ferc2, ferc6, "
+        "eia860m, eia861, eia923, eiawater, ferc1, ferc2, ferc6, "
         "ferc60, ferc714",
         type=int,
     )
