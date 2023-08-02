@@ -55,6 +55,11 @@ def parse_main():
         type=str,
         help="Generate a JSON archive run summary",
     )
+    parser.add_argument(
+        "--download-dir",
+        help="Directory to download files to. Use tmpdir if not specified.",
+        default=None,
+    )
     return parser.parse_args()
 
 

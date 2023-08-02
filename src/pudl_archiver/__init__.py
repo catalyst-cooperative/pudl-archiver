@@ -36,6 +36,7 @@ async def archive_datasets(
     only_years: list[int] | None = None,
     dry_run: bool = True,
     summary_file: str | None = None,
+    download_dir: str | None = None,
 ):
     """A CLI for the PUDL Zenodo Storage system."""
     if sandbox:
@@ -56,7 +57,7 @@ async def archive_datasets(
             if not cls:
                 raise RuntimeError(f"Dataset {dataset} not supported")
             else:
-                downloader = cls(session, only_years)
+                downloader = cls(session, only_years, download_directory=download_dir)
             orchestrator = DepositionOrchestrator(
                 dataset,
                 downloader,
