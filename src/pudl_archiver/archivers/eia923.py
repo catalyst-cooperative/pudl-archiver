@@ -1,6 +1,5 @@
 """Download EIA-923 data."""
 import re
-import typing
 from pathlib import Path
 
 from pudl_archiver.archivers.classes import (
@@ -26,9 +25,7 @@ class Eia923Archiver(AbstractDatasetArchiver):
             if self.valid_year(year):
                 yield self.get_year_resource(link, year)
 
-    async def get_year_resource(
-        self, link: str, year: int
-    ) -> tuple[Path, dict]:
+    async def get_year_resource(self, link: str, year: int) -> tuple[Path, dict]:
         """Download zip file."""
         url = f"{BASE_URL}/{link}"
         download_path = self.download_directory / f"eia923-{year}.zip"

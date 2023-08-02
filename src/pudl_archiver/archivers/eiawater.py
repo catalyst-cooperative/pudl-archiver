@@ -1,7 +1,6 @@
 """Download EIA Thermal Cooling Water data."""
 import logging
 import re
-import typing
 from pathlib import Path
 
 from pudl_archiver.archivers.classes import (

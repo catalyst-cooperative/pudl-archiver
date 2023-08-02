@@ -1,7 +1,6 @@
 """Download EIA-860M data."""
 import calendar
 import re
-import typing
 from pathlib import Path
 
 from pudl_archiver.archivers.classes import (
