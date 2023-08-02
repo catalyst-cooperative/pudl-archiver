@@ -23,6 +23,8 @@ class Ferc60Archiver(AbstractDatasetArchiver):
 
         filings = xbrl.index_available_entries()[xbrl.FercForm.FORM_60]
         for year, year_filings in filings.items():
+            if not self.valid_year(year):
+                continue
             yield self.get_year_xbrl(year, year_filings)
 
     async def get_year_xbrl(

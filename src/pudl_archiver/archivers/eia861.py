@@ -1,6 +1,5 @@
 """Download EIA-861 data."""
 import re
-import typing
 from pathlib import Path
 
 from pudl_archiver.archivers.classes import (
@@ -29,6 +28,7 @@ class Eia861Archiver(AbstractDatasetArchiver):
                 year += 1900
             elif year < 100 and year < 90:
                 year += 2000
+                print(year)
             if self.valid_year(year):
                 yield self.get_year_resource(link, year)
 
