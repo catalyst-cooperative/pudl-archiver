@@ -16,6 +16,8 @@ from pudl_archiver.archivers.validate import ValidationTestResult
 from pudl_archiver.frictionless import DataPackage, ResourceInfo
 from pudl_archiver.utils import retry_async
 
+logger = logging.getLogger(f"catalystcoop.{__name__}")
+
 MEDIA_TYPES: dict[str, str] = {
     "zip": "application/zip",
     "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -115,7 +117,6 @@ class AbstractDatasetArchiver(ABC):
 
         Args:
             url: URL to file to download.
-            retry_time: custom base retry time for failed downloads (in seconds).
             file: Local path to write file to disk or bytes object to save file in memory.
             kwargs: Key word args to pass to request.
         """
@@ -126,6 +127,31 @@ class AbstractDatasetArchiver(ABC):
                 f.write(response_bytes)
         elif isinstance(file, io.BytesIO):
             file.write(response_bytes)
+
+    async def download_and_zip_file(
+        self,
+        url: str,
+        filename: str,
+        archive_path: Path,
+        **kwargs,
+    ):
+        """Download and zip a file using async session manager.
+
+        Args:
+            url: URL to file to download.
+            filename: name of file to be zipped
+            archive_path: Local path to write file to disk.
+            kwargs: Key word args to pass to request.
+        """
+        response = await retry_async(self.session.get, args=[url], kwargs=kwargs)
+        response_bytes = await retry_async(response.read)
+
+        # Write to zipfile
+        with zipfile.ZipFile(
+            archive_path, "a", compression=zipfile.ZIP_DEFLATED
+        ) as archive:
+            with archive.open(filename, "w") as f_disk:
+                f_disk.write(response_bytes)
 
     async def get_hyperlinks(
         self,

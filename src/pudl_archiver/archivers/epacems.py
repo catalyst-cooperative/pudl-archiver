@@ -77,10 +77,10 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
     """EPA CEMS archiver."""
 
     name = "epacems"
-    concurrency_limit = 10  # Number of files to concurrently download
+    concurrency_limit = 6  # Number of files to concurrently download
 
     async def get_resources(self) -> ArchiveAwaitable:
-        """Download EIA bulk electricity resources."""
+        """Download EPA CEMS resources."""
         file_list = requests.get(
             "https://api.epa.gov/easey/camd-services/bulk-files",
             params=parameters,
@@ -105,7 +105,9 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
                 f"Downloading {len(hourly_state_emissions_files)} total files. This will take more than one hour to respect API rate limits."
             )
             if len(hourly_state_emissions_files) > 1000:
-                # Implement request counting to avoid rate limit of 1000 requests/hour
+                # This could be used to add pauses to later requests, but in practice
+                # read time is so slow that this takes several hours with concurrency.
+                # If this changes, the request_counter could be used to add a delay.
                 request_counter = 0
             else:
                 request_counter = np.nan
@@ -128,15 +130,23 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
         url = BASE_URL + file["s3Path"]
         year = file["metadata"]["year"]
         state = file["metadata"]["stateCode"].lower()
-        # file_size = file["megaBytes"]
-        download_path = self.download_directory / f"epacems-{year}-{state}.csv"
-        if (
-            request_count > 950
-        ):  # Give a bit of buffer room for the 1000 requests per hour limit
-            await asyncio.sleep(60 * 60)
-        await self.download_file(url=url, file=download_path, timeout=60 * 14)
+        file_size = file["megaBytes"]
+        if int(file_size) > 600:  # If bigger than 600 mb
+            await asyncio.sleep(60 * 5)
+            # Add a five-minute wait time for very big files to let
+            # other files in group finish first.
+
+        logger.info(f"Downloading EPACEMS data for {state.upper()}, {year}")
+        # Create zipfile to store year/state combinations of files
+        filename = f"epacems-{year}-{state}.csv"
+        archive_path = self.download_directory / f"epacems-{year}-{state}.zip"
+        await self.download_and_zip_file(
+            url=url, filename=filename, archive_path=archive_path, timeout=60 * 14
+        )
         # Override the default asyncio timeout to 14 minutes, just under the API limit.
-        logger.info(f"Downloaded {year} EPACEMS data for {state.upper()}")
+        logger.info(
+            f"File no. {request_count}: Downloaded {year} EPACEMS data for {state.upper()}"
+        )
         return ResourceInfo(
-            local_path=download_path, partitions={"year": year, "state": state}
+            local_path=archive_path, partitions={"year": year, "state": state}
         )
