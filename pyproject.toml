@@ -10,7 +10,7 @@ dependencies = [
     "feedparser>=6.0",
     "tqdm>=4.64",
     "python-dotenv~=1.0.0",
-    "arelle-release>=2.3,<2.11",
+    "arelle-release>=2.3,<2.12",
     "semantic_version>=2.8,<3",
 ]
 
@@ -29,7 +29,7 @@ classifiers = [
 
 [project.optional-dependencies]
 dev = [
-    "black>=22.0,<23.4",  # A deterministic code formatter
+    "black>=22.0,<23.8",  # A deterministic code formatter
     "isort>=5.0,<5.13",  # Standardized import sorting
     "tox>=3.20,<4.7",  # Python test environment manager
     "twine>=3.3,<4.1",  # Used to make releases to PyPI
@@ -41,7 +41,7 @@ dev = [
 docs = [
     "doc8>=0.9,<1.2",  # Ensures clean documentation formatting
     "furo>=2022.4.7",
-    "sphinx>=4,!=5.1.0,<7.0.2",  # The default Python documentation engine
+    "sphinx>=4,!=5.1.0,<7.1.2",  # The default Python documentation engine
     "sphinx-autoapi>=1.8,<2.2",  # Generates documentation from docstrings
     "sphinx-issues>=1.2,<3.1",  # Allows references to GitHub issues
 ]
@@ -50,7 +50,7 @@ tests = [
     "bandit[toml]>=1.6,<1.8",  # Checks code for security issues
     "coverage>=5.3,<7.3",  # Lets us track what code is being tested
     "doc8>=0.9,<1.2",  # Ensures clean documentation formatting
-    "flake8>=4.0,<6.1",  # A framework for linting & static analysis
+    "flake8>=4.0,<6.2",  # A framework for linting & static analysis
     "flake8-builtins>=1.5,<2.2",  # Avoid shadowing Python built-in names
     "flake8-colors>=0.1,<0.2",  # Produce colorful error / warning output
     "flake8-docstrings>=1.5,<1.8",  # Ensure docstrings are formatted well
@@ -60,11 +60,11 @@ tests = [
     "pep8-naming>=0.12,<0.14",  # Require PEP8 compliant variable names
     "pre-commit>=2.9,<3.4",  # Allow us to run pre-commit hooks in testing
     "pydocstyle>=5.1,<6.4",  # Style guidelines for Python documentation
-    "pytest>=6.2,<7.4",  # Our testing framework
+    "pytest>=6.2,<7.5",  # Our testing framework
     "pytest-asyncio>=0.20,<0.22",  # Test async functions
     "pytest-console-scripts>=1.1,<1.5",  # Allow automatic testing of scripts
     "pytest-cov>=2.10,<4.2",  # Pytest plugin for working with coverage
-    "pytest-mock>=3.0,<3.11",  # Pytest plugin for mocking function calls and objects
+    "pytest-mock>=3.0,<3.12",  # Pytest plugin for mocking function calls and objects
     "rstcheck[sphinx]>=5.0,<6.2",  # ReStructuredText linter
 ]
 

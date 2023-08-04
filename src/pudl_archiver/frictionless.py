@@ -1,4 +1,5 @@
 """Core routines for frictionless data package construction."""
+from collections import namedtuple
 from collections.abc import Iterable
 from datetime import datetime
 from pathlib import Path
@@ -7,8 +8,10 @@ from pydantic import AnyHttpUrl, BaseModel, Field
 
 from pudl.metadata.classes import Contributor, DataSource, License
 from pudl.metadata.constants import CONTRIBUTORS
-from pudl_archiver.archivers.classes import ResourceInfo
 from pudl_archiver.zenodo.entities import DepositionFile
+
+ResourceInfo = namedtuple("ResourceInfo", ["local_path", "partitions"])
+"""Tuple to wrap info about downloaded resource."""
 
 MEDIA_TYPES: dict[str, str] = {
     "zip": "application/zip",
@@ -29,7 +32,7 @@ class Resource(BaseModel):
     path: AnyHttpUrl
     remote_url: AnyHttpUrl
     title: str
-    parts: dict
+    parts: dict[str, str]
     encoding: str = "utf-8"
     mediatype: str
     format_: str = Field(alias="format")
@@ -77,6 +80,7 @@ class DataPackage(BaseModel):
     licenses: list[License]
     resources: list[Resource]
     created: str
+    version: str | None = None
 
     @classmethod
     def from_filelist(
@@ -84,6 +88,7 @@ class DataPackage(BaseModel):
         name: str,
         files: Iterable[DepositionFile],
         resources: dict[str, ResourceInfo],
+        version: str,
     ) -> "DataPackage":
         """Create a frictionless datapackage from a list of files and partitions.
 
@@ -92,6 +97,7 @@ class DataPackage(BaseModel):
             files: List file metadata returned by zenodo api.
             resources: A dictionary mapping file names to a ResourceInfo object containing
                        the local path to the resource, and its working partitions.
+            version: Version string for current deposition version.
         """
         data_source = DataSource.from_id(name)
 
@@ -108,4 +114,5 @@ class DataPackage(BaseModel):
             created=str(datetime.utcnow()),
             keywords=data_source.keywords,
             description=data_source.description,
+            version=version,
         )

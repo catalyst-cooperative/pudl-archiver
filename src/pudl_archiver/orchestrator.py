@@ -9,9 +9,11 @@ import aiohttp
 import yaml
 from pydantic import BaseModel
 
-from pudl_archiver.archivers.classes import AbstractDatasetArchiver, ResourceInfo
+from pudl_archiver.archivers.classes import AbstractDatasetArchiver
+from pudl_archiver.archivers.validate import RunSummary, Unchanged
 from pudl_archiver.depositors import ZenodoDepositor
-from pudl_archiver.frictionless import DataPackage
+from pudl_archiver.frictionless import DataPackage, ResourceInfo
+from pudl_archiver.utils import retry_async
 from pudl_archiver.zenodo.entities import (
     Deposition,
     DepositionFile,
@@ -179,7 +181,7 @@ class DepositionOrchestrator:
         metadata = DepositionMetadata.from_data_source(data_source_id)
         return await self.depositor.create_deposition(metadata)
 
-    async def run(self):
+    async def run(self) -> RunSummary | Unchanged:
         """Run the entire deposition update process.
 
         1. Create pending deposition version to stage changes.
@@ -189,9 +191,7 @@ class DepositionOrchestrator:
         5. Update the dataset settings if this was a new deposition.
 
         Returns:
-            Updated Deposition object - if published, then return that; else
-            return the pending deposition version. Distinguishable by `state`
-            field being 'done' and 'unsubmitted', respectively.
+            RunSummary object or Unchanged if no changes are detected or run is a dry run.
         """
         await self._initialize()
 
@@ -213,7 +213,8 @@ class DepositionOrchestrator:
         files_to_delete = self._get_files_to_delete(resources)
         changed = changed or len(files_to_delete) > 0
         if self.dry_run:
-            return None
+            logger.info("Dry run, aborting")
+            return Unchanged(dataset_name=self.data_source_id, reason="Dry run.")
 
         # Delete files no longer in deposition
         [
@@ -224,15 +225,25 @@ class DepositionOrchestrator:
         self.new_deposition = await self.depositor.get_record(self.new_deposition.id_)
         if changed:
             # If there are any changes detected update datapackage and publish
-            await self._update_datapackage(resources)
+            new_datapackage, old_datapackage = await self._update_datapackage(resources)
+            await self._apply_changes()
+
+            run_summary = self.downloader.generate_summary(
+                old_datapackage, new_datapackage, resources
+            )
+            if not run_summary.success:
+                logger.error("Archive validation failed. Not publishing new archive.")
+                await self.depositor.delete_deposition(self.new_deposition)
+                return run_summary
+
             published = await self.depositor.publish_deposition(self.new_deposition)
             if self.create_new:
                 self._update_dataset_settings(published)
-            return published
+            return run_summary
         else:
             logger.info("No changes detected.")
             await self.depositor.delete_deposition(self.new_deposition)
-            return self.deposition
+            return Unchanged(dataset_name=self.data_source_id)
 
     def _generate_changes(self, name: str, resource: ResourceInfo) -> _DepositionAction:
         if name not in self.deposition_files:
@@ -341,17 +352,35 @@ class DepositionOrchestrator:
             Updated Deposition.
         """
         if self.new_deposition is None:
-            return
+            return None, None
 
         logger.info(f"Creating new datapackage.json for {self.data_source_id}")
         files = {file.filename: file for file in self.new_deposition.files}
 
+        old_datapackage = None
         if "datapackage.json" in files:
+            # Download old datapackage
+            url = files["datapackage.json"].links.download
+            response = await self.depositor.request(
+                "GET",
+                url,
+                "Download old datapackage",
+                parse_json=False,
+                headers=self.depositor.auth_write,
+            )
+            response_bytes = await retry_async(response.read)
+            old_datapackage = DataPackage.parse_raw(response_bytes)
+
+            # Stage old datapackge to be deleted
             await self._apply_changes(_DepositionAction.DELETE, "datapackage.json")
             files.pop("datapackage.json")
 
+        # Create updated datapackage
         datapackage = DataPackage.from_filelist(
-            self.data_source_id, files.values(), resources
+            self.data_source_id,
+            files.values(),
+            resources,
+            self.new_deposition.metadata.version,
         )
 
         datapackage_json = io.BytesIO(
@@ -361,3 +390,5 @@ class DepositionOrchestrator:
         await self._upload_file(
             _UploadSpec(source=datapackage_json, dest="datapackage.json")
         )
+
+        return datapackage, old_datapackage

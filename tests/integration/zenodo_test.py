@@ -2,7 +2,7 @@
 import asyncio
 import os
 import tempfile
-from datetime import datetime
+import time
 from pathlib import Path
 
 import aiohttp
@@ -11,9 +11,11 @@ import pytest_asyncio
 import requests
 from dotenv import load_dotenv
 
+from pudl.metadata.classes import DataSource
+from pudl.metadata.constants import LICENSES
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver, ResourceInfo
+from pudl_archiver.archivers.validate import Unchanged
 from pudl_archiver.depositors.zenodo import ZenodoClientException
-from pudl_archiver.frictionless import DataPackage
 from pudl_archiver.orchestrator import DepositionOrchestrator
 from pudl_archiver.utils import retry_async
 from pudl_archiver.zenodo.entities import (
@@ -43,22 +45,6 @@ def deposition_metadata():
         version="1.0.0",
         license="cc-zero",
         keywords=["test"],
-    )
-
-
-@pytest.fixture()
-def datapackage():
-    """Create test datapackage descriptor."""
-    return DataPackage(
-        name="pudl_test",
-        title="PUDL Test",
-        description="Test dataset for the sandbox, thanks!",
-        keywords=[],
-        contributors=[],
-        sources=[],
-        licenses=[],
-        resources=[],
-        created=str(datetime.now()),
     )
 
 
@@ -128,6 +114,19 @@ def test_files():
 
 
 @pytest.fixture()
+def datasource():
+    """Create fake datasource for testing."""
+    return DataSource(
+        name="pudl_test",
+        title="Pudl Test",
+        description="Test dataset for the sandbox, thanks!",
+        path="https://fake.link",
+        license_raw=LICENSES["cc-by-4.0"],
+        license_pudl=LICENSES["cc-by-4.0"],
+    )
+
+
+@pytest.fixture()
 def test_settings():
     """Create temporary DOI settings file."""
     with tempfile.TemporaryDirectory() as tmp_dir:
@@ -146,7 +145,7 @@ async def test_zenodo_workflow(
     test_settings: Path,
     test_files: dict[str, list[dict[str, str]]],
     deposition_metadata: DepositionMetadata,
-    datapackage: DataPackage,
+    datasource: DataSource,
     mocker,
 ):
     """Test the entire zenodo client workflow."""
@@ -200,10 +199,10 @@ async def test_zenodo_workflow(
     )
 
     # Mock out creating datapackage with fake data source
-    datapackage_mock = mocker.MagicMock(return_value=datapackage)
+    datasource_mock = mocker.MagicMock(return_value=datasource)
     mocker.patch(
-        "pudl_archiver.orchestrator.DataPackage.from_filelist",
-        new=datapackage_mock,
+        "pudl_archiver.frictionless.DataSource.from_id",
+        new=datasource_mock,
     )
 
     # Create new deposition and add files
@@ -223,8 +222,12 @@ async def test_zenodo_workflow(
             }
         )
     )
-    v1 = await orchestrator.run()
-    v1_refreshed = await orchestrator.depositor.get_record(v1.id_)
+    v1_summary = await orchestrator.run()
+    assert v1_summary.success
+
+    v1_refreshed = await orchestrator.depositor.get_record(
+        orchestrator.new_deposition.id_
+    )
     verify_files(test_files["original"], v1_refreshed)
 
     # Update files
@@ -243,16 +246,31 @@ async def test_zenodo_workflow(
         )
     )
 
-    v2 = await orchestrator.run()
-    v2_refreshed = await orchestrator.depositor.get_record(v2.id_)
+    # Should fail due to deleted file
+    v2_summary = await orchestrator.run()
+    assert not v2_summary.success
+
+    # Wait for deleted deposition to propogate through
+    time.sleep(1)
+
+    # Disable test and re-run
+    orchestrator.downloader.check_missing_files = False
+    v2_summary = await orchestrator.run()
+    assert v2_summary.success
+
+    v2_refreshed = await orchestrator.depositor.get_record(
+        orchestrator.new_deposition.id_
+    )
     verify_files(test_files["updated"], v2_refreshed)
 
     # no updates to make, should not leave the conceptdoi pointing at a draft
-    v2_not_updated = await orchestrator.run()
+    v3_summary = await orchestrator.run()
+    assert isinstance(v3_summary, Unchanged)
+
     # unfortunately, it looks like Zenodo doesn't propagate deletion instantly - retry this a few times.
     latest_for_conceptdoi = await retry_async(
         orchestrator.depositor.get_deposition,
-        args=[str(v2_not_updated.conceptdoi)],
+        args=[str(orchestrator.deposition.conceptdoi)],
         kwargs={"published_only": True},
         retry_on=(
             ZenodoClientException,

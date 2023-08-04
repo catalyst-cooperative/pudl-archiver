@@ -42,6 +42,11 @@ def parse_main():
         action="store_true",
         help="Skip actually uploading to Zenodo",
     )
+    parser.add_argument(
+        "--summary-file",
+        type=str,
+        help="Generate a JSON archive run summary",
+    )
     return parser.parse_args()
 
 
