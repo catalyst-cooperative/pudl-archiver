@@ -39,6 +39,22 @@ class _UploadSpec(BaseModel):
         arbitrary_types_allowed = True
 
 
+class FileWrapper(io.BytesIO):
+    """Minimal wrapper arount BytesIO to override close method to work around aiohttp."""
+
+    def __init__(self, content: bytes):
+        """Call base class __init__."""
+        super().__init__(content)
+
+    def close(self):
+        """Don't close file, so aiohttp can't unexpectedly close files."""
+        pass
+
+    def actually_close(self):
+        """Actually close the file for internal use."""
+        super().close()
+
+
 class DatasetSettings(BaseModel):
     """Simple model to validate doi's in settings."""
 
@@ -280,12 +296,14 @@ class DepositionOrchestrator:
 
     async def _upload_file(self, upload: _UploadSpec):
         if isinstance(upload.source, io.IOBase):
-            await self.depositor.create_file(
-                self.new_deposition, upload.dest, upload.source
-            )
+            wrapped_file = FileWrapper(upload.source.read())
         else:
             with upload.source.open("rb") as f:
-                await self.depositor.create_file(self.new_deposition, upload.dest, f)
+                wrapped_file = FileWrapper(f.read())
+
+        await self.depositor.create_file(self.new_deposition, upload.dest, wrapped_file)
+
+        wrapped_file.actually_close()
 
     def _update_dataset_settings(self, published_deposition):
         # Get new DOI and update settings
