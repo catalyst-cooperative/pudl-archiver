@@ -78,6 +78,7 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
 
     name = "epacems"
     concurrency_limit = 6  # Number of files to concurrently download
+    check_missing_files = False  # Temporary to allow set up of new sandbox
 
     async def get_resources(self) -> ArchiveAwaitable:
         """Download EPA CEMS resources."""
