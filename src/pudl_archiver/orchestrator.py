@@ -267,7 +267,6 @@ class DepositionOrchestrator:
     def _get_files_to_delete(self, resources) -> list[str]:
         # Delete files not included in new deposition
         files_to_delete = []
-        logger.info(f"Depo files: {list(self.deposition_files.keys())}")
         for filename, file_info in self.deposition_files.items():
             if filename not in resources and filename != "datapackage.json":
                 logger.info(f"Deleting {filename} from deposition.")

@@ -349,7 +349,7 @@ class ZenodoDepositor:
                 log_label=f"Uploading {target} to bucket",
                 data=data,
                 headers=self.auth_write,
-                timeout=1800,
+                timeout=3600,
             )
         elif deposition.links.files and force_api != "bucket":
             url = f"{deposition.links.files}"
