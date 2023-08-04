@@ -260,13 +260,13 @@ class AbstractDatasetArchiver(ABC):
 
         # Download resources concurrently and prepare metadata
         for resource_chunk in resource_chunks:
+            for resource_coroutine in asyncio.as_completed(resource_chunk):
+                resource_info = await resource_coroutine
+                self.logger.info(f"Downloaded {resource_info.local_path}.")
+                yield str(resource_info.local_path.name), resource_info
+
             # If requested, create a new temporary directory per resource chunk
             if self.directory_per_resource_chunk:
                 tmp_dir = tempfile.TemporaryDirectory()
                 self.download_directory = Path(tmp_dir.name)
                 self.logger.info(f"New download directory {self.download_directory}")
-
-            for resource_coroutine in asyncio.as_completed(resource_chunk):
-                resource_info = await resource_coroutine
-                self.logger.info(f"Downloaded {resource_info.local_path}.")
-                yield str(resource_info.local_path.name), resource_info
