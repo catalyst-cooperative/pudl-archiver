@@ -26,9 +26,8 @@ class Eia861Archiver(AbstractDatasetArchiver):
             # Convert to 4-digit years
             if year < 100 and year >= 90:
                 year += 1900
-            elif year < 100 and year < 90:
+            elif year < 90:
                 year += 2000
-                print(year)
             if self.valid_year(year):
                 yield self.get_year_resource(link, year)
 
