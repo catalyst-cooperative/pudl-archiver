@@ -1,5 +1,4 @@
 """Download FERC EQR data."""
-import asyncio
 import ftplib  # nosec: B402
 from pathlib import Path
 
@@ -16,12 +15,15 @@ class FercEQRArchiver(AbstractDatasetArchiver):
     """FERC EQR archiver."""
 
     name = "ferceqr"
-    concurrency_limit = 1
+    concurrency_limit = 5
+    directory_per_resource_chunk = True
     max_wait_time = 36000
 
     async def get_resources(self) -> ArchiveAwaitable:
         """Download FERC EQR resources."""
         # Get non-transaction data (pre-2013)
+        # Skip all pre-2013 data until access to FTP server is figured out
+        """
         for i in range(self.max_wait_time):
             self.logger.info(
                 f"Waiting for EQR to be available, attempt: {i}/{self.max_wait_time}"
@@ -37,10 +39,13 @@ class FercEQRArchiver(AbstractDatasetArchiver):
         # Get 2002-2013 annual transaction data
         for year in range(2002, 2014):
             yield self.get_year_dbf(year, ftp)
+        """
 
         # Get quarterly EQR data
-        for year in range(2014, 2023):
+        for year in range(2013, 2023):
             for quarter in range(1, 5):
+                if quarter < 3:
+                    continue
                 yield self.get_quarter_dbf(year, quarter)
 
     async def get_bulk_csv(self, ftp: ftplib.FTP) -> tuple[Path, dict]:

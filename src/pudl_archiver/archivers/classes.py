@@ -186,12 +186,18 @@ class AbstractDatasetArchiver(ABC):
             for i in range(math.ceil(len(resources) / chunksize))
         ]
 
+        if self.concurrency_limit:
+            self.logger.info("Downloading resources in chunks to limit concurrency")
+            self.logger.info(f"Resource chunks: {len(resource_chunks)}")
+            self.logger.info(f"Resources per chunk: {chunksize}")
+
         # Download resources concurrently and prepare metadata
         for resource_chunk in resource_chunks:
             # If requested, create a new temporary directory per resource chunk
             if self.directory_per_resource_chunk:
                 tmp_dir = tempfile.TemporaryDirectory()
                 self.download_directory = Path(tmp_dir.name)
+                self.logger.info(f"New download directory {self.download_directory}")
 
             for resource_coroutine in asyncio.as_completed(resource_chunk):
                 resource_info = await resource_coroutine
