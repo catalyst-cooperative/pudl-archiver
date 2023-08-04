@@ -226,7 +226,6 @@ class DepositionOrchestrator:
         if changed:
             # If there are any changes detected update datapackage and publish
             new_datapackage, old_datapackage = await self._update_datapackage(resources)
-            await self._apply_changes()
 
             run_summary = self.downloader.generate_summary(
                 old_datapackage, new_datapackage, resources
