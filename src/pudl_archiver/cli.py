@@ -47,6 +47,11 @@ def parse_main():
         type=str,
         help="Generate a JSON archive run summary",
     )
+    parser.add_argument(
+        "--skip-publish",
+        action="store_true",
+        help="Skip publishing a deposition so it can be manually reviewed and published",
+    )
     return parser.parse_args()
 
 
