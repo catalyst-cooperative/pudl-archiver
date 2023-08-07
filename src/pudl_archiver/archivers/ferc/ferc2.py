@@ -18,16 +18,22 @@ class Ferc2Archiver(AbstractDatasetArchiver):
         """Download FERC 2 resources."""
         # Get sub-annually partitioned DBF data
         for year in range(1991, 2000):
+            if not self.valid_year(year):
+                continue
             for part in [1, 2]:
                 yield self.get_year_dbf(year, part)
 
         # Get annually partitioned DBF data
         for year in range(1996, 2022):
+            if not self.valid_year(year):
+                continue
             yield self.get_year_dbf(year)
 
         # Get XBRL filings
         filings = xbrl.index_available_entries()[xbrl.FercForm.FORM_2]
         for year, year_filings in filings.items():
+            if not self.valid_year(year):
+                continue
             yield self.get_year_xbrl(year, year_filings)
 
     async def get_year_xbrl(

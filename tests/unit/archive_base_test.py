@@ -48,8 +48,9 @@ class MockArchiver(AbstractDatasetArchiver):
 
     name = "test_archiver"
 
-    def __init__(self, test_results):
+    def __init__(self, test_results, **kwargs):
         self.test_results = test_results
+        super().__init__(session=None, **kwargs)
 
     async def get_resources(self) -> ArchiveAwaitable:
         """Create fake resources."""
@@ -362,3 +363,14 @@ def test_check_missing_files(datapackage, baseline_resources, new_resources, suc
         baseline_datapackage, new_datapackage
     )
     assert validation_result.success == success
+
+
+def test_year_filter():
+    archiver = MockArchiver(None, only_years=[2020, 2022])
+    assert archiver.valid_year(2020)
+    assert not archiver.valid_year(2021)
+    assert archiver.valid_year(2022)
+    assert archiver.valid_year("2022")
+
+    archiver_no_filter = MockArchiver(None)
+    assert archiver_no_filter.valid_year(2021)
