@@ -41,6 +41,7 @@ async def archive_datasets(
     summary_file: str | None = None,
     skip_publish: bool = False,
     download_dir: str | None = None,
+    skip_publish: bool = False,
 ):
     """A CLI for the PUDL Zenodo Storage system."""
     if sandbox:
