@@ -50,6 +50,7 @@ class MockArchiver(AbstractDatasetArchiver):
 
     def __init__(self, test_results):
         self.test_results = test_results
+        self.file_validations = {}
 
     async def get_resources(self) -> ArchiveAwaitable:
         """Create fake resources."""

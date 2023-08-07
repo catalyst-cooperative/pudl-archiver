@@ -12,7 +12,11 @@ from pathlib import Path
 
 import aiohttp
 
-from pudl_archiver.archivers.validate import RunSummary, ValidationTestResult
+from pudl_archiver.archivers.validate import (
+    FileValidation,
+    RunSummary,
+    ValidationTestResult,
+)
 from pudl_archiver.frictionless import DataPackage, ResourceInfo
 from pudl_archiver.utils import retry_async
 
@@ -56,8 +60,10 @@ class AbstractDatasetArchiver(ABC):
     name: str
     concurrency_limit: int | None = None
     directory_per_resource_chunk: bool = False
-    # Configurable option to run _check_missing_files during archive validation
+
+    # Configure which generic validation tests to run
     check_missing_files: bool = True
+    check_empty_invalid_files: bool = True
 
     def __init__(self, session: aiohttp.ClientSession):
         """Initialize Archiver object.
@@ -70,6 +76,8 @@ class AbstractDatasetArchiver(ABC):
         # Create a temporary directory for downloading data
         self._download_directory_manager = tempfile.TemporaryDirectory()
         self.download_directory = Path(self._download_directory_manager.name)
+
+        self.file_validations: dict[str, FileValidation] = {}
 
         # Create logger
         self.logger = logging.getLogger(f"catalystcoop.{__name__}")
@@ -222,6 +230,38 @@ class AbstractDatasetArchiver(ABC):
             note=note,
         )
 
+    def _check_valid_files(self) -> ValidationTestResult:
+        """Check for invalid or empty files."""
+        invalid_files = [
+            name
+            for name, validation in self.file_validations.items()
+            if not validation.valid_type
+        ]
+
+        empty_files = [
+            name
+            for name, validation in self.file_validations.items()
+            if not validation.not_empty
+        ]
+
+        note = None
+        if len(invalid_files) > 0:
+            note = f"The following files were determined to be invalid based on their extension: {invalid_files}"
+
+        if len(empty_files) > 0:
+            empty_note = f"The following files are empty: {empty_files}"
+            if note:
+                note = ". ".join([note, empty_note])
+            else:
+                note = empty_note
+
+        return ValidationTestResult(
+            name="Empty/invalid file test",
+            description="Validate files based on their extension, and check that no files are empty",
+            success=not ((len(invalid_files) > 0) or (len(empty_files) > 0)),
+            note=note,
+        )
+
     def generate_summary(
         self,
         baseline_datapackage: DataPackage | None,
@@ -243,6 +283,9 @@ class AbstractDatasetArchiver(ABC):
             validations.append(
                 self._check_missing_files(baseline_datapackage, new_datapackage)
             )
+
+        if self.check_empty_invalid_files:
+            validations.append(self._check_valid_files())
 
         validations += self.dataset_validate_archive(
             baseline_datapackage, new_datapackage, resources
@@ -284,5 +327,8 @@ class AbstractDatasetArchiver(ABC):
                 resource_info = await resource_coroutine
                 self.logger.info(f"Downloaded {resource_info.local_path}.")
                 resource_dict[str(resource_info.local_path.name)] = resource_info
+                self.file_validations[
+                    str(resource_info.local_path.name)
+                ] = FileValidation.from_path(resource_info.local_path)
 
         return resource_dict
