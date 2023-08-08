@@ -83,8 +83,8 @@ class AbstractDatasetArchiver(ABC):
         # Create a temporary directory for downloading data
 
         if download_directory is None:
-            tmpdir = tempfile.TemporaryDirectory()
-            self.download_directory = Path(tmpdir.name)
+            self.download_directory_manager = tempfile.TemporaryDirectory()
+            self.download_directory = Path(self.download_directory_manager.name)
         else:
             self.download_directory = Path(download_directory)
 
