@@ -12,7 +12,6 @@ from pudl_archiver.archivers.classes import (
     AbstractDatasetArchiver,
     ArchiveAwaitable,
     ResourceInfo,
-    retry_async,
 )
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
@@ -84,7 +83,7 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
     async def get_resources(self) -> ArchiveAwaitable:
         """Download EPA CEMS resources."""
         file_list = requests.get(
-            self.base_url,
+            "https://api.epa.gov/easey/camd-services/bulk-files",
             params=self.parameters,
             timeout=300,
         )
@@ -97,7 +96,7 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
                 for file in bulk_files
                 if (file["metadata"]["dataType"] == "Emissions")
                 and (file["metadata"]["dataSubType"] == "Hourly")
-                and ("stateCode" in file["metadata"])
+                and ("stateCode" in file["metadata"].keys())
             ]
             logger.info(
                 f"Downloading {len(hourly_state_emissions_files)} total files. This will take more than one hour to respect API rate limits."
@@ -116,6 +115,10 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
                     yield self.get_state_year_resource(
                         file=cems_file, request_count=request_counter
                     )
+        else:
+            raise AssertionError(
+                f"EPACEMS API request did not succeed: {file_list.status_code}"
+            )
 
     async def get_state_year_resource(
         self, file: dict[str, str | dict[str, str]], request_count: int | None
@@ -141,10 +144,8 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
         filename = f"epacems-{year}-{state}.csv"
         archive_path = self.download_directory / f"epacems-{year}-{state}.zip"
         # Override the default asyncio timeout to 14 minutes, just under the API limit.
-        await retry_async(
-            self.download_and_zip_file(
-                url=url, filename=filename, archive_path=archive_path, timeout=60 * 14
-            )
+        await self.download_and_zip_file(
+            url=url, filename=filename, archive_path=archive_path, timeout=60 * 14
         )
         logger.info(
             f"File no. {request_count}: Downloaded {year} EPACEMS data for {state.upper()}"
