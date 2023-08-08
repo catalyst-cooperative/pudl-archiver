@@ -2,8 +2,6 @@
 import asyncio
 import io
 import logging
-import math
-import math
 import tempfile
 import typing
 import zipfile
@@ -344,8 +342,7 @@ class AbstractDatasetArchiver(ABC):
         # Split resources into chunks to limit concurrency
         chunksize = self.concurrency_limit if self.concurrency_limit else len(resources)
         resource_chunks = [
-            resources[i * chunksize : (i + 1) * chunksize]
-            for i in range(math.ceil(len(resources) / chunksize))
+            resources[i : i + chunksize] for i in range(0, len(resources), chunksize)
         ]
 
         # Download resources concurrently and prepare metadata

@@ -12,6 +12,7 @@ from pudl_archiver.archivers.classes import (
     AbstractDatasetArchiver,
     ArchiveAwaitable,
     ResourceInfo,
+    retry_async,
 )
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
@@ -76,13 +77,14 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
 
     name = "epacems"
     concurrency_limit = 10  # Number of files to concurrently download
+
     base_url = "https://api.epa.gov/easey/bulk-files/"
     parameters = {"api_key": os.environ["EPACEMS_API_KEY"]}  # Set to API key
 
     async def get_resources(self) -> ArchiveAwaitable:
         """Download EPA CEMS resources."""
         file_list = requests.get(
-            "https://api.epa.gov/easey/camd-services/bulk-files",
+            self.base_url,
             params=self.parameters,
             timeout=300,
         )
@@ -95,7 +97,7 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
                 for file in bulk_files
                 if (file["metadata"]["dataType"] == "Emissions")
                 and (file["metadata"]["dataSubType"] == "Hourly")
-                and ("stateCode" in file["metadata"].keys())
+                and ("stateCode" in file["metadata"])
             ]
             logger.info(
                 f"Downloading {len(hourly_state_emissions_files)} total files. This will take more than one hour to respect API rate limits."
@@ -125,6 +127,7 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
             request_count: the number of the request.
         """
         url = self.base_url + file["s3Path"]
+        url = self.base_url + file["s3Path"]
         year = file["metadata"]["year"]
         state = file["metadata"]["stateCode"].lower()
         file_size = file["megaBytes"]
@@ -137,10 +140,12 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
         # Create zipfile to store year/state combinations of files
         filename = f"epacems-{year}-{state}.csv"
         archive_path = self.download_directory / f"epacems-{year}-{state}.zip"
-        await self.download_and_zip_file(
-            url=url, filename=filename, archive_path=archive_path, timeout=60 * 14
-        )
         # Override the default asyncio timeout to 14 minutes, just under the API limit.
+        await retry_async(
+            self.download_and_zip_file(
+                url=url, filename=filename, archive_path=archive_path, timeout=60 * 14
+            )
+        )
         logger.info(
             f"File no. {request_count}: Downloaded {year} EPACEMS data for {state.upper()}"
         )
