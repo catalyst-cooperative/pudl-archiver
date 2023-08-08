@@ -65,17 +65,36 @@ class AbstractDatasetArchiver(ABC):
     check_missing_files: bool = True
     check_empty_invalid_files: bool = True
 
-    def __init__(self, session: aiohttp.ClientSession):
+    def __init__(
+        self,
+        session: aiohttp.ClientSession,
+        only_years: list[int] | None = None,
+        download_directory: str | None = None,
+    ):
         """Initialize Archiver object.
 
         Args:
             session: Async HTTP client session manager.
+            only_years: a list of years to download data for. If empty list or
+                None, download all years' data.
+            download_directory: where to save data to. Defaults to temp dir.
         """
         self.session = session
 
         # Create a temporary directory for downloading data
-        self._download_directory_manager = tempfile.TemporaryDirectory()
-        self.download_directory = Path(self._download_directory_manager.name)
+
+        if download_directory is None:
+            tmpdir = tempfile.TemporaryDirectory()
+            self.download_directory = Path(tmpdir.name)
+        else:
+            self.download_directory = Path(download_directory)
+
+        if not self.download_directory.is_dir():
+            self.download_directory.mkdir(exist_ok=True, parents=True)
+
+        if only_years is None:
+            only_years = []
+        self.only_years = only_years
 
         self.file_validations: dict[str, FileValidation] = {}
 
@@ -156,7 +175,7 @@ class AbstractDatasetArchiver(ABC):
 
         # Write to zipfile
         with zipfile.ZipFile(
-            archive_path, "a", compression=zipfile.ZIP_DEFLATED
+            archive_path, "w", compression=zipfile.ZIP_DEFLATED
         ) as archive:
             with archive.open(filename, "w") as f_disk:
                 f_disk.write(response_bytes)
@@ -303,6 +322,14 @@ class AbstractDatasetArchiver(ABC):
     ) -> list[ValidationTestResult]:
         """Hook to add archive validation tests specific to each dataset."""
         return []
+
+    def valid_year(self, year: int | str):
+        """Check if this year is one we are interested in.
+
+        Args:
+            year: the year to check against our self.only_years
+        """
+        return (not self.only_years) or int(year) in self.only_years
 
     async def download_all_resources(self) -> dict[str, ResourceInfo]:
         """Download all resources.
