@@ -39,7 +39,6 @@ async def archive_datasets(
     only_years: list[int] | None = None,
     dry_run: bool = True,
     summary_file: str | None = None,
-    skip_publish: bool = False,
     download_dir: str | None = None,
     skip_publish: bool = False,
 ):

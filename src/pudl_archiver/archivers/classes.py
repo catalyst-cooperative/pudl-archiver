@@ -94,7 +94,6 @@ class AbstractDatasetArchiver(ABC):
         if only_years is None:
             only_years = []
         self.only_years = only_years
-
         self.file_validations: dict[str, FileValidation] = {}
 
         # Create logger
