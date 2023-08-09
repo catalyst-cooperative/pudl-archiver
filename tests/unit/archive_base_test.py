@@ -3,8 +3,8 @@ import copy
 import io
 import re
 import tempfile
+import zipfile
 from pathlib import Path
-from zipfile import ZipFile
 
 import pytest
 from aiohttp import ClientSession
@@ -30,7 +30,7 @@ def good_zipfile():
     """Create a fake good zipfile in temporary directory."""
     with tempfile.TemporaryDirectory() as path:
         zip_path = Path(path) / "test.zip"
-        with ZipFile(zip_path, "w") as archive:
+        with zipfile.ZipFile(zip_path, "w") as archive:
             with archive.open("test.txt", "w") as file:
                 file.write(b"Test good zipfile")
 
@@ -153,6 +153,39 @@ async def test_download_file(mocker, file_data):
         session_mock.get.assert_called_once_with(url)
         file = file_path.open("rb")
         assert file.read() == file_data
+
+
+@pytest.mark.asyncio
+async def test_download_and_zip_file(mocker, file_data):
+    """Test download_and_zip_file.
+
+    Tests that expected data is written to file on disk in a zipfile.
+    """
+    # Initialize MockArchiver class
+    archiver = MockArchiver(None)
+
+    session_mock = mocker.AsyncMock(name="session_mock")
+    archiver.session = session_mock
+
+    # Set return value
+    response_mock = mocker.AsyncMock()
+    response_mock.read = mocker.AsyncMock(return_value=file_data)
+    session_mock.get = mocker.AsyncMock(return_value=response_mock)
+
+    # Prepare args
+    url = "https://www.fake.url.com"
+
+    # Run test with path to temp dir
+    with tempfile.TemporaryDirectory() as path:
+        file_path = str(Path(path) / "test.csv")
+        archive_path = str(Path(path) / "test.zip")
+
+        await archiver.download_and_zip_file(url, file_path, archive_path)
+        # Assert that the zipfile at archive_path contains a file at file_path
+        session_mock.get.assert_called_once_with(url)
+        with zipfile.ZipFile(archive_path) as zf:
+            zipped_file = zf.open(file_path)
+            assert zipped_file.read() == file_data
 
 
 @pytest.mark.asyncio
