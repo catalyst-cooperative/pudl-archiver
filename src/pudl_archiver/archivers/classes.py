@@ -296,13 +296,15 @@ class AbstractDatasetArchiver(ABC):
             Bool indicating whether or not all tests passed.
         """
         validations = []
-        if self.check_missing_files:
-            validations.append(
-                self._check_missing_files(baseline_datapackage, new_datapackage)
-            )
+        missing_file_validation = self._check_missing_files(
+            baseline_datapackage, new_datapackage
+        )
+        missing_file_validation.ignore_failure = not self.check_missing_files
+        validations.append(missing_file_validation)
 
-        if self.check_empty_invalid_files:
-            validations.append(self._check_valid_files())
+        valid_file_validation = self._check_valid_files()
+        valid_file_validation.ignore_failure = not self.check_empty_invalid_files
+        validations.append(valid_file_validation)
 
         validations += self.dataset_validate_archive(
             baseline_datapackage, new_datapackage, resources
