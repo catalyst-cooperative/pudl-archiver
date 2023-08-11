@@ -1,6 +1,7 @@
 """Core routines for archiving raw data packages."""
 import io
 import logging
+from dataclasses import dataclass
 from enum import Enum, auto
 from hashlib import md5
 from pathlib import Path
@@ -29,6 +30,13 @@ class _DepositionAction(Enum):
     CREATE = (auto(),)
     UPDATE = (auto(),)
     DELETE = (auto(),)
+
+
+@dataclass
+class _DepositionChange:
+    action_type: _DepositionAction
+    name: str
+    resource: io.IOBase | Path | None = None
 
 
 class _UploadSpec(BaseModel):
@@ -199,15 +207,15 @@ class DepositionOrchestrator:
         changed = False
         async for name, resource in self.downloader.download_all_resources():
             resources[name] = resource
-            action = self._generate_changes(name, resource)
+            change = self._generate_changes(name, resource)
 
             # Leave immediately after generating changes if dry_run
             if self.dry_run:
                 continue
 
-            if action:
+            if change:
                 changed = True
-                await self._apply_changes(action, name, resource)
+                await self._apply_changes(change)
 
         # Check for files that should no longer be in deposition
         files_to_delete = self._get_files_to_delete(resources)
@@ -218,7 +226,9 @@ class DepositionOrchestrator:
 
         # Delete files no longer in deposition
         [
-            await self._apply_changes(_DepositionAction.DELETE, name)
+            await self._apply_changes(
+                _DepositionChange(action_type=_DepositionAction.DELETE, name=name)
+            )
             for name in files_to_delete
         ]
 
@@ -244,11 +254,14 @@ class DepositionOrchestrator:
             await self.depositor.delete_deposition(self.new_deposition)
             return Unchanged(dataset_name=self.data_source_id)
 
-    def _generate_changes(self, name: str, resource: ResourceInfo) -> _DepositionAction:
+    def _generate_changes(
+        self, name: str, resource: ResourceInfo
+    ) -> _DepositionChange | None:
+        action = None
         if name not in self.deposition_files:
             logger.info(f"Adding {name} to deposition.")
 
-            return _DepositionAction.CREATE
+            action = _DepositionAction.CREATE
         else:
             file_info = self.deposition_files[name]
 
@@ -260,9 +273,16 @@ class DepositionOrchestrator:
                 logger.info(
                     f"Updating {name}: local hash {local_md5} vs. remote {file_info.checksum}"
                 )
-                return _DepositionAction.UPDATE
+                action = _DepositionAction.UPDATE
 
-        return None
+        if action is None:
+            return None
+
+        return _DepositionChange(
+            action_type=action,
+            name=name,
+            resource=resource.local_path,
+        )
 
     def _get_files_to_delete(self, resources) -> list[str]:
         # Delete files not included in new deposition
@@ -274,34 +294,18 @@ class DepositionOrchestrator:
 
         return files_to_delete
 
-    async def _apply_changes(
-        self, action: _DepositionAction, name: str, resource: ResourceInfo | None = None
-    ):
+    async def _apply_changes(self, change: _DepositionChange):
         """Actually upload and delete what we listed in self.uploads/deletes."""
-        match action:
-            case _DepositionAction.DELETE:
-                file_info = self.deposition_files[name]
-                await self.depositor.delete_file(
-                    self.new_deposition, file_info.filename
-                )
-            case _DepositionAction.CREATE:
-                if resource is None:
-                    raise RuntimeError("Must pass a resource to be uploaded.")
+        if change.action_type in [_DepositionAction.DELETE, _DepositionAction.UPDATE]:
+            file_info = self.deposition_files[change.name]
+            await self.depositor.delete_file(self.new_deposition, file_info.filename)
+        if change.action_type in [_DepositionAction.CREATE, _DepositionAction.UPDATE]:
+            if change.resource is None:
+                raise RuntimeError("Must pass a resource to be uploaded.")
 
-                await self._upload_file(
-                    _UploadSpec(source=resource.local_path, dest=name)
-                )
-            case _DepositionAction.UPDATE:
-                if resource is None:
-                    raise RuntimeError("Must pass a resource to be uploaded.")
-
-                file_info = self.deposition_files[name]
-                await self.depositor.delete_file(
-                    self.new_deposition, file_info.filename
-                )
-                await self._upload_file(
-                    _UploadSpec(source=resource.local_path, dest=name)
-                )
+            await self._upload_file(
+                _UploadSpec(source=change.resource, dest=change.name)
+            )
 
     async def _upload_file(self, upload: _UploadSpec):
         if isinstance(upload.source, io.IOBase):
@@ -370,7 +374,12 @@ class DepositionOrchestrator:
             old_datapackage = DataPackage.parse_raw(response_bytes)
 
             # Stage old datapackge to be deleted
-            await self._apply_changes(_DepositionAction.DELETE, "datapackage.json")
+            await self._apply_changes(
+                _DepositionChange(
+                    action_type=_DepositionAction.DELETE,
+                    name="datapackage.json",
+                )
+            )
             files.pop("datapackage.json")
 
         # Create updated datapackage
@@ -385,8 +394,12 @@ class DepositionOrchestrator:
             bytes(datapackage.json(by_alias=True), encoding="utf-8")
         )
 
-        await self._upload_file(
-            _UploadSpec(source=datapackage_json, dest="datapackage.json")
+        await self._apply_changes(
+            _DepositionChange(
+                action_type=_DepositionAction.CREATE,
+                name="datapackage.json",
+                resource=datapackage_json,
+            )
         )
 
         return datapackage, old_datapackage
