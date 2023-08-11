@@ -112,15 +112,7 @@ async def test_resource_chunks(
         async def get_resource(self, i):
             return ResourceInfo(local_path=Path(self.download_directory), partitions=i)
 
-    class TmpDir:
-        def __init__(self):
-            self.call_count = 0
-
-        def __call__(self):
-            self.call_count += 1
-            return Path(f"path{self.call_count-1}")
-
-    tmpdir_mock = mocker.Mock(side_effect=TmpDir())
+    tmpdir_mock = mocker.Mock(side_effect=[Path(f"path{i}") for i in range(6)])
     mocker.patch(
         "pudl_archiver.archivers.classes.tempfile.TemporaryDirectory",
         new=tmpdir_mock,
