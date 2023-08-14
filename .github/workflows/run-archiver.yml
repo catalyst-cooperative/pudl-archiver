@@ -29,6 +29,7 @@ jobs:
           - ferc6
           - ferc60
           - ferc714
+          - ferceqr
           - mshamines
           - phmsagas
 
