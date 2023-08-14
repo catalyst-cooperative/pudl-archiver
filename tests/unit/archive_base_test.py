@@ -11,7 +11,7 @@ from aiohttp import ClientSession
 
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver, ArchiveAwaitable
 from pudl_archiver.archivers.validate import ValidationTestResult
-from pudl_archiver.frictionless import Resource
+from pudl_archiver.frictionless import Resource, ResourceInfo
 
 
 @pytest.fixture()
@@ -81,6 +81,48 @@ def html_docs():
         </html>
         """,
     }
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "concurrency_limit,directory_per_resource_chunk,download_paths",
+    [
+        (1, True, ["path0", "path1", "path2", "path3", "path4"]),
+        (1, False, ["path0", "path0", "path0", "path0", "path0"]),
+        (5, True, ["path0", "path0", "path0", "path0", "path0"]),
+        (2, True, ["path0", "path0", "path1", "path1", "path2"]),
+    ],
+)
+async def test_resource_chunks(
+    concurrency_limit, directory_per_resource_chunk, download_paths, mocker
+):
+    """AbstractDatasetArchiver should be able to download resources in chunks."""
+
+    class MockArchiver(AbstractDatasetArchiver):
+        name = "mock"
+
+        def __init__(self, concurrency_limit, directory_per_resource_chunk):
+            self.concurrency_limit = concurrency_limit
+            self.directory_per_resource_chunk = directory_per_resource_chunk
+            super().__init__(None)
+
+        async def get_resources(self):
+            for i, _ in enumerate(download_paths):
+                yield self.get_resource(i)
+
+        async def get_resource(self, i):
+            return ResourceInfo(local_path=Path(self.download_directory), partitions=i)
+
+    tmpdir_mock = mocker.Mock(side_effect=[Path(f"path{i}") for i in range(6)])
+    mocker.patch(
+        "pudl_archiver.archivers.classes.tempfile.TemporaryDirectory",
+        new=tmpdir_mock,
+    )
+
+    # Initialize MockArchiver class
+    archiver = MockArchiver(concurrency_limit, directory_per_resource_chunk)
+    async for name, resource in archiver.download_all_resources():
+        assert download_paths[resource.partitions] == name
 
 
 @pytest.mark.asyncio

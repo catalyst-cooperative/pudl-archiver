@@ -44,6 +44,6 @@ async def retry_async(
                 raise e
             retry_delay_s = retry_base_s * 2 ** (try_count - 1)
             logger.info(
-                f"Error while executing {coro} (try #{try_count}, retry in {retry_delay_s}s): {e}"
+                f"Error while executing {coro} (try #{try_count}, retry in {retry_delay_s}s): {type(e)} - {e}"
             )
             await asyncio.sleep(retry_delay_s)
