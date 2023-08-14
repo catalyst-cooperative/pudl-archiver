@@ -8,6 +8,7 @@ import aiohttp
 
 import pudl_archiver.orchestrator  # noqa: 401
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver
+from pudl_archiver.archivers.validate import Unchanged
 from pudl_archiver.orchestrator import DepositionOrchestrator
 
 
@@ -33,8 +34,10 @@ async def archive_datasets(
     datasets: list[str],
     sandbox: bool = True,
     initialize: bool = False,
+    only_years: list[int] | None = None,
     dry_run: bool = True,
     summary_file: str | None = None,
+    download_dir: str | None = None,
 ):
     """A CLI for the PUDL Zenodo Storage system."""
     if sandbox:
@@ -55,7 +58,7 @@ async def archive_datasets(
             if not cls:
                 raise RuntimeError(f"Dataset {dataset} not supported")
             else:
-                downloader = cls(session)
+                downloader = cls(session, only_years, download_directory=download_dir)
             orchestrator = DepositionOrchestrator(
                 dataset,
                 downloader,
@@ -70,7 +73,9 @@ async def archive_datasets(
 
             tasks.append(orchestrator.run())
 
-        results = zip(datasets, await asyncio.gather(*tasks, return_exceptions=True))
+        results = list(
+            zip(datasets, await asyncio.gather(*tasks, return_exceptions=True))
+        )
         exceptions = [
             (dataset, result)
             for dataset, result in results
@@ -88,6 +93,9 @@ async def archive_datasets(
         with open(summary_file, "w") as f:
             json.dump(run_summaries, f, indent=2)
 
-    validation_results = [result.success for _, result in results]
+    # Check validation results of all runs that aren't unchanged
+    validation_results = [
+        result.success for _, result in results if not isinstance(result, Unchanged)
+    ]
     if not all(validation_results):
         raise RuntimeError("Error: archive validation tests failed.")
