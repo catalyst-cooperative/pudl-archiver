@@ -56,9 +56,9 @@ def parse_main():
         help="Generate a JSON archive run summary",
     )
     parser.add_argument(
-        "--skip-publish",
+        "--auto-publish",
         action="store_true",
-        help="Skip publishing a deposition so it can be manually reviewed and published",
+        help="Automatically publish a deposition, rather than requiring manual review before publishing.",
     )
     parser.add_argument(
         "--download-dir",

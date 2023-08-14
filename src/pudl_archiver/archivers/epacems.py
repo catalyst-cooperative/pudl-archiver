@@ -5,7 +5,6 @@ import logging
 import os
 from pathlib import Path
 
-import numpy as np
 import requests
 
 from pudl_archiver.archivers.classes import (
@@ -97,24 +96,11 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
                 if (file["metadata"]["dataType"] == "Emissions")
                 and (file["metadata"]["dataSubType"] == "Hourly")
                 and ("stateCode" in file["metadata"].keys())
+                and (self.valid_year(file["metadata"]["year"]))
             ]
-            logger.info(
-                f"Downloading {len(hourly_state_emissions_files)} total files. This will take more than one hour to respect API rate limits."
-            )
-            if len(hourly_state_emissions_files) > 1000:
-                # This could be used to add pauses to later requests, but in practice
-                # read time is so slow that this takes several hours with concurrency.
-                # If this changes, the request_counter could be used to add a delay.
-                request_counter = 0
-            else:
-                request_counter = np.nan
-            for cems_file in hourly_state_emissions_files:
-                if request_counter is not None:
-                    request_counter += 1
-                if self.valid_year(cems_file["metadata"]["year"]):
-                    yield self.get_state_year_resource(
-                        file=cems_file, request_count=request_counter
-                    )
+            logger.info(f"Downloading {len(hourly_state_emissions_files)} total files.")
+            for i, cems_file in enumerate(hourly_state_emissions_files):
+                yield self.get_state_year_resource(file=cems_file, request_count=i)
         else:
             raise AssertionError(
                 f"EPACEMS API request did not succeed: {file_list.status_code}"
@@ -127,9 +113,10 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
 
         Args:
             file: a dictionary containing file characteristics from the EPA API.
+                See https://www.epa.gov/power-sector/cam-api-portal#/swagger/camd-services
+                for expected format of dictionary.
             request_count: the number of the request.
         """
-        url = self.base_url + file["s3Path"]
         url = self.base_url + file["s3Path"]
         year = file["metadata"]["year"]
         state = file["metadata"]["stateCode"].lower()
@@ -139,7 +126,9 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
             # Add a five-minute wait time for very big files to let
             # other files in group finish first.
 
-        logger.info(f"Downloading EPACEMS data for {state.upper()}, {year}")
+        # Useful to debug at download time-outs.
+        logger.debug(f"Downloading {year} EPACEMS data for {state.upper()}")
+
         # Create zipfile to store year/state combinations of files
         filename = f"epacems-{year}-{state}.csv"
         archive_path = self.download_directory / f"epacems-{year}-{state}.zip"
@@ -147,7 +136,7 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
         await self.download_and_zip_file(
             url=url, filename=filename, archive_path=archive_path, timeout=60 * 14
         )
-        logger.info(
+        logger.info(  # Verbose but helpful to keep track of progress.
             f"File no. {request_count}: Downloaded {year} EPACEMS data for {state.upper()}"
         )
         return ResourceInfo(
