@@ -215,7 +215,7 @@ class DepositionOrchestrator:
 
             if change:
                 changed = True
-                await self._apply_changes(change)
+                await self._apply_change(change)
 
         # Check for files that should no longer be in deposition
         files_to_delete = self._get_files_to_delete(resources)
@@ -226,7 +226,7 @@ class DepositionOrchestrator:
 
         # Delete files no longer in deposition
         [
-            await self._apply_changes(
+            await self._apply_change(
                 _DepositionChange(action_type=_DepositionAction.DELETE, name=name)
             )
             for name in files_to_delete
@@ -294,7 +294,7 @@ class DepositionOrchestrator:
 
         return files_to_delete
 
-    async def _apply_changes(self, change: _DepositionChange):
+    async def _apply_change(self, change: _DepositionChange):
         """Actually upload and delete what we listed in self.uploads/deletes."""
         if change.action_type in [_DepositionAction.DELETE, _DepositionAction.UPDATE]:
             file_info = self.deposition_files[change.name]
@@ -374,7 +374,7 @@ class DepositionOrchestrator:
             old_datapackage = DataPackage.parse_raw(response_bytes)
 
             # Stage old datapackge to be deleted
-            await self._apply_changes(
+            await self._apply_change(
                 _DepositionChange(
                     action_type=_DepositionAction.DELETE,
                     name="datapackage.json",
@@ -394,7 +394,7 @@ class DepositionOrchestrator:
             bytes(datapackage.json(by_alias=True), encoding="utf-8")
         )
 
-        await self._apply_changes(
+        await self._apply_change(
             _DepositionChange(
                 action_type=_DepositionAction.CREATE,
                 name="datapackage.json",
