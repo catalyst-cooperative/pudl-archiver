@@ -2,6 +2,7 @@
 import asyncio
 import io
 import logging
+import math
 import tempfile
 import typing
 import zipfile
@@ -331,7 +332,9 @@ class AbstractDatasetArchiver(ABC):
         """
         return (not self.only_years) or int(year) in self.only_years
 
-    async def download_all_resources(self) -> dict[str, ResourceInfo]:
+    async def download_all_resources(
+        self,
+    ) -> typing.Generator[tuple[str, ResourceInfo], None, None]:
         """Download all resources.
 
         This method uses the awaitables returned by `get_resources`. It
@@ -343,18 +346,31 @@ class AbstractDatasetArchiver(ABC):
         # Split resources into chunks to limit concurrency
         chunksize = self.concurrency_limit if self.concurrency_limit else len(resources)
         resource_chunks = [
-            resources[i : i + chunksize] for i in range(0, len(resources), chunksize)
+            resources[i * chunksize : (i + 1) * chunksize]
+            for i in range(math.ceil(len(resources) / chunksize))
         ]
 
+        if self.concurrency_limit:
+            self.logger.info("Downloading resources in chunks to limit concurrency")
+            self.logger.info(f"Resource chunks: {len(resource_chunks)}")
+            self.logger.info(f"Resources per chunk: {chunksize}")
+
         # Download resources concurrently and prepare metadata
-        resource_dict = {}
-        for chunk in resource_chunks:
-            for resource_coroutine in asyncio.as_completed(chunk):
+        for resource_chunk in resource_chunks:
+            for resource_coroutine in asyncio.as_completed(resource_chunk):
                 resource_info = await resource_coroutine
                 self.logger.info(f"Downloaded {resource_info.local_path}.")
-                resource_dict[str(resource_info.local_path.name)] = resource_info
+
+                # Validate filetype
                 self.file_validations[
                     str(resource_info.local_path.name)
                 ] = FileValidation.from_path(resource_info.local_path)
 
-        return resource_dict
+                # Return downloaded
+                yield str(resource_info.local_path.name), resource_info
+
+            # If requested, create a new temporary directory per resource chunk
+            if self.directory_per_resource_chunk:
+                tmp_dir = tempfile.TemporaryDirectory()
+                self.download_directory = Path(tmp_dir.name)
+                self.logger.info(f"New download directory {self.download_directory}")
