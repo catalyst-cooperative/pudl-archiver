@@ -15,7 +15,7 @@ class FercEQRArchiver(AbstractDatasetArchiver):
     """FERC EQR archiver."""
 
     name = "ferceqr"
-    concurrency_limit = 5
+    concurrency_limit = 1
     directory_per_resource_chunk = True
     max_wait_time = 36000
 
