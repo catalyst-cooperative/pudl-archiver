@@ -184,7 +184,7 @@ async def test_download_file(mocker, file_data):
     # Call method
     await archiver.download_file(url, file)
 
-    session_mock.get.assert_called_once_with(url)
+    session_mock.get.assert_called_once_with(url, timeout=300)
 
     assert file.getvalue() == file_data
 
@@ -194,7 +194,7 @@ async def test_download_file(mocker, file_data):
         file_path = Path(path) / "test"
         await archiver.download_file(url, file_path)
 
-        session_mock.get.assert_called_with(url)
+        session_mock.get.assert_called_with(url, timeout=300)
         file = file_path.open("rb")
         assert file.read() == file_data
 

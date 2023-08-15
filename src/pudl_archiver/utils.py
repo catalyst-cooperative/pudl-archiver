@@ -10,13 +10,11 @@ logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 
 async def get_read(
-    session: aiohttp.ClientSession, args: list | None = None, kwargs: dict | None = None
+    session: aiohttp.ClientSession,
+    *args,
+    **kwargs,
 ):
     """Combine aiohttp get and read into one retry-able function."""
-    if args is None:
-        args = []
-    if kwargs is None:
-        kwargs = {}
     async with session.get(*args, **kwargs) as response:
         return await response.read()
 

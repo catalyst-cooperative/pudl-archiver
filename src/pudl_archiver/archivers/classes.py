@@ -146,8 +146,9 @@ class AbstractDatasetArchiver(ABC):
             file: Local path to write file to disk or bytes object to save file in memory.
             kwargs: Key word args to pass to request.
         """
+        kwargs["timeout"] = 300
         response_bytes = await retry_async(
-            get_read, args=[self.session, [url]], kwargs=kwargs
+            get_read, args=[self.session, url], kwargs=kwargs
         )
         if isinstance(file, Path):
             with open(file, "wb") as f:
