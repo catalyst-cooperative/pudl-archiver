@@ -1,9 +1,11 @@
 """Download EPACEMS data."""
-import io
+import asyncio
+import json
 import logging
-import re
-import zipfile
+import os
 from pathlib import Path
+
+import requests
 
 from pudl_archiver.archivers.classes import (
     AbstractDatasetArchiver,
@@ -66,56 +68,77 @@ STATE_ABBREVIATIONS = [
     "wi",
     "wy",
 ]
-BASE_URL = "https://gaftp.epa.gov/DMDnLoad/emissions/hourly/monthly"
 
 
 class EpaCemsArchiver(AbstractDatasetArchiver):
     """EPA CEMS archiver."""
 
     name = "epacems"
+    concurrency_limit = 10  # Number of files to concurrently download
+
+    base_url = "https://api.epa.gov/easey/bulk-files/"
+    parameters = {"api_key": os.environ["EPACEMS_API_KEY"]}  # Set to API key
 
     async def get_resources(self) -> ArchiveAwaitable:
-        """Download EIA bulk electricity resources."""
-        year_pattern = re.compile(r"\d{4}\/")
-        file_pattern = re.compile(r"(\d{4})([a-z]{2})([0-1][0-9])\.zip")
-
-        # Loop through all available years of data
-        for year in await self.get_hyperlinks(BASE_URL, year_pattern, verify=False):
-            year = int(year[:-1])
-            # Store months available for each state
-            states = {state: [] for state in STATE_ABBREVIATIONS}
-            for link in await self.get_hyperlinks(
-                f"{BASE_URL}/{year}", file_pattern, verify=False
-            ):
-                match = file_pattern.search(link)
-                states[match.group(2)].append(int(match.group(3)))
-
-            for state, months in states.items():
-                if len(months) > 0:
-                    yield self.get_state_year_resource(year, state, months)
+        """Download EPA CEMS resources."""
+        file_list = requests.get(
+            "https://api.epa.gov/easey/camd-services/bulk-files",
+            params=self.parameters,
+            timeout=300,
+        )
+        if file_list.status_code == 200:
+            resjson = file_list.content.decode("utf8").replace("'", '"')
+            file_list.close()  # Close connection.
+            bulk_files = json.loads(resjson)
+            hourly_state_emissions_files = [
+                file
+                for file in bulk_files
+                if (file["metadata"]["dataType"] == "Emissions")
+                and (file["metadata"]["dataSubType"] == "Hourly")
+                and ("stateCode" in file["metadata"].keys())
+                and (self.valid_year(file["metadata"]["year"]))
+            ]
+            logger.info(f"Downloading {len(hourly_state_emissions_files)} total files.")
+            for i, cems_file in enumerate(hourly_state_emissions_files):
+                yield self.get_state_year_resource(file=cems_file, request_count=i)
+        else:
+            raise AssertionError(
+                f"EPACEMS API request did not succeed: {file_list.status_code}"
+            )
 
     async def get_state_year_resource(
-        self, year: int, state: str, months: list[int]
+        self, file: dict[str, str | dict[str, str]], request_count: int | None
     ) -> tuple[Path, dict]:
-        """Download all available months of data for a single state/year."""
-        logger.info(f"Downloading EPACEMS data for {state.capitalize()}, {year}")
+        """Download all available data for a single state/year.
+
+        Args:
+            file: a dictionary containing file characteristics from the EPA API.
+                See https://www.epa.gov/power-sector/cam-api-portal#/swagger/camd-services
+                for expected format of dictionary.
+            request_count: the number of the request.
+        """
+        url = self.base_url + file["s3Path"]
+        year = file["metadata"]["year"]
+        state = file["metadata"]["stateCode"].lower()
+        file_size = file["megaBytes"]
+        if int(file_size) > 600:  # If bigger than 600 mb
+            await asyncio.sleep(60 * 5)
+            # Add a five-minute wait time for very big files to let
+            # other files in group finish first.
+
+        # Useful to debug at download time-outs.
+        logger.debug(f"Downloading {year} EPACEMS data for {state.upper()}")
+
         # Create zipfile to store year/state combinations of files
+        filename = f"epacems-{year}-{state}.csv"
         archive_path = self.download_directory / f"epacems-{year}-{state}.zip"
-
-        for month in months:
-            filename = f"{year}{state}{month:02}.zip"
-            url = f"{BASE_URL}/{year}/{filename}"
-
-            with io.BytesIO() as f_memory:
-                await self.download_zipfile(url, f_memory, ssl=False)
-
-                # Write to zipfile
-                with zipfile.ZipFile(
-                    archive_path, "a", compression=zipfile.ZIP_DEFLATED
-                ) as archive:
-                    with archive.open(filename, "w") as f_disk:
-                        f_disk.write(f_memory.read())
-
+        # Override the default asyncio timeout to 14 minutes, just under the API limit.
+        await self.download_and_zip_file(
+            url=url, filename=filename, archive_path=archive_path, timeout=60 * 14
+        )
+        logger.info(  # Verbose but helpful to keep track of progress.
+            f"File no. {request_count}: Downloaded {year} EPACEMS data for {state.upper()}"
+        )
         return ResourceInfo(
             local_path=archive_path, partitions={"year": year, "state": state}
         )

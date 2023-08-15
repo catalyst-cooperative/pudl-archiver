@@ -96,6 +96,7 @@ class DepositionOrchestrator:
         create_new: bool = False,
         dry_run: bool = True,
         sandbox: bool = True,
+        auto_publish: bool = False,
     ):
         """Prepare the ZenodoStorage interface.
 
@@ -121,6 +122,8 @@ class DepositionOrchestrator:
 
         self.upload_key = upload_key
         self.publish_key = publish_key
+
+        self.auto_publish = auto_publish
 
         self.depositor = ZenodoDepositor(upload_key, publish_key, session, self.sandbox)
         self.downloader = downloader
@@ -245,9 +248,15 @@ class DepositionOrchestrator:
                 await self.depositor.delete_deposition(self.new_deposition)
                 return run_summary
 
-            published = await self.depositor.publish_deposition(self.new_deposition)
-            if self.create_new:
-                self._update_dataset_settings(published)
+            if self.auto_publish:
+                published = await self.depositor.publish_deposition(self.new_deposition)
+                if self.create_new:
+                    self._update_dataset_settings(published)
+            else:
+                logger.info("Skipping publishing deposition to allow manual review.")
+                logger.info(
+                    f"Review new deposition at {self.new_deposition.links.html}"
+                )
             return run_summary
         else:
             logger.info("No changes detected.")

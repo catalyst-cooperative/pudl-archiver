@@ -1,4 +1,6 @@
 """Defines models used for validating/summarizing an archiver run."""
+import zipfile
+from pathlib import Path
 from typing import Literal
 
 from pydantic import BaseModel
@@ -24,6 +26,25 @@ class PartitionDiff(BaseModel):
     value: str | None = None
     previous_value: str | None = None
     diff_type: Literal["CREATE", "UPDATE", "DELETE"]
+
+
+class FileValidation(BaseModel):
+    """Check that file is valid based on datatype and that it's not empty."""
+
+    valid_type: bool
+    not_empty: bool
+
+    @classmethod
+    def from_path(cls, path: Path):
+        """Validate file type and check that file is not empty."""
+        valid_type = True
+
+        # xlsx file should be a zipfile under the hood
+        if path.suffix == ".zip" or path.suffix == ".xlsx":
+            valid_type = zipfile.is_zipfile(path)
+
+        not_empty = path.stat().st_size > 0
+        return cls(valid_type=valid_type, not_empty=not_empty)
 
 
 class FileDiff(BaseModel):

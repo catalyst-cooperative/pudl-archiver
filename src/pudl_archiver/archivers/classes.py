@@ -12,9 +12,15 @@ from pathlib import Path
 
 import aiohttp
 
-from pudl_archiver.archivers.validate import RunSummary, ValidationTestResult
+from pudl_archiver.archivers.validate import (
+    FileValidation,
+    RunSummary,
+    ValidationTestResult,
+)
 from pudl_archiver.frictionless import DataPackage, ResourceInfo
 from pudl_archiver.utils import retry_async
+
+logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 MEDIA_TYPES: dict[str, str] = {
     "zip": "application/zip",
@@ -54,8 +60,10 @@ class AbstractDatasetArchiver(ABC):
     name: str
     concurrency_limit: int | None = None
     directory_per_resource_chunk: bool = False
-    # Configurable option to run _check_missing_files during archive validation
+
+    # Configure which generic validation tests to run
     check_missing_files: bool = True
+    check_empty_invalid_files: bool = True
 
     def __init__(
         self,
@@ -87,6 +95,7 @@ class AbstractDatasetArchiver(ABC):
         if only_years is None:
             only_years = []
         self.only_years = only_years
+        self.file_validations: dict[str, FileValidation] = {}
 
         # Create logger
         self.logger = logging.getLogger(f"catalystcoop.{__name__}")
@@ -139,12 +148,36 @@ class AbstractDatasetArchiver(ABC):
         """
         response = await retry_async(self.session.get, args=[url], kwargs=kwargs)
         response_bytes = await retry_async(response.read)
-
         if isinstance(file, Path):
             with open(file, "wb") as f:
                 f.write(response_bytes)
         elif isinstance(file, io.BytesIO):
             file.write(response_bytes)
+
+    async def download_and_zip_file(
+        self,
+        url: str,
+        filename: str,
+        archive_path: Path,
+        **kwargs,
+    ):
+        """Download and zip a file using async session manager.
+
+        Args:
+            url: URL to file to download.
+            filename: name of file to be zipped
+            archive_path: Local path to write file to disk.
+            kwargs: Key word args to pass to request.
+        """
+        response = await retry_async(self.session.get, args=[url], kwargs=kwargs)
+        response_bytes = await retry_async(response.read)
+
+        # Write to zipfile
+        with zipfile.ZipFile(
+            archive_path, "w", compression=zipfile.ZIP_DEFLATED
+        ) as archive:
+            with archive.open(filename, "w") as f_disk:
+                f_disk.write(response_bytes)
 
     async def get_hyperlinks(
         self,
@@ -215,6 +248,38 @@ class AbstractDatasetArchiver(ABC):
             note=note,
         )
 
+    def _check_valid_files(self) -> ValidationTestResult:
+        """Check for invalid or empty files."""
+        invalid_files = [
+            name
+            for name, validation in self.file_validations.items()
+            if not validation.valid_type
+        ]
+
+        empty_files = [
+            name
+            for name, validation in self.file_validations.items()
+            if not validation.not_empty
+        ]
+
+        note = None
+        if len(invalid_files) > 0:
+            note = f"The following files were determined to be invalid based on their extension: {invalid_files}"
+
+        if len(empty_files) > 0:
+            empty_note = f"The following files are empty: {empty_files}"
+            if note:
+                note = ". ".join([note, empty_note])
+            else:
+                note = empty_note
+
+        return ValidationTestResult(
+            name="Empty/invalid file test",
+            description="Validate files based on their extension, and check that no files are empty",
+            success=not ((len(invalid_files) > 0) or (len(empty_files) > 0)),
+            note=note,
+        )
+
     def generate_summary(
         self,
         baseline_datapackage: DataPackage | None,
@@ -232,10 +297,15 @@ class AbstractDatasetArchiver(ABC):
             Bool indicating whether or not all tests passed.
         """
         validations = []
-        if self.check_missing_files:
-            validations.append(
-                self._check_missing_files(baseline_datapackage, new_datapackage)
-            )
+        missing_file_validation = self._check_missing_files(
+            baseline_datapackage, new_datapackage
+        )
+        missing_file_validation.ignore_failure = not self.check_missing_files
+        validations.append(missing_file_validation)
+
+        valid_file_validation = self._check_valid_files()
+        valid_file_validation.ignore_failure = not self.check_empty_invalid_files
+        validations.append(valid_file_validation)
 
         validations += self.dataset_validate_archive(
             baseline_datapackage, new_datapackage, resources
@@ -290,6 +360,13 @@ class AbstractDatasetArchiver(ABC):
             for resource_coroutine in asyncio.as_completed(resource_chunk):
                 resource_info = await resource_coroutine
                 self.logger.info(f"Downloaded {resource_info.local_path}.")
+
+                # Validate filetype
+                self.file_validations[
+                    str(resource_info.local_path.name)
+                ] = FileValidation.from_path(resource_info.local_path)
+
+                # Return downloaded
                 yield str(resource_info.local_path.name), resource_info
 
             # If requested, create a new temporary directory per resource chunk

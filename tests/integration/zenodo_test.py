@@ -175,6 +175,7 @@ async def test_zenodo_workflow(
         "deposition_settings": test_settings,
         "dry_run": False,
         "sandbox": True,
+        "auto_publish": True,
     }
 
     class TestDownloader(AbstractDatasetArchiver):
