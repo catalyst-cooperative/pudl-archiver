@@ -371,6 +371,6 @@ class AbstractDatasetArchiver(ABC):
 
             # If requested, create a new temporary directory per resource chunk
             if self.directory_per_resource_chunk:
-                tmp_dir = tempfile.TemporaryDirectory()
-                self.download_directory = Path(tmp_dir.name)
+                self.download_directory_manager = tempfile.TemporaryDirectory()
+                self.download_directory = Path(self.download_directory_manager.name)
                 self.logger.info(f"New download directory {self.download_directory}")
