@@ -38,6 +38,7 @@ jobs:
         env:
           ZENODO_SANDBOX_TOKEN_PUBLISH: ${{ secrets.ZENODO_SANDBOX_TOKEN_PUBLISH }}
           ZENODO_SANDBOX_TOKEN_UPLOAD: ${{ secrets.ZENODO_SANDBOX_TOKEN_UPLOAD }}
+          EPACEMS_API_KEY: ${{ secrets.EPACEMS_API_KEY }}
         run: |
           conda run -n pudl-cataloger tox
 
