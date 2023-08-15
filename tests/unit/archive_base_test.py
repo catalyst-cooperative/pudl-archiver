@@ -168,13 +168,14 @@ async def test_download_file(mocker, file_data):
     # Initialize MockArchiver class
     archiver = MockArchiver(None)
 
-    session_mock = mocker.AsyncMock(name="session_mock")
-    archiver.session = session_mock
+    session_mock = mocker.MagicMock(name="session_mock")
 
     # Set return value
     response_mock = mocker.AsyncMock()
     response_mock.read = mocker.AsyncMock(return_value=file_data)
-    session_mock.get = mocker.AsyncMock(return_value=response_mock)
+    session_mock.get.return_value.__aenter__.return_value = response_mock
+
+    archiver.session = session_mock
 
     # Prepare args
     url = "https://www.fake.url.com"
@@ -193,7 +194,7 @@ async def test_download_file(mocker, file_data):
         file_path = Path(path) / "test"
         await archiver.download_file(url, file_path)
 
-        session_mock.get.assert_called_once_with(url)
+        session_mock.get.assert_called_with(url)
         file = file_path.open("rb")
         assert file.read() == file_data
 

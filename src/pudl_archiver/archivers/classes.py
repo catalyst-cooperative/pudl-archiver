@@ -18,7 +18,7 @@ from pudl_archiver.archivers.validate import (
     ValidationTestResult,
 )
 from pudl_archiver.frictionless import DataPackage, ResourceInfo
-from pudl_archiver.utils import retry_async
+from pudl_archiver.utils import get_read, retry_async
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
@@ -146,8 +146,9 @@ class AbstractDatasetArchiver(ABC):
             file: Local path to write file to disk or bytes object to save file in memory.
             kwargs: Key word args to pass to request.
         """
-        response = await retry_async(self.session.get, args=[url], kwargs=kwargs)
-        response_bytes = await retry_async(response.read)
+        response_bytes = await retry_async(
+            get_read, args=[self.session, [url]], kwargs=kwargs
+        )
         if isinstance(file, Path):
             with open(file, "wb") as f:
                 f.write(response_bytes)
