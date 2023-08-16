@@ -77,8 +77,6 @@ async def archive_datasets(
                 raise RuntimeError(f"Dataset {dataset} not supported")
             else:
                 downloader = cls(session, only_years, download_directory=download_dir)
-            if dataset == "ferceqr":
-                initialize = True
             orchestrator = DepositionOrchestrator(
                 dataset,
                 downloader,
