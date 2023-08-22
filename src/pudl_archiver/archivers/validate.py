@@ -1,7 +1,7 @@
 """Defines models used for validating/summarizing an archiver run."""
 import zipfile
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel
 
@@ -22,7 +22,7 @@ class ValidationTestResult(BaseModel):
 class PartitionDiff(BaseModel):
     """Model summarizing changes in partitions."""
 
-    key: str
+    key: Any
     value: str | None = None
     previous_value: str | None = None
     diff_type: Literal["CREATE", "UPDATE", "DELETE"]
@@ -120,7 +120,7 @@ class RunSummary(BaseModel):
 
 
 def _process_partition_diffs(
-    baseline_partitions: dict[str, str], new_partitions: dict[str, str]
+    baseline_partitions: dict[str, Any], new_partitions: dict[str, Any]
 ) -> list[PartitionDiff]:
     all_partition_keys = {*baseline_partitions.keys(), *new_partitions.keys()}
     partition_diffs = []
