@@ -3,6 +3,7 @@ from collections import namedtuple
 from collections.abc import Iterable
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from pydantic import AnyHttpUrl, BaseModel, Field
 
@@ -32,7 +33,7 @@ class Resource(BaseModel):
     path: AnyHttpUrl
     remote_url: AnyHttpUrl
     title: str
-    parts: dict[str, str]
+    parts: dict[str, Any]
     encoding: str = "utf-8"
     mediatype: str
     format_: str = Field(alias="format")
