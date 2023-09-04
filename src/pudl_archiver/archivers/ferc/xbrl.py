@@ -281,12 +281,17 @@ async def archive_year(
 
             # Download filing
             try:
-                response = await retry_async(session.get, args=[filing.download_url])
+                response = await retry_async(
+                    session.get,
+                    args=[filing.download_url],
+                    kwargs={"raise_for_status": True},
+                )
                 response_bytes = await retry_async(response.content.read)
             except aiohttp.client_exceptions.ClientResponseError as e:
                 logger.warning(
                     f"Failed to download XBRL filing {filing.title} for form{form_number}-{year}: {e.message}"
                 )
+                continue
             # Write to zipfile
             filename = f"{filing.title}_form{filing.ferc_formname.as_int()}_{filing.ferc_period}_{round(filing.published_parsed.timestamp())}.xbrl".replace(
                 " ", "_"
