@@ -20,6 +20,7 @@ from dateutil import rrule
 from pydantic import BaseModel, Field, HttpUrl, root_validator, validator
 from tqdm import tqdm
 
+from pudl_archiver.archivers.classes import ResourceInfo
 from pudl_archiver.utils import retry_async
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
@@ -183,7 +184,10 @@ def index_available_entries() -> dict[FercForm, FormFilings]:
 
 
 async def archive_taxonomy(
-    form: FercForm, year: Year, archive: zipfile.ZipFile, session: aiohttp.ClientSession
+    year: Year,
+    form: FercForm,
+    output_dir: Path,
+    session: aiohttp.ClientSession,
 ):
     """Download taxonomy and archive all files that comprise the taxonomy.
 
@@ -197,9 +201,9 @@ async def archive_taxonomy(
     taxonomy.
 
     Args:
-        form: Ferc form.
         year: Year of taxonomy version.
-        archive: zipfile context manager.
+        form: Ferc form.
+        output_dir: Directory to save archived filings in.
         session: Async http client session.
     """
     # Get date used in entry point URL (first day of year)
@@ -223,21 +227,29 @@ async def archive_taxonomy(
         retry_on=(FileNotFoundError,),
     )
 
+    archive_path = output_dir / f"ferc{form_number}-xbrl-taxonomy-{year}.zip"
+
     # Loop through all files and save to appropriate location in archive
-    for url in taxonomy.urlDocs.keys():
-        url_parsed = urlparse(url)
+    with zipfile.ZipFile(archive_path, "w", compression=ZIP_DEFLATED) as archive:
+        for url in taxonomy.urlDocs.keys():
+            url_parsed = urlparse(url)
 
-        # There are some generic XML/XBRL files in the taxonomy that should be skipped
-        if not url_parsed.netloc.endswith("ferc.gov"):
-            continue
+            # There are some generic XML/XBRL files in the taxonomy that should be skipped
+            if not url_parsed.netloc.endswith("ferc.gov"):
+                continue
 
-        # Download file
-        response = await retry_async(session.get, args=[url])
-        response_bytes = await retry_async(response.content.read)
-        path = Path(url_parsed.path).relative_to("/")
+            # Download file
+            response = await retry_async(session.get, args=[url])
+            response_bytes = await retry_async(response.content.read)
+            path = Path(url_parsed.path).relative_to("/")
 
-        with archive.open(str(path), "w") as f:
-            f.write(response_bytes)
+            with archive.open(str(path), "w") as f:
+                f.write(response_bytes)
+
+    return ResourceInfo(
+        local_path=archive_path,
+        partitions={"year": year, "data_format": "XBRL_TAXONOMY"},
+    )
 
 
 async def archive_year(
@@ -263,11 +275,6 @@ async def archive_year(
     archive_path = output_dir / f"ferc{form_number}-xbrl-{year}.zip"
 
     with zipfile.ZipFile(archive_path, "w", compression=ZIP_DEFLATED) as archive:
-        # Archive taxonomy
-        # The first version of the taxonomy was released in 2020
-        if year > 2019:
-            await archive_taxonomy(form, year, archive, session)
-
         for filing in tqdm(filings, desc=f"FERC {form.value} {year} XBRL"):
             # Add filing metadata
             filing_name = f"{filing.title}{filing.ferc_period}"
@@ -278,14 +285,22 @@ async def archive_year(
 
             # Download filing
             try:
-                response = await retry_async(session.get, args=[filing.download_url])
+                response = await retry_async(
+                    session.get,
+                    args=[filing.download_url],
+                    kwargs={"raise_for_status": True},
+                )
                 response_bytes = await retry_async(response.content.read)
             except aiohttp.client_exceptions.ClientResponseError as e:
                 logger.warning(
                     f"Failed to download XBRL filing {filing.title} for form{form_number}-{year}: {e.message}"
                 )
+                continue
             # Write to zipfile
-            with archive.open(f"{filing.entry_id}.xbrl", "w") as f:
+            filename = f"{filing.title}_form{filing.ferc_formname.as_int()}_{filing.ferc_period}_{round(filing.published_parsed.timestamp())}.xbrl".replace(
+                " ", "_"
+            )
+            with archive.open(filename, "w") as f:
                 f.write(response_bytes)
 
         # Save snapshot of RSS feed

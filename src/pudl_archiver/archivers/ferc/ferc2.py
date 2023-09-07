@@ -34,6 +34,10 @@ class Ferc2Archiver(AbstractDatasetArchiver):
         for year, year_filings in filings.items():
             if not self.valid_year(year):
                 continue
+            if year > 2019:
+                yield xbrl.archive_taxonomy(
+                    year, xbrl.FercForm.FORM_2, self.download_directory, self.session
+                )
             yield self.get_year_xbrl(year, year_filings)
 
     async def get_year_xbrl(
