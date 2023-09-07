@@ -23,19 +23,10 @@ class Ferc714Archiver(AbstractDatasetArchiver):
             if not self.valid_year(year):
                 continue
             if year > 2019:
-                yield self.get_year_taxonomy_xbrl(year)
+                yield xbrl.archive_taxonomy(
+                    year, xbrl.FercForm.FORM_714, self.download_directory, self.session
+                )
             yield self.get_year_xbrl(year, year_filings)
-
-    async def get_year_taxonomy_xbrl(self, year: int) -> tuple[Path, dict]:
-        """Download XBRL taxonomy from a single year."""
-        download_path = await xbrl.archive_taxonomy(
-            year, xbrl.FercForm.FORM_714, self.download_directory, self.session
-        )
-
-        return ResourceInfo(
-            local_path=download_path,
-            partitions={"year": year, "data_format": "XBRL_TAXONOMY"},
-        )
 
     async def get_year_xbrl(
         self, year: int, filings: xbrl.FormFilings

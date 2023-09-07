@@ -20,6 +20,7 @@ from dateutil import rrule
 from pydantic import BaseModel, Field, HttpUrl, root_validator, validator
 from tqdm import tqdm
 
+from pudl_archiver.archivers.classes import ResourceInfo
 from pudl_archiver.utils import retry_async
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
@@ -245,7 +246,10 @@ async def archive_taxonomy(
             with archive.open(str(path), "w") as f:
                 f.write(response_bytes)
 
-    return archive_path
+    return ResourceInfo(
+        local_path=archive_path,
+        partitions={"year": year, "data_format": "XBRL_TAXONOMY"},
+    )
 
 
 async def archive_year(
