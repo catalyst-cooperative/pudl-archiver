@@ -190,6 +190,10 @@ class DepositionOrchestrator:
             https://developers.zenodo.org/?python#depositions
         """
         metadata = DepositionMetadata.from_data_source(data_source_id)
+        if not metadata.keywords:
+            raise AssertionError(
+                "New dataset is missing keywords and cannot be archived."
+            )
         return await self.depositor.create_deposition(metadata)
 
     async def run(self) -> RunSummary | Unchanged:
