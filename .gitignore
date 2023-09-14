@@ -9,3 +9,4 @@ commit.txt
 coverage.xml
 .env_tox
 .env
+**/*~

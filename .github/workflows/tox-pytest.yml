@@ -14,18 +14,17 @@ jobs:
         with:
           fetch-depth: 2
 
-      - name: Set up conda environment for testing
-        uses: conda-incubator/setup-miniconda@v2.2.0
+      - name: Install Conda environment using mamba
+        uses: mamba-org/setup-micromamba@v1
         with:
-          miniforge-variant: Mambaforge
-          miniforge-version: latest
-          use-mamba: true
-          mamba-version: "*"
-          channels: conda-forge,defaults
-          channel-priority: true
-          python-version: "3.10"
-          activate-environment: pudl-cataloger
           environment-file: environment.yml
+          cache-environment: true
+          condarc: |
+            channels:
+            - conda-forge
+            - defaults
+            channel_priority: strict
+
       - shell: bash -l {0}
         run: |
           conda info
@@ -43,7 +42,7 @@ jobs:
           conda run -n pudl-cataloger tox
 
       - name: Upload test coverage report to CodeCov
-        uses: codecov/codecov-action@v3.1.4
+        uses: codecov/codecov-action@v3
 
   ci-notify:
     runs-on: ubuntu-latest
