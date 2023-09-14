@@ -8,25 +8,27 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
+    defaults:
+      run:
+        shell: bash -l {0}
 
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 2
 
-      - name: Set up conda environment for testing
-        uses: conda-incubator/setup-miniconda@v2.2.0
+      - name: Install Conda environment using mamba
+        uses: mamba-org/setup-micromamba@v1
         with:
-          miniforge-variant: Mambaforge
-          miniforge-version: latest
-          use-mamba: true
-          mamba-version: "*"
-          channels: conda-forge,defaults
-          channel-priority: true
-          python-version: "3.10"
-          activate-environment: pudl-cataloger
           environment-file: environment.yml
-      - shell: bash -l {0}
+          cache-environment: true
+          condarc: |
+            channels:
+            - conda-forge
+            - defaults
+            channel_priority: strict
+
+      - name: Log conda environnment information
         run: |
           conda info
           conda list
@@ -40,10 +42,10 @@ jobs:
           ZENODO_SANDBOX_TOKEN_UPLOAD: ${{ secrets.ZENODO_SANDBOX_TOKEN_UPLOAD }}
           EPACEMS_API_KEY: ${{ secrets.EPACEMS_API_KEY }}
         run: |
-          conda run -n pudl-cataloger tox
+          tox
 
       - name: Upload test coverage report to CodeCov
-        uses: codecov/codecov-action@v3.1.4
+        uses: codecov/codecov-action@v3
 
   ci-notify:
     runs-on: ubuntu-latest
