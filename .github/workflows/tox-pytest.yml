@@ -8,6 +8,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
+    defaults:
+      run:
+        shell: bash -l {0}
 
     steps:
       - uses: actions/checkout@v4
@@ -25,7 +28,7 @@ jobs:
             - defaults
             channel_priority: strict
 
-      - shell: bash -l {0}
+      - name: Log conda environnment information
         run: |
           conda info
           conda list
