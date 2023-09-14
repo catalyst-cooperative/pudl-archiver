@@ -2,11 +2,11 @@
 name = "pudl_archiver"
 version = "0.2.0"
 authors = [{name = "PUDL", email = "pudl@catalyst.coop"}]
-requires-python = ">=3.10,<3.11"
+requires-python = ">=3.11,<3.12"
 
 dependencies = [
-    "catalystcoop.pudl @ git+https://github.com/catalyst-cooperative/pudl.git@pre-dagster",
-    "coloredlogs~=15.0",
+    "catalystcoop.pudl @ git+https://github.com/catalyst-cooperative/pudl.git@dev",
+    "coloredlogs>=14",
     "feedparser>=6.0",
     "tqdm>=4.64",
     "python-dotenv~=1.0.0",
@@ -23,7 +23,7 @@ classifiers = [
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
 ]
 
 
@@ -73,7 +73,7 @@ pudl_archiver = "pudl_archiver.cli:main"
 
 [build-system]
 requires = [
-    "setuptools<66,>=61.0",
+    "setuptools<69,>=66",
 ]
 build-backend = "setuptools.build_meta"
 
