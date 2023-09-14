@@ -11,6 +11,9 @@ on:
 
 jobs:
   archive-run:
+    defaults:
+      run:
+        shell: bash -l {0}
     strategy:
       matrix:
         dataset:
@@ -40,20 +43,18 @@ jobs:
         with:
           fetch-depth: 2
 
-      - name: Set up conda environment for testing
-        uses: conda-incubator/setup-miniconda@v2.2.0
+      - name: Install Conda environment using mamba
+        uses: mamba-org/setup-micromamba@v1
         with:
-          miniforge-variant: Mambaforge
-          miniforge-version: latest
-          use-mamba: true
-          mamba-version: "*"
-          channels: conda-forge,defaults
-          channel-priority: true
-          python-version: "3.10"
-          activate-environment: pudl-cataloger
           environment-file: environment.yml
+          cache-environment: true
+          condarc: |
+            channels:
+            - conda-forge
+            - defaults
+            channel_priority: strict
 
-      - shell: bash -l {0}
+      - name: Log the conda environment
         run: |
           conda info
           conda list
@@ -70,7 +71,7 @@ jobs:
           # ZENODO_TOKEN_UPLOAD: ${{ secrets.ZENODO_TOKEN_UPLOAD }}
           # ZENODO_TOKEN_PUBLISH: ${{ secrets.ZENODO_TOKEN_PUBLISH }}
         run: |
-          conda run -n pudl-cataloger pudl_archiver --sandbox --datasets ${{ matrix.dataset }} --summary-file ${{ matrix.dataset }}_run_summary.json
+          pudl_archiver --sandbox --datasets ${{ matrix.dataset }} --summary-file ${{ matrix.dataset }}_run_summary.json
 
       - name: Archive code coverage results
         uses: actions/upload-artifact@v3
