@@ -1,6 +1,7 @@
 """Defines base class for archiver."""
 import asyncio
 import io
+import itertools
 import logging
 import math
 import tempfile
@@ -28,7 +29,7 @@ MEDIA_TYPES: dict[str, str] = {
     "csv": "text/csv",
 }
 
-ArchiveAwaitable = typing.Generator[typing.Awaitable[ResourceInfo], None, None]
+ArchiveAwaitable = typing.Generator[typing.Awaitable[tuple[ResourceInfo]], None, None]
 """Return type of method get_resources.
 
 The method get_resources should yield an awaitable that returns a ResourceInfo named tuple.
@@ -236,15 +237,17 @@ class AbstractDatasetArchiver(ABC):
         # Check for any files only in baseline_datapackage
         missing_files = baseline_resources - new_resources
 
-        note = None
+        notes = None
         if len(missing_files) > 0:
-            note = f"The following files would be deleted by new archive version: {missing_files}"
+            notes = [
+                f"The following files would be deleted by new archive version: {missing_files}"
+            ]
 
         return ValidationTestResult(
             name="Missing file test",
             description="Check for files from previous version of archive that would be deleted by the new version",
             success=len(missing_files) == 0,
-            note=note,
+            notes=notes,
         )
 
     def _check_valid_files(self) -> ValidationTestResult:
@@ -261,19 +264,40 @@ class AbstractDatasetArchiver(ABC):
             if not validation.not_empty
         ]
 
-        note = None
+        invalid_layouts = [
+            name
+            for name, validation in self.file_validations.items()
+            if not validation.valid_layout
+        ]
+
+        notes = []
+        success = True
         if len(invalid_files) > 0:
-            note = f"The following files were determined to be invalid based on their extension: {invalid_files}"
+            success = False
+            notes.append(
+                f"The following files were determined to be invalid based on their extension: {invalid_files}"
+            )
 
         if len(empty_files) > 0:
-            empty_note = f"The following files are empty: {empty_files}"
-            note = ". ".join([note, empty_note]) if note else empty_note
+            success = False
+            notes.append(f"The following files are empty: {empty_files}")
+
+        if len(invalid_layouts) > 0:
+            success = False
+            notes.append(
+                itertools.chain(
+                    *[
+                        file_validation.layout_notes
+                        for file_validation in invalid_layouts
+                    ]
+                )
+            )
 
         return ValidationTestResult(
             name="Empty/invalid file test",
             description="Validate files based on their extension, and check that no files are empty",
-            success=not ((len(invalid_files) > 0) or (len(empty_files) > 0)),
-            note=note,
+            success=success,
+            notes=notes,
         )
 
     def generate_summary(
@@ -360,7 +384,9 @@ class AbstractDatasetArchiver(ABC):
                 # Validate filetype
                 self.file_validations[
                     str(resource_info.local_path.name)
-                ] = FileValidation.from_path(resource_info.local_path)
+                ] = FileValidation.from_path(
+                    resource_info.local_path, layout=resource_info.layout
+                )
 
                 # Return downloaded
                 yield str(resource_info.local_path.name), resource_info

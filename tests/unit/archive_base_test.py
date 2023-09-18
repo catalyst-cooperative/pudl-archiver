@@ -112,7 +112,9 @@ async def test_resource_chunks(
                 yield self.get_resource(i)
 
         async def get_resource(self, i):
-            return ResourceInfo(local_path=Path(self.download_directory), partitions=i)
+            return ResourceInfo(
+                local_path=Path(self.download_directory), partitions={"idx": i}
+            )
 
     tmpdir_mock = mocker.Mock(side_effect=[Path(f"path{i}") for i in range(6)])
     mocker.patch(
@@ -124,7 +126,7 @@ async def test_resource_chunks(
     # Initialize MockArchiver class
     archiver = MockArchiver(concurrency_limit, directory_per_resource_chunk)
     async for name, resource in archiver.download_all_resources():
-        assert download_paths[resource.partitions] == name
+        assert download_paths[resource.partitions["idx"]] == name
 
 
 @pytest.mark.asyncio

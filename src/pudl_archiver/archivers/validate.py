@@ -1,11 +1,16 @@
 """Defines models used for validating/summarizing an archiver run."""
+import logging
+import xml.etree.ElementTree as Et  # nosec: B405
 import zipfile
+from io import BytesIO
 from pathlib import Path
 from typing import Any, Literal
 
 from pydantic import BaseModel
 
-from pudl_archiver.frictionless import DataPackage, Resource
+from pudl_archiver.frictionless import DataPackage, Resource, ZipLayout
+
+logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 
 class ValidationTestResult(BaseModel):
@@ -16,7 +21,9 @@ class ValidationTestResult(BaseModel):
     ignore_failure: bool = False
     resource_name: str | None = None  # If test is specific to a single resource
     success: bool
-    note: str | None = None  # Optional note to provide details like why test failed
+    notes: list[
+        str
+    ] | None = None  # Optional note to provide details like why test failed
 
 
 class PartitionDiff(BaseModel):
@@ -33,18 +40,25 @@ class FileValidation(BaseModel):
 
     valid_type: bool
     not_empty: bool
+    valid_layout: bool | None = None
+    layout_notes: list[str] | None = None
 
     @classmethod
-    def from_path(cls, path: Path):
+    def from_path(cls, path: Path, layout: ZipLayout | None = None):
         """Validate file type and check that file is not empty."""
-        valid_type = True
-
-        # xlsx file should be a zipfile under the hood
-        if path.suffix == ".zip" or path.suffix == ".xlsx":
-            valid_type = zipfile.is_zipfile(path)
-
+        valid_type = _validate_file_type(path, BytesIO(path.read_bytes()))
         not_empty = path.stat().st_size > 0
-        return cls(valid_type=valid_type, not_empty=not_empty)
+
+        valid_layout, layout_notes = None, None
+        if layout:
+            valid_layout, layout_notes = layout.validate_zip(path)
+
+        return cls(
+            valid_type=valid_type,
+            not_empty=not_empty,
+            valid_layout=valid_layout,
+            layout_notes=layout_notes,
+        )
 
 
 class FileDiff(BaseModel):
@@ -209,3 +223,30 @@ def _process_resource_diffs(
             )
 
     return [*changed_resources, *created_resources, *deleted_resources]
+
+
+def _validate_file_type(path: Path, buffer: BytesIO) -> bool:
+    """Check that file appears valid based on extension."""
+    extension = path.suffix
+
+    if extension == ".zip" or extension == ".xlsx":
+        return _validate_zip(buffer)
+
+    if extension == ".xml" or extension == ".xbrl":
+        return _validate_xml(buffer)
+
+    logger.warning(f"No validations defined for files of type: {extension} - {path}")
+    return True
+
+
+def _validate_zip(buffer: BytesIO) -> bool:
+    return zipfile.is_zipfile(buffer)
+
+
+def _validate_xml(buffer: BytesIO) -> bool:
+    try:
+        Et.parse(buffer)  # nosec: B314
+    except Et.ParseError:
+        return False
+
+    return True
