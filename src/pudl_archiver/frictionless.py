@@ -37,19 +37,21 @@ class ZipLayout(BaseModel):
             # Check that zipfile contains only expected files
             if files != self.file_paths:
                 success = False
-                if extra_files := files - self.file_paths:
+                if extra_files := list(map(str, files - self.file_paths)):
                     notes.append(
                         f"{file_path.name} contains unexpected files: {extra_files}"
                     )
 
-                if missing_files := self.file_paths - files:
+                if missing_files := list(map(str, self.file_paths - files)):
                     notes.append(f"{file_path.name} is missing files: {missing_files}")
 
             # Check that all files in zipfile are valid based on their extension
             invalid_files = [
-                f"The file, {filename} in {file_path.name} was determined to be invalid."
+                f"The file, {str(filename)}, in {file_path.name} is invalid."
                 for filename in files
-                if _validate_file_type(filename, BytesIO(resource.read(filename)))
+                if not _validate_file_type(
+                    filename, BytesIO(resource.read(str(filename)))
+                )
             ]
             if len(invalid_files) > 0:
                 notes += invalid_files
