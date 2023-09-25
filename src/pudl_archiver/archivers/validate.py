@@ -41,7 +41,7 @@ class FileValidation(BaseModel):
     valid_type: bool
     not_empty: bool
     valid_layout: bool | None = None
-    layout_notes: list[str] | None = None
+    layout_notes: list[str] = []
 
     @classmethod
     def from_path(cls, path: Path, layout: ZipLayout | None = None):
@@ -49,7 +49,7 @@ class FileValidation(BaseModel):
         valid_type = _validate_file_type(path, BytesIO(path.read_bytes()))
         not_empty = path.stat().st_size > 0
 
-        valid_layout, layout_notes = None, None
+        valid_layout, layout_notes = None, []
         if layout:
             valid_layout, layout_notes = layout.validate_zip(path)
 
