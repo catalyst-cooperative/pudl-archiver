@@ -29,7 +29,7 @@ MEDIA_TYPES: dict[str, str] = {
     "csv": "text/csv",
 }
 
-ArchiveAwaitable = typing.Generator[typing.Awaitable[tuple[ResourceInfo]], None, None]
+ArchiveAwaitable = typing.Generator[typing.Awaitable[ResourceInfo], None, None]
 """Return type of method get_resources.
 
 The method get_resources should yield an awaitable that returns a ResourceInfo named tuple.
