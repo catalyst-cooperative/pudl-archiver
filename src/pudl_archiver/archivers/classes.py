@@ -264,11 +264,11 @@ class AbstractDatasetArchiver(ABC):
             if not validation.not_empty
         ]
 
-        invalid_layouts = [
-            name
+        invalid_layouts = {
+            name: validation
             for name, validation in self.file_validations.items()
-            if not validation.valid_layout
-        ]
+            if validation.valid_layout is False
+        }
 
         notes = []
         success = True
@@ -288,7 +288,7 @@ class AbstractDatasetArchiver(ABC):
                 itertools.chain(
                     *[
                         file_validation.layout_notes
-                        for file_validation in invalid_layouts
+                        for file_validation in invalid_layouts.values()
                     ]
                 )
             )

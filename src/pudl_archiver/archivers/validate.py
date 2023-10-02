@@ -232,7 +232,7 @@ def _validate_file_type(path: Path, buffer: BytesIO) -> bool:
     if extension == ".zip" or extension == ".xlsx":
         return _validate_zip(buffer)
 
-    if extension == ".xml" or extension == ".xbrl":
+    if extension == ".xml" or extension == ".xbrl" or extension == ".xsd":
         return _validate_xml(buffer)
 
     logger.warning(f"No validations defined for files of type: {extension} - {path}")
