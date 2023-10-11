@@ -174,9 +174,11 @@ class AbstractDatasetArchiver(ABC):
 
         # Write to zipfile
         with zipfile.ZipFile(
-            archive_path, "w", compression=zipfile.ZIP_DEFLATED
+            archive_path,
+            "w",
+            compression=zipfile.ZIP_DEFLATED,
         ) as archive:
-            with archive.open(filename, "w") as f_disk:
+            with archive.open(filename, "w", force_zip64=True) as f_disk:
                 f_disk.write(response_bytes)
 
     async def get_hyperlinks(
