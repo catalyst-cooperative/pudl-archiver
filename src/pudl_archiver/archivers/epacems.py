@@ -45,7 +45,9 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
             ]
             logger.info(f"Downloading {len(quarterly_emissions_files)} total files.")
             for i, cems_file in enumerate(quarterly_emissions_files):
-                yield self.get_quarter_year_resource(file=cems_file, request_count=i)
+                yield self.get_quarter_year_resource(
+                    file=cems_file, request_count=i + 1
+                )  # Count files starting at 1 for human legibility.
         else:
             raise AssertionError(
                 f"EPACEMS API request did not succeed: {file_list.status_code}"
@@ -76,7 +78,7 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
         await self.download_and_zip_file(
             url=url, filename=filename, archive_path=archive_path, timeout=60 * 14
         )
-        logger.info(  # Verbose but helpful to keep track of progress.
+        logger.info(  # Verbose but helpful to track progress
             f"File no. {request_count}: Downloaded Q{quarter} {year} EPA CEMS hourly emissions data."
         )
         return ResourceInfo(
