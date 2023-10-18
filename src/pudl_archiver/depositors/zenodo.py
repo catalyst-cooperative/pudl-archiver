@@ -1,14 +1,17 @@
 """Handle all deposition actions within Zenodo."""
 import asyncio
-import json
+
+# import json
 import logging
 from typing import BinaryIO, Literal
 
 import aiohttp
-import semantic_version  # type: ignore
 
 from pudl_archiver.utils import retry_async
 from pudl_archiver.zenodo.entities import Deposition, DepositionMetadata
+
+# import semantic_version  # type: ignore
+
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
@@ -122,7 +125,7 @@ class ZenodoDepositor:
         Returns:
             The brand new deposition - unpublished and with no files in it.
         """
-        url = f"{self.api_root}/deposit/depositions"
+        url = f"{self.api_root}/records"
         headers = {
             "Content-Type": "application/json",
         } | self.auth_write
@@ -158,7 +161,7 @@ class ZenodoDepositor:
         Returns:
             The latest deposition associated with the concept DOI.
         """
-        url = f"{self.api_root}/deposit/depositions"
+        url = f"{self.api_root}/records"
         params = {"q": f'conceptdoi:"{concept_doi}"'}
 
         response = await self.request(
@@ -188,7 +191,7 @@ class ZenodoDepositor:
         """
         response = await self.request(
             "GET",
-            f"{self.api_root}/deposit/depositions/{rec_id}",
+            f"{self.api_root}/records/{rec_id}",
             log_label=f"Get deposition for {rec_id}",
             headers=self.auth_write,
         )
@@ -219,46 +222,67 @@ class ZenodoDepositor:
             else:
                 return deposition
 
-        url = f"{self.api_root}/deposit/depositions/{deposition.id_}/actions/newversion"
+        new_deposition = await self.get_new_deposition_version(deposition)
+        # If files already in new deposition, remove.
+        if len(new_deposition.files) > 0:
+            await self.delete_deposition(new_deposition)  # DEBUG ME!
+            # new_deposition = await self.get_new_deposition_version(deposition) # Debug: Something isn't working here!
 
-        # create a new unpublished deposition version
+        # Link files from previous deposition.
+        await self.link_previous_files(new_deposition)
+
+        # new_deposition_url = old_deposition.links.latest_draft
+
+        # source_metadata = old_deposition.metadata.dict(by_alias=True)
+        # metadata = {}
+        # for key, val in source_metadata.items():
+        #     if key not in ["doi", "prereserve_doi", "publication_date"]:
+        #         metadata[key] = val
+
+        # previous = semantic_version.Version(source_metadata["version"])
+        # version_info = previous.next_major()
+
+        # metadata["version"] = str(version_info)
+
+        # # Update metadata of new deposition with new version info
+        # data = json.dumps({"metadata": metadata})
+
+        # # Get url to newest deposition
+        # new_deposition_url = old_deposition.links.latest_draft
+        # headers = {
+        #     "Content-Type": "application/json",
+        # } | self.auth_write
+
+        # response = await self.request(
+        #     "PUT",
+        #     new_deposition_url,
+        #     log_label=f"Updating version number from {previous} ({old_deposition.id_}) to {version_info}",
+        #     data=data,
+        #     headers=headers,
+        # )
+        return new_deposition
+
+    async def get_new_deposition_version(self, deposition: Deposition):
+        """Create a new draft deposition version."""
+        url = f"{self.api_root}/records/{deposition.id_}/versions"
         response = await self.request(
             "POST",
             url,
             log_label="Creating new version",
             headers=self.auth_write,
         )
-        old_deposition = Deposition(**response)
-        new_deposition_url = old_deposition.links.latest_draft
-
-        source_metadata = old_deposition.metadata.dict(by_alias=True)
-        metadata = {}
-        for key, val in source_metadata.items():
-            if key not in ["doi", "prereserve_doi", "publication_date"]:
-                metadata[key] = val
-
-        previous = semantic_version.Version(source_metadata["version"])
-        version_info = previous.next_major()
-
-        metadata["version"] = str(version_info)
-
-        # Update metadata of new deposition with new version info
-        data = json.dumps({"metadata": metadata})
-
-        # Get url to newest deposition
-        new_deposition_url = old_deposition.links.latest_draft
-        headers = {
-            "Content-Type": "application/json",
-        } | self.auth_write
-
-        response = await self.request(
-            "PUT",
-            new_deposition_url,
-            log_label=f"Updating version number from {previous} ({old_deposition.id_}) to {version_info}",
-            data=data,
-            headers=headers,
-        )
         return Deposition(**response)
+
+    async def link_previous_files(self, new_deposition: Deposition) -> Deposition:
+        """Transfer files over to new deposition."""
+        draft_id = new_deposition.record_id
+        url = f"{self.api_root}/records/{draft_id}/draft/actions/files-import"
+        await self.request(
+            "POST",
+            url,
+            log_label="Linking files from previous deposition",
+            headers=self.auth_write,
+        )
 
     async def publish_deposition(self, deposition: Deposition) -> Deposition:
         """Publish a deposition.
@@ -324,44 +348,95 @@ class ZenodoDepositor:
         deposition: Deposition,
         target: str,
         data: BinaryIO,
-        force_api: Literal["bucket", "files"] | None = None,
     ) -> None:
         """Create a file in a deposition.
 
-        Attempts to use the new "bucket" API over the "files" API, but you can
-        force it to use "files" if desired.
+        Args:
+            deposition: the deposition you are applying this change to.
+            target: the filename of the file you want to create.
+            data: the actual data associated with the file.
+
+        Returns:
+            None if success.
+        """
+        await self.start_file_upload(deposition, target)
+        await self.upload_data_to_file(deposition, target, data)
+        return await self.complete_file_upload(deposition, target)
+
+    async def start_file_upload(
+        self,
+        deposition: Deposition,
+        target: str,
+    ) -> None:
+        """Start a file deposition.
 
         Args:
             deposition: the deposition you are applying this change to.
             target: the filename of the file you want to delete.
             data: the actual data associated with the file.
-            force_api: force using one files API over another. The options are
-                "bucket" and "files"
 
         Returns:
             None if success.
         """
-        if deposition.links.bucket and force_api != "files":
-            url = f"{deposition.links.bucket}/{target}"
-            return await self.request(
-                "PUT",
-                url,
-                log_label=f"Uploading {target} to bucket",
-                data=data,
-                headers=self.auth_write,
-                timeout=3600,
-            )
-        elif deposition.links.files and force_api != "bucket":
-            url = f"{deposition.links.files}"
-            return await self.request(
-                "POST",
-                url,
-                log_label=f"Uploading {target} to files API",
-                data={"file": data, "name": target},
-                headers=self.auth_write,
-            )
-        else:
-            raise RuntimeError("No file or bucket link available for deposition.")
+        url = f"{deposition.links.files}"
+        headers = {
+            "Content-Type": "application/json",
+        } | self.auth_write
+        params = {"key": target}
+        return await self.request(
+            "POST",
+            url,
+            log_label=f"Starting upload of {target}",
+            headers=headers,
+            params=params,
+        )
+
+    async def upload_data_to_file(
+        self, deposition: Deposition, target: str, data: BinaryIO
+    ) -> None:
+        """Upload data to a file deposition.
+
+        Args:
+            deposition: the deposition you are applying this change to.
+            target: the filename of the file you want to upload data to.
+            data: the actual data associated with the file.
+
+        Returns:
+            None if success.
+        """
+        url = f"{deposition.links.files}/{target}/content"
+        headers = {
+            "Content-Type": "application/octet-stream",
+        } | self.auth_write
+        return await self.request(
+            "PUT",
+            url,
+            log_label=f"Uploading {target} data",
+            data={"content": data},
+            headers=headers,
+        )
+
+    async def complete_file_upload(
+        self,
+        deposition: Deposition,
+        target: str,
+    ) -> None:
+        """Create a file in a deposition.
+
+        Args:
+            deposition: the deposition you are applying this change to.
+            target: the filename of the file you want to upload.
+
+        Returns:
+            None if success.
+        """
+        url = f"{deposition.links.files}/{target}/commit"
+        return await self.request(
+            "POST",
+            url,
+            log_label=f"Committing upload of {target}",
+            headers=self.auth_write,
+        )
 
     async def update_file(
         self, deposition: Deposition, target: str, data: BinaryIO

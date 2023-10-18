@@ -64,6 +64,7 @@ class DepositionMetadata(BaseModel):
     language: str = "eng"
     title: str
     creators: list[DepositionCreator]
+    communities: list[dict] | None = None
     description: str
     access_right: str = "open"
     license_: str = Field(alias="license")
@@ -151,15 +152,28 @@ class DepositionFile(BaseModel):
 class DepositionLinks(BaseModel):
     """Pydantic model representing zenodo deposition Links."""
 
-    bucket: AnyHttpUrl | None = None
-    discard: AnyHttpUrl | None = None
-    edit: AnyHttpUrl | None = None
-    files: AnyHttpUrl | None = None
-    html: AnyHttpUrl | None = None
-    latest_draft: AnyHttpUrl | None = None
-    latest_draft_html: AnyHttpUrl | None = None
-    publish: AnyHttpUrl | None = None
     self: AnyHttpUrl | None = None
+    self_html: AnyHttpUrl | None = None
+    parent_doi: AnyHttpUrl | None = None
+    self_iiif_manifest: AnyHttpUrl | None = None
+    self_iiif_sequency: AnyHttpUrl | None = None
+    files: AnyHttpUrl | None = None
+    media_files: AnyHttpUrl | None = None
+    archive: AnyHttpUrl | None = None
+    archive_media: AnyHttpUrl | None = None
+    record: AnyHttpUrl | None = None
+    record_html: AnyHttpUrl | None = None
+    publish: AnyHttpUrl | None = None
+    review: AnyHttpUrl | None = None
+    versions: AnyHttpUrl | None = None
+    access_links: AnyHttpUrl | None = None
+    access_users: AnyHttpUrl | None = None
+    access_request: AnyHttpUrl | None = None
+    access: AnyHttpUrl | None = None
+    reserve_doi: AnyHttpUrl | None = None
+    communities: AnyHttpUrl | None = None
+    communities_suggestions: AnyHttpUrl | None = None
+    requests: AnyHttpUrl | None = None
 
 
 class Deposition(BaseModel):
