@@ -226,40 +226,13 @@ class ZenodoDepositor:
         # If files already in new deposition, remove.
         if len(new_deposition.files) > 0:
             await self.delete_deposition(new_deposition)  # DEBUG ME!
-            # new_deposition = await self.get_new_deposition_version(deposition) # Debug: Something isn't working here!
+            new_deposition = await self.get_new_deposition_version(
+                deposition
+            )  # Debug: Something isn't working here!
 
         # Link files from previous deposition.
         await self.link_previous_files(new_deposition)
 
-        # new_deposition_url = old_deposition.links.latest_draft
-
-        # source_metadata = old_deposition.metadata.dict(by_alias=True)
-        # metadata = {}
-        # for key, val in source_metadata.items():
-        #     if key not in ["doi", "prereserve_doi", "publication_date"]:
-        #         metadata[key] = val
-
-        # previous = semantic_version.Version(source_metadata["version"])
-        # version_info = previous.next_major()
-
-        # metadata["version"] = str(version_info)
-
-        # # Update metadata of new deposition with new version info
-        # data = json.dumps({"metadata": metadata})
-
-        # # Get url to newest deposition
-        # new_deposition_url = old_deposition.links.latest_draft
-        # headers = {
-        #     "Content-Type": "application/json",
-        # } | self.auth_write
-
-        # response = await self.request(
-        #     "PUT",
-        #     new_deposition_url,
-        #     log_label=f"Updating version number from {previous} ({old_deposition.id_}) to {version_info}",
-        #     data=data,
-        #     headers=headers,
-        # )
         return new_deposition
 
     async def get_new_deposition_version(self, deposition: Deposition):
@@ -268,7 +241,7 @@ class ZenodoDepositor:
         response = await self.request(
             "POST",
             url,
-            log_label="Creating new version",
+            log_label="Creating new version.",
             headers=self.auth_write,
         )
         return Deposition(**response)
@@ -280,7 +253,7 @@ class ZenodoDepositor:
         await self.request(
             "POST",
             url,
-            log_label="Linking files from previous deposition",
+            log_label="Linking files from previous deposition.",
             headers=self.auth_write,
         )
 
@@ -382,14 +355,16 @@ class ZenodoDepositor:
         headers = {
             "Content-Type": "application/json",
         } | self.auth_write
-        params = {"key": target}
-        return await self.request(
+        params = {"key": target}  # NOT WORKING CURRENTLY?
+        response = await self.request(
             "POST",
             url,
             log_label=f"Starting upload of {target}",
             headers=headers,
             params=params,
         )
+        logger.info(response)
+        return response
 
     async def upload_data_to_file(
         self, deposition: Deposition, target: str, data: BinaryIO
