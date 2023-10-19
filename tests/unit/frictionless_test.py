@@ -20,7 +20,7 @@ def test_datapackage():
             filename=name,
             id="fake_id",
             filesize=random.randint(1, 10000),  # nosec
-            links=FileLinks(download="https://fake.url.com"),
+            links=FileLinks(self="https://fake.url.com"),
         )
         for name in files
     ]

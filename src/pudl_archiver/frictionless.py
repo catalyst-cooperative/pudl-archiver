@@ -50,11 +50,17 @@ class Resource(BaseModel):
         """
         filename = Path(file.filename)
         mt = MEDIA_TYPES[filename.suffix[1:]]
+        if "/api" in file.links.self:
+            stable_path = file.links.self.replace(
+                "/api", ""
+            )  # Remove /api from link to get stable path
+        else:
+            stable_path = file.links.self
 
         return cls(
             name=file.filename,
-            path=file.links.download,
-            remote_url=file.links.download,
+            path=stable_path,
+            remote_url=stable_path,
             title=filename.name,
             mediatype=mt,
             parts=parts,

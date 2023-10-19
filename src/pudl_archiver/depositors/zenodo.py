@@ -1,17 +1,14 @@
 """Handle all deposition actions within Zenodo."""
 import asyncio
-
-# import json
+import json
 import logging
 from typing import BinaryIO, Literal
 
 import aiohttp
+import semantic_version  # type: ignore
 
 from pudl_archiver.utils import retry_async
 from pudl_archiver.zenodo.entities import Deposition, DepositionMetadata
-
-# import semantic_version  # type: ignore
-
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
@@ -233,7 +230,37 @@ class ZenodoDepositor:
         # Link files from previous deposition.
         await self.link_previous_files(new_deposition)
 
-        return new_deposition
+        # Update metadata from previous deposition.
+        old_metadata = deposition.metadata.dict(by_alias=True)
+        new_metadata = new_deposition.metadata.dict(by_alias=True)
+
+        # Update version number from previous metadata.
+        previous = semantic_version.Version(old_metadata["version"])
+        version_info = previous.next_major()
+
+        new_metadata["version"] = str(version_info)
+        # TO DO - update DOI field??
+        # To do - fix pydantic validation errors for contributors and license.
+
+        # Update metadata of new deposition with new version info
+        data = json.dumps({"metadata": new_metadata})
+
+        # Get url to newest deposition
+        new_deposition_url = new_deposition.links.self
+        logger.info(new_deposition_url)
+        headers = {
+            "Content-Type": "application/json",
+        } | self.auth_write
+
+        response = await self.request(
+            "PUT",
+            new_deposition_url,
+            log_label=f"Updating version number from {previous} ({deposition.id_}) to {version_info}",
+            data=data,
+            headers=headers,
+        )
+        logger.info(response)
+        return Deposition(**response)
 
     async def get_new_deposition_version(self, deposition: Deposition):
         """Create a new draft deposition version."""
