@@ -359,9 +359,10 @@ class ZenodoDepositor:
         Returns:
             None if success.
         """
-        await self.start_file_upload(deposition, target)
-        await self.upload_data_to_file(deposition, target, data)
-        return await self.complete_file_upload(deposition, target)
+        response = await self.start_file_upload(deposition, target)
+        file_links = response.json()["entries"][0]["links"]
+        await self.upload_data_to_file(file_links, target, data)
+        return await self.complete_file_upload(file_links, target)
 
     async def start_file_upload(
         self,
@@ -378,41 +379,37 @@ class ZenodoDepositor:
         Returns:
             None if success.
         """
-        url = f"{deposition.links.files}"
         headers = {
             "Content-Type": "application/json",
         } | self.auth_write
-        params = {"key": target}  # NOT WORKING CURRENTLY?
-        response = await self.request(
+        data = json.dumps([{"key": target}])
+        return await self.request(
             "POST",
-            url,
+            deposition.links.files,
             log_label=f"Starting upload of {target}",
             headers=headers,
-            params=params,
+            data=data,
         )
-        logger.info(response)
-        return response
 
     async def upload_data_to_file(
-        self, deposition: Deposition, target: str, data: BinaryIO
+        self, file_links: dict, target: str, data: BinaryIO
     ) -> None:
         """Upload data to a file deposition.
 
         Args:
-            deposition: the deposition you are applying this change to.
+            file_links: list of Zenodo links associated with file.
             target: the filename of the file you want to upload data to.
             data: the actual data associated with the file.
 
         Returns:
             None if success.
         """
-        url = f"{deposition.links.files}/{target}/content"
         headers = {
             "Content-Type": "application/octet-stream",
         } | self.auth_write
         return await self.request(
             "PUT",
-            url,
+            file_links["content"],
             log_label=f"Uploading {target} data",
             data={"content": data},
             headers=headers,
@@ -420,22 +417,21 @@ class ZenodoDepositor:
 
     async def complete_file_upload(
         self,
-        deposition: Deposition,
+        file_links: dict,
         target: str,
     ) -> None:
         """Create a file in a deposition.
 
         Args:
-            deposition: the deposition you are applying this change to.
+            file_links: list of Zenodo links associated with file.
             target: the filename of the file you want to upload.
 
         Returns:
             None if success.
         """
-        url = f"{deposition.links.files}/{target}/commit"
         return await self.request(
             "POST",
-            url,
+            file_links["commit"],
             log_label=f"Committing upload of {target}",
             headers=self.auth_write,
         )
