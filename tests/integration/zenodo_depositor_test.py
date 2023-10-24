@@ -10,7 +10,12 @@ from dotenv import load_dotenv
 from pudl_archiver.depositors import ZenodoDepositor
 from pudl_archiver.depositors.zenodo import ZenodoClientException
 from pudl_archiver.utils import retry_async
-from pudl_archiver.zenodo.entities import DepositionCreator, DepositionMetadata
+from pudl_archiver.zenodo.entities import (
+    Affiliation,
+    DepositionCreator,
+    DepositionMetadata,
+    Organization,
+)
 
 
 @pytest_asyncio.fixture()
@@ -41,7 +46,10 @@ async def empty_deposition(depositor):
         title="PUDL Test",
         creators=[
             DepositionCreator(
-                name="catalyst-cooperative", affiliation="Catalyst Cooperative"
+                person_or_org=Organization(
+                    name="catalyst-cooperative", type="organizational"
+                ),
+                affiliation=Affiliation(name="catalyst-cooperative"),
             )
         ],
         description="Test dataset for the sandbox, thanks!",
