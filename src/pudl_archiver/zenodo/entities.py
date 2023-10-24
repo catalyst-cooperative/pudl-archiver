@@ -44,9 +44,9 @@ following resources:
 class Person(BaseModel):
     """Pydantic model representing individual Zenodo deposition creators."""
 
-    type_: Literal["personal", "organizational"] | None = None
-    given_name: str | None = None
-    family_name: str | None = None
+    type_: Literal["personal", "organizational"] = Field(alias="type")
+    given_name: str
+    family_name: str
     identifiers: dict[str, str] | None = None
 
     @classmethod
@@ -78,10 +78,8 @@ class Person(BaseModel):
 class Organization(BaseModel):
     """Pydantic model representing organizational Zenodo deposition creators."""
 
-    type_: Literal[
-        "personal", "organizational"
-    ] | None = None  # TO DO: Fix to be 'type'
-    name: str | None = None
+    type_: Literal["personal", "organizational"] = Field(alias="type")
+    name: str
     identifiers: dict[str, str] | None = None
 
     @classmethod
@@ -93,7 +91,7 @@ class Organization(BaseModel):
 class Affiliation(BaseModel):
     """Pydantic model representing organization affiliations of deposition creators."""
 
-    id_: str | None = None
+    id_: str | None = Field(alias="id")
     name: str | None = None
 
     @classmethod
@@ -105,7 +103,7 @@ class Affiliation(BaseModel):
 class Role(BaseModel):
     """Pydantic model representing organization roles of deposition creators."""
 
-    id_: str | None = None
+    id_: str | None = Field(alias="id")
 
     @classmethod
     def from_contributor(cls, contributor: Contributor) -> "Role":
@@ -119,7 +117,7 @@ class DepositionCreator(BaseModel):
     See https://inveniordm.docs.cern.ch/reference/metadata/#creators-1-n.
     """
 
-    person_or_org: Person | Organization | None = None
+    person_or_org: Person | Organization
     affiliation: Affiliation | str | None = (
         None  # String is for pre-migration datapackages.
     )
@@ -128,10 +126,10 @@ class DepositionCreator(BaseModel):
     @classmethod
     def from_contributor(cls, contributor: Contributor) -> "DepositionCreator":
         """Construct deposition metadata object from PUDL Contributor model."""
-        if contributor.title == "Catalyst Cooperative":
+        if contributor.title != contributor.organization:
             person_or_org = Person.from_contributor(contributor)
         else:
-            person_or_org = Organization.from_contributor(contributor)
+            person_or_org = Organization.from_contributor(contributor)  # Debug
         return cls(
             person_or_org=person_or_org,
             affiliation=Affiliation.from_contributor(contributor),
@@ -142,7 +140,7 @@ class DepositionCreator(BaseModel):
 class License(BaseModel):
     """Pydantic model representing dataset licenses for Zenodo deposition."""
 
-    id_: str | None = None
+    id_: str | None = Field(alias="id")
     title: str | None = None
     description: str | None = None
     link: AnyHttpUrl | None = None

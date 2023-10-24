@@ -128,12 +128,14 @@ class ZenodoDepositor:
         } | self.auth_write
 
         payload = {
+            "access": {"record": "public", "files": "public"},  # TO DO: don't hardcode?
+            "files": json.dumps({"enabled": True}),
             "metadata": metadata.dict(
                 by_alias=True,
                 exclude={"publication_date", "doi", "prereserve_doi"},
-            )
+            ),
         }
-
+        logger.info(payload)
         response = await self.request(
             "POST", url, "Create new deposition", json=payload, headers=headers
         )
@@ -275,8 +277,6 @@ class ZenodoDepositor:
             data=data,
             headers=headers,
         )
-
-        logger.info(response)
         return Deposition(**response)
 
     async def get_new_deposition_version(self, deposition: Deposition):
