@@ -170,7 +170,7 @@ class DepositionMetadata(BaseModel):
     publication_date: datetime.date = None
     language: str = "eng"
     title: str
-    creators: list[DepositionCreator] | None = None  # To do: fix and remove None here?
+    creators: list[DepositionCreator]
     communities: list[dict] | None = None
     description: str
     access_right: str = "open"
