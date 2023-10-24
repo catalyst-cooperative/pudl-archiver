@@ -239,7 +239,9 @@ class DepositionOrchestrator:
             for name in files_to_delete
         ]
 
-        self.new_deposition = await self.depositor.get_record(self.new_deposition.id_)
+        self.new_deposition = await self.depositor.get_draft_record(
+            self.new_deposition.id_
+        )
         if changed:
             # If there are any changes detected update datapackage and publish
             new_datapackage, old_datapackage = await self._update_datapackage(resources)
@@ -259,7 +261,7 @@ class DepositionOrchestrator:
             else:
                 logger.info("Skipping publishing deposition to allow manual review.")
                 logger.info(
-                    f"Review new deposition at {self.new_deposition.links.html}"
+                    f"Review new deposition at {self.new_deposition.links.self_html}"
                 )
             return run_summary
         else:

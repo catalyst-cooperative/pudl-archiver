@@ -3,12 +3,15 @@
 See https://developers.zenodo.org/#entities for more info.
 """
 import datetime
+import logging
 import re
 from typing import Literal
 
 from pydantic import AnyHttpUrl, BaseModel, ConstrainedStr, Field, validator
 
 from pudl.metadata.classes import Contributor, DataSource
+
+logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 
 class Doi(ConstrainedStr):
@@ -38,19 +41,125 @@ following resources:
 """
 
 
+class Person(BaseModel):
+    """Pydantic model representing individual Zenodo deposition creators."""
+
+    type_: Literal["personal", "organizational"] | None = None
+    given_name: str | None = None
+    family_name: str | None = None
+    identifiers: dict[str, str] | None = None
+
+    @classmethod
+    def from_contributor(cls, contributor: Contributor) -> "Person":
+        """Construct deposition metadata object from PUDL Contributor model."""
+        # Split name into first and last. Spit warning if this splits into three.
+        names = contributor.title.split(" ")
+        if len(names) > 2:
+            logger.warning(
+                f"Contributor {contributor.title} has name length > 2. Only taking first and last name."
+            )
+        given_name = names[0]
+        family_name = names[-1]
+
+        # Right now we only handle ORCIDs, we could include other supported ID schemes.
+        if contributor.orcid:
+            identifiers = {"scheme": "orcid", "identifier": contributor.orcid}
+        else:
+            identifiers = {}
+
+        return cls(
+            type="personal",
+            given_name=given_name,
+            family_name=family_name,
+            identifiers=identifiers,
+        )
+
+
+class Organization(BaseModel):
+    """Pydantic model representing organizational Zenodo deposition creators."""
+
+    type_: Literal[
+        "personal", "organizational"
+    ] | None = None  # TO DO: Fix to be 'type'
+    name: str | None = None
+    identifiers: dict[str, str] | None = None
+
+    @classmethod
+    def from_contributor(cls, contributor: Contributor) -> "Organization":
+        """Construct deposition metadata object from PUDL Contributor model."""
+        return cls(type="organizational", name=contributor.title)
+
+
+class Affiliation(BaseModel):
+    """Pydantic model representing organization affiliations of deposition creators."""
+
+    id_: str | None = None
+    name: str | None = None
+
+    @classmethod
+    def from_contributor(cls, contributor: Contributor) -> "Affiliation":
+        """Construct deposition metadata object from PUDL Contributor model."""
+        return cls(name=contributor.organization)
+
+
+class Role(BaseModel):
+    """Pydantic model representing organization roles of deposition creators."""
+
+    id_: str | None = None
+
+    @classmethod
+    def from_contributor(cls, contributor: Contributor) -> "Role":
+        """Construct deposition metadata object from PUDL Contributor model."""
+        return cls(id=contributor.role)
+
+
 class DepositionCreator(BaseModel):
     """Pydantic model representing zenodo deposition creators.
 
-    See https://developers.zenodo.org/#representation.
+    See https://inveniordm.docs.cern.ch/reference/metadata/#creators-1-n.
     """
 
-    name: str
-    affiliation: str | None = None
+    person_or_org: Person | Organization | None = None
+    affiliation: Affiliation | str | None = (
+        None  # String is for pre-migration datapackages.
+    )
+    role: Role | None = None
 
     @classmethod
     def from_contributor(cls, contributor: Contributor) -> "DepositionCreator":
         """Construct deposition metadata object from PUDL Contributor model."""
-        return cls(name=contributor.title, affiliation=contributor.organization)
+        if contributor.title == "Catalyst Cooperative":
+            person_or_org = Person.from_contributor(contributor)
+        else:
+            person_or_org = Organization.from_contributor(contributor)
+        return cls(
+            person_or_org=person_or_org,
+            affiliation=Affiliation.from_contributor(contributor),
+            role=Role.from_contributor(contributor),
+        )
+
+
+class License(BaseModel):
+    """Pydantic model representing dataset licenses for Zenodo deposition."""
+
+    id_: str | None = None
+    title: str | None = None
+    description: str | None = None
+    link: AnyHttpUrl | None = None
+
+    @classmethod
+    def from_data_source(cls, data_source: str) -> "License":
+        """Construct deposition metadata object from PUDL Contributor model."""
+        license_raw = data_source.license_raw
+        # Can only provide ID or title to Zenodo, not both.
+        if license_raw.name == "CC-BY-4.0":
+            license_id = license_raw.name.lower()
+            title = None
+        else:
+            title = license_raw.name
+            license_id = None
+        link = license_raw.path
+        return cls(id=license_id, title=title, link=link)
 
 
 class DepositionMetadata(BaseModel):
@@ -63,11 +172,11 @@ class DepositionMetadata(BaseModel):
     publication_date: datetime.date = None
     language: str = "eng"
     title: str
-    creators: list[DepositionCreator]
+    creators: list[DepositionCreator] | None = None  # To do: fix and remove None here?
     communities: list[dict] | None = None
     description: str
     access_right: str = "open"
-    license_: str = Field(alias="license")
+    license_: License | None = None
     doi: Doi | SandboxDoi | None = None
     prereserve_doi: dict | bool = False
     keywords: list[str] | None = None
@@ -103,7 +212,7 @@ class DepositionMetadata(BaseModel):
                 f"{PUDL_DESCRIPTION}"
             ),
             creators=creators,
-            license=data_source.license_raw.name,
+            license=License.from_data_source(data_source),
             keywords=data_source.keywords,
             version="1.0.0",
         )
@@ -190,8 +299,8 @@ class Deposition(BaseModel):
     metadata: DepositionMetadata
     modified: datetime.datetime
     links: DepositionLinks
-    owner: int
-    record_id: int
+    owners: list[dict] = []
+    recid: int
     record_url: AnyHttpUrl | None = None
     state: Literal["inprogress", "done", "error", "submitted", "unsubmitted"]
     submitted: bool

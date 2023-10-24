@@ -168,11 +168,11 @@ class ZenodoDepositor:
             params=params,
             headers=self.auth_write,
         )
-        if len(response) > 1:
+        if response["hits"]["total"] > 1:
             logger.info(
-                f"{concept_doi} points at multiple records: {[r['id'] for r in response]}"
+                f"{concept_doi} points at multiple records: {[r['id'] for r in response['hits']['hits']]}"
             )
-        depositions = [Deposition(**dep) for dep in response]
+        depositions = [Deposition(**dep) for dep in response["hits"]["hits"]]
 
         if published_only:
             depositions = [dep for dep in depositions if dep.submitted]
@@ -190,6 +190,20 @@ class ZenodoDepositor:
             "GET",
             f"{self.api_root}/records/{rec_id}",
             log_label=f"Get deposition for {rec_id}",
+            headers=self.auth_write,
+        )
+        return Deposition(**response)
+
+    async def get_draft_record(self, rec_id: int) -> Deposition:
+        """Get a deposition by its record ID directly instead of through concept.
+
+        Args:
+            rec_id: The record ID of the deposition you would like to get.
+        """
+        response = await self.request(
+            "GET",
+            f"{self.api_root}/records/{rec_id}/draft",
+            log_label=f"Get draft deposition for {rec_id}",
             headers=self.auth_write,
         )
         return Deposition(**response)
@@ -237,17 +251,19 @@ class ZenodoDepositor:
         # Update version number from previous metadata.
         previous = semantic_version.Version(old_metadata["version"])
         version_info = previous.next_major()
-
         new_metadata["version"] = str(version_info)
-        # TO DO - update DOI field??
-        # To do - fix pydantic validation errors for contributors and license.
+
+        # Update creators
+        if "person_or_org" in old_metadata:
+            new_metadata["creators"] = old_metadata["creators"]
+        else:
+            pass  # TO DO: add in method to update old datapackages from contribs for data source?
 
         # Update metadata of new deposition with new version info
         data = json.dumps({"metadata": new_metadata})
 
         # Get url to newest deposition
         new_deposition_url = new_deposition.links.self
-        logger.info(new_deposition_url)
         headers = {
             "Content-Type": "application/json",
         } | self.auth_write
@@ -259,6 +275,7 @@ class ZenodoDepositor:
             data=data,
             headers=headers,
         )
+
         logger.info(response)
         return Deposition(**response)
 
@@ -275,7 +292,7 @@ class ZenodoDepositor:
 
     async def link_previous_files(self, new_deposition: Deposition) -> Deposition:
         """Transfer files over to new deposition."""
-        draft_id = new_deposition.record_id
+        draft_id = new_deposition.recid
         url = f"{self.api_root}/records/{draft_id}/draft/actions/files-import"
         await self.request(
             "POST",
@@ -360,7 +377,11 @@ class ZenodoDepositor:
             None if success.
         """
         response = await self.start_file_upload(deposition, target)
-        file_links = response.json()["entries"][0]["links"]
+        # Find the metadata for our target in a list of entries.
+        file_response = next(
+            item for item in response["entries"] if item["key"] == target
+        )
+        file_links = file_response["links"]
         await self.upload_data_to_file(file_links, target, data)
         return await self.complete_file_upload(file_links, target)
 
@@ -373,7 +394,7 @@ class ZenodoDepositor:
 
         Args:
             deposition: the deposition you are applying this change to.
-            target: the filename of the file you want to delete.
+            target: the filename of the file you want to create.
             data: the actual data associated with the file.
 
         Returns:
