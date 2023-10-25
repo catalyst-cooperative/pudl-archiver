@@ -54,7 +54,7 @@ async def empty_deposition(depositor):
         ],
         description="Test dataset for the sandbox, thanks!",
         version="1.0.0",
-        license="CC0-1.0",
+        license={"id": "CC0-1.0"},
         keywords=["test"],
     )
 

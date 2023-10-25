@@ -19,9 +19,11 @@ from pudl_archiver.depositors.zenodo import ZenodoClientException
 from pudl_archiver.orchestrator import DepositionOrchestrator
 from pudl_archiver.utils import retry_async
 from pudl_archiver.zenodo.entities import (
+    Affiliation,
     Deposition,
     DepositionCreator,
     DepositionMetadata,
+    Organization,
 )
 
 
@@ -38,12 +40,15 @@ def deposition_metadata():
         title="PUDL Test",
         creators=[
             DepositionCreator(
-                name="catalyst-cooperative", affiliation="Catalyst Cooperative"
+                person_or_org=Organization(
+                    name="catalyst-cooperative", type="organizational"
+                ),
+                affiliation=Affiliation(name="catalyst-cooperative"),
             )
         ],
         description="Test dataset for the sandbox, thanks!",
         version="1.0.0",
-        license="cc-zero",
+        license={"id": "CC0-1.0"},
         keywords=["test"],
     )
 
