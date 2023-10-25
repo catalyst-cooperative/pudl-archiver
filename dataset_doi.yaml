@@ -9,43 +9,43 @@ eia860:
   sandbox_doi: 10.5281/zenodo.123456
 eia860m:
   production_doi: 10.5281/zenodo.4281336
-  sandbox_doi: 10.5281/zenodo.8188017
+  sandbox_doi: 10.5281/zenodo.4281336
 eia861:
   production_doi: 10.5281/zenodo.4127028
-  sandbox_doi: 10.5281/zenodo.8231268
+  sandbox_doi: 10.5281/zenodo.4127028
 eia923:
   production_doi: 10.5281/zenodo.4127039
-  sandbox_doi: 10.5281/zenodo.8172818
+  sandbox_doi: 10.5281/zenodo.4127039
 eia_bulk_elec:
   production_doi: 10.5281/zenodo.7067366
-  sandbox_doi: 10.5281/zenodo.7682482
+  sandbox_doi: 10.5281/zenodo.7067366
 eiawater:
   production_doi: 10.5281/zenodo.7683135
   sandbox_doi: 10.5281/zenodo.123456
 epacamd_eia:
   production_doi: 10.5281/zenodo.6633769
-  sandbox_doi: 10.5281/zenodo.7900974
+  sandbox_doi: 10.5281/zenodo.6633769
 epacems:
   production_doi: 10.5281/zenodo.4127054
   sandbox_doi: 10.5281/zenodo.123456
 ferc1:
   production_doi: 10.5281/zenodo.4127043
-  sandbox_doi: 10.5281/zenodo.8234738
+  sandbox_doi: 10.5281/zenodo.4127043
 ferc2:
   production_doi: 10.5281/zenodo.5879542
-  sandbox_doi: 10.5281/zenodo.8006881
+  sandbox_doi: 10.5281/zenodo.5879542
 ferc6:
   production_doi: 10.5281/zenodo.7126395
-  sandbox_doi: 10.5281/zenodo.7130141
+  sandbox_doi: 10.5281/zenodo.7126395
 ferc60:
   production_doi: 10.5281/zenodo.7126434
   sandbox_doi: 10.5281/zenodo.123456
 ferc714:
   production_doi: 10.5281/zenodo.4127100
-  sandbox_doi: 10.5281/zenodo.7139875
+  sandbox_doi: 10.5281/zenodo.4127100
 mshamines:
   production_doi: 10.5281/zenodo.7683517
-  sandbox_doi: 10.5281/zenodo.7683518
+  sandbox_doi: 10.5281/zenodo.7683517
 phmsagas:
   production_doi: 10.5281/zenodo.7683351
-  sandbox_doi: 10.5281/zenodo.7683352
+  sandbox_doi: 10.5281/zenodo.7683351
