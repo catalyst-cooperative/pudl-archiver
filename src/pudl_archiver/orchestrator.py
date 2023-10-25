@@ -20,7 +20,6 @@ from pudl_archiver.zenodo.entities import (
     DepositionFile,
     DepositionMetadata,
     Doi,
-    SandboxDoi,
 )
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
@@ -69,7 +68,7 @@ class DatasetSettings(BaseModel):
     """Simple model to validate doi's in settings."""
 
     production_doi: Doi | None = None
-    sandbox_doi: SandboxDoi | None = None
+    sandbox_doi: Doi | None = None
 
 
 def _compute_md5(file_path: Path) -> str:

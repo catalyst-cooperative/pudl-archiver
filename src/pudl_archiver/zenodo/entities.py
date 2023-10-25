@@ -15,15 +15,9 @@ logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 
 class Doi(ConstrainedStr):
-    """The DOI format for production Zenodo."""
+    """The DOI format for production and sandbox Zenodo."""
 
     regex = re.compile(r"10\.5281/zenodo\.\d{6,7}")
-
-
-class SandboxDoi(ConstrainedStr):
-    """The DOI format for sandbox Zenodo."""
-
-    regex = re.compile(r"10\.5072/zenodo\.\d{6,7}")
 
 
 PUDL_DESCRIPTION = """
@@ -166,7 +160,6 @@ class DepositionMetadata(BaseModel):
     See https://developers.zenodo.org/#representation.
     """
 
-    upload_type: str = "dataset"
     publication_date: datetime.date = None
     language: str = "eng"
     title: str
@@ -174,8 +167,8 @@ class DepositionMetadata(BaseModel):
     communities: list[dict] | None = None
     description: str
     access_right: str = "open"
-    license_: License | None = None
-    doi: Doi | SandboxDoi | None = None
+    license_: License | None = Field(alias="license")
+    doi: Doi | None = None
     prereserve_doi: dict | bool = False
     keywords: list[str] | None = None
     version: str | None = None
@@ -289,7 +282,7 @@ class Deposition(BaseModel):
     See https://developers.zenodo.org/#depositions.
     """
 
-    conceptdoi: Doi | SandboxDoi | None = None
+    conceptdoi: Doi
     conceptrecid: str
     created: datetime.datetime
     files: list[DepositionFile] = []
@@ -300,6 +293,7 @@ class Deposition(BaseModel):
     owners: list[dict] = []
     recid: int
     record_url: AnyHttpUrl | None = None
+    resource_type: dict[str, str] = {"id": "dataset"}
     state: Literal["inprogress", "done", "error", "submitted", "unsubmitted"]
     submitted: bool
     title: str

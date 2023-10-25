@@ -127,14 +127,19 @@ class ZenodoDepositor:
             "Content-Type": "application/json",
         } | self.auth_write
 
-        payload = {
-            "access": {"record": "public", "files": "public"},  # TO DO: don't hardcode?
-            "files": json.dumps({"enabled": True}),
-            "metadata": metadata.dict(
-                by_alias=True,
-                exclude={"publication_date", "doi", "prereserve_doi"},
-            ),
-        }
+        payload = json.dumps(
+            {
+                "access": {
+                    "record": "public",
+                    "files": "public",
+                },  # TO DO: don't hardcode?
+                "files": {"enabled": True},
+                "metadata": metadata.dict(
+                    by_alias=True,
+                    exclude={"publication_date", "doi", "prereserve_doi"},
+                ),
+            }
+        )
         logger.info(payload)
         response = await self.request(
             "POST", url, "Create new deposition", json=payload, headers=headers
@@ -170,6 +175,7 @@ class ZenodoDepositor:
             params=params,
             headers=self.auth_write,
         )
+        logger.info(response)
         if response["hits"]["total"] > 1:
             logger.info(
                 f"{concept_doi} points at multiple records: {[r['id'] for r in response['hits']['hits']]}"
