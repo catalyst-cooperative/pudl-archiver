@@ -366,7 +366,7 @@ class DepositionVersion(BaseModel):
     Response returned by `create_new_deposition_version` method, which is formatted
     differently than the response to `get_record`. There are more fields captured here
     that aren't mapped by this class, but as we are interested
-    in the links, id and metadata primarily they are not presently included,
+    in the links, ID and metadata primarily they are not presently included,
     as they are returned when the DOI is registered in the `get_new_version` method.
 
     See https://inveniordm.docs.cern.ch/reference/rest_api_drafts_records/#create-a-new-version.
