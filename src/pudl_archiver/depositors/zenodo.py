@@ -172,7 +172,7 @@ class ZenodoDepositor:
         return response
 
     async def get_deposition(
-        self, conceptrecid: str, published_only: bool = False
+        self, conceptid: str, published_only: bool = False
     ) -> Deposition:
         """Get the latest deposition associated with a concept DOI.
 
@@ -181,8 +181,8 @@ class ZenodoDepositor:
         that to make another request for the "full" data.
 
         Args:
-            concept_doi: the DOI for the concept - gets the latest associated
-                DOI.
+            conceptid: Either the concept ID or the DOI for the concept
+                - gets the latest associated DOI.
             published_only: if True, only returns depositions that have been
                 published.
 
@@ -190,18 +190,22 @@ class ZenodoDepositor:
             The latest deposition associated with the concept DOI.
         """
         url = f"{self.api_root}/records"
-        params = {"q": f'conceptrecid:"{conceptrecid}"'}
+        if "zenodo." in conceptid:
+            params = {"q": f'conceptdoi:"{conceptid}"'}
+        else:
+            params = {"q": f'conceptrecid:"{conceptid}"'}
 
         response = await self.request(
             "GET",
             url,
-            f"Query depositions for {conceptrecid}",
+            f"Query depositions for {conceptid}",
             params=params,
             headers=self.auth_write,
         )
+        logger.info(response)
         if response["hits"]["total"] > 1:
             logger.info(
-                f"{conceptrecid} points at multiple records: {[r['id'] for r in response['hits']['hits']]}"
+                f"{conceptid} points at multiple records: {[r['id'] for r in response['hits']['hits']]}"
             )
         depositions = [Deposition(**dep) for dep in response["hits"]["hits"]]
 
@@ -267,6 +271,11 @@ class ZenodoDepositor:
         # Create new version of deposition, deleting draft if it already exists.
         new_deposition = await self.create_new_deposition_version(deposition)
 
+        # If there are already files here, this won't work. Delete the draft first.
+        if new_deposition.files.count > 0:
+            await self.delete_deposition(new_deposition)
+            new_deposition = await self.create_new_deposition_version(deposition)
+
         # Link files from previous deposition.
         await self.link_previous_files(new_deposition)
 
@@ -281,8 +290,6 @@ class ZenodoDepositor:
 
         # Update publication date to today.
         new_metadata["publication_date"] = str(date.today())
-
-        # And translate 'creators' response to required format.
 
         # Update metadata of new deposition with new version info
         data = json.dumps({"metadata": new_metadata})
@@ -321,7 +328,6 @@ class ZenodoDepositor:
             log_label="Creating new version.",
             headers=headers,
         )
-        logger.info(response)
         return DepositionVersion(**response)
 
     async def link_previous_files(
@@ -360,11 +366,16 @@ class ZenodoDepositor:
         Args:
             deposition: the deposition you want to delete.
         """
+        headers = {
+            "Accept": "application/vnd.inveniordm.v1+json",
+            "Content-Type": "application/json",
+        } | self.auth_write
+
         await self.request(
             "DELETE",
             deposition.links.self,
             log_label="Deleting deposition",
-            headers=self.auth_write,
+            headers=headers,
             parse_json=False,
         )
 

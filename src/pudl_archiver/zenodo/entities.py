@@ -209,7 +209,7 @@ class DepositionMetadata(BaseModel):
     resource_type: dict[str, str] = {"id": "dataset"}
     publication_date: datetime.date = None
     languages: list[dict[str, str]] = [{"id": "eng"}]
-    title: str
+    title: str | dict[str, str]
     creators: list[DepositionCreator | DepositionCreatorResponse] | None = None
     communities: list[dict] | None = None
     description: str

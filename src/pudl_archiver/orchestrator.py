@@ -281,10 +281,11 @@ class DepositionOrchestrator:
             file_info = self.deposition_files[name]
 
             # If file is not exact match for existing file, update with new file
-            if (
-                not (local_md5 := _compute_md5(resource.local_path))
-                == file_info.checksum
-            ):
+            if not (
+                local_md5 := _compute_md5(resource.local_path)
+            ) == file_info.checksum.replace(
+                "md5:", ""
+            ):  # Remove prefix
                 logger.info(
                     f"Updating {name}: local hash {local_md5} vs. remote {file_info.checksum}"
                 )
