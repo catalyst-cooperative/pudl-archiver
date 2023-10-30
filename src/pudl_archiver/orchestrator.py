@@ -1,6 +1,7 @@
 """Core routines for archiving raw data packages."""
 import io
 import logging
+import re
 from dataclasses import dataclass
 from enum import Enum, auto
 from hashlib import md5
@@ -171,7 +172,7 @@ class DepositionOrchestrator:
         Returns:
             Dictionary mapping filenames to DepositionFile metadata objects.
         """
-        return {f.filename: f for f in deposition.files}
+        return {f.key: f for f in deposition.files}
 
     # TODO (daz): inline this.
     async def _create_deposition(self, data_source_id: str) -> Deposition:
@@ -189,7 +190,7 @@ class DepositionOrchestrator:
             https://developers.zenodo.org/?python#depositions
         """
         metadata = DepositionMetadata.from_data_source(data_source_id)
-        if not metadata.keywords:
+        if not metadata.subjects:
             raise AssertionError(
                 "New dataset is missing keywords and cannot be archived."
             )
@@ -312,7 +313,7 @@ class DepositionOrchestrator:
         """Actually upload and delete what we listed in self.uploads/deletes."""
         if change.action_type in [_DepositionAction.DELETE, _DepositionAction.UPDATE]:
             file_info = self.deposition_files[change.name]
-            await self.depositor.delete_file(self.new_deposition, file_info.filename)
+            await self.depositor.delete_file(self.new_deposition, file_info.key)
         if change.action_type in [_DepositionAction.CREATE, _DepositionAction.UPDATE]:
             if change.resource is None:
                 raise RuntimeError("Must pass a resource to be uploaded.")
@@ -335,6 +336,15 @@ class DepositionOrchestrator:
     def _update_dataset_settings(self, published_deposition):
         # Get new DOI and update settings
         # TODO (daz): split this IO out too.
+
+        # Make concept DOI by substituting concept rec ID into DOI format.
+        # Everywhere else we use the concept record ID but here we want to add the
+        # concept DOI from the datapackage so we make it manually.
+        published_deposition["conceptdoi"] = re.sub(
+            r"\d{6,7}$",
+            published_deposition["conceptrecid"],
+            published_deposition["doi"],
+        )
         if self.sandbox:
             sandbox_doi = published_deposition.conceptdoi
             production_doi = self.dataset_settings.get(
@@ -371,12 +381,12 @@ class DepositionOrchestrator:
             return None, None
 
         logger.info(f"Creating new datapackage.json for {self.data_source_id}")
-        files = {file.filename: file for file in self.new_deposition.files}
+        files = {file.key: file for file in self.new_deposition.files}
 
         old_datapackage = None
         if "datapackage.json" in files:
             # Download old datapackage
-            url = files["datapackage.json"].links.download
+            url = files["datapackage.json"].links.self
             response = await self.depositor.request(
                 "GET",
                 url,

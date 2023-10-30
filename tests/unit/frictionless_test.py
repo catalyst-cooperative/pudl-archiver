@@ -17,9 +17,9 @@ def test_datapackage():
     deposition_files = [
         DepositionFile(
             checksum="fake_hash",
-            filename=name,
+            key=name,
             id="fake_id",
-            filesize=random.randint(1, 10000),  # nosec
+            size=random.randint(1, 10000),  # nosec
             links=FileLinks(self="https://fake.url.com"),
         )
         for name in files

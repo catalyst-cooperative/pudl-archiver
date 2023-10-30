@@ -11,7 +11,6 @@ from pudl_archiver.depositors import ZenodoDepositor
 from pudl_archiver.depositors.zenodo import ZenodoClientException
 from pudl_archiver.utils import retry_async
 from pudl_archiver.zenodo.entities import (
-    Affiliation,
     DepositionCreator,
     DepositionMetadata,
     Organization,
@@ -49,13 +48,14 @@ async def empty_deposition(depositor):
                 person_or_org=Organization(
                     name="catalyst-cooperative", type="organizational"
                 ),
-                affiliation=Affiliation(name="catalyst-cooperative"),
+                affiliations=[{"name": "catalyst-cooperative"}],
+                role={"id": "projectmember"},
             )
         ],
         description="Test dataset for the sandbox, thanks!",
         version="1.0.0",
         license={"id": "CC0-1.0"},
-        keywords=["test"],
+        subjects=[{"subject": "test"}],
     )
 
     deposition = await depositor.create_deposition(deposition_metadata)
@@ -85,10 +85,10 @@ async def initial_deposition(depositor, empty_deposition):
     return await depositor.publish_deposition(empty_deposition)
 
 
-async def get_latest(depositor, conceptdoi, published_only=False):
+async def get_latest(depositor, conceptrecid, published_only=False):
     return await retry_async(
         depositor.get_deposition,
-        args=[conceptdoi],
+        args=[conceptrecid],
         kwargs={"published_only": published_only},
         retry_on=(
             ZenodoClientException,
@@ -115,12 +115,12 @@ async def test_publish_empty(depositor, empty_deposition, mocker):
 
 @pytest.mark.asyncio()
 async def test_delete_deposition(depositor, initial_deposition):
-    """Make a new draft, delete it, and see that the conceptdoi still points
+    """Make a new draft, delete it, and see that the conceptrecid still points
     at the original."""
     draft = await depositor.get_new_version(initial_deposition)
 
     latest = await get_latest(
-        depositor, initial_deposition.conceptdoi, published_only=False
+        depositor, initial_deposition.conceptrecid, published_only=False
     )
     assert latest.id_ == draft.id_
     assert not latest.submitted
@@ -128,14 +128,14 @@ async def test_delete_deposition(depositor, initial_deposition):
     await depositor.delete_deposition(draft)
 
     latest = await get_latest(
-        depositor, initial_deposition.conceptdoi, published_only=True
+        depositor, initial_deposition.conceptrecid, published_only=True
     )
     assert latest.id_ == initial_deposition.id_
 
 
 @pytest.mark.asyncio()
 async def test_get_new_version_clobbers(depositor, initial_deposition):
-    """Make a new draft, delete it, and see that the conceptdoi still points
+    """Make a new draft, delete it, and see that the conceptrecid still points
     at the original."""
 
     bad_draft = await depositor.get_new_version(initial_deposition)
@@ -143,7 +143,7 @@ async def test_get_new_version_clobbers(depositor, initial_deposition):
     assert bad_draft.id_ == non_clobbering.id_
 
     latest = await get_latest(
-        depositor, initial_deposition.conceptdoi, published_only=False
+        depositor, initial_deposition.conceptrecid, published_only=False
     )
     assert latest.id_ == bad_draft.id_
 
@@ -151,6 +151,6 @@ async def test_get_new_version_clobbers(depositor, initial_deposition):
     assert bad_draft.id_ == clobbering.id_
 
     latest = await get_latest(
-        depositor, initial_deposition.conceptdoi, published_only=False
+        depositor, initial_deposition.conceptrecid, published_only=False
     )
     assert latest.id_ == clobbering.id_

@@ -19,7 +19,6 @@ from pudl_archiver.depositors.zenodo import ZenodoClientException
 from pudl_archiver.orchestrator import DepositionOrchestrator
 from pudl_archiver.utils import retry_async
 from pudl_archiver.zenodo.entities import (
-    Affiliation,
     Deposition,
     DepositionCreator,
     DepositionMetadata,
@@ -43,13 +42,14 @@ def deposition_metadata():
                 person_or_org=Organization(
                     name="catalyst-cooperative", type="organizational"
                 ),
-                affiliation=Affiliation(name="catalyst-cooperative"),
+                affiliations=[{"name": "catalyst-cooperative"}],
+                role={"id": "projectmember"},
             )
         ],
         description="Test dataset for the sandbox, thanks!",
         version="1.0.0",
         license={"id": "CC0-1.0"},
-        keywords=["test"],
+        subjects=[{"subject": "test"}],
     )
 
 
@@ -269,14 +269,14 @@ async def test_zenodo_workflow(
     )
     verify_files(test_files["updated"], v2_refreshed)
 
-    # no updates to make, should not leave the conceptdoi pointing at a draft
+    # no updates to make, should not leave the conceptrecid pointing at a draft
     v3_summary = await orchestrator.run()
     assert isinstance(v3_summary, Unchanged)
 
     # unfortunately, it looks like Zenodo doesn't propagate deletion instantly - retry this a few times.
-    latest_for_conceptdoi = await retry_async(
+    latest_for_conceptrecid = await retry_async(
         orchestrator.depositor.get_deposition,
-        args=[str(orchestrator.deposition.conceptdoi)],
+        args=[str(orchestrator.deposition.conceptrecid)],
         kwargs={"published_only": True},
         retry_on=(
             ZenodoClientException,
@@ -286,4 +286,4 @@ async def test_zenodo_workflow(
         ),
         retry_base_s=0.5,
     )
-    assert latest_for_conceptdoi.id_ == v2_refreshed.id_
+    assert latest_for_conceptrecid.id_ == v2_refreshed.id_

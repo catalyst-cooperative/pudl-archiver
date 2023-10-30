@@ -48,23 +48,23 @@ class Resource(BaseModel):
             file: Deposition file metadata returned by Zenodo api.
             parts: Working partitions of current resource.
         """
-        filename = Path(file.filename)
+        filename = Path(file.key)
         mt = MEDIA_TYPES[filename.suffix[1:]]
-        if "/api" in file.links.self:
-            stable_path = file.links.self.replace(
-                "/api", ""
+        if "/api" or "/draft" in file.links.self:
+            stable_path = file.links.self.replace("/api", "").replace(
+                "/draft", ""
             )  # Remove /api from link to get stable path
         else:
             stable_path = file.links.self
 
         return cls(
-            name=file.filename,
+            name=file.key,
             path=stable_path,
             remote_url=stable_path,
             title=filename.name,
             mediatype=mt,
             parts=parts,
-            bytes=file.filesize,
+            bytes=file.size,
             hash=file.checksum,
             format=filename.suffix,
         )
@@ -114,7 +114,7 @@ class DataPackage(BaseModel):
             sources=[{"title": data_source.title, "path": data_source.path}],
             licenses=[data_source.license_raw],
             resources=[
-                Resource.from_file(file, resources[file.filename].partitions)
+                Resource.from_file(file, resources[file.key].partitions)
                 for file in files
             ],
             contributors=[CONTRIBUTORS["catalyst-cooperative"]],

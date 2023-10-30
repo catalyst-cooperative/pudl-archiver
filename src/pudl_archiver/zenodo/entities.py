@@ -41,11 +41,11 @@ class Person(BaseModel):
     type_: Literal["personal", "organizational"] = Field(alias="type")
     given_name: str
     family_name: str
-    identifiers: dict[str, str] | None = None
 
     @classmethod
     def from_contributor(cls, contributor: Contributor) -> "Person":
         """Construct deposition metadata object from PUDL Contributor model."""
+        kwargs = {}
         # Split name into first and last. Spit warning if this splits into three.
         names = contributor.title.split(" ")
         if len(names) > 2:
@@ -57,15 +57,15 @@ class Person(BaseModel):
 
         # Right now we only handle ORCIDs, we could include other supported ID schemes.
         if contributor.orcid:
-            identifiers = {"scheme": "orcid", "identifier": contributor.orcid}
-        else:
-            identifiers = {}
+            kwargs["identifiers"] = [
+                {"scheme": "orcid", "identifier": contributor.orcid}
+            ]
 
         return cls(
             type="personal",
             given_name=given_name,
             family_name=family_name,
-            identifiers=identifiers,
+            **kwargs,
         )
 
 
@@ -74,7 +74,6 @@ class Organization(BaseModel):
 
     type_: Literal["personal", "organizational"] = Field(alias="type")
     name: str
-    identifiers: dict[str, str] | None = None
 
     @classmethod
     def from_contributor(cls, contributor: Contributor) -> "Organization":
@@ -82,14 +81,13 @@ class Organization(BaseModel):
         return cls(type="organizational", name=contributor.title)
 
 
-class Affiliation(BaseModel):
+class Affiliations(BaseModel):
     """Pydantic model representing organization affiliations of deposition creators."""
 
-    id_: str | None = Field(alias="id")
     name: str | None = None
 
     @classmethod
-    def from_contributor(cls, contributor: Contributor) -> "Affiliation":
+    def from_contributor(cls, contributor: Contributor) -> "Affiliations":
         """Construct deposition metadata object from PUDL Contributor model."""
         return cls(name=contributor.organization)
 
@@ -102,7 +100,42 @@ class Role(BaseModel):
     @classmethod
     def from_contributor(cls, contributor: Contributor) -> "Role":
         """Construct deposition metadata object from PUDL Contributor model."""
-        return cls(id=contributor.role)
+        kwargs = {}
+        if contributor.role:  # Change to zenodo_role once integrated into PUDL.
+            # Invenio RDM only accepts certain values.
+            if contributor.role in [
+                "contact person",
+                "data collector",
+                "data curator",
+                "data manager",
+                "distributor",
+                "editor",
+                "hosting institution",
+                "other",
+                "producer",
+                "project leader",
+                "project member",
+                "registration agency",
+                "registration authority",
+                "related person",
+                "researcher",
+                "rights holder",
+                "sponsor",
+                "supervisor",
+                "work package leader",
+            ]:  # Unclear to me what roles are allowed here.
+                kwargs["id"] = contributor.role.replace(" ", "")
+            else:
+                kwargs["id"] = "projectmember"
+
+        return cls(**kwargs)
+
+
+class DepositionCreatorResponse(BaseModel):
+    """Pydantic model representing response of Zenodo deposition creators."""
+
+    name: str
+    affiliation: str
 
 
 class DepositionCreator(BaseModel):
@@ -112,9 +145,9 @@ class DepositionCreator(BaseModel):
     """
 
     person_or_org: Person | Organization
-    affiliation: Affiliation | str | None = (
-        None  # String is for pre-migration datapackages.
-    )
+    affiliations: list[
+        Affiliations
+    ] | str | None = None  # String is for pre-migration datapackages.
     role: Role | None = None
 
     @classmethod
@@ -126,7 +159,20 @@ class DepositionCreator(BaseModel):
             person_or_org = Organization.from_contributor(contributor)  # Debug
         return cls(
             person_or_org=person_or_org,
-            affiliation=Affiliation.from_contributor(contributor),
+            affiliations=[Affiliations.from_contributor(contributor)],
+            role=Role.from_contributor(contributor),
+        )
+
+    @classmethod
+    def from_response(cls, contributor: Contributor) -> "DepositionCreator":
+        """Construct deposition metadata object from PUDL Contributor model."""
+        if contributor.title != contributor.organization:
+            person_or_org = Person.from_contributor(contributor)
+        else:
+            person_or_org = Organization.from_contributor(contributor)  # Debug
+        return cls(
+            person_or_org=person_or_org,
+            affiliations=[Affiliations.from_contributor(contributor)],
             role=Role.from_contributor(contributor),
         )
 
@@ -135,23 +181,23 @@ class License(BaseModel):
     """Pydantic model representing dataset licenses for Zenodo deposition."""
 
     id_: str | None = Field(alias="id")
-    title: str | None = None
-    description: str | None = None
+    title: dict[str, str] | None = None
+    description: dict[str, str] | None = None
     link: AnyHttpUrl | None = None
 
     @classmethod
     def from_data_source(cls, data_source: str) -> "License":
         """Construct deposition metadata object from PUDL Contributor model."""
+        kwargs = {}
         license_raw = data_source.license_raw
         # Can only provide ID or title to Zenodo, not both.
         if license_raw.name == "CC-BY-4.0":
-            license_id = license_raw.name.lower()
-            title = None
+            kwargs["id"] = license_raw.name.lower()
         else:
-            title = license_raw.name
-            license_id = None
-        link = license_raw.path
-        return cls(id=license_id, title=title, link=link)
+            kwargs["title"] = {"en": license_raw.name}
+        return cls(
+            link=license_raw.path, description={"en": license_raw.title}, **kwargs
+        )
 
 
 class DepositionMetadata(BaseModel):
@@ -160,18 +206,19 @@ class DepositionMetadata(BaseModel):
     See https://developers.zenodo.org/#representation.
     """
 
+    resource_type: dict[str, str] = {"id": "dataset"}
     publication_date: datetime.date = None
-    language: str = "eng"
+    languages: list[dict[str, str]] = [{"id": "eng"}]
     title: str
-    creators: list[DepositionCreator]
+    creators: list[DepositionCreator | DepositionCreatorResponse] | None = None
     communities: list[dict] | None = None
     description: str
-    access_right: str = "open"
-    license_: License | None = Field(alias="license")
+    rights: list[License] | None = None
     doi: Doi | None = None
     prereserve_doi: dict | bool = False
-    keywords: list[str] | None = None
+    subjects: list[dict[str, str]] | None = None
     version: str | None = None
+    publisher: str = "Catalyst Cooperative"
 
     @validator("doi", pre=True)
     def check_empty_string(cls, doi: str):  # noqa: N805
@@ -195,6 +242,10 @@ class DepositionMetadata(BaseModel):
                 )
             ]
 
+        # Format keywords and license
+        subjects = [{"subject": keyword} for keyword in data_source.keywords]
+        rights = [License.from_data_source(data_source)]
+
         return cls(
             title=f"PUDL Raw {data_source.title}",
             description=(
@@ -203,8 +254,8 @@ class DepositionMetadata(BaseModel):
                 f"{PUDL_DESCRIPTION}"
             ),
             creators=creators,
-            license=License.from_data_source(data_source),
-            keywords=data_source.keywords,
+            rights=rights,
+            subjects=subjects,
             version="1.0.0",
         )
 
@@ -243,9 +294,9 @@ class DepositionFile(BaseModel):
     """
 
     checksum: str
-    filename: str
+    key: str
     id_: str = Field(alias="id")
-    filesize: int
+    size: int
     links: FileLinks
 
 
@@ -279,10 +330,9 @@ class DepositionLinks(BaseModel):
 class Deposition(BaseModel):
     """Pydantic model representing a zenodo deposition.
 
-    See https://developers.zenodo.org/#depositions.
+    See https://inveniordm.docs.cern.ch/reference/rest_api_drafts_records/#get-latest-version.
     """
 
-    conceptdoi: Doi
     conceptrecid: str
     created: datetime.datetime
     files: list[DepositionFile] = []
@@ -293,7 +343,40 @@ class Deposition(BaseModel):
     owners: list[dict] = []
     recid: int
     record_url: AnyHttpUrl | None = None
-    resource_type: dict[str, str] = {"id": "dataset"}
     state: Literal["inprogress", "done", "error", "submitted", "unsubmitted"]
     submitted: bool
     title: str
+
+
+class VersionFiles(BaseModel):
+    """Pydantic model of files dict returned by `create_new_deposition_version`."""
+
+    enabled: bool
+    order: list[str]
+    count: int
+    total_bytes: int
+    entries: dict[
+        str, dict[str, str | None]
+    ]  # Doesn't always conform to DepositionFile
+
+
+class DepositionVersion(BaseModel):
+    """Pydantic model representing a zenodo draft deposition version.
+
+    Response returned by `create_new_deposition_version` method, which is formatted
+    differently than the response to `get_record`. There are more fields captured here
+    that aren't mapped by this class, but as we are interested
+    in the links, id and metadata primarily they are not presently included,
+    as they are returned when the DOI is registered in the `get_new_version` method.
+
+    See https://inveniordm.docs.cern.ch/reference/rest_api_drafts_records/#create-a-new-version.
+    """
+
+    created: datetime.datetime
+    id_: int = Field(alias="id")
+    metadata: DepositionMetadata
+    links: DepositionLinks
+    owners: list[dict] = []
+    record_url: AnyHttpUrl | None = None
+    status: Literal["new_version_draft"]
+    files: VersionFiles

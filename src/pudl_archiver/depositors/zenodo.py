@@ -2,13 +2,18 @@
 import asyncio
 import json
 import logging
+from datetime import date
 from typing import BinaryIO, Literal
 
 import aiohttp
 import semantic_version  # type: ignore
 
 from pudl_archiver.utils import retry_async
-from pudl_archiver.zenodo.entities import Deposition, DepositionMetadata
+from pudl_archiver.zenodo.entities import (
+    Deposition,
+    DepositionMetadata,
+    DepositionVersion,
+)
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
@@ -124,8 +129,16 @@ class ZenodoDepositor:
         """
         url = f"{self.api_root}/records"
         headers = {
+            "Accept": "application/vnd.inveniordm.v1+json",
             "Content-Type": "application/json",
         } | self.auth_write
+
+        # Set up metadata from data source
+        metadata = metadata.dict(
+            by_alias=True,
+            exclude={"publication_date", "doi", "prereserve_doi"},
+        )
+        metadata["publication_date"] = str(date.today())
 
         payload = json.dumps(
             {
@@ -134,21 +147,32 @@ class ZenodoDepositor:
                     "files": "public",
                 },  # TO DO: don't hardcode?
                 "files": {"enabled": True},
-                "metadata": metadata.dict(
-                    by_alias=True,
-                    exclude={"publication_date", "doi", "prereserve_doi"},
-                ),
+                "metadata": metadata,
             }
         )
-        logger.info(payload)
         response = await self.request(
-            "POST", url, "Create new deposition", json=payload, headers=headers
+            "POST", url, "Create new deposition", data=payload, headers=headers
         )
+        # Reserve DOI for deposition
+        doi_response = await self.reserve_doi(response)
+
         # Ignore content type
-        return Deposition(**response)
+        return Deposition(**doi_response)
+
+    async def reserve_doi(self, response):
+        """Reserve DOI for a draft deposition."""
+        url = response["links"]["reserve_doi"]
+        resp_id = response["id"]
+        response = await self.request(
+            "POST",
+            url,
+            f"Reserve DOI for deposition {resp_id}",
+            headers=self.auth_write,
+        )
+        return response
 
     async def get_deposition(
-        self, concept_doi: str, published_only: bool = False
+        self, conceptrecid: str, published_only: bool = False
     ) -> Deposition:
         """Get the latest deposition associated with a concept DOI.
 
@@ -166,19 +190,18 @@ class ZenodoDepositor:
             The latest deposition associated with the concept DOI.
         """
         url = f"{self.api_root}/records"
-        params = {"q": f'conceptdoi:"{concept_doi}"'}
+        params = {"q": f'conceptrecid:"{conceptrecid}"'}
 
         response = await self.request(
             "GET",
             url,
-            f"Query depositions for {concept_doi}",
+            f"Query depositions for {conceptrecid}",
             params=params,
             headers=self.auth_write,
         )
-        logger.info(response)
         if response["hits"]["total"] > 1:
             logger.info(
-                f"{concept_doi} points at multiple records: {[r['id'] for r in response['hits']['hits']]}"
+                f"{conceptrecid} points at multiple records: {[r['id'] for r in response['hits']['hits']]}"
             )
         depositions = [Deposition(**dep) for dep in response["hits"]["hits"]]
 
@@ -236,18 +259,13 @@ class ZenodoDepositor:
             if clobber:
                 await self.delete_deposition(deposition)
                 deposition = await self.get_deposition(
-                    str(deposition.conceptdoi), published_only=True
+                    str(deposition.conceptrecid), published_only=True
                 )
             else:
                 return deposition
 
-        new_deposition = await self.get_new_deposition_version(deposition)
-        # If files already in new deposition, remove.
-        if len(new_deposition.files) > 0:
-            await self.delete_deposition(new_deposition)  # DEBUG ME!
-            new_deposition = await self.get_new_deposition_version(
-                deposition
-            )  # Debug: Something isn't working here!
+        # Create new version of deposition, deleting draft if it already exists.
+        new_deposition = await self.create_new_deposition_version(deposition)
 
         # Link files from previous deposition.
         await self.link_previous_files(new_deposition)
@@ -261,11 +279,10 @@ class ZenodoDepositor:
         version_info = previous.next_major()
         new_metadata["version"] = str(version_info)
 
-        # Update creators
-        if "person_or_org" in old_metadata:
-            new_metadata["creators"] = old_metadata["creators"]
-        else:
-            pass  # TO DO: add in method to update old datapackages from contribs for data source?
+        # Update publication date to today.
+        new_metadata["publication_date"] = str(date.today())
+
+        # And translate 'creators' response to required format.
 
         # Update metadata of new deposition with new version info
         data = json.dumps({"metadata": new_metadata})
@@ -283,22 +300,35 @@ class ZenodoDepositor:
             data=data,
             headers=headers,
         )
-        return Deposition(**response)
 
-    async def get_new_deposition_version(self, deposition: Deposition):
+        # Reserve DOI for deposition
+        doi_response = await self.reserve_doi(response)
+
+        return Deposition(**doi_response)
+
+    async def create_new_deposition_version(self, deposition: Deposition):
         """Create a new draft deposition version."""
         url = f"{self.api_root}/records/{deposition.id_}/versions"
+
+        headers = {
+            "Accept": "application/vnd.inveniordm.v1+json",
+            "Content-Type": "application/json",
+        } | self.auth_write
+
         response = await self.request(
             "POST",
             url,
             log_label="Creating new version.",
-            headers=self.auth_write,
+            headers=headers,
         )
-        return Deposition(**response)
+        logger.info(response)
+        return DepositionVersion(**response)
 
-    async def link_previous_files(self, new_deposition: Deposition) -> Deposition:
+    async def link_previous_files(
+        self, new_deposition: DepositionVersion
+    ) -> Deposition:
         """Transfer files over to new deposition."""
-        draft_id = new_deposition.recid
+        draft_id = new_deposition.id_
         url = f"{self.api_root}/records/{draft_id}/draft/actions/files-import"
         await self.request(
             "POST",
@@ -348,7 +378,7 @@ class ZenodoDepositor:
         Returns:
             None if success.
         """
-        candidates = [f for f in deposition.files if f.filename == target]
+        candidates = [f for f in deposition.files if f.key == target]
         if len(candidates) > 1:
             raise RuntimeError(
                 f"More than one file matches the name {target}: {candidates}"
@@ -359,7 +389,7 @@ class ZenodoDepositor:
 
         response = await self.request(
             "DELETE",
-            candidates[0].links.self,
+            candidates[0].links.self.replace("/content", ""),
             parse_json=False,
             log_label=f"Deleting {target} from deposition {deposition.id_}",
             headers=self.auth_write,
