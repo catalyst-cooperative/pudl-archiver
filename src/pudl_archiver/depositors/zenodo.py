@@ -357,7 +357,7 @@ class ZenodoDepositor:
             headers=self.auth_write,
         )
 
-    async def publish_deposition(self, deposition: Deposition) -> Deposition:
+    async def publish_deposition(self, deposition: Deposition) -> DepositionVersion:
         """Publish a deposition.
 
         Needs to have at least one file, and needs to not already be published.
@@ -373,7 +373,8 @@ class ZenodoDepositor:
         response = await self.request(
             "POST", url, log_label="Publishing deposition", headers=headers
         )
-        return Deposition(**response)
+        logger.info(response)
+        return DepositionVersion(**response)
 
     async def delete_deposition(self, deposition) -> None:
         """Delete an un-submitted deposition.

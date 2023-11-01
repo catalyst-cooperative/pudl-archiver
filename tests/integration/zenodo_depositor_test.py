@@ -78,7 +78,6 @@ async def initial_deposition(depositor, empty_deposition):
     await depositor.create_file(
         empty_deposition, "to_delete", BytesIO(initial_files["to_delete"])
     )
-
     # publish initial deposition
     return await depositor.publish_deposition(empty_deposition)
 
@@ -112,8 +111,7 @@ async def test_publish_empty(depositor, empty_deposition, mocker):
 async def test_delete_deposition(depositor, initial_deposition):
     """Make a new draft, delete it, and see that the conceptrecid still points
     at the original."""
-    draft = await depositor.get_new_version(initial_deposition)
-
+    draft = await depositor.get_new_version(initial_deposition, data_source_id="test")
     latest = await get_latest(
         depositor, initial_deposition.conceptrecid, published_only=False
     )

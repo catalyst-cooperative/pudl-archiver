@@ -348,9 +348,10 @@ class VersionFiles(BaseModel):
 
 
 class DepositionVersion(BaseModel):
-    """Pydantic model representing a zenodo draft deposition version.
+    """Pydantic model representing a zenodo response to POST requests.
 
-    Response returned by `create_new_deposition_version` method, which is formatted
+    Response returned by POST responses ()`create_new_deposition_version` and
+    `publish_deposition` methods, which are formatted
     differently than the response to `get_record`. There are more fields captured here
     that aren't mapped by this class, but as we are interested
     in the links, ID and metadata primarily they are not presently included,
@@ -365,5 +366,5 @@ class DepositionVersion(BaseModel):
     links: DepositionLinks
     owners: list[dict] = []
     record_url: AnyHttpUrl | None = None
-    status: Literal["new_version_draft"]
+    status: Literal["new_version_draft", "published"]
     files: VersionFiles
