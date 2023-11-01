@@ -50,9 +50,13 @@ class Resource(BaseModel):
         """
         filename = Path(file.key)
         mt = MEDIA_TYPES[filename.suffix[1:]]
-        # Remove /api, /draft from link to get stable path
-        if "/api" or "/draft" in file.links.self:
-            stable_path = file.links.self.replace("/api", "").replace("/draft", "")
+        # Remove /api, /draft, /content from link to get stable path
+        if "/api" or "/draft" or "/content" in file.links.self:
+            stable_path = (
+                file.links.self.replace("/api", "")
+                .replace("/draft", "")
+                .replace("/content", "")
+            )
         else:
             stable_path = file.links.self
 
