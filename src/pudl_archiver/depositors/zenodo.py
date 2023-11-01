@@ -342,7 +342,6 @@ class ZenodoDepositor:
             log_label="Creating new version.",
             headers=headers,
         )
-        logger.info(response)
         return DepositionVersion(**response)
 
     async def link_previous_files(
@@ -374,7 +373,6 @@ class ZenodoDepositor:
         response = await self.request(
             "POST", url, log_label="Publishing deposition", headers=headers
         )
-        logger.info(response)
         return Deposition(**response)
 
     async def delete_deposition(self, deposition) -> None:
@@ -496,7 +494,7 @@ class ZenodoDepositor:
             "PUT",
             file_links["content"],
             log_label=f"Uploading {target} data",
-            data={"content": data},
+            data=data,
             headers=headers,
         )
 

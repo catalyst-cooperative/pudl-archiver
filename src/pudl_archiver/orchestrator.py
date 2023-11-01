@@ -284,13 +284,12 @@ class DepositionOrchestrator:
             action = _DepositionAction.CREATE
         else:
             file_info = self.deposition_files[name]
-
+            file_info.checksum = file_info.checksum.replace("md5:", "")  # Remove prefix
             # If file is not exact match for existing file, update with new file
-            if not (
-                local_md5 := _compute_md5(resource.local_path)
-            ) == file_info.checksum.replace(
-                "md5:", ""
-            ):  # Remove prefix
+            if (
+                not (local_md5 := _compute_md5(resource.local_path))
+                == file_info.checksum
+            ):
                 logger.info(
                     f"Updating {name}: local hash {local_md5} vs. remote {file_info.checksum}"
                 )
@@ -400,7 +399,7 @@ class DepositionOrchestrator:
                 parse_json=False,
                 headers=self.depositor.auth_write,
             )
-            logger.info(response.content)
+            logger.info
             response_bytes = await retry_async(response.read)
             old_datapackage = DataPackage.parse_raw(response_bytes)
 
