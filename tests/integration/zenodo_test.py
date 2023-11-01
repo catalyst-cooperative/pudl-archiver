@@ -181,6 +181,7 @@ async def test_zenodo_workflow(
         "dry_run": False,
         "sandbox": True,
         "auto_publish": True,
+        "refresh_metadata": False,
     }
 
     class TestDownloader(AbstractDatasetArchiver):

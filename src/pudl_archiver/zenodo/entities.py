@@ -5,7 +5,7 @@ See https://developers.zenodo.org/#entities for more info.
 import datetime
 import logging
 import re
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import AnyHttpUrl, BaseModel, ConstrainedStr, Field, validator
 
@@ -17,7 +17,7 @@ logger = logging.getLogger(f"catalystcoop.{__name__}")
 class Doi(ConstrainedStr):
     """The DOI format for production and sandbox Zenodo."""
 
-    regex = re.compile(r"10\.5281/zenodo\.\d{6,7}")
+    regex = re.compile(r"10\.5281/zenodo\.\d{6,8}")
 
 
 PUDL_DESCRIPTION = """
@@ -163,19 +163,6 @@ class DepositionCreator(BaseModel):
             role=Role.from_contributor(contributor),
         )
 
-    @classmethod
-    def from_response(cls, contributor: Contributor) -> "DepositionCreator":
-        """Construct deposition metadata object from PUDL Contributor model."""
-        if contributor.title != contributor.organization:
-            person_or_org = Person.from_contributor(contributor)
-        else:
-            person_or_org = Organization.from_contributor(contributor)  # Debug
-        return cls(
-            person_or_org=person_or_org,
-            affiliations=[Affiliations.from_contributor(contributor)],
-            role=Role.from_contributor(contributor),
-        )
-
 
 class License(BaseModel):
     """Pydantic model representing dataset licenses for Zenodo deposition."""
@@ -206,9 +193,9 @@ class DepositionMetadata(BaseModel):
     See https://developers.zenodo.org/#representation.
     """
 
-    resource_type: dict[str, str] = {"id": "dataset"}
+    resource_type: dict[str, str | dict[str, str]] = {"id": "dataset"}
     publication_date: datetime.date = None
-    languages: list[dict[str, str]] = [{"id": "eng"}]
+    languages: list[dict[str, str | dict[str, str]]] = [{"id": "eng"}]
     title: str | dict[str, str]
     creators: list[DepositionCreator | DepositionCreatorResponse] | None = None
     communities: list[dict] | None = None
@@ -299,6 +286,8 @@ class DepositionFile(BaseModel):
     size: int
     links: FileLinks
 
+    # TO DO: possibly remove the md5 prefix for checksum in here rather than when called?
+
 
 class DepositionLinks(BaseModel):
     """Pydantic model representing zenodo deposition Links."""
@@ -355,9 +344,7 @@ class VersionFiles(BaseModel):
     order: list[str]
     count: int
     total_bytes: int
-    entries: dict[
-        str, dict[str, str | None]
-    ]  # Doesn't always conform to DepositionFile
+    entries: dict[str, dict[str, Any]]  # Doesn't always conform to DepositionFile
 
 
 class DepositionVersion(BaseModel):

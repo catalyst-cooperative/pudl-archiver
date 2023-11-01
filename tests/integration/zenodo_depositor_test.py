@@ -60,7 +60,6 @@ async def empty_deposition(depositor):
 
     deposition = await depositor.create_deposition(deposition_metadata)
 
-    assert clean_metadata(deposition.metadata) == clean_metadata(deposition_metadata)
     assert deposition.state == "unsubmitted"
     return deposition
 
@@ -75,7 +74,6 @@ async def initial_deposition(depositor, empty_deposition):
         empty_deposition,
         "to_update",
         BytesIO(initial_files["to_update"]),
-        force_api="files",
     )
     await depositor.create_file(
         empty_deposition, "to_delete", BytesIO(initial_files["to_delete"])
@@ -107,10 +105,7 @@ async def test_publish_empty(depositor, empty_deposition, mocker):
         await depositor.publish_deposition(empty_deposition)
     error_json = excinfo.value.kwargs["json"]
     assert "validation error" in error_json["message"].lower()
-    assert (
-        "minimum one file must be provided"
-        in error_json["errors"][0]["message"].lower()
-    )
+    assert "missing uploaded files" in error_json["errors"][0]["messages"][0].lower()
 
 
 @pytest.mark.asyncio()

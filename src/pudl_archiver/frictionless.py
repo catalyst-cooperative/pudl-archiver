@@ -50,10 +50,9 @@ class Resource(BaseModel):
         """
         filename = Path(file.key)
         mt = MEDIA_TYPES[filename.suffix[1:]]
+        # Remove /api, /draft from link to get stable path
         if "/api" or "/draft" in file.links.self:
-            stable_path = file.links.self.replace("/api", "").replace(
-                "/draft", ""
-            )  # Remove /api from link to get stable path
+            stable_path = file.links.self.replace("/api", "").replace("/draft", "")
         else:
             stable_path = file.links.self
 
@@ -65,7 +64,7 @@ class Resource(BaseModel):
             mediatype=mt,
             parts=parts,
             bytes=file.size,
-            hash=file.checksum,
+            hash=file.checksum.replace("md5:", ""),  # Drop md5 hash prefix
             format=filename.suffix,
         )
 

@@ -65,6 +65,11 @@ def parse_main():
         help="Directory to download files to. Use tmpdir if not specified.",
         default=None,
     )
+    parser.add_argument(
+        "--refresh-metadata",
+        action="store_true",
+        help="Regenerate metadata from PUDL data source rather than existing archived metadata.",
+    )
     return parser.parse_args()
 
 

@@ -18,7 +18,7 @@ eia923:
   sandbox_doi: 10.5281/zenodo.8172817
 eia_bulk_elec:
   production_doi: 10.5281/zenodo.7067366
-  sandbox_doi: 10.5281/zenodo.7682481
+  sandbox_doi: 10.5281/zenodo.10003268
 eiawater:
   production_doi: 10.5281/zenodo.7683135
   sandbox_doi: 10.5281/zenodo.123456

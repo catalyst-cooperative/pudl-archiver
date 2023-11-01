@@ -145,8 +145,8 @@ class ZenodoDepositor:
                 "access": {
                     "record": "public",
                     "files": "public",
-                },  # TO DO: don't hardcode?
-                "files": {"enabled": True},
+                },
+                "files": {"enabled": True},  # Must always be True for Zenodo
                 "metadata": metadata,
             }
         )
@@ -202,7 +202,7 @@ class ZenodoDepositor:
             params=params,
             headers=self.auth_write,
         )
-        logger.info(response)
+
         if response["hits"]["total"] > 1:
             logger.info(
                 f"{conceptid} points at multiple records: {[r['id'] for r in response['hits']['hits']]}"
@@ -244,7 +244,11 @@ class ZenodoDepositor:
         return Deposition(**response)
 
     async def get_new_version(
-        self, deposition: Deposition, clobber: bool = False
+        self,
+        deposition: Deposition,
+        data_source_id: str,
+        clobber: bool = False,
+        refresh_metadata: bool = False,
     ) -> Deposition:
         """Get a new version of a deposition.
 
@@ -254,6 +258,9 @@ class ZenodoDepositor:
         Args:
             deposition: the deposition you want to get the new version of.
             clobber: if there is an existing draft, delete it and get a new one.
+            data_source_id: the deposition dataset name (to clobber existing metadata.)
+            refresh_metadata: regenerate metadata from data source rather than existing
+                archives' metadata.
 
         Returns:
             A new Deposition that is a snapshot of the old one you passed in,
@@ -281,7 +288,14 @@ class ZenodoDepositor:
 
         # Update metadata from previous deposition.
         old_metadata = deposition.metadata.dict(by_alias=True)
-        new_metadata = new_deposition.metadata.dict(by_alias=True)
+
+        if refresh_metadata:
+            logger.info("Re-creating deposition metadata from PUDL source data.")
+            new_metadata = DepositionMetadata.from_data_source(data_source_id).dict(
+                by_alias=True
+            )
+        else:
+            new_metadata = new_deposition.metadata.dict(by_alias=True)
 
         # Update version number from previous metadata.
         previous = semantic_version.Version(old_metadata["version"])
@@ -328,6 +342,7 @@ class ZenodoDepositor:
             log_label="Creating new version.",
             headers=headers,
         )
+        logger.info(response)
         return DepositionVersion(**response)
 
     async def link_previous_files(
@@ -353,11 +368,13 @@ class ZenodoDepositor:
         """
         url = deposition.links.publish
         headers = {
+            "Accept": "application/vnd.inveniordm.v1+json",
             "Content-Type": "application/json",
         } | self.auth_actions
         response = await self.request(
             "POST", url, log_label="Publishing deposition", headers=headers
         )
+        logger.info(response)
         return Deposition(**response)
 
     async def delete_deposition(self, deposition) -> None:
