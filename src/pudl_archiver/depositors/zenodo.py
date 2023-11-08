@@ -192,7 +192,9 @@ class ZenodoDepositor:
             log_label=f"Get deposition for {rec_id}",
             headers=self.auth_write,
         )
-        return Deposition(**response)
+        deposition = Deposition(**response)
+        logger.info(deposition)
+        return deposition
 
     async def get_new_version(
         self, deposition: Deposition, clobber: bool = False
@@ -228,10 +230,15 @@ class ZenodoDepositor:
             log_label="Creating new version",
             headers=self.auth_write,
         )
-        old_deposition = Deposition(**response)
-        new_deposition_url = old_deposition.links.latest_draft
+        old_metadata = deposition.metadata.dict(by_alias=True)
+        new_version = Deposition(**response)
 
-        source_metadata = old_deposition.metadata.dict(by_alias=True)
+        source_metadata = new_version.metadata.dict(by_alias=True)
+
+        # If version not in response for new version, get from most recent deposition
+        if source_metadata["version"] is None:
+            source_metadata["version"] = old_metadata["version"]
+
         metadata = {}
         for key, val in source_metadata.items():
             if key not in ["doi", "prereserve_doi", "publication_date"]:
@@ -246,7 +253,7 @@ class ZenodoDepositor:
         data = json.dumps({"metadata": metadata})
 
         # Get url to newest deposition
-        new_deposition_url = old_deposition.links.latest_draft
+        new_deposition_url = new_version.links.latest_draft
         headers = {
             "Content-Type": "application/json",
         } | self.auth_write
@@ -254,7 +261,7 @@ class ZenodoDepositor:
         response = await self.request(
             "PUT",
             new_deposition_url,
-            log_label=f"Updating version number from {previous} ({old_deposition.id_}) to {version_info}",
+            log_label=f"Updating version number from {previous} ({new_version.id_}) to {version_info}",
             data=data,
             headers=headers,
         )
