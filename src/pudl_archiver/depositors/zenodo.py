@@ -193,7 +193,7 @@ class ZenodoDepositor:
             headers=self.auth_write,
         )
         deposition = Deposition(**response)
-        logger.info(deposition)
+        logger.debug(deposition)
         return deposition
 
     async def get_new_version(
