@@ -107,10 +107,13 @@ class DataPackage(BaseModel):
             title=f"PUDL Raw {data_source.title}",
             sources=[{"title": data_source.title, "path": data_source.path}],
             licenses=[data_source.license_raw],
-            resources=[
-                Resource.from_file(file, resources[file.filename].partitions)
-                for file in files
-            ],
+            resources=sorted(
+                [
+                    Resource.from_file(file, resources[file.filename].partitions)
+                    for file in files
+                ],
+                key=lambda x: x.name,
+            ),  # Sort by filename
             contributors=[CONTRIBUTORS["catalyst-cooperative"]],
             created=str(datetime.utcnow()),
             keywords=data_source.keywords,
