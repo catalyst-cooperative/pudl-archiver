@@ -16,25 +16,25 @@ logger = logging.getLogger(f"catalystcoop.{__name__}")
 class ZenodoClientException(Exception):
     """Captures the JSON error information from Zenodo."""
 
-    def __init__(self, kwargs):
+    def __init__(self, status, message, errors=None):
         """Constructor.
 
         Args:
-            kwargs: dictionary with "response" mapping to the actual
-                aiohttp.ClientResponse and "json" mapping to the JSON content.
+            status: status message of response
+            message: message of response
+            errors: if any, list of errors returned by response
         """
-        self.kwargs = kwargs
-        self.status = kwargs["response"].status
-        self.message = kwargs["json"].get("message", {})
-        self.errors = kwargs["json"].get("errors", {})
+        self.status = status
+        self.message = message
+        self.errors = errors
 
     def __str__(self):
-        """The JSON has all we really care about."""
-        return f"ZenodoClientException({self.kwargs['json']})"
+        """Cast to string."""
+        return repr(self)
 
     def __repr__(self):
         """But the kwargs are useful for recreating this object."""
-        return f"ZenodoClientException({repr(self.kwargs)})"
+        return f"ZenodoClientException(status={self.status}, message={self.message}, errors={self.errors})"
 
 
 class ZenodoDepositor:
@@ -94,9 +94,19 @@ class ZenodoDepositor:
             async def run_request():
                 response = await session.request(method, url, **kwargs)
                 if response.status >= 400:
-                    raise ZenodoClientException(
-                        {"response": response, "json": await response.json()}
-                    )
+                    if response.headers["Content-Type"] == "application/json":
+                        json_resp = await response.json()
+                        raise ZenodoClientException(
+                            status=response.status,
+                            message=json_resp.get("message"),
+                            errors=json_resp.get("errors"),
+                        )
+                    else:
+                        message = await response.text()
+                        raise ZenodoClientException(
+                            status=response.status,
+                            message=message,
+                        )
                 if parse_json:
                     return await response.json()
                 return response
@@ -224,12 +234,32 @@ class ZenodoDepositor:
         url = f"{self.api_root}/deposit/depositions/{deposition.id_}/actions/newversion"
 
         # create a new unpublished deposition version
-        response = await self.request(
-            "POST",
-            url,
-            log_label="Creating new version",
-            headers=self.auth_write,
-        )
+        try:
+            response = await self.request(
+                "POST",
+                url,
+                log_label="Creating new version",
+                headers=self.auth_write,
+            )
+        # Except if abandoned in progress draft
+        except ZenodoClientException as excinfo:
+            if (
+                clobber
+                and "remove all files first" in excinfo.errors[0]["messages"][0].lower()
+            ):
+                logger.info("Delete abandoned version and create new one.")
+                # Get ID of problematic in progress version
+                draft_deposition = await self.get_deposition(
+                    str(deposition.conceptdoi), published_only=False
+                )
+                await self.delete_deposition(draft_deposition)
+            response = await self.request(
+                "POST",
+                url,
+                log_label="Creating new version",
+                headers=self.auth_write,
+            )
+
         old_metadata = deposition.metadata.dict(by_alias=True)
         new_version = Deposition(**response)
 

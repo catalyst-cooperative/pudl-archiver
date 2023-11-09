@@ -46,13 +46,13 @@ async def empty_deposition(depositor):
         ],
         description="Test dataset for the sandbox, thanks!",
         version="1.0.0",
-        license="CC0-1.0",
+        license="cc-zero",
         keywords=["test"],
     )
 
     deposition = await depositor.create_deposition(deposition_metadata)
 
-    # assert clean_metadata(deposition.metadata) == clean_metadata(deposition_metadata)
+    assert clean_metadata(deposition.metadata) == clean_metadata(deposition_metadata)
     assert deposition.state == "unsubmitted"
     return deposition
 
@@ -97,15 +97,15 @@ async def test_publish_empty(depositor, empty_deposition, mocker):
     mocker.patch("asyncio.sleep", mocker.AsyncMock())
     with pytest.raises(ZenodoClientException) as excinfo:
         await depositor.publish_deposition(empty_deposition)
-    error_json = excinfo.value.kwargs["json"]
-    assert "validation error" in error_json["message"].lower()
-    assert "missing uploaded files" in error_json["errors"][0]["messages"][0].lower()
+    assert "validation error" in excinfo.value.message.lower()
+    assert "missing uploaded files" in excinfo.value.errors[0]["messages"][0].lower()
 
 
 @pytest.mark.asyncio()
-async def test_delete_deposition(depositor, initial_deposition):
+async def test_delete_deposition(depositor, initial_deposition, mocker):
     """Make a new draft, delete it, and see that the conceptdoi still points
     at the original."""
+    mocker.patch("asyncio.sleep", mocker.AsyncMock())
     draft = await depositor.get_new_version(initial_deposition)
 
     latest = await get_latest(
@@ -113,13 +113,12 @@ async def test_delete_deposition(depositor, initial_deposition):
     )
     assert latest.id_ == draft.id_
     assert not latest.submitted
+    # Currently, Zenodo server will delete the deposition, but return an error;
+    # on retry it will throw a 404 since the deposition is already deleted
     with pytest.raises(ZenodoClientException) as excinfo:
         await depositor.delete_deposition(draft)
-
-    # Reconfigure to meet server flakiness on deletions.
     if excinfo:
-        error_json = excinfo.value.kwargs["json"]
-        assert "persistent identifier does not exist" in error_json["message"].lower()
+        assert "persistent identifier does not exist" in excinfo.value.message.lower()
     else:
         latest = await get_latest(
             depositor, initial_deposition.conceptdoi, published_only=True
@@ -129,12 +128,21 @@ async def test_delete_deposition(depositor, initial_deposition):
 
 @pytest.mark.asyncio()
 async def test_get_new_version_clobbers(depositor, initial_deposition):
-    """Make a new draft, delete it, and see that the conceptdoi still points
+    """Make a new draft, test that not clobbering it returns an error, then
+    delete it, and see that the conceptdoi still points
     at the original."""
 
     bad_draft = await depositor.get_new_version(initial_deposition)
-    non_clobbering = await depositor.get_new_version(initial_deposition, clobber=False)
-    assert bad_draft.id_ == non_clobbering.id_
+    with pytest.raises(ZenodoClientException) as excinfo:
+        non_clobbering = await depositor.get_new_version(
+            initial_deposition, clobber=False
+        )
+    if excinfo:
+        assert (
+            "remove all files first" in excinfo.value.errors[0]["messages"][0].lower()
+        )
+    else:
+        assert bad_draft.id_ == non_clobbering.id_
 
     latest = await get_latest(
         depositor, initial_deposition.conceptdoi, published_only=False
