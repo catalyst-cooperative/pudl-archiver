@@ -39,7 +39,7 @@ async def archive_datasets(
     initialize: bool = False,
     only_years: list[int] | None = None,
     dry_run: bool = True,
-    summary_file: str | None = None,
+    summary_file: Path | None = None,
     download_dir: str | None = None,
     auto_publish: bool = False,
 ):
@@ -108,8 +108,8 @@ async def archive_datasets(
     if summary_file is not None:
         run_summaries = [result.dict() for _, result in results]
 
-        with Path.open(summary_file, "w") as f:
-            json.dump(run_summaries, f, indent=2)
+        with summary_file.open("w") as f:
+            f.write(json.dumps(run_summaries, indent=2))
 
     # Check validation results of all runs that aren't unchanged
     validation_results = [
