@@ -5,7 +5,7 @@ import logging
 from typing import BinaryIO, Literal
 
 import aiohttp
-import semantic_version  # type: ignore
+import semantic_version  # type: ignore  # noqa: PGH003
 
 from pudl_archiver.utils import retry_async
 from pudl_archiver.zenodo.entities import Deposition, DepositionMetadata
@@ -13,7 +13,7 @@ from pudl_archiver.zenodo.entities import Deposition, DepositionMetadata
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 
-class ZenodoClientException(Exception):
+class ZenodoClientError(Exception):
     """Captures the JSON error information from Zenodo."""
 
     def __init__(self, kwargs):
@@ -30,11 +30,11 @@ class ZenodoClientException(Exception):
 
     def __str__(self):
         """The JSON has all we really care about."""
-        return f"ZenodoClientException({self.kwargs['json']})"
+        return f"ZenodoClientError({self.kwargs['json']})"
 
     def __repr__(self):
         """But the kwargs are useful for recreating this object."""
-        return f"ZenodoClientException({repr(self.kwargs)})"
+        return f"ZenodoClientError({repr(self.kwargs)})"
 
 
 class ZenodoDepositor:
@@ -94,7 +94,7 @@ class ZenodoDepositor:
             async def run_request():
                 response = await session.request(method, url, **kwargs)
                 if response.status >= 400:
-                    raise ZenodoClientException(
+                    raise ZenodoClientError(
                         {"response": response, "json": await response.json()}
                     )
                 if parse_json:
@@ -106,7 +106,7 @@ class ZenodoDepositor:
                 retry_on=(
                     aiohttp.ClientError,
                     asyncio.TimeoutError,
-                    ZenodoClientException,
+                    ZenodoClientError,
                 ),
             )
             return response
@@ -351,7 +351,7 @@ class ZenodoDepositor:
                 headers=self.auth_write,
                 timeout=3600,
             )
-        elif deposition.links.files and force_api != "bucket":
+        if deposition.links.files and force_api != "bucket":
             url = f"{deposition.links.files}"
             return await self.request(
                 "POST",
@@ -360,8 +360,7 @@ class ZenodoDepositor:
                 data={"file": data, "name": target},
                 headers=self.auth_write,
             )
-        else:
-            raise RuntimeError("No file or bucket link available for deposition.")
+        raise RuntimeError("No file or bucket link available for deposition.")
 
     async def update_file(
         self, deposition: Deposition, target: str, data: BinaryIO

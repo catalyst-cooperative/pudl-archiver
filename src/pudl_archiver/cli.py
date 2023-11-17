@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """A script for archiving raw PUDL data on Zenodo."""
 
 import argparse

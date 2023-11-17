@@ -1,6 +1,5 @@
 """Test archiver pudl_archiver."""
 import pytest
-
 from pudl_archiver import archive_datasets
 from pudl_archiver.archivers.validate import RunSummary, Unchanged, ValidationTestResult
 
@@ -50,7 +49,7 @@ def failed_run():
 @pytest.mark.asyncio
 async def test_archive_datasets(successful_run, failed_run, unchanged_run, mocker):
     """Test that archive datasets creates run_summary file."""
-    open_mock = mocker.patch("pudl_archiver.open")
+    open_mock = mocker.patch("pudl_archiver.Path.open")
     open_mock.return_value.__enter__.return_value = "file"
     mocked_json_dump = mocker.patch("pudl_archiver.json.dump")
 

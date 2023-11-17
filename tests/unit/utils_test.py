@@ -1,7 +1,6 @@
 from asyncio import to_thread
 
 import pytest
-
 from pudl_archiver.utils import retry_async
 
 

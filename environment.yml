@@ -1,5 +1,5 @@
 ---
-name: pudl-cataloger
+name: pudl-archiver
 channels:
   - conda-forge
   - defaults

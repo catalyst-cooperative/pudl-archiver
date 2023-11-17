@@ -6,9 +6,8 @@ import datetime
 import re
 from typing import Literal
 
-from pydantic import AnyHttpUrl, BaseModel, ConstrainedStr, Field, validator
-
 from pudl.metadata.classes import Contributor, DataSource
+from pydantic import AnyHttpUrl, BaseModel, ConstrainedStr, Field, validator
 
 
 class Doi(ConstrainedStr):
@@ -76,7 +75,7 @@ class DepositionMetadata(BaseModel):
     def check_empty_string(cls, doi: str):  # noqa: N805
         """Sometimes zenodo returns an empty string for the `doi`. Convert to None."""
         if doi == "":
-            return None
+            return
 
     @classmethod
     def from_data_source(cls, data_source_id: str) -> "DepositionMetadata":

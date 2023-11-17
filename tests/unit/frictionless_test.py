@@ -3,7 +3,6 @@ import random
 from pathlib import Path
 
 from frictionless.package import Package
-
 from pudl_archiver.archivers.classes import ResourceInfo
 from pudl_archiver.frictionless import DataPackage
 from pudl_archiver.zenodo.entities import DepositionFile, FileLinks
@@ -19,7 +18,7 @@ def test_datapackage():
             checksum="fake_hash",
             filename=name,
             id="fake_id",
-            filesize=random.randint(1, 10000),  # nosec
+            filesize=random.randint(1, 10000),  # noqa: S311
             links=FileLinks(download="https://fake.url.com"),
         )
         for name in files
