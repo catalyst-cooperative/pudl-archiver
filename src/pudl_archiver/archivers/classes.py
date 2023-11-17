@@ -128,7 +128,7 @@ class AbstractDatasetArchiver(ABC):
             await self.download_file(url, file, **kwargs)
 
             if zipfile.is_zipfile(file):
-                return None
+                return
 
         # If it makes it here that means it couldn't download a valid zipfile
         raise RuntimeError(f"Failed to download valid zipfile from {url}")
@@ -149,7 +149,7 @@ class AbstractDatasetArchiver(ABC):
         response = await retry_async(self.session.get, args=[url], kwargs=kwargs)
         response_bytes = await retry_async(response.read)
         if isinstance(file, Path):
-            with open(file, "wb") as f:
+            with Path.open(file, "wb") as f:
                 f.write(response_bytes)
         elif isinstance(file, io.BytesIO):
             file.write(response_bytes)
@@ -175,9 +175,8 @@ class AbstractDatasetArchiver(ABC):
         # Write to zipfile
         with zipfile.ZipFile(
             archive_path, "w", compression=zipfile.ZIP_DEFLATED
-        ) as archive:
-            with archive.open(filename, "w") as f_disk:
-                f_disk.write(response_bytes)
+        ) as archive, archive.open(filename, "w") as f_disk:
+            f_disk.write(response_bytes)
 
     async def get_hyperlinks(
         self,
@@ -268,10 +267,7 @@ class AbstractDatasetArchiver(ABC):
 
         if len(empty_files) > 0:
             empty_note = f"The following files are empty: {empty_files}"
-            if note:
-                note = ". ".join([note, empty_note])
-            else:
-                note = empty_note
+            note = ". ".join([note, empty_note]) if note else empty_note
 
         return ValidationTestResult(
             name="Empty/invalid file test",

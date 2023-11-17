@@ -6,9 +6,8 @@ import aiohttp
 import pytest
 import pytest_asyncio
 from dotenv import load_dotenv
-
 from pudl_archiver.depositors import ZenodoDepositor
-from pudl_archiver.depositors.zenodo import ZenodoClientException
+from pudl_archiver.depositors.zenodo import ZenodoClientError
 from pudl_archiver.utils import retry_async
 from pudl_archiver.zenodo.entities import DepositionCreator, DepositionMetadata
 
@@ -83,7 +82,7 @@ async def get_latest(depositor, conceptdoi, published_only=False):
         args=[conceptdoi],
         kwargs={"published_only": published_only},
         retry_on=(
-            ZenodoClientException,
+            ZenodoClientError,
             aiohttp.ClientError,
             asyncio.TimeoutError,
             IndexError,
@@ -95,7 +94,7 @@ async def get_latest(depositor, conceptdoi, published_only=False):
 async def test_publish_empty(depositor, empty_deposition, mocker):
     # try publishing empty
     mocker.patch("asyncio.sleep", mocker.AsyncMock())
-    with pytest.raises(ZenodoClientException) as excinfo:
+    with pytest.raises(ZenodoClientError) as excinfo:
         await depositor.publish_deposition(empty_deposition)
     error_json = excinfo.value.kwargs["json"]
     assert "validation error" in error_json["message"].lower()

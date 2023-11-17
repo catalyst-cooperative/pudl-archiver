@@ -95,7 +95,7 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
                 for file in bulk_files
                 if (file["metadata"]["dataType"] == "Emissions")
                 and (file["metadata"]["dataSubType"] == "Hourly")
-                and ("stateCode" in file["metadata"].keys())
+                and ("stateCode" in file["metadata"])
                 and (self.valid_year(file["metadata"]["year"]))
             ]
             logger.info(f"Downloading {len(hourly_state_emissions_files)} total files.")

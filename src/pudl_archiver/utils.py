@@ -34,7 +34,7 @@ async def retry_async(
         args = []
     if kwargs is None:
         kwargs = {}
-    for try_count in range(1, retry_count + 1):
+    for try_count in range(1, retry_count + 1):  # noqa: RET503
         # try count is 1 indexed for logging clarity
         coro = async_func(*args, **kwargs)
         try:

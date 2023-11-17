@@ -231,7 +231,7 @@ async def archive_taxonomy(
 
     # Loop through all files and save to appropriate location in archive
     with zipfile.ZipFile(archive_path, "w", compression=ZIP_DEFLATED) as archive:
-        for url in taxonomy.urlDocs.keys():
+        for url in taxonomy.urlDocs:
             url_parsed = urlparse(url)
 
             # There are some generic XML/XBRL files in the taxonomy that should be skipped

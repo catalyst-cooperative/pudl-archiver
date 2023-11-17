@@ -3,11 +3,11 @@ import asyncio
 import json
 import logging
 import os
-import pathlib
+from pathlib import Path
 
 import aiohttp
 
-import pudl_archiver.orchestrator  # noqa: 401
+import pudl_archiver.orchestrator  # noqa: F401
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver
 from pudl_archiver.archivers.validate import Unchanged
 from pudl_archiver.orchestrator import DepositionOrchestrator
@@ -17,11 +17,11 @@ logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 def all_archivers():
     """List all Archivers that have been defined."""
-    dirpath = pathlib.Path(__file__).parent
+    dirpath = Path(__file__).parent
     pyfiles = [
         path.relative_to(dirpath)
         for path in dirpath.glob("archivers/**/*.py")
-        if "__init__" != path.stem
+        if path.stem != "__init__"
     ]
     module_names = [f"pudl_archiver.{str(p).replace('/', '.')[:-3]}" for p in pyfiles]
     for module in module_names:
@@ -39,7 +39,7 @@ async def archive_datasets(
     initialize: bool = False,
     only_years: list[int] | None = None,
     dry_run: bool = True,
-    summary_file: str | None = None,
+    summary_file: Path | None = None,
     download_dir: str | None = None,
     auto_publish: bool = False,
 ):
@@ -75,15 +75,14 @@ async def archive_datasets(
             cls = ARCHIVERS.get(dataset)
             if not cls:
                 raise RuntimeError(f"Dataset {dataset} not supported")
-            else:
-                downloader = cls(session, only_years, download_directory=download_dir)
+            downloader = cls(session, only_years, download_directory=download_dir)
             orchestrator = DepositionOrchestrator(
                 dataset,
                 downloader,
                 session,
                 upload_key,
                 publish_key,
-                deposition_settings=pathlib.Path("dataset_doi.yaml"),
+                deposition_settings=Path("dataset_doi.yaml"),
                 create_new=initialize,
                 dry_run=dry_run,
                 sandbox=sandbox,
@@ -109,8 +108,8 @@ async def archive_datasets(
     if summary_file is not None:
         run_summaries = [result.dict() for _, result in results]
 
-        with open(summary_file, "w") as f:
-            json.dump(run_summaries, f, indent=2)
+        with summary_file.open("w") as f:
+            f.write(json.dumps(run_summaries, indent=2))
 
     # Check validation results of all runs that aren't unchanged
     validation_results = [
