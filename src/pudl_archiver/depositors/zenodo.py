@@ -5,7 +5,7 @@ import logging
 from typing import BinaryIO, Literal
 
 import aiohttp
-import semantic_version  # type: ignore
+import semantic_version  # type: ignore  # noqa: PGH003
 
 from pudl_archiver.utils import retry_async
 from pudl_archiver.zenodo.entities import Deposition, DepositionMetadata
@@ -13,7 +13,7 @@ from pudl_archiver.zenodo.entities import Deposition, DepositionMetadata
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 
-class ZenodoClientException(Exception):
+class ZenodoClientError(Exception):
     """Captures the JSON error information from Zenodo."""
 
     def __init__(self, status, message, errors=None):
@@ -34,7 +34,7 @@ class ZenodoClientException(Exception):
 
     def __repr__(self):
         """But the kwargs are useful for recreating this object."""
-        return f"ZenodoClientException(status={self.status}, message={self.message}, errors={self.errors})"
+        return f"ZenodoClientError(status={self.status}, message={self.message}, errors={self.errors})"
 
 
 class ZenodoDepositor:
@@ -96,17 +96,16 @@ class ZenodoDepositor:
                 if response.status >= 400:
                     if response.headers["Content-Type"] == "application/json":
                         json_resp = await response.json()
-                        raise ZenodoClientException(
+                        raise ZenodoClientError(
                             status=response.status,
                             message=json_resp.get("message"),
                             errors=json_resp.get("errors"),
                         )
-                    else:
-                        message = await response.text()
-                        raise ZenodoClientException(
-                            status=response.status,
-                            message=message,
-                        )
+                    message = await response.text()
+                    raise ZenodoClientError(
+                        status=response.status,
+                        message=message,
+                    )
                 if parse_json:
                     return await response.json()
                 return response
@@ -116,7 +115,7 @@ class ZenodoDepositor:
                 retry_on=(
                     aiohttp.ClientError,
                     asyncio.TimeoutError,
-                    ZenodoClientException,
+                    ZenodoClientError,
                 ),
             )
             return response
@@ -242,7 +241,7 @@ class ZenodoDepositor:
                 headers=self.auth_write,
             )
         # Except if abandoned in progress draft
-        except ZenodoClientException as excinfo:
+        except ZenodoClientError as excinfo:
             if (
                 clobber
                 and "remove all files first" in excinfo.errors[0]["messages"][0].lower()
@@ -388,7 +387,7 @@ class ZenodoDepositor:
                 headers=self.auth_write,
                 timeout=3600,
             )
-        elif deposition.links.files and force_api != "bucket":
+        if deposition.links.files and force_api != "bucket":
             url = f"{deposition.links.files}"
             return await self.request(
                 "POST",
@@ -397,8 +396,7 @@ class ZenodoDepositor:
                 data={"file": data, "name": target},
                 headers=self.auth_write,
             )
-        else:
-            raise RuntimeError("No file or bucket link available for deposition.")
+        raise RuntimeError("No file or bucket link available for deposition.")
 
     async def update_file(
         self, deposition: Deposition, target: str, data: BinaryIO

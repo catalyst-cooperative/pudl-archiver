@@ -10,3 +10,4 @@ coverage.xml
 .env_tox
 .env
 **/*~
+.hypothesis/*

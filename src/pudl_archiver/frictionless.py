@@ -5,10 +5,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from pydantic import AnyHttpUrl, BaseModel, Field
-
 from pudl.metadata.classes import Contributor, DataSource, License
 from pudl.metadata.constants import CONTRIBUTORS
+from pydantic import AnyHttpUrl, BaseModel, Field
+
 from pudl_archiver.zenodo.entities import DepositionFile
 
 ResourceInfo = namedtuple("ResourceInfo", ["local_path", "partitions"])

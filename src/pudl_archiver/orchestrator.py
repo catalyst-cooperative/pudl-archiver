@@ -74,8 +74,8 @@ class DatasetSettings(BaseModel):
 
 def _compute_md5(file_path: Path) -> str:
     """Compute an md5 checksum to compare to files in zenodo deposition."""
-    hash_md5 = md5()  # nosec: B324
-    with open(file_path, "rb") as f:
+    hash_md5 = md5()  # noqa: S324
+    with Path.open(file_path, "rb") as f:
         for chunk in iter(lambda: f.read(4096), b""):
             hash_md5.update(chunk)
 
@@ -137,7 +137,7 @@ class DepositionOrchestrator:
 
         self.create_new = create_new
         self.deposition_settings = deposition_settings
-        with open(deposition_settings) as f:
+        with Path.open(deposition_settings) as f:
             self.dataset_settings = {
                 name: DatasetSettings(**dois)
                 for name, dois in yaml.safe_load(f).items()
@@ -262,10 +262,10 @@ class DepositionOrchestrator:
                     f"Review new deposition at {self.new_deposition.links.html}"
                 )
             return run_summary
-        else:
-            logger.info("No changes detected.")
-            await self.depositor.delete_deposition(self.new_deposition)
-            return Unchanged(dataset_name=self.data_source_id)
+
+        logger.info("No changes detected.")
+        await self.depositor.delete_deposition(self.new_deposition)
+        return Unchanged(dataset_name=self.data_source_id)
 
     def _generate_changes(
         self, name: str, resource: ResourceInfo
@@ -279,10 +279,7 @@ class DepositionOrchestrator:
             file_info = self.deposition_files[name]
 
             # If file is not exact match for existing file, update with new file
-            if (
-                not (local_md5 := _compute_md5(resource.local_path))
-                == file_info.checksum
-            ):
+            if (local_md5 := _compute_md5(resource.local_path)) != file_info.checksum:
                 logger.info(
                     f"Updating {name}: local hash {local_md5} vs. remote {file_info.checksum}"
                 )
@@ -350,7 +347,7 @@ class DepositionOrchestrator:
         )
 
         # Update doi settings YAML
-        with open(self.deposition_settings, "w") as f:
+        with Path.open(self.deposition_settings, "w") as f:
             raw_settings = {
                 name: settings.dict()
                 for name, settings in self.dataset_settings.items()

@@ -2,7 +2,6 @@
 from datetime import datetime
 
 import pytest
-
 from pudl_archiver.frictionless import DataPackage
 
 

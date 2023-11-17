@@ -6,9 +6,8 @@ import aiohttp
 import pytest
 import pytest_asyncio
 from dotenv import load_dotenv
-
 from pudl_archiver.depositors import ZenodoDepositor
-from pudl_archiver.depositors.zenodo import ZenodoClientException
+from pudl_archiver.depositors.zenodo import ZenodoClientError
 from pudl_archiver.utils import retry_async
 from pudl_archiver.zenodo.entities import DepositionCreator, DepositionMetadata
 
@@ -83,7 +82,7 @@ async def get_latest(depositor, conceptdoi, published_only=False):
         args=[conceptdoi],
         kwargs={"published_only": published_only},
         retry_on=(
-            ZenodoClientException,
+            ZenodoClientError,
             aiohttp.ClientError,
             asyncio.TimeoutError,
             IndexError,
@@ -95,7 +94,7 @@ async def get_latest(depositor, conceptdoi, published_only=False):
 async def test_publish_empty(depositor, empty_deposition, mocker):
     # try publishing empty
     mocker.patch("asyncio.sleep", mocker.AsyncMock())
-    with pytest.raises(ZenodoClientException) as excinfo:
+    with pytest.raises(ZenodoClientError) as excinfo:
         await depositor.publish_deposition(empty_deposition)
     assert "validation error" in excinfo.value.message.lower()
     assert "missing uploaded files" in excinfo.value.errors[0]["messages"][0].lower()
@@ -115,7 +114,7 @@ async def test_delete_deposition(depositor, initial_deposition, mocker):
     assert not latest.submitted
     # Currently, Zenodo server will delete the deposition, but return an error;
     # on retry it will throw a 404 since the deposition is already deleted
-    with pytest.raises(ZenodoClientException) as excinfo:
+    with pytest.raises(ZenodoClientError) as excinfo:
         await depositor.delete_deposition(draft)
     if excinfo:
         assert "persistent identifier does not exist" in excinfo.value.message.lower()
@@ -133,7 +132,7 @@ async def test_get_new_version_clobbers(depositor, initial_deposition):
     at the original."""
 
     bad_draft = await depositor.get_new_version(initial_deposition)
-    with pytest.raises(ZenodoClientException) as excinfo:
+    with pytest.raises(ZenodoClientError) as excinfo:
         non_clobbering = await depositor.get_new_version(
             initial_deposition, clobber=False
         )

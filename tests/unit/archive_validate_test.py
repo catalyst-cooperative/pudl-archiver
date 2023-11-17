@@ -1,6 +1,5 @@
 """Test archive validate module."""
 import pytest
-
 from pudl_archiver.archivers import validate
 from pudl_archiver.frictionless import Resource
 
