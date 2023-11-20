@@ -53,8 +53,8 @@ class Resource(BaseModel):
 
         return cls(
             name=file.filename,
-            path=file.links.download,
-            remote_url=file.links.download,
+            path=file.links.canonical,
+            remote_url=file.links.canonical,
             title=filename.name,
             mediatype=mt,
             parts=parts,

@@ -156,7 +156,7 @@ async def test_zenodo_workflow(
             assert file_data["path"].name in deposition_files
 
             # Download each file
-            file_link = deposition_files[file_data["path"].name].links.download
+            file_link = deposition_files[file_data["path"].name].links.canonical
             res = requests.get(
                 file_link,
                 params={"access_token": upload_key},

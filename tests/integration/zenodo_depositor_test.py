@@ -112,36 +112,26 @@ async def test_delete_deposition(depositor, initial_deposition, mocker):
     )
     assert latest.id_ == draft.id_
     assert not latest.submitted
-    # Currently, Zenodo server will delete the deposition, but return an error;
-    # on retry it will throw a 404 since the deposition is already deleted
-    with pytest.raises(ZenodoClientError) as excinfo:
-        await depositor.delete_deposition(draft)
-    if excinfo:
-        assert "persistent identifier does not exist" in excinfo.value.message.lower()
-    else:
-        latest = await get_latest(
-            depositor, initial_deposition.conceptdoi, published_only=True
-        )
-        assert latest.id_ == initial_deposition.id_
+    await depositor.delete_deposition(draft)
+
+    latest = await get_latest(
+        depositor, initial_deposition.conceptdoi, published_only=True
+    )
+    assert latest.id_ == initial_deposition.id_
 
 
 @pytest.mark.asyncio()
-async def test_get_new_version_clobbers(depositor, initial_deposition):
+async def test_get_new_version_clobbers(depositor, initial_deposition, mocker):
     """Make a new draft, test that not clobbering it returns an error, then
     delete it, and see that the conceptdoi still points
     at the original."""
-
+    mocker.patch("asyncio.sleep", mocker.AsyncMock())
     bad_draft = await depositor.get_new_version(initial_deposition)
     with pytest.raises(ZenodoClientError) as excinfo:
-        non_clobbering = await depositor.get_new_version(
-            initial_deposition, clobber=False
-        )
-    if excinfo:
+        await depositor.get_new_version(initial_deposition, clobber=False)
         assert (
             "remove all files first" in excinfo.value.errors[0]["messages"][0].lower()
         )
-    else:
-        assert bad_draft.id_ == non_clobbering.id_
 
     latest = await get_latest(
         depositor, initial_deposition.conceptdoi, published_only=False
@@ -149,9 +139,8 @@ async def test_get_new_version_clobbers(depositor, initial_deposition):
     assert latest.id_ == bad_draft.id_
 
     clobbering = await depositor.get_new_version(initial_deposition, clobber=True)
-    assert bad_draft.id_ == clobbering.id_
-
     latest = await get_latest(
         depositor, initial_deposition.conceptdoi, published_only=False
     )
     assert latest.id_ == clobbering.id_
+    assert initial_deposition.conceptdoi == clobbering.conceptdoi

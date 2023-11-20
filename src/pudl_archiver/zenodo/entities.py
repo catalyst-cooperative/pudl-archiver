@@ -13,13 +13,13 @@ from pydantic import AnyHttpUrl, BaseModel, ConstrainedStr, Field, validator
 class Doi(ConstrainedStr):
     """The DOI format for production Zenodo."""
 
-    regex = re.compile(r"10\.5281/zenodo\.\d{6,7}")
+    regex = re.compile(r"10\.5281/zenodo\.\d+")
 
 
 class SandboxDoi(ConstrainedStr):
     """The DOI format for sandbox Zenodo."""
 
-    regex = re.compile(r"10\.5072/zenodo\.\d{6,7}")
+    regex = re.compile(r"10\.5072/zenodo\.\d+")
 
 
 PUDL_DESCRIPTION = """
@@ -114,6 +114,18 @@ class FileLinks(BaseModel):
     version: AnyHttpUrl | None = None
     uploads: AnyHttpUrl | None = None
     download: AnyHttpUrl | None = None
+
+    @property
+    def canonical(self):
+        """The most stable URL that points at this file.
+
+        *.zenodo.org/records/<record_id>/files/<filename>
+        """
+        return (
+            self.download.replace("/api", "")
+            .replace("/draft", "")
+            .replace("/content", "")
+        )
 
 
 class BucketFile(BaseModel):
