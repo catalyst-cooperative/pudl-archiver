@@ -121,11 +121,13 @@ class FileLinks(BaseModel):
 
         *.zenodo.org/records/<record_id>/files/<filename>
         """
-        return (
-            self.download.replace("/api", "")
-            .replace("/draft", "")
-            .replace("/content", "")
+        match = re.match(
+            r"(?P<base_url>https?://.*.zenodo.org).*"
+            r"(?P<record_id>/records/\d+).*"
+            r"(?P<filename>/files/[^/]+)",
+            self.download,
         )
+        return "".join(match.groups())
 
 
 class BucketFile(BaseModel):
