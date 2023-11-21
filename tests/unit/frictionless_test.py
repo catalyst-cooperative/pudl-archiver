@@ -19,7 +19,9 @@ def test_datapackage():
             filename=name,
             id="fake_id",
             filesize=random.randint(1, 10000),  # noqa: S311
-            links=FileLinks(download="https://fake.url.com"),
+            links=FileLinks(
+                download="https://fake.zenodo.org/api/records/100/files/bogus"
+            ),
         )
         for name in files
     ]
