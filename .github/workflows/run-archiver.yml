@@ -50,16 +50,16 @@ jobs:
           ZENODO_SANDBOX_TOKEN_UPLOAD: ${{ secrets.ZENODO_SANDBOX_TOKEN_UPLOAD }}
           ZENODO_SANDBOX_TOKEN_PUBLISH: ${{ secrets.ZENODO_SANDBOX_TOKEN_PUBLISH }}
           EPACEMS_API_KEY: ${{ secrets.EPACEMS_API_KEY }}
-          # They're in the repository secrets, but we need more QA/QC checks
-          # ZENODO_TOKEN_UPLOAD: ${{ secrets.ZENODO_TOKEN_UPLOAD }}
-          # ZENODO_TOKEN_PUBLISH: ${{ secrets.ZENODO_TOKEN_PUBLISH }}
+          ZENODO_TOKEN_UPLOAD: ${{ secrets.ZENODO_TOKEN_UPLOAD }}
+          ZENODO_TOKEN_PUBLISH: ${{ secrets.ZENODO_TOKEN_PUBLISH }}
         run: |
-          pudl_archiver --sandbox --datasets ${{ matrix.dataset }} --summary-file ${{ matrix.dataset }}_run_summary.json
+          pudl_archiver --sandbox --initialize --datasets ${{ matrix.dataset }} --dry-run --summary-file ${{ matrix.dataset }}_run_summary.json
 
-      - name: Archive code coverage results
+      - name: Upload run summaries
+        id: upload_summaries
         uses: actions/upload-artifact@v3
         with:
-          name: $${{ matrix.dataset }}-run-summary
+          name: run-summaries
           path: ${{ matrix.dataset }}_run_summary.json
 
   archive-notify:
@@ -67,6 +67,18 @@ jobs:
     needs: archive-run
     if: ${{ always() }}
     steps:
+      - name: Download summaries
+        id: download
+        uses: actions/download-artifact@v3
+        with:
+          name: run-summaries
+      - name: show summaries
+        run: ls -R
+      - name: Munge summaries together with JQ
+        run: >
+          jq -s
+          'flatten | group_by(.dataset_name) | map({(.[0].dataset_name): map(del(.dataset_name))}) | add'
+          *_run_summary.json
       - name: Inform the Codemonkeys
         uses: 8398a7/action-slack@v3
         with:
@@ -84,4 +96,3 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }} # required
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }} # required
-          MATRIX_CONTEXT: ${{ toJson(matrix) }} # required

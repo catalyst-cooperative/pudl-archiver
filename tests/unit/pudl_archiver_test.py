@@ -62,7 +62,6 @@ async def test_archive_datasets(
             "ZENODO_SANDBOX_TOKEN_PUBLISH": "bogus too",
         },
     )
-
     summary_file = tmp_path / "summary_file"
     with summary_file.open("w") as f:
         f.write("file")
