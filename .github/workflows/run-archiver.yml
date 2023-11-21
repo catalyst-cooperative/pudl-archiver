@@ -4,10 +4,7 @@ name: run-archiver
 on:
   workflow_dispatch:
   schedule:
-    - cron: "21 4 * * 0" # Sundays 4:21 AM UTC
-  push:
-    branches:
-      - "daz/**"
+    - cron: "21 4 1 */3 *" # 4:21 AM UTC, 1st of Jan/Apr/Jul/Oct
 
 jobs:
   archive-run:
@@ -17,24 +14,10 @@ jobs:
     strategy:
       matrix:
         dataset:
-          - censusdp1tract
-          - eia176
           - eia860
           - eia860m
-          - eia861
           - eia923
-          - eia_bulk_elec
-          - eiawater
-          - epacamd_eia
           - epacems
-          - ferc1
-          - ferc2
-          - ferc6
-          - ferc60
-          - ferc714
-          - ferceqr
-          - mshamines
-          - phmsagas
 
       fail-fast: false
     runs-on: ubuntu-latest
