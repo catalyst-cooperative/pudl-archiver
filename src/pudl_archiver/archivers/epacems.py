@@ -44,49 +44,43 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
                 and (self.valid_year(file["metadata"]["year"]))
             ]
             logger.info(f"Downloading {len(quarterly_emissions_files)} total files.")
-            # For each year, download all quarters and zip into one file.
-            years = list(
-                {file["metadata"]["year"] for file in quarterly_emissions_files}
-            )
-            for year in years:
-                cems_files = [
-                    file
-                    for file in quarterly_emissions_files
-                    if file["metadata"]["year"] == year
-                ]
-                yield self.get_year_resource(files=cems_files, year=year)
+            for i, cems_file in enumerate(quarterly_emissions_files):
+                yield self.get_quarter_year_resource(
+                    file=cems_file, request_count=i + 1
+                )  # Count files starting at 1 for human legibility.
         else:
             raise AssertionError(
                 f"EPACEMS API request did not succeed: {file_list.status_code}"
             )
 
-    async def get_year_resource(
-        self, files: list[dict[str, str | dict[str, str]]], year: int
+    async def get_quarter_year_resource(
+        self, file: dict[str, str | dict[str, str]], request_count: int | None
     ) -> tuple[Path, dict]:
         """Download all available data for a single quarter in a year.
 
         Args:
-            files: a list of dictionaries containing file characteristics from the EPA
-                API. See
-                https://www.epa.gov/power-sector/cam-api-portal#/swagger/camd-services
+            file: a dictionary containing file characteristics from the EPA API.
+                See https://www.epa.gov/power-sector/cam-api-portal#/swagger/camd-services
                 for expected format of dictionary.
             request_count: the number of the request.
-            year: year of data to download.
         """
-        logger.info(f"Downloading and zipping {year} CEMS data.")
-        files_dict = {}
-        archive_path = self.download_directory / f"epacems-{year}.zip"
-        for i, file in enumerate(files):
-            files_dict[i] = {}
-            quarter = file["metadata"]["quarter"]
-            files_dict[i]["url"] = self.base_url + file["s3Path"]
-            files_dict[i]["year"] = file["metadata"]["year"]
-            files_dict[i]["quarter"] = quarter
-            files_dict[i]["filename"] = f"epacems-{year}-{quarter}.csv"
-            files_dict[i]["archive_path"] = archive_path
+        url = self.base_url + file["s3Path"]
+        year = file["metadata"]["year"]
+        quarter = file["metadata"]["quarter"]
+
+        # Useful to debug at download time-outs.
+        logger.debug(f"Downloading Q{quarter} {year} EPACEMS data.")
 
         # Create zipfile to store year/quarter combinations of files
+        filename = f"epacems-{year}-{quarter}.csv"
+        archive_path = self.download_directory / f"epacems-{year}-{quarter}.zip"
         # Override the default asyncio timeout to 14 minutes, just under the API limit.
-        await self.download_and_zip_files(files_dict=files_dict, timeout=60 * 14)
-
-        return ResourceInfo(local_path=archive_path, partitions={"year": year})
+        await self.download_and_zip_file(
+            url=url, filename=filename, archive_path=archive_path, timeout=60 * 14
+        )
+        logger.info(  # Verbose but helpful to track progress
+            f"File no. {request_count}: Downloaded Q{quarter} {year} EPA CEMS hourly emissions data."
+        )
+        return ResourceInfo(
+            local_path=archive_path, partitions={"year": year, "quarter": quarter}
+        )

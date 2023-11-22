@@ -154,41 +154,31 @@ class AbstractDatasetArchiver(ABC):
         elif isinstance(file, io.BytesIO):
             file.write(response_bytes)
 
-    async def download_and_zip_files(
+    async def download_and_zip_file(
         self,
-        files_dict: dict[str, dict[str, str | Path]],
+        url: str,
+        filename: str,
+        archive_path: Path,
         **kwargs,
     ):
         """Download and zip a file using async session manager.
 
         Args:
             url: URL to file to download.
-            files_dict: Dictionary of file parameters
+            filename: name of file to be zipped
+            archive_path: Local path to write file to disk.
             kwargs: Key word args to pass to request.
         """
-        for key, file in files_dict.items():
-            # Useful to debug download time-outs.
-            if "quarter" in file:
-                partition = "Q" + file["quarter"]
-            elif "month" in file:
-                partition = "M" + file["month"]
-            else:
-                partition = ""
-            year = file["year"]
-            logger.debug(f"Downloading {partition} {year} data.")
+        response = await retry_async(self.session.get, args=[url], kwargs=kwargs)
+        response_bytes = await retry_async(response.read)
 
-            response = await retry_async(
-                self.session.get, args=[file["url"]], kwargs=kwargs
-            )
-            response_bytes = await retry_async(response.read)
-
-            # Write to zipfile
-            with zipfile.ZipFile(
-                file["archive_path"],
-                "w",
-                compression=zipfile.ZIP_DEFLATED,
-            ) as archive:
-                archive.writestr(file["filename"], response_bytes)
+        # Write to zipfile
+        with zipfile.ZipFile(
+            archive_path,
+            "w",
+            compression=zipfile.ZIP_DEFLATED,
+        ) as archive:
+            archive.writestr(filename, response_bytes)
 
     async def get_hyperlinks(
         self,

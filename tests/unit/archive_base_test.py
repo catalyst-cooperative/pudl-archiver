@@ -199,7 +199,7 @@ async def test_download_file(mocker, file_data):
 
 
 @pytest.mark.asyncio
-async def test_download_and_zip_files(mocker, file_data):
+async def test_download_and_zip_file(mocker, file_data):
     """Test download_and_zip_file.
 
     Tests that expected data is written to file on disk in a zipfile.
@@ -222,21 +222,12 @@ async def test_download_and_zip_files(mocker, file_data):
     with tempfile.TemporaryDirectory() as path:
         file_path = str(Path(path) / "test.csv")
         archive_path = str(Path(path) / "test.zip")
-        files_dict = {
-            1: {
-                "file_path": file_path,
-                "archive_path": archive_path,
-                "url": url,
-                "year": "1996",
-                "filename": "test.csv",
-            }
-        }
 
-        await archiver.download_and_zip_files(files_dict=files_dict)
+        await archiver.download_and_zip_file(url, file_path, archive_path)
         # Assert that the zipfile at archive_path contains a file at file_path
         session_mock.get.assert_called_once_with(url)
         with zipfile.ZipFile(archive_path) as zf:
-            zipped_file = zf.open("test.csv")
+            zipped_file = zf.open(file_path)
             assert zipped_file.read() == file_data
 
 
