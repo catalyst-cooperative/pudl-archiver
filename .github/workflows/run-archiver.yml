@@ -75,24 +75,21 @@ jobs:
       - name: show summaries
         run: ls -R
       - name: Munge summaries together with JQ
-        run: >
-          jq -s
-          'flatten | group_by(.dataset_name) | map({(.[0].dataset_name): map(del(.dataset_name))}) | add'
-          *_run_summary.json
+        id: all_summaries
+        run: |
+          jq -s -c 'flatten | group_by(.dataset_name) | map({(.[0].dataset_name): map(del(.dataset_name))}) | add' *_run_summary.json > all_summaries.json
+          {
+            echo 'ALL_SUMMARIES_JSON<<EOF'
+            sed 's/"/\\"/g' all_summaries.json
+            echo
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
       - name: Inform the Codemonkeys
-        uses: 8398a7/action-slack@v3
+        uses: slackapi/slack-github-action@v1.24.0
         with:
-          status: custom
-          fields: workflow,job,commit,repo,ref,author,took
-          custom_payload: |
+          payload: |
             {
-              username: 'action-slack',
-              icon_emoji: ':octocat:',
-              attachments: [{
-                color: '${{ needs.archive-run.result }}' === 'success' ? 'good' : '${{ needs.archive-run.result }}' === 'failure' ? 'danger' : 'warning',
-                text: `${process.env.AS_REPO}@${process.env.AS_REF}\n ${process.env.AS_WORKFLOW} (${process.env.AS_COMMIT})\n by ${process.env.AS_AUTHOR}\n Status: ${{ needs.archive-run.result }}`,
-              }]
+              "text": "Archive run ${{ job.status }}! Summary:\n```\n${{steps.all_summaries.outputs.ALL_SUMMARIES_JSON}}\n```"
             }
         env:
-          GITHUB_TOKEN: ${{ github.token }} # required
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }} # required
