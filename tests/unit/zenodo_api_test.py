@@ -1,7 +1,6 @@
 """Test zenodo API client."""
 import pydantic
 import pytest
-
 from pudl_archiver.orchestrator import DatasetSettings
 
 

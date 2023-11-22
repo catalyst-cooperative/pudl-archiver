@@ -8,7 +8,6 @@ from pathlib import Path
 
 import pytest
 from aiohttp import ClientSession
-
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver, ArchiveAwaitable
 from pudl_archiver.archivers.validate import ValidationTestResult
 from pudl_archiver.frictionless import Resource, ResourceInfo
@@ -19,7 +18,7 @@ def bad_zipfile():
     """Create a fake bad zipfile as a temp file."""
     with tempfile.TemporaryDirectory() as path:
         zip_path = Path(path) / "test.zip"
-        with open(zip_path, "wb") as archive:
+        with Path.open(zip_path, "wb") as archive:
             archive.write(b"Fake non-zipfile data")
 
         yield zip_path
@@ -30,9 +29,10 @@ def good_zipfile():
     """Create a fake good zipfile in temporary directory."""
     with tempfile.TemporaryDirectory() as path:
         zip_path = Path(path) / "test.zip"
-        with zipfile.ZipFile(zip_path, "w") as archive:
-            with archive.open("test.txt", "w") as file:
-                file.write(b"Test good zipfile")
+        with zipfile.ZipFile(zip_path, "w") as archive, archive.open(
+            "test.txt", "w"
+        ) as file:
+            file.write(b"Test good zipfile")
 
         yield zip_path
 

@@ -5,7 +5,7 @@ import logging
 from typing import BinaryIO, Literal
 
 import aiohttp
-import semantic_version  # type: ignore
+import semantic_version  # type: ignore  # noqa: PGH003
 
 from pudl_archiver.utils import retry_async
 from pudl_archiver.zenodo.entities import Deposition, DepositionMetadata
@@ -13,28 +13,28 @@ from pudl_archiver.zenodo.entities import Deposition, DepositionMetadata
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 
-class ZenodoClientException(Exception):
+class ZenodoClientError(Exception):
     """Captures the JSON error information from Zenodo."""
 
-    def __init__(self, kwargs):
+    def __init__(self, status, message, errors=None):
         """Constructor.
 
         Args:
-            kwargs: dictionary with "response" mapping to the actual
-                aiohttp.ClientResponse and "json" mapping to the JSON content.
+            status: status message of response
+            message: message of response
+            errors: if any, list of errors returned by response
         """
-        self.kwargs = kwargs
-        self.status = kwargs["response"].status
-        self.message = kwargs["json"].get("message", {})
-        self.errors = kwargs["json"].get("errors", {})
+        self.status = status
+        self.message = message
+        self.errors = errors
 
     def __str__(self):
-        """The JSON has all we really care about."""
-        return f"ZenodoClientException({self.kwargs['json']})"
+        """Cast to string."""
+        return repr(self)
 
     def __repr__(self):
         """But the kwargs are useful for recreating this object."""
-        return f"ZenodoClientException({repr(self.kwargs)})"
+        return f"ZenodoClientError(status={self.status}, message={self.message}, errors={self.errors})"
 
 
 class ZenodoDepositor:
@@ -94,8 +94,17 @@ class ZenodoDepositor:
             async def run_request():
                 response = await session.request(method, url, **kwargs)
                 if response.status >= 400:
-                    raise ZenodoClientException(
-                        {"response": response, "json": await response.json()}
+                    if response.headers["Content-Type"] == "application/json":
+                        json_resp = await response.json()
+                        raise ZenodoClientError(
+                            status=response.status,
+                            message=json_resp.get("message"),
+                            errors=json_resp.get("errors"),
+                        )
+                    message = await response.text()
+                    raise ZenodoClientError(
+                        status=response.status,
+                        message=message,
                     )
                 if parse_json:
                     return await response.json()
@@ -106,7 +115,7 @@ class ZenodoDepositor:
                 retry_on=(
                     aiohttp.ClientError,
                     asyncio.TimeoutError,
-                    ZenodoClientException,
+                    ZenodoClientError,
                 ),
             )
             return response
@@ -192,7 +201,9 @@ class ZenodoDepositor:
             log_label=f"Get deposition for {rec_id}",
             headers=self.auth_write,
         )
-        return Deposition(**response)
+        deposition = Deposition(**response)
+        logger.debug(deposition)
+        return deposition
 
     async def get_new_version(
         self, deposition: Deposition, clobber: bool = False
@@ -222,16 +233,41 @@ class ZenodoDepositor:
         url = f"{self.api_root}/deposit/depositions/{deposition.id_}/actions/newversion"
 
         # create a new unpublished deposition version
-        response = await self.request(
-            "POST",
-            url,
-            log_label="Creating new version",
-            headers=self.auth_write,
-        )
-        old_deposition = Deposition(**response)
-        new_deposition_url = old_deposition.links.latest_draft
+        try:
+            response = await self.request(
+                "POST",
+                url,
+                log_label="Creating new version",
+                headers=self.auth_write,
+            )
+        # Except if abandoned in progress draft
+        except ZenodoClientError as excinfo:
+            if (
+                clobber
+                and "remove all files first" in excinfo.errors[0]["messages"][0].lower()
+            ):
+                logger.info("Delete abandoned version and create new one.")
+                # Get ID of problematic in progress version
+                draft_deposition = await self.get_deposition(
+                    str(deposition.conceptdoi), published_only=False
+                )
+                await self.delete_deposition(draft_deposition)
+            response = await self.request(
+                "POST",
+                url,
+                log_label="Creating new version",
+                headers=self.auth_write,
+            )
 
-        source_metadata = old_deposition.metadata.dict(by_alias=True)
+        old_metadata = deposition.metadata.dict(by_alias=True)
+        new_version = Deposition(**response)
+
+        source_metadata = new_version.metadata.dict(by_alias=True)
+
+        # If version not in response for new version, get from most recent deposition
+        if source_metadata["version"] is None:
+            source_metadata["version"] = old_metadata["version"]
+
         metadata = {}
         for key, val in source_metadata.items():
             if key not in ["doi", "prereserve_doi", "publication_date"]:
@@ -246,7 +282,7 @@ class ZenodoDepositor:
         data = json.dumps({"metadata": metadata})
 
         # Get url to newest deposition
-        new_deposition_url = old_deposition.links.latest_draft
+        new_deposition_url = new_version.links.latest_draft
         headers = {
             "Content-Type": "application/json",
         } | self.auth_write
@@ -254,7 +290,7 @@ class ZenodoDepositor:
         response = await self.request(
             "PUT",
             new_deposition_url,
-            log_label=f"Updating version number from {previous} ({old_deposition.id_}) to {version_info}",
+            log_label=f"Updating version number from {previous} ({new_version.id_}) to {version_info}",
             data=data,
             headers=headers,
         )
@@ -351,7 +387,7 @@ class ZenodoDepositor:
                 headers=self.auth_write,
                 timeout=3600,
             )
-        elif deposition.links.files and force_api != "bucket":
+        if deposition.links.files and force_api != "bucket":
             url = f"{deposition.links.files}"
             return await self.request(
                 "POST",
@@ -360,8 +396,7 @@ class ZenodoDepositor:
                 data={"file": data, "name": target},
                 headers=self.auth_write,
             )
-        else:
-            raise RuntimeError("No file or bucket link available for deposition.")
+        raise RuntimeError("No file or bucket link available for deposition.")
 
     async def update_file(
         self, deposition: Deposition, target: str, data: BinaryIO

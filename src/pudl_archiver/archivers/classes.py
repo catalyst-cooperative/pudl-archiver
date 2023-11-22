@@ -128,7 +128,7 @@ class AbstractDatasetArchiver(ABC):
             await self.download_file(url, file, **kwargs)
 
             if zipfile.is_zipfile(file):
-                return None
+                return
 
         # If it makes it here that means it couldn't download a valid zipfile
         raise RuntimeError(f"Failed to download valid zipfile from {url}")
@@ -149,7 +149,7 @@ class AbstractDatasetArchiver(ABC):
         response = await retry_async(self.session.get, args=[url], kwargs=kwargs)
         response_bytes = await retry_async(response.read)
         if isinstance(file, Path):
-            with open(file, "wb") as f:
+            with Path.open(file, "wb") as f:
                 f.write(response_bytes)
         elif isinstance(file, io.BytesIO):
             file.write(response_bytes)
@@ -168,9 +168,9 @@ class AbstractDatasetArchiver(ABC):
         """
         for key, file in files_dict.items():
             # Useful to debug download time-outs.
-            if "quarter" in file.keys():
+            if "quarter" in file:
                 partition = "Q" + file["quarter"]
-            elif "month" in file.keys():
+            elif "month" in file:
                 partition = "M" + file["month"]
             else:
                 partition = ""
@@ -279,10 +279,7 @@ class AbstractDatasetArchiver(ABC):
 
         if len(empty_files) > 0:
             empty_note = f"The following files are empty: {empty_files}"
-            if note:
-                note = ". ".join([note, empty_note])
-            else:
-                note = empty_note
+            note = ". ".join([note, empty_note]) if note else empty_note
 
         return ValidationTestResult(
             name="Empty/invalid file test",

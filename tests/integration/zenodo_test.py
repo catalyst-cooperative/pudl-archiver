@@ -10,12 +10,11 @@ import pytest
 import pytest_asyncio
 import requests
 from dotenv import load_dotenv
-
 from pudl.metadata.classes import DataSource
 from pudl.metadata.constants import LICENSES
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver, ResourceInfo
 from pudl_archiver.archivers.validate import Unchanged
-from pudl_archiver.depositors.zenodo import ZenodoClientException
+from pudl_archiver.depositors.zenodo import ZenodoClientError
 from pudl_archiver.orchestrator import DepositionOrchestrator
 from pudl_archiver.utils import retry_async
 from pudl_archiver.zenodo.entities import (
@@ -107,7 +106,7 @@ def test_files():
                 # Add to files
                 files[dep_type].append({"path": path, "contents": contents})
 
-                with open(path, "wb") as f:
+                with Path.open(path, "wb") as f:
                     f.write(contents)
 
         yield files
@@ -131,7 +130,7 @@ def test_settings():
     """Create temporary DOI settings file."""
     with tempfile.TemporaryDirectory() as tmp_dir:
         settings_file = Path(tmp_dir) / "settings.yaml"
-        with open(settings_file, "w") as f:
+        with Path.open(settings_file, "w") as f:
             f.writelines(["fake_dataset:\n", "    sandbox_doi: null"])
 
         yield settings_file
@@ -157,7 +156,7 @@ async def test_zenodo_workflow(
             assert file_data["path"].name in deposition_files
 
             # Download each file
-            file_link = deposition_files[file_data["path"].name].links.download
+            file_link = deposition_files[file_data["path"].name].links.canonical
             res = requests.get(
                 file_link,
                 params={"access_token": upload_key},
@@ -274,7 +273,7 @@ async def test_zenodo_workflow(
         args=[str(orchestrator.deposition.conceptdoi)],
         kwargs={"published_only": True},
         retry_on=(
-            ZenodoClientException,
+            ZenodoClientError,
             aiohttp.ClientError,
             asyncio.TimeoutError,
             IndexError,

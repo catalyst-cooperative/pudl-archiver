@@ -6,9 +6,8 @@ import aiohttp
 import pytest
 import pytest_asyncio
 from dotenv import load_dotenv
-
 from pudl_archiver.depositors import ZenodoDepositor
-from pudl_archiver.depositors.zenodo import ZenodoClientException
+from pudl_archiver.depositors.zenodo import ZenodoClientError
 from pudl_archiver.utils import retry_async
 from pudl_archiver.zenodo.entities import DepositionCreator, DepositionMetadata
 
@@ -46,7 +45,7 @@ async def empty_deposition(depositor):
         ],
         description="Test dataset for the sandbox, thanks!",
         version="1.0.0",
-        license="CC0-1.0",
+        license="cc-zero",
         keywords=["test"],
     )
 
@@ -83,7 +82,7 @@ async def get_latest(depositor, conceptdoi, published_only=False):
         args=[conceptdoi],
         kwargs={"published_only": published_only},
         retry_on=(
-            ZenodoClientException,
+            ZenodoClientError,
             aiohttp.ClientError,
             asyncio.TimeoutError,
             IndexError,
@@ -95,20 +94,17 @@ async def get_latest(depositor, conceptdoi, published_only=False):
 async def test_publish_empty(depositor, empty_deposition, mocker):
     # try publishing empty
     mocker.patch("asyncio.sleep", mocker.AsyncMock())
-    with pytest.raises(ZenodoClientException) as excinfo:
+    with pytest.raises(ZenodoClientError) as excinfo:
         await depositor.publish_deposition(empty_deposition)
-    error_json = excinfo.value.kwargs["json"]
-    assert "validation error" in error_json["message"].lower()
-    assert (
-        "minimum one file must be provided"
-        in error_json["errors"][0]["message"].lower()
-    )
+    assert "validation error" in excinfo.value.message.lower()
+    assert "missing uploaded files" in excinfo.value.errors[0]["messages"][0].lower()
 
 
 @pytest.mark.asyncio()
-async def test_delete_deposition(depositor, initial_deposition):
+async def test_delete_deposition(depositor, initial_deposition, mocker):
     """Make a new draft, delete it, and see that the conceptdoi still points
     at the original."""
+    mocker.patch("asyncio.sleep", mocker.AsyncMock())
     draft = await depositor.get_new_version(initial_deposition)
 
     latest = await get_latest(
@@ -116,7 +112,6 @@ async def test_delete_deposition(depositor, initial_deposition):
     )
     assert latest.id_ == draft.id_
     assert not latest.submitted
-
     await depositor.delete_deposition(draft)
 
     latest = await get_latest(
@@ -126,13 +121,17 @@ async def test_delete_deposition(depositor, initial_deposition):
 
 
 @pytest.mark.asyncio()
-async def test_get_new_version_clobbers(depositor, initial_deposition):
-    """Make a new draft, delete it, and see that the conceptdoi still points
+async def test_get_new_version_clobbers(depositor, initial_deposition, mocker):
+    """Make a new draft, test that not clobbering it returns an error, then
+    delete it, and see that the conceptdoi still points
     at the original."""
-
+    mocker.patch("asyncio.sleep", mocker.AsyncMock())
     bad_draft = await depositor.get_new_version(initial_deposition)
-    non_clobbering = await depositor.get_new_version(initial_deposition, clobber=False)
-    assert bad_draft.id_ == non_clobbering.id_
+    with pytest.raises(ZenodoClientError) as excinfo:
+        await depositor.get_new_version(initial_deposition, clobber=False)
+        assert (
+            "remove all files first" in excinfo.value.errors[0]["messages"][0].lower()
+        )
 
     latest = await get_latest(
         depositor, initial_deposition.conceptdoi, published_only=False
@@ -140,9 +139,8 @@ async def test_get_new_version_clobbers(depositor, initial_deposition):
     assert latest.id_ == bad_draft.id_
 
     clobbering = await depositor.get_new_version(initial_deposition, clobber=True)
-    assert bad_draft.id_ == clobbering.id_
-
     latest = await get_latest(
         depositor, initial_deposition.conceptdoi, published_only=False
     )
     assert latest.id_ == clobbering.id_
+    assert initial_deposition.conceptdoi == clobbering.conceptdoi

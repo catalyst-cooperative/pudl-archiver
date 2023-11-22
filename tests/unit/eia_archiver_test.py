@@ -1,5 +1,4 @@
 import pytest
-
 from pudl_archiver.archivers.eia860 import Eia860Archiver
 from pudl_archiver.archivers.eia860m import Eia860MArchiver
 from pudl_archiver.archivers.eia861 import Eia861Archiver
