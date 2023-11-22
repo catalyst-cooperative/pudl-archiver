@@ -122,11 +122,13 @@ class FileLinks(BaseModel):
         *.zenodo.org/records/<record_id>/files/<filename>
         """
         match = re.match(
-            r"(?P<base_url>https?://.*.zenodo.org).*"
+            r"(?P<base_url>https?://.*zenodo.org).*"
             r"(?P<record_id>/records/\d+).*"
             r"(?P<filename>/files/[^/]+)",
             self.download,
         )
+        if match is None:
+            raise ValueError(f"Got bad Zenodo download URL: {self.download}")
         return "".join(match.groups())
 
 

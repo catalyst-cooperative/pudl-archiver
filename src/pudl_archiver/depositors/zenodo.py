@@ -74,6 +74,7 @@ class ZenodoDepositor:
             url: str,
             log_label: str,
             parse_json: bool = True,
+            retry_count: int = 7,
             **kwargs,
         ) -> dict | aiohttp.ClientResponse:
             """Make requests to Zenodo.
@@ -117,6 +118,7 @@ class ZenodoDepositor:
                     asyncio.TimeoutError,
                     ZenodoClientError,
                 ),
+                retry_count=retry_count,
             )
             return response
 
@@ -316,16 +318,29 @@ class ZenodoDepositor:
     async def delete_deposition(self, deposition) -> None:
         """Delete an un-submitted deposition.
 
+        As of 2023-11-22, Zenodo API times out on first few deletion attempts,
+        occasionally 500s, and then 404s once the delete has actually gone
+        through.
+
         Args:
             deposition: the deposition you want to delete.
         """
-        await self.request(
-            "DELETE",
-            deposition.links.self,
-            log_label="Deleting deposition",
-            headers=self.auth_write,
-            parse_json=False,
-        )
+        try:
+            await self.request(
+                "DELETE",
+                deposition.links.self,
+                log_label="Deleting deposition",
+                headers=self.auth_write,
+                parse_json=False,
+                retry_count=5,
+            )
+        except ZenodoClientError as e:
+            if e.status != 404:
+                raise e
+            logger.info(
+                f"Got 404 when deleting {deposition.links.self}, assuming "
+                "earlier delete succeeded."
+            )
 
     async def delete_file(self, deposition: Deposition, target: str) -> None:
         """Delete a file from a deposition.
