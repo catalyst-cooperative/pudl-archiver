@@ -2,6 +2,7 @@
 import logging
 import re
 import typing
+from datetime import datetime
 from pathlib import Path
 
 from pudl_archiver.archivers.classes import (
@@ -20,6 +21,7 @@ PHMSA_DATASETS = [
     "hazardous_liquid",
     "gas_transmission_gathering",
     "gas_distribution",
+    "reporting_regulated_gas_gathering",
 ]
 
 
@@ -74,8 +76,12 @@ class PhmsaGasArchiver(AbstractDatasetArchiver):
         if dataset not in PHMSA_DATASETS:
             logger.warning(f"New dataset type found: {dataset}.")
 
-        # Set start year
+        # From start and end year, get partitions
         start_year = int(filename.split("_")[-2])
+        end_year = filename.split("_")[-1]
+        # If end year is present, this will include data through last year.
+        end_year = datetime.now().year if end_year == "present" else int(end_year)
+        years = list(range(start_year, end_year))
 
         download_path = self.download_directory / f"{self.name}-{filename}.zip"
         await self.download_zipfile(url, download_path)
@@ -84,6 +90,7 @@ class PhmsaGasArchiver(AbstractDatasetArchiver):
             local_path=download_path,
             partitions={
                 "start_year": start_year,
+                "years": years,
                 "dataset": dataset,
             },
         )
