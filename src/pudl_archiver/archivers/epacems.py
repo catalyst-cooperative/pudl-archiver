@@ -19,7 +19,7 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
     """EPA CEMS archiver."""
 
     name = "epacems"
-    concurrency_limit = 5  # Number of files to concurrently download
+    concurrency_limit = 2 # Number of files to concurrently download
 
     base_url = "https://api.epa.gov/easey/bulk-files/"
     parameters = {"api_key": os.environ["EPACEMS_API_KEY"]}  # Set to API key
