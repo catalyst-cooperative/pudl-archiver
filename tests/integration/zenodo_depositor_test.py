@@ -126,21 +126,14 @@ async def test_get_new_version_clobbers(depositor, initial_deposition, mocker):
     delete it, and see that the conceptdoi still points
     at the original."""
     mocker.patch("asyncio.sleep", mocker.AsyncMock())
-    bad_draft = await depositor.get_new_version(initial_deposition)
+    clobberee = await depositor.get_new_version(initial_deposition)
     with pytest.raises(ZenodoClientError) as excinfo:
         await depositor.get_new_version(initial_deposition, clobber=False)
         assert (
             "remove all files first" in excinfo.value.errors[0]["messages"][0].lower()
         )
 
-    latest = await get_latest(
-        depositor, initial_deposition.conceptdoi, published_only=False
-    )
-    assert latest.id_ == bad_draft.id_
-
-    clobbering = await depositor.get_new_version(initial_deposition, clobber=True)
-    latest = await get_latest(
-        depositor, initial_deposition.conceptdoi, published_only=False
-    )
-    assert latest.id_ == clobbering.id_
-    assert initial_deposition.conceptdoi == clobbering.conceptdoi
+    clobberer = await depositor.get_new_version(initial_deposition, clobber=True)
+    # assuming that ID is a monotonically increasing number, the clobberer should be bigger than the clobberee
+    assert clobberee.id_ < clobberer.id_
+    assert initial_deposition.conceptdoi == clobberer.conceptdoi

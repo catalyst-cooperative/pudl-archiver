@@ -119,14 +119,21 @@ class FileLinks(BaseModel):
     def canonical(self):
         """The most stable URL that points at this file.
 
-        *.zenodo.org/records/<record_id>/files/<filename>
+        Can be:
+        https://zenodo.org/records/<record_id>/files/<filename>
+        https://www.zenodo.org/records/<record_id>/files/<filename>
+        https://sandbox.zenodo.org/records/<record_id>/files/<filename>
+
+        We extract the record ID and filename from the file's download link.
         """
         match = re.match(
-            r"(?P<base_url>https?://.*.zenodo.org).*"
+            r"(?P<base_url>https?://.*zenodo.org).*"
             r"(?P<record_id>/records/\d+).*"
             r"(?P<filename>/files/[^/]+)",
             self.download,
         )
+        if match is None:
+            raise ValueError(f"Got bad Zenodo download URL: {self.download}")
         return "".join(match.groups())
 
 
