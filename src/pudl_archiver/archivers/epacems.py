@@ -79,7 +79,7 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
             url=url, filename=filename, archive_path=archive_path, timeout=60 * 14
         )
         logger.info(  # Verbose but helpful to track progress
-            f"File no. {request_count}: Downloaded Q{quarter} {year} EPA CEMS hourly emissions data."
+            f"File no. {request_count}: Downloaded {year} Q{quarter} EPA CEMS hourly emissions data."
         )
         return ResourceInfo(
             local_path=archive_path, partitions={"year": year, "quarter": quarter}
