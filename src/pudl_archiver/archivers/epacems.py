@@ -45,7 +45,7 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
             ]
             logger.info(f"Downloading {len(quarterly_emissions_files)} total files.")
             for i, cems_file in enumerate(quarterly_emissions_files):
-                yield self.get_quarter_year_resource(
+                yield self.get_year_quarter_resource(
                     file=cems_file, request_count=i + 1
                 )  # Count files starting at 1 for human legibility.
         else:
@@ -53,7 +53,7 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
                 f"EPACEMS API request did not succeed: {file_list.status_code}"
             )
 
-    async def get_quarter_year_resource(
+    async def get_year_quarter_resource(
         self, file: dict[str, str | dict[str, str]], request_count: int | None
     ) -> tuple[Path, dict]:
         """Download all available data for a single quarter in a year.
@@ -69,7 +69,7 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
         quarter = file["metadata"]["quarter"]
 
         # Useful to debug at download time-outs.
-        logger.debug(f"Downloading Q{quarter} {year} EPACEMS data.")
+        logger.debug(f"Downloading {year} Q{quarter} EPACEMS data.")
 
         # Create zipfile to store year/quarter combinations of files
         filename = f"epacems-{year}-{quarter}.csv"
