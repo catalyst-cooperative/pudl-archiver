@@ -70,7 +70,7 @@ class RunSummary(BaseModel):
     validation_tests: list[ValidationTestResult]
     file_changes: list[FileDiff]
     version: str = ""
-    pervious_version: str = ""
+    previous_version: str = ""
     date: str
     previous_version_date: str
 
