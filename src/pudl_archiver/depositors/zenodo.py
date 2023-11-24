@@ -208,7 +208,11 @@ class ZenodoDepositor:
         return deposition
 
     async def get_new_version(
-        self, deposition: Deposition, clobber: bool = False
+        self,
+        deposition: Deposition,
+        data_source_id: str,
+        clobber: bool = False,
+        refresh_metadata: bool = False,
     ) -> Deposition:
         """Get a new version of a deposition.
 
@@ -217,7 +221,10 @@ class ZenodoDepositor:
 
         Args:
             deposition: the deposition you want to get the new version of.
+            data_source_id: the deposition dataset name (to clobber existing metadata).
             clobber: if there is an existing draft, delete it and get a new one.
+            refresh_metadata: regenerate metadata from data source rather than existing
+                archives' metadata.
 
         Returns:
             A new Deposition that is a snapshot of the old one you passed in,
@@ -264,7 +271,13 @@ class ZenodoDepositor:
         old_metadata = deposition.metadata.dict(by_alias=True)
         new_version = Deposition(**response)
 
-        source_metadata = new_version.metadata.dict(by_alias=True)
+        if refresh_metadata:
+            logger.info("Re-creating deposition metadata from PUDL source data.")
+            source_metadata = DepositionMetadata.from_data_source(data_source_id).dict(
+                by_alias=True
+            )
+        else:
+            source_metadata = new_version.metadata.dict(by_alias=True)
 
         # If version not in response for new version, get from most recent deposition
         if source_metadata["version"] is None:

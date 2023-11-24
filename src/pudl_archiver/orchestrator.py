@@ -97,6 +97,7 @@ class DepositionOrchestrator:
         dry_run: bool = True,
         sandbox: bool = True,
         auto_publish: bool = False,
+        refresh_metadata: bool = False,
     ):
         """Prepare the ZenodoStorage interface.
 
@@ -124,6 +125,7 @@ class DepositionOrchestrator:
         self.publish_key = publish_key
 
         self.auto_publish = auto_publish
+        self.refresh_metadata = refresh_metadata
 
         self.depositor = ZenodoDepositor(upload_key, publish_key, session, self.sandbox)
         self.downloader = downloader
@@ -155,7 +157,10 @@ class DepositionOrchestrator:
 
             self.deposition = await self.depositor.get_deposition(doi)
         self.new_deposition = await self.depositor.get_new_version(
-            self.deposition, clobber=not self.create_new
+            self.deposition,
+            clobber=not self.create_new,
+            data_source_id=self.data_source_id,
+            refresh_metadata=self.refresh_metadata,
         )
 
         # TODO (daz): stop using self.deposition_files, use the files lists on the depositions
