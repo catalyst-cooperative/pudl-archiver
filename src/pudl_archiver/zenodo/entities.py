@@ -70,9 +70,7 @@ class DepositionMetadata(BaseModel):
     prereserve_doi: dict | bool = False
     keywords: list[str] | None = None
     version: str | None = None
-    communities: list[dict[str, str]] = [
-        {"identifier": "catalyst-cooperative"}
-    ]  # By default, add to Catalyst Cooperative community
+    communities: list[dict[str, str]] | None = None
 
     @validator("doi", pre=True)
     def check_empty_string(cls, doi: str):  # noqa: N805
@@ -107,6 +105,7 @@ class DepositionMetadata(BaseModel):
             license=data_source.license_raw.name,
             keywords=data_source.keywords,
             version="1.0.0",
+            communities=[{"identifier": "catalyst-cooperative"}],
         )
 
 

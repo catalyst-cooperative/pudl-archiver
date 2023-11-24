@@ -44,6 +44,7 @@ def deposition_metadata():
         version="1.0.0",
         license="cc-zero",
         keywords=["test"],
+        communities=None,
     )
 
 
