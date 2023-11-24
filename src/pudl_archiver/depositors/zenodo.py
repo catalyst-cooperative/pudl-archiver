@@ -338,7 +338,7 @@ class ZenodoDepositor:
             if e.status != 404:
                 raise e
             logger.info(
-                f"Got 404 when deleting {deposition.links.self}, assuming "
+                f"404 Not Found when deleting {deposition.links.self}, assume "
                 "earlier delete succeeded."
             )
 
