@@ -246,7 +246,7 @@ class AbstractDatasetArchiver(ABC):
             description="Check for files from previous version of archive that would be deleted by the new version",
             success=len(missing_files) == 0,
             notes=notes,
-            ignore_failure=self.check_missing_files,
+            ignore_failure=not self.check_missing_files,
         )
 
     def generate_summary(
@@ -329,9 +329,9 @@ class AbstractDatasetArchiver(ABC):
                 # Perform various file validations
                 self.file_validations.extend(
                     [
-                        ValidationTestResult.validate_filetype(resource_info.local_path, self.check_empty_invalid_files),
-                        ValidationTestResult.validate_file_not_empty(resource_info.local_path, self.check_empty_invalid_files),
-                        ValidationTestResult.validate_zip_layout(resource_info.local_path, resource_info.layout, self.check_empty_invalid_files),
+                        ValidationTestResult.validate_filetype(resource_info.local_path, not self.check_empty_invalid_files),
+                        ValidationTestResult.validate_file_not_empty(resource_info.local_path, not self.check_empty_invalid_files),
+                        ValidationTestResult.validate_zip_layout(resource_info.local_path, resource_info.layout, not self.check_empty_invalid_files),
                     ]
                 )
 
