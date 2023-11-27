@@ -121,7 +121,11 @@ async def test_resource_chunks(
         "pudl_archiver.archivers.classes.tempfile.TemporaryDirectory",
         new=tmpdir_mock,
     )
-    mocker.patch("pudl_archiver.archivers.classes.FileValidation.from_path")
+
+    # Mock out file validations
+    mocker.patch("pudl_archiver.archivers.classes.ValidationTestResult.validate_filetype")
+    mocker.patch("pudl_archiver.archivers.classes.ValidationTestResult.validate_file_not_empty")
+    mocker.patch("pudl_archiver.archivers.classes.ValidationTestResult.validate_zip_layout")
 
     # Initialize MockArchiver class
     archiver = MockArchiver(concurrency_limit, directory_per_resource_chunk)

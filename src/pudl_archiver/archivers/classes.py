@@ -1,7 +1,6 @@
 """Defines base class for archiver."""
 import asyncio
 import io
-import itertools
 import logging
 import math
 import tempfile
@@ -14,7 +13,6 @@ from pathlib import Path
 import aiohttp
 
 from pudl_archiver.archivers.validate import (
-    FileValidation,
     RunSummary,
     ValidationTestResult,
 )
@@ -96,7 +94,7 @@ class AbstractDatasetArchiver(ABC):
         if only_years is None:
             only_years = []
         self.only_years = only_years
-        self.file_validations: dict[str, FileValidation] = {}
+        self.file_validations: list[ValidationTestResult] = []
 
         # Create logger
         self.logger = logging.getLogger(f"catalystcoop.{__name__}")
@@ -248,56 +246,7 @@ class AbstractDatasetArchiver(ABC):
             description="Check for files from previous version of archive that would be deleted by the new version",
             success=len(missing_files) == 0,
             notes=notes,
-        )
-
-    def _check_valid_files(self) -> ValidationTestResult:
-        """Check for invalid or empty files."""
-        invalid_files = [
-            name
-            for name, validation in self.file_validations.items()
-            if not validation.valid_type
-        ]
-
-        empty_files = [
-            name
-            for name, validation in self.file_validations.items()
-            if not validation.not_empty
-        ]
-
-        invalid_layouts = {
-            name: validation
-            for name, validation in self.file_validations.items()
-            if validation.valid_layout is False
-        }
-
-        notes = []
-        success = True
-        if len(invalid_files) > 0:
-            success = False
-            notes.append(
-                f"The following files were determined to be invalid based on their extension: {invalid_files}"
-            )
-
-        if len(empty_files) > 0:
-            success = False
-            notes.append(f"The following files are empty: {empty_files}")
-
-        if len(invalid_layouts) > 0:
-            success = False
-            notes.append(
-                itertools.chain(
-                    *[
-                        file_validation.layout_notes
-                        for file_validation in invalid_layouts.values()
-                    ]
-                )
-            )
-
-        return ValidationTestResult(
-            name="Empty/invalid file test",
-            description="Validate files based on their extension, and check that no files are empty",
-            success=success,
-            notes=notes,
+            ignore_failure=self.check_missing_files,
         )
 
     def generate_summary(
@@ -317,15 +266,11 @@ class AbstractDatasetArchiver(ABC):
             Bool indicating whether or not all tests passed.
         """
         validations = []
-        missing_file_validation = self._check_missing_files(
+        validations.append(self._check_missing_files(
             baseline_datapackage, new_datapackage
-        )
-        missing_file_validation.ignore_failure = not self.check_missing_files
-        validations.append(missing_file_validation)
+        ))
 
-        valid_file_validation = self._check_valid_files()
-        valid_file_validation.ignore_failure = not self.check_empty_invalid_files
-        validations.append(valid_file_validation)
+        validations += self.file_validations
 
         validations += self.dataset_validate_archive(
             baseline_datapackage, new_datapackage, resources
@@ -381,11 +326,13 @@ class AbstractDatasetArchiver(ABC):
                 resource_info = await resource_coroutine
                 self.logger.info(f"Downloaded {resource_info.local_path}.")
 
-                # Validate filetype
-                self.file_validations[
-                    str(resource_info.local_path.name)
-                ] = FileValidation.from_path(
-                    resource_info.local_path, layout=resource_info.layout
+                # Perform various file validations
+                self.file_validations.extend(
+                    [
+                        ValidationTestResult.validate_filetype(resource_info.local_path, self.check_empty_invalid_files),
+                        ValidationTestResult.validate_file_not_empty(resource_info.local_path, self.check_empty_invalid_files),
+                        ValidationTestResult.validate_zip_layout(resource_info.local_path, resource_info.layout, self.check_empty_invalid_files),
+                    ]
                 )
 
                 # Return downloaded

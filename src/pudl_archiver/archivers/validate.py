@@ -19,11 +19,56 @@ class ValidationTestResult(BaseModel):
     name: str
     description: str
     ignore_failure: bool = False
-    resource_name: str | None = None  # If test is specific to a single resource
+    resource_name: Path | None = None  # If test is specific to a single resource
     success: bool
     notes: list[
         str
     ] | None = None  # Optional note to provide details like why test failed
+
+    # Flag to allow ignoring tests that pass to avoid cluttering the summary
+    keep_when_success: bool = True
+
+    @classmethod
+    def validate_filetype(cls, path: Path, ignore_failure: bool) -> "ValidationTestResult":
+        """Check that file is valid based on type."""
+        return cls(
+            name="Valid Filetype Test",
+            description="Check that file appears to be valid based on it's extension.",
+            ignore_failure=ignore_failure,
+            resource_name=path,
+            success=_validate_file_type(path, BytesIO(path.read_bytes())),
+            keep_when_success=False,  # We only want to see invalid files in output
+        )
+
+    @classmethod
+    def validate_file_not_empty(cls, path: Path, ignore_failure: bool) -> "ValidationTestResult":
+        """Check that file is valid based on type."""
+        return cls(
+            name="Empty File Test",
+            description="Check that file is not empty.",
+            ignore_failure=ignore_failure,
+            resource_name=path,
+            success=path.stat().st_size > 0,
+            keep_when_success=False,  # We only want to see empty files in output
+        )
+
+    @classmethod
+    def validate_zip_layout(cls, path: Path, layout: ZipLayout | None, ignore_failure: bool) -> "ValidationTestResult":
+        """Check that file is valid based on type."""
+        if layout is not None:
+            valid_layout, layout_notes = layout.validate_zip(path)
+        else:
+            valid_layout, layout_notes = True, []
+
+        return cls(
+            name="Zipfile Layout Test",
+            description="Check that the internal layout of a zipfile is as expected.",
+            ignore_failure=ignore_failure,
+            resource_name=path,
+            success=valid_layout,
+            notes=layout_notes,
+            keep_when_success=False,  # We only want to see empty files in output
+        )
 
 
 class PartitionDiff(BaseModel):
@@ -33,32 +78,6 @@ class PartitionDiff(BaseModel):
     value: str | None = None
     previous_value: str | None = None
     diff_type: Literal["CREATE", "UPDATE", "DELETE"]
-
-
-class FileValidation(BaseModel):
-    """Check that file is valid based on datatype and that it's not empty."""
-
-    valid_type: bool
-    not_empty: bool
-    valid_layout: bool | None = None
-    layout_notes: list[str] = []
-
-    @classmethod
-    def from_path(cls, path: Path, layout: ZipLayout | None = None):
-        """Validate file type and check that file is not empty."""
-        valid_type = _validate_file_type(path, BytesIO(path.read_bytes()))
-        not_empty = path.stat().st_size > 0
-
-        valid_layout, layout_notes = None, []
-        if layout:
-            valid_layout, layout_notes = layout.validate_zip(path)
-
-        return cls(
-            valid_type=valid_type,
-            not_empty=not_empty,
-            valid_layout=valid_layout,
-            layout_notes=layout_notes,
-        )
 
 
 class FileDiff(BaseModel):
@@ -124,7 +143,7 @@ class RunSummary(BaseModel):
 
         return cls(
             dataset_name=name,
-            validation_tests=validation_tests,
+            validation_tests=[test for test in validation_tests if (not test.success) or test.keep_when_success],
             file_changes=file_changes,
             version=new_datapackage.version,
             previous_version=previous_version,
@@ -136,6 +155,7 @@ class RunSummary(BaseModel):
 def _process_partition_diffs(
     baseline_partitions: dict[str, Any], new_partitions: dict[str, Any]
 ) -> list[PartitionDiff]:
+    """Summarize how partitions have changed."""
     all_partition_keys = {*baseline_partitions.keys(), *new_partitions.keys()}
     partition_diffs = []
     for key in all_partition_keys:
@@ -175,9 +195,12 @@ def _process_partition_diffs(
 def _process_resource_diffs(
     baseline_resources: dict[str, Resource], new_resources: dict[str, Resource]
 ) -> list[FileDiff]:
+    """Check how resources have changed."""
+    # Get sets of resources from previous version and new version
     baseline_set = set(baseline_resources.keys())
     new_set = set(new_resources.keys())
 
+    # Compare sets
     resource_overlap = baseline_set.intersection(new_set)
     created_resources = new_set - baseline_set
     deleted_resources = baseline_set - new_set
@@ -212,6 +235,7 @@ def _process_resource_diffs(
             baseline_resource.parts, new_resource.parts
         )
 
+        # Consider resource to have changed if the file hash or partitions have changed
         if file_changed or (len(partition_diffs) > 0):
             changed_resources.append(
                 FileDiff(
