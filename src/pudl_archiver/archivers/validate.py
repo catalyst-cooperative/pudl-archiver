@@ -245,7 +245,7 @@ def _validate_zip(buffer: BytesIO) -> bool:
 
 def _validate_xml(buffer: BytesIO) -> bool:
     try:
-        Et.parse(buffer)  # nosec: B314
+        Et.parse(buffer)  # noqa: S314
     except Et.ParseError:
         return False
 
