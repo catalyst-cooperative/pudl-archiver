@@ -55,6 +55,14 @@ async def test_archive_datasets(
     tmp_path,
 ):
     """Test that archive datasets creates run_summary file."""
+    mocker.patch.dict(
+        "os.environ",
+        {
+            "ZENODO_SANDBOX_TOKEN_UPLOAD": "bogus",
+            "ZENODO_SANDBOX_TOKEN_PUBLISH": "bogus too",
+        },
+    )
+
     summary_file = tmp_path / "summary_file"
     with summary_file.open("w") as f:
         f.write("file")
