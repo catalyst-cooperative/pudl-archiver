@@ -34,6 +34,11 @@ def test_depo_metadata_from_data_source():
             id="not_sandbox",
         ),
         pytest.param(
+            "http://zenodo.org/api/records/405/files/unchanged_file.txt/content",
+            "http://zenodo.org/records/405/files/unchanged_file.txt",
+            id="no_subdomain",
+        ),
+        pytest.param(
             "http://www.zenodo.org/records/405/files/unchanged_file.txt",
             "http://www.zenodo.org/records/405/files/unchanged_file.txt",
             id="already_canonical",

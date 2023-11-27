@@ -215,11 +215,9 @@ class DepositionOrchestrator:
         async for name, resource in self.downloader.download_all_resources():
             resources[name] = resource
             change = self._generate_changes(name, resource)
-
             # Leave immediately after generating changes if dry_run
             if self.dry_run:
                 continue
-
             if change:
                 changed = True
                 await self._apply_change(change)

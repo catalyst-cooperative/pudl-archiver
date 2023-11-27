@@ -11,3 +11,4 @@ coverage.xml
 .env
 **/*~
 .hypothesis/*
+.vscode/*
