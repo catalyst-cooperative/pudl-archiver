@@ -26,7 +26,7 @@ class ZipLayout(BaseModel):
     file_paths: set[Path]
 
     def validate_zip(self, file_path: Path) -> tuple[bool, list[str]]:
-        """Validate that zipfile layout matcheds expectations."""
+        """Validate that zipfile layout matches expectations."""
         # Avoid circular import
         from pudl_archiver.archivers.validate import _validate_file_type
 
