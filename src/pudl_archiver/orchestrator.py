@@ -397,7 +397,9 @@ class DepositionOrchestrator:
         )
 
         datapackage_json = io.BytesIO(
-            bytes(datapackage.model_dump_json(by_alias=True, indent=4), encoding="utf-8")
+            bytes(
+                datapackage.model_dump_json(by_alias=True, indent=4), encoding="utf-8"
+            )
         )
 
         await self._apply_change(
