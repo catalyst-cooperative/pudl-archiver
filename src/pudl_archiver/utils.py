@@ -11,7 +11,9 @@ from pydantic.functional_serializers import PlainSerializer
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 
+# A custom type that wraps AnyHttpUrl, but nicely serializes the URL as a string
 Url = Annotated[AnyHttpUrl, PlainSerializer(lambda url: str(url), return_type=str)]
+
 
 async def retry_async(
     async_func: Callable[..., Awaitable[Any]],
