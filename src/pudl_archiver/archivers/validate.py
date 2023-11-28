@@ -40,10 +40,10 @@ class FileSpecificValidation(ValidationTestResult):
 
 
 def validate_filetype(
-    cls, path: Path, required_for_run_success: bool
+    path: Path, required_for_run_success: bool
 ) -> FileSpecificValidation:
     """Check that file is valid based on type."""
-    return cls(
+    return FileSpecificValidation(
         name="Valid Filetype Test",
         description="Check that file appears to be valid based on it's extension.",
         required_for_run_success=required_for_run_success,
@@ -53,10 +53,10 @@ def validate_filetype(
 
 
 def validate_file_not_empty(
-    cls, path: Path, required_for_run_success: bool
+    path: Path, required_for_run_success: bool
 ) -> FileSpecificValidation:
     """Check that file is valid based on type."""
-    return cls(
+    return FileSpecificValidation(
         name="Empty File Test",
         description="Check that file is not empty.",
         required_for_run_success=required_for_run_success,
@@ -66,7 +66,7 @@ def validate_file_not_empty(
 
 
 def validate_zip_layout(
-    cls, path: Path, layout: ZipLayout | None, required_for_run_success: bool
+    path: Path, layout: ZipLayout | None, required_for_run_success: bool
 ) -> FileSpecificValidation:
     """Check that file is valid based on type."""
     if layout is not None:
@@ -74,7 +74,7 @@ def validate_zip_layout(
     else:
         valid_layout, layout_notes = True, []
 
-    return cls(
+    return FileSpecificValidation(
         name="Zipfile Layout Test",
         description="Check that the internal layout of a zipfile is as expected.",
         required_for_run_success=required_for_run_success,
