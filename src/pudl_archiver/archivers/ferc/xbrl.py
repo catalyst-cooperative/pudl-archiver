@@ -35,7 +35,7 @@ be found in month specific feeds that can be retrieved by appending a query stri
 to this URL to specify the month and year desired.
 """
 
-Year = Annotated[int, Field(ge=2000, le=datetime.datetime.today().year)]
+Year = Annotated[int, Field(ge=1994, le=datetime.datetime.today().year)]
 """Constrained pydantic integer type with all years containing XBRL data."""
 
 
