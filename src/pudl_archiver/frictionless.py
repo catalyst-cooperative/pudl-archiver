@@ -7,8 +7,9 @@ from typing import Any
 
 from pudl.metadata.classes import Contributor, DataSource, License
 from pudl.metadata.constants import CONTRIBUTORS
-from pydantic import AnyHttpUrl, BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
 
+from pudl_archiver.utils import Url
 from pudl_archiver.zenodo.entities import DepositionFile
 
 ResourceInfo = namedtuple("ResourceInfo", ["local_path", "partitions"])
@@ -30,8 +31,8 @@ class Resource(BaseModel):
 
     profile: str = "data-resource"
     name: str
-    path: AnyHttpUrl
-    remote_url: AnyHttpUrl
+    path: Url
+    remote_url: Url
     title: str
     parts: dict[str, Any]
     encoding: str = "utf-8"
@@ -83,6 +84,18 @@ class DataPackage(BaseModel):
     created: str
     version: str | None = None
 
+    @field_serializer("contributors", "licenses")
+    def serialize_paths(self, contributors: list[Contributor | License], info):
+        """Convert URLs to strings within contributors."""
+        serialized_contributors = []
+        for contributor in contributors:
+            # Pass kwargs from top-level model_dump call
+            serialized = contributor.model_dump(**info.__dict__)
+            serialized["path"] = str(serialized["path"])
+            serialized_contributors.append(serialized)
+
+        return serialized_contributors
+
     @classmethod
     def from_filelist(
         cls,
@@ -105,7 +118,7 @@ class DataPackage(BaseModel):
         return DataPackage(
             name=f"pudl-raw-{data_source.name}",
             title=f"PUDL Raw {data_source.title}",
-            sources=[{"title": data_source.title, "path": data_source.path}],
+            sources=[{"title": data_source.title, "path": str(data_source.path)}],
             licenses=[data_source.license_raw],
             resources=sorted(
                 [
