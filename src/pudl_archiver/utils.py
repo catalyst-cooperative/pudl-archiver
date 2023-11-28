@@ -2,11 +2,17 @@
 import asyncio
 import logging
 from collections.abc import Awaitable, Callable
-from typing import Any
+from typing import Annotated, Any
 
 import aiohttp
+from pydantic import AnyHttpUrl
+from pydantic.functional_serializers import PlainSerializer
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
+
+
+# A custom type that wraps AnyHttpUrl, but nicely serializes the URL as a string
+Url = Annotated[AnyHttpUrl, PlainSerializer(lambda url: str(url), return_type=str)]
 
 
 async def retry_async(

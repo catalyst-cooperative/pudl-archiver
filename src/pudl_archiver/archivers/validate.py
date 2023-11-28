@@ -29,7 +29,9 @@ class ValidationTestResult(BaseModel):
     keep_when_success: bool = True
 
     @classmethod
-    def validate_filetype(cls, path: Path, ignore_failure: bool) -> "ValidationTestResult":
+    def validate_filetype(
+        cls, path: Path, ignore_failure: bool
+    ) -> "ValidationTestResult":
         """Check that file is valid based on type."""
         return cls(
             name="Valid Filetype Test",
@@ -41,7 +43,9 @@ class ValidationTestResult(BaseModel):
         )
 
     @classmethod
-    def validate_file_not_empty(cls, path: Path, ignore_failure: bool) -> "ValidationTestResult":
+    def validate_file_not_empty(
+        cls, path: Path, ignore_failure: bool
+    ) -> "ValidationTestResult":
         """Check that file is valid based on type."""
         return cls(
             name="Empty File Test",
@@ -53,7 +57,9 @@ class ValidationTestResult(BaseModel):
         )
 
     @classmethod
-    def validate_zip_layout(cls, path: Path, layout: ZipLayout | None, ignore_failure: bool) -> "ValidationTestResult":
+    def validate_zip_layout(
+        cls, path: Path, layout: ZipLayout | None, ignore_failure: bool
+    ) -> "ValidationTestResult":
         """Check that file is valid based on type."""
         if layout is not None:
             valid_layout, layout_notes = layout.validate_zip(path)
@@ -74,7 +80,7 @@ class ValidationTestResult(BaseModel):
 class PartitionDiff(BaseModel):
     """Model summarizing changes in partitions."""
 
-    key: Any
+    key: Any = None
     value: str | None = None
     previous_value: str | None = None
     diff_type: Literal["CREATE", "UPDATE", "DELETE"]
@@ -143,7 +149,11 @@ class RunSummary(BaseModel):
 
         return cls(
             dataset_name=name,
-            validation_tests=[test for test in validation_tests if (not test.success) or test.keep_when_success],
+            validation_tests=[
+                test
+                for test in validation_tests
+                if (not test.success) or test.keep_when_success
+            ],
             file_changes=file_changes,
             version=new_datapackage.version,
             previous_version=previous_version,
@@ -163,7 +173,7 @@ def _process_partition_diffs(
         new_val = new_partitions.get(key)
 
         match baseline_val, new_val:
-            case None, created_part_val:
+            case [None, created_part_val]:
                 partition_diffs.append(
                     PartitionDiff(
                         key=key,
@@ -171,7 +181,7 @@ def _process_partition_diffs(
                         diff_type="CREATE",
                     )
                 )
-            case deleted_part_val, None:
+            case [deleted_part_val, None]:
                 partition_diffs.append(
                     PartitionDiff(
                         key=key,
@@ -179,7 +189,7 @@ def _process_partition_diffs(
                         diff_type="DELETE",
                     )
                 )
-            case old_val, new_val if old_val != new_val:
+            case [old_val, new_val] if old_val != new_val:
                 partition_diffs.append(
                     PartitionDiff(
                         key=key,
