@@ -183,7 +183,7 @@ class DepositionOrchestrator:
         """
         await self._initialize()
 
-        resources = await self._upload_resources(self.downloader)
+        resources = await self._download_then_upload_resources(self.downloader)
         for deletion in self._get_deletions(resources):
             await self._apply_change(deletion)
 
@@ -207,7 +207,7 @@ class DepositionOrchestrator:
 
         return run_summary
 
-    async def _upload_resources(
+    async def _download_then_upload_resources(
         self, downloader: AbstractDatasetArchiver
     ) -> dict[str, ResourceInfo]:
         resources = {}
