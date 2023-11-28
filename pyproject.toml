@@ -30,7 +30,6 @@ classifiers = [
 
 [project.optional-dependencies]
 dev = [
-    "black>=22.0,<23.12",  # A deterministic code formatter
     "build>=1.0,<1.1",
     "ruff>=0.1,<0.2",
     "tox>=4.0,<4.12",  # Python test environment manager
