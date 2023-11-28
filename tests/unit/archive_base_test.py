@@ -123,9 +123,9 @@ async def test_resource_chunks(
     )
 
     # Mock out file validations
-    mocker.patch("pudl_archiver.archivers.classes.ValidationTestResult.validate_filetype")
-    mocker.patch("pudl_archiver.archivers.classes.ValidationTestResult.validate_file_not_empty")
-    mocker.patch("pudl_archiver.archivers.classes.ValidationTestResult.validate_zip_layout")
+    mocker.patch("pudl_archiver.archivers.classes.validate.validate_filetype")
+    mocker.patch("pudl_archiver.archivers.classes.validate.validate_file_not_empty")
+    mocker.patch("pudl_archiver.archivers.classes.validate.validate_zip_layout")
 
     # Initialize MockArchiver class
     archiver = MockArchiver(concurrency_limit, directory_per_resource_chunk)
@@ -309,7 +309,7 @@ async def test_get_hyperlinks(docname, pattern, links, request, html_docs):
                     name="test2",
                     description="test2",
                     success=False,
-                    ignore_failure=True,
+                    required_for_run_success=False,
                 ),
             ],
             True,

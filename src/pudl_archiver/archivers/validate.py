@@ -18,63 +18,70 @@ class ValidationTestResult(BaseModel):
 
     name: str
     description: str
-    ignore_failure: bool = False
-    resource_name: Path | None = None  # If test is specific to a single resource
+    required_for_run_success: bool = True
     success: bool
     notes: list[
         str
     ] | None = None  # Optional note to provide details like why test failed
 
     # Flag to allow ignoring tests that pass to avoid cluttering the summary
-    keep_when_success: bool = True
+    always_serialize_in_summary: bool = True
 
-    @classmethod
-    def validate_filetype(
-        cls, path: Path, ignore_failure: bool
-    ) -> "ValidationTestResult":
-        """Check that file is valid based on type."""
-        return cls(
-            name="Valid Filetype Test",
-            description="Check that file appears to be valid based on it's extension.",
-            ignore_failure=ignore_failure,
-            resource_name=path,
-            success=_validate_file_type(path, BytesIO(path.read_bytes())),
-            keep_when_success=False,  # We only want to see invalid files in output
-        )
 
-    @classmethod
-    def validate_file_not_empty(
-        cls, path: Path, ignore_failure: bool
-    ) -> "ValidationTestResult":
-        """Check that file is valid based on type."""
-        return cls(
-            name="Empty File Test",
-            description="Check that file is not empty.",
-            ignore_failure=ignore_failure,
-            resource_name=path,
-            success=path.stat().st_size > 0,
-            keep_when_success=False,  # We only want to see empty files in output
-        )
+class DatasetSpecificValidation(ValidationTestResult):
+    """ValidationTestResult specific to an entire dataset."""
 
-    @classmethod
-    def validate_zip_layout(
-        cls, path: Path, layout: ZipLayout | None, ignore_failure: bool
-    ) -> "ValidationTestResult":
-        """Check that file is valid based on type."""
-        if layout is not None:
-            valid_layout, layout_notes = layout.validate_zip(path)
-        else:
-            valid_layout, layout_notes = True, []
 
-        return cls(
-            name="Zipfile Layout Test",
-            description="Check that the internal layout of a zipfile is as expected.",
-            ignore_failure=ignore_failure,
-            resource_name=path,
-            success=valid_layout,
-            notes=layout_notes,
-            keep_when_success=False,  # We only want to see empty files in output
-        )
+class FileSpecificValidation(ValidationTestResult):
+    """ValidationTestResult specific to a single file."""
+
+    resource_name: Path
+    always_serialize_in_summary: bool = False
+
+
+def validate_filetype(
+    cls, path: Path, required_for_run_success: bool
+) -> FileSpecificValidation:
+    """Check that file is valid based on type."""
+    return cls(
+        name="Valid Filetype Test",
+        description="Check that file appears to be valid based on it's extension.",
+        required_for_run_success=required_for_run_success,
+        resource_name=path,
+        success=_validate_file_type(path, BytesIO(path.read_bytes())),
+    )
+
+
+def validate_file_not_empty(
+    cls, path: Path, required_for_run_success: bool
+) -> FileSpecificValidation:
+    """Check that file is valid based on type."""
+    return cls(
+        name="Empty File Test",
+        description="Check that file is not empty.",
+        required_for_run_success=required_for_run_success,
+        resource_name=path,
+        success=path.stat().st_size > 0,
+    )
+
+
+def validate_zip_layout(
+    cls, path: Path, layout: ZipLayout | None, required_for_run_success: bool
+) -> FileSpecificValidation:
+    """Check that file is valid based on type."""
+    if layout is not None:
+        valid_layout, layout_notes = layout.validate_zip(path)
+    else:
+        valid_layout, layout_notes = True, []
+
+    return cls(
+        name="Zipfile Layout Test",
+        description="Check that the internal layout of a zipfile is as expected.",
+        required_for_run_success=required_for_run_success,
+        resource_name=path,
+        success=valid_layout,
+        notes=layout_notes,
+    )
 
 
 class PartitionDiff(BaseModel):
@@ -115,9 +122,10 @@ class RunSummary(BaseModel):
 
     @property
     def success(self) -> bool:
-        """Return True if all tests not marked as ``ignore_failure`` passed."""
+        """Return True if all tests marked as ``required_for_run_success`` passed."""
         test_results = [
-            (test.success or test.ignore_failure) for test in self.validation_tests
+            (test.success or not test.required_for_run_success)
+            for test in self.validation_tests
         ]
         return all(test_results)
 
@@ -152,7 +160,7 @@ class RunSummary(BaseModel):
             validation_tests=[
                 test
                 for test in validation_tests
-                if (not test.success) or test.keep_when_success
+                if (not test.success) or test.always_serialize_in_summary
             ],
             file_changes=file_changes,
             version=new_datapackage.version,
