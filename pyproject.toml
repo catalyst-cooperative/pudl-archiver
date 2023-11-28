@@ -67,11 +67,6 @@ requires = [
 ]
 build-backend = "setuptools.build_meta"
 
-[tool.black]
-line-length = 88
-target-version = ["py311"]
-include = "\\.pyi?$"
-
 [tool.doc8]
 max-line-length = 88
 ignore-path = ["docs/_build"]
@@ -144,6 +139,10 @@ line-length = 88
 
 # Don't automatically concatenate strings -- sometimes we forget a comma!
 unfixable = ["ISC"]
+
+[tool.ruff.format]
+quote-style = "double"
+exclude = ["migrations/versions/*"]
 
 [tool.ruff.per-file-ignores]
 "__init__.py" = ["F401"]    # Ignore unused imports
