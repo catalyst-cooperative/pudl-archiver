@@ -8,7 +8,7 @@ from pathlib import Path
 
 import aiohttp
 import yaml
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver
 from pudl_archiver.archivers.validate import RunSummary, Unchanged
@@ -44,9 +44,7 @@ class _UploadSpec(BaseModel):
 
     source: io.IOBase | Path
     dest: str
-
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class FileWrapper(io.BytesIO):
@@ -399,7 +397,9 @@ class DepositionOrchestrator:
         )
 
         datapackage_json = io.BytesIO(
-            bytes(datapackage.json(by_alias=True, indent=4), encoding="utf-8")
+            bytes(
+                datapackage.model_dump_json(by_alias=True, indent=4), encoding="utf-8"
+            )
         )
 
         await self._apply_change(
