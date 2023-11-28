@@ -88,7 +88,7 @@ class DataPackage(BaseModel):
     def serialize_paths(self, contributors: list[Contributor | License], info):
         """Convert URLs to strings within certain types.
 
-        Pydantic URL types no longer subclass str, so when they are serialized they
+        Pydantic URL types no longer inherit from str, so when they are serialized they
         don't nicely become string representations of the URL like frictionless expects.
 
         Elsewhere this is handled using a custom type that handles serialization, but
