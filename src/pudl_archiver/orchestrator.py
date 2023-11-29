@@ -1,6 +1,7 @@
 """Core routines for archiving raw data packages."""
 import io
 import logging
+import re
 from dataclasses import dataclass
 from enum import Enum, auto
 from hashlib import md5
@@ -144,7 +145,12 @@ class DepositionOrchestrator:
     async def _initialize(self):
         if self.create_new:
             doi = None
-            self.deposition = await self._create_deposition(self.data_source_id)
+            metadata = DepositionMetadata.from_data_source(self.data_source_id)
+            if not metadata.keywords:
+                raise AssertionError(
+                    "New dataset is missing keywords and cannot be archived."
+                )
+            self.deposition = await self.depositor.create_deposition(metadata)
         else:
             settings = self.dataset_settings[self.data_source_id]
             doi = settings.sandbox_doi if self.sandbox else settings.production_doi
@@ -158,41 +164,8 @@ class DepositionOrchestrator:
 
         # TODO (daz): stop using self.deposition_files, use the files lists on the depositions
         # Map file name to file metadata for all files in deposition
-        self.deposition_files = await self._remote_fileinfo(self.new_deposition)
-
-    # TODO (daz): inline this.
-    async def _remote_fileinfo(self, deposition: Deposition):
-        """Return info on all files contained in deposition.
-
-        Args:
-            deposition: Deposition for which to return file info.
-
-        Returns:
-            Dictionary mapping filenames to DepositionFile metadata objects.
-        """
-        return {f.filename: f for f in deposition.files}
-
-    # TODO (daz): inline this.
-    async def _create_deposition(self, data_source_id: str) -> Deposition:
-        """Create a Zenodo deposition resource.
-
-        This should only be called once for a given data source.  The deposition will be
-        prepared in draft form, so that files can be added prior to publication.
-
-        Args:
-            data_source_id: Data source ID that will be used to generate zenodo metadata
-            from data source metadata.
-
-        Returns:
-            Deposition object, per
-            https://developers.zenodo.org/?python#depositions
-        """
-        metadata = DepositionMetadata.from_data_source(data_source_id)
-        if not metadata.keywords:
-            raise AssertionError(
-                "New dataset is missing keywords and cannot be archived."
-            )
-        return await self.depositor.create_deposition(metadata)
+        self.deposition_files = {f.filename: f for f in self.new_deposition.files}
+        self.changes: list[_DepositionChange] = []
 
     async def run(self) -> RunSummary | Unchanged:
         """Run the entire deposition update process.
@@ -208,62 +181,45 @@ class DepositionOrchestrator:
         """
         await self._initialize()
 
+        resources = await self._download_then_upload_resources(self.downloader)
+        for deletion in self._get_deletions(resources):
+            await self._apply_change(deletion)
+
+        new_datapackage, old_datapackage = await self._update_datapackage(resources)
+        run_summary = self.downloader.generate_summary(
+            old_datapackage, new_datapackage, resources
+        )
+
+        if not self.changes:
+            # must run *after* updating datapackage.json
+            logger.info("No changes detected.")
+            await self.depositor.delete_deposition(self.new_deposition)
+            return Unchanged(dataset_name=self.data_source_id)
+
+        if not run_summary.success:
+            logger.error("Archive validation failed. Not publishing new archive.")
+            await self.depositor.delete_deposition(self.new_deposition)
+            return run_summary
+
+        await self._publish()
+
+        return run_summary
+
+    async def _download_then_upload_resources(
+        self, downloader: AbstractDatasetArchiver
+    ) -> dict[str, ResourceInfo]:
         resources = {}
-        changed = False
-        async for name, resource in self.downloader.download_all_resources():
+        async for name, resource in downloader.download_all_resources():
             resources[name] = resource
-            change = self._generate_changes(name, resource)
+            change = self._generate_change(name, resource)
             # Leave immediately after generating changes if dry_run
             if self.dry_run:
                 continue
             if change:
-                changed = True
                 await self._apply_change(change)
+        return resources
 
-        # Check for files that should no longer be in deposition
-        files_to_delete = self._get_files_to_delete(resources)
-        changed = changed or len(files_to_delete) > 0
-        if self.dry_run:
-            logger.info("Dry run, aborting")
-            return Unchanged(dataset_name=self.data_source_id, reason="Dry run.")
-
-        # Delete files no longer in deposition
-        [
-            await self._apply_change(
-                _DepositionChange(action_type=_DepositionAction.DELETE, name=name)
-            )
-            for name in files_to_delete
-        ]
-
-        self.new_deposition = await self.depositor.get_record(self.new_deposition.id_)
-        if changed:
-            # If there are any changes detected update datapackage and publish
-            new_datapackage, old_datapackage = await self._update_datapackage(resources)
-
-            run_summary = self.downloader.generate_summary(
-                old_datapackage, new_datapackage, resources
-            )
-            if not run_summary.success:
-                logger.error("Archive validation failed. Not publishing new archive.")
-                await self.depositor.delete_deposition(self.new_deposition)
-                return run_summary
-
-            if self.auto_publish:
-                published = await self.depositor.publish_deposition(self.new_deposition)
-                if self.create_new:
-                    self._update_dataset_settings(published)
-            else:
-                logger.info("Skipping publishing deposition to allow manual review.")
-                logger.info(
-                    f"Review new deposition at {self.new_deposition.links.html}"
-                )
-            return run_summary
-
-        logger.info("No changes detected.")
-        await self.depositor.delete_deposition(self.new_deposition)
-        return Unchanged(dataset_name=self.data_source_id)
-
-    def _generate_changes(
+    def _generate_change(
         self, name: str, resource: ResourceInfo
     ) -> _DepositionChange | None:
         action = None
@@ -290,18 +246,24 @@ class DepositionOrchestrator:
             resource=resource.local_path,
         )
 
-    def _get_files_to_delete(self, resources) -> list[str]:
+    def _get_deletions(self, resources) -> list[_DepositionChange]:
         # Delete files not included in new deposition
         files_to_delete = []
-        for filename, file_info in self.deposition_files.items():
+        for filename in self.deposition_files:
             if filename not in resources and filename != "datapackage.json":
                 logger.info(f"Deleting {filename} from deposition.")
-                files_to_delete.append(filename)
+                files_to_delete.append(
+                    _DepositionChange(_DepositionAction.DELETE, name=filename)
+                )
 
         return files_to_delete
 
     async def _apply_change(self, change: _DepositionChange):
         """Actually upload and delete what we listed in self.uploads/deletes."""
+        self.changes.append(change)
+        if self.dry_run:
+            logger.info(f"Dry run, skipping {change}")
+            return
         if change.action_type in [_DepositionAction.DELETE, _DepositionAction.UPDATE]:
             file_info = self.deposition_files[change.name]
             await self.depositor.delete_file(self.new_deposition, file_info.filename)
@@ -361,6 +323,7 @@ class DepositionOrchestrator:
         """
         if self.new_deposition is None:
             return None, None
+        self.new_deposition = await self.depositor.get_record(self.new_deposition.id_)
 
         logger.info(f"Creating new datapackage.json for {self.data_source_id}")
         files = {file.filename: file for file in self.new_deposition.files}
@@ -378,14 +341,6 @@ class DepositionOrchestrator:
             )
             response_bytes = await retry_async(response.read)
             old_datapackage = DataPackage.parse_raw(response_bytes)
-
-            # Stage old datapackge to be deleted
-            await self._apply_change(
-                _DepositionChange(
-                    action_type=_DepositionAction.DELETE,
-                    name="datapackage.json",
-                )
-            )
             files.pop("datapackage.json")
 
         # Create updated datapackage
@@ -402,12 +357,50 @@ class DepositionOrchestrator:
             )
         )
 
-        await self._apply_change(
-            _DepositionChange(
-                action_type=_DepositionAction.CREATE,
-                name="datapackage.json",
-                resource=datapackage_json,
+        if old_datapackage is None:
+            await self._apply_change(
+                _DepositionChange(
+                    action_type=_DepositionAction.CREATE,
+                    name="datapackage.json",
+                    resource=datapackage_json,
+                )
             )
-        )
+        else:
+            if self._datapackage_worth_changing(old_datapackage, datapackage):
+                await self._apply_change(
+                    _DepositionChange(
+                        action_type=_DepositionAction.UPDATE,
+                        name="datapackage.json",
+                        resource=datapackage_json,
+                    )
+                )
 
         return datapackage, old_datapackage
+
+    def _datapackage_worth_changing(
+        self, old_datapackage: DataPackage, new_datapackage: DataPackage
+    ) -> bool:
+        # ignore differences in created/version
+        # ignore differences resource paths if it's just some ID number changing...
+        for field in new_datapackage.dict():
+            if field in {"created", "version"}:
+                continue
+            if field == "resources":
+                for r in old_datapackage.resources + new_datapackage.resources:
+                    r.path = re.sub(r"/\d+/", "/ID_NUMBER/", str(r.path))
+                    r.remote_url = re.sub(r"/\d+/", "/ID_NUMBER/", str(r.remote_url))
+            if getattr(new_datapackage, field) != getattr(old_datapackage, field):
+                return True
+        return False
+
+    async def _publish(self):
+        if self.dry_run:
+            logger.info("Dry run - not publishing at all.")
+            return
+        if self.auto_publish:
+            published = await self.depositor.publish_deposition(self.new_deposition)
+            if self.create_new:
+                self._update_dataset_settings(published)
+        else:
+            logger.info("Skipping publishing deposition to allow manual review.")
+            logger.info(f"Review new deposition at {self.new_deposition.links.html}")
