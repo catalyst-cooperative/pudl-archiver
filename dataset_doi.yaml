@@ -1,51 +1,51 @@
 censusdp1tract:
   production_doi: 10.5281/zenodo.4127048
-  sandbox_doi: 10.5072/zenodo.1151526
+  sandbox_doi: 10.5072/zenodo.3138
 eia176:
   production_doi: 10.5281/zenodo.7682357
-  sandbox_doi: 10.5072/zenodo.1168394
+  sandbox_doi: 10.5072/zenodo.3158
 eia860:
   production_doi: 10.5281/zenodo.4127026
-  sandbox_doi: 10.5072/zenodo.672209
+  sandbox_doi: 10.5072/zenodo.3299
 eia860m:
   production_doi: 10.5281/zenodo.4281336
-  sandbox_doi: 10.5072/zenodo.692654
+  sandbox_doi: 10.5072/zenodo.3172
 eia861:
   production_doi: 10.5281/zenodo.4127028
   sandbox_doi: 10.5072/zenodo.1441
 eia923:
   production_doi: 10.5281/zenodo.4127039
-  sandbox_doi: 10.5072/zenodo.672220
+  sandbox_doi: 10.5072/zenodo.3166
 eia_bulk_elec:
   production_doi: 10.5281/zenodo.7067366
-  sandbox_doi: 10.5072/zenodo.1103571
+  sandbox_doi: 10.5072/zenodo.2356
 eiawater:
   production_doi: 10.5281/zenodo.7683135
-  sandbox_doi: 10.5072/zenodo.1161347
+  sandbox_doi: 10.5072/zenodo.3160
 epacamd_eia:
   production_doi: 10.5281/zenodo.6633769
-  sandbox_doi: 10.5072/zenodo.1072000
+  sandbox_doi: 10.5072/zenodo.3136
 epacems:
   production_doi: 10.5281/zenodo.4127054
   sandbox_doi: 10.5072/zenodo.2236
 ferc1:
   production_doi: 10.5281/zenodo.4127043
-  sandbox_doi: 10.5072/zenodo.1114564
+  sandbox_doi: 10.5072/zenodo.3267
 ferc2:
   production_doi: 10.5281/zenodo.5879542
-  sandbox_doi: 10.5072/zenodo.1096046
+  sandbox_doi: 10.5072/zenodo.3266
 ferc6:
   production_doi: 10.5281/zenodo.7126395
-  sandbox_doi: 10.5072/zenodo.1114637
+  sandbox_doi: 10.5072/zenodo.3265
 ferc60:
   production_doi: 10.5281/zenodo.7126434
-  sandbox_doi: 10.5072/zenodo.1114668
+  sandbox_doi: 10.5072/zenodo.3268
 ferc714:
   production_doi: 10.5281/zenodo.4127100
-  sandbox_doi: 10.5072/zenodo.1114673
+  sandbox_doi: 10.5072/zenodo.3279
 mshamines:
   production_doi: 10.5281/zenodo.7683517
-  sandbox_doi: 10.5072/zenodo.1158828
+  sandbox_doi: 10.5072/zenodo.3242
 phmsagas:
   production_doi: 10.5281/zenodo.7683351
-  sandbox_doi: 10.5072/zenodo.1161321
+  sandbox_doi: 10.5072/zenodo.3357

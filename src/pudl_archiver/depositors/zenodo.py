@@ -93,7 +93,8 @@ class ZenodoDepositor:
             logger.info(f"{method} {url} - {log_label}")
 
             async def run_request():
-                response = await session.request(method, url, **kwargs)
+                # Convert all urls to str to in case they are pydantic Url types
+                response = await session.request(method, str(url), **kwargs)
                 if response.status >= 400:
                     if response.headers["Content-Type"] == "application/json":
                         json_resp = await response.json()
