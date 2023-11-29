@@ -156,12 +156,18 @@ async def test_zenodo_workflow(
             assert file_data["path"].name in deposition_files
 
             # Download each file
-            file_link = deposition_files[file_data["path"].name].links.canonical
+            links = deposition_files[file_data["path"].name].links
             res = requests.get(
-                file_link,
+                links.canonical,
                 params={"access_token": upload_key},
                 timeout=10.0,
             )
+            if res.status_code == 500:
+                res = requests.get(
+                    links.download,
+                    params={"access_token": upload_key},
+                    timeout=10.0,
+                )
 
             # Verify that contents of file are correct
             assert res.text.encode() == file_data["contents"]
@@ -263,9 +269,21 @@ async def test_zenodo_workflow(
     )
     verify_files(test_files["updated"], v2_refreshed)
 
-    # no updates to make, should not leave the conceptdoi pointing at a draft
+    # try keeping everything the same except the canonical URL - should trigger a datapackage.json-only change
+    mocker.patch(
+        "pudl_archiver.zenodo.entities.FileLinks.canonical", "https://www.bogus.bogus"
+    )
     v3_summary = await orchestrator.run()
-    assert isinstance(v3_summary, Unchanged)
+    assert len(v3_summary.file_changes) == 0
+    assert len(orchestrator.changes) == 1
+
+    v3_refreshed = await orchestrator.depositor.get_record(
+        orchestrator.new_deposition.id_
+    )
+
+    # no updates to make, should not leave the conceptdoi pointing at a draft
+    v4_summary = await orchestrator.run()
+    assert isinstance(v4_summary, Unchanged)
 
     # unfortunately, it looks like Zenodo doesn't propagate deletion instantly - retry this a few times.
     latest_for_conceptdoi = await retry_async(
@@ -280,4 +298,4 @@ async def test_zenodo_workflow(
         ),
         retry_base_s=0.5,
     )
-    assert latest_for_conceptdoi.id_ == v2_refreshed.id_
+    assert latest_for_conceptdoi.id_ == v3_refreshed.id_

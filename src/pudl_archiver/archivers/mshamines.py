@@ -15,9 +15,6 @@ logger = logging.getLogger(f"catalystcoop.{__name__}")
 URL_BASE = "https://arlweb.msha.gov/OpenGovernmentData/"
 EXT_BASE = "OGIMSHA.asp"
 
-URL_107A = "https://arlweb.msha.gov/OpenGovernmentData/107a/"
-EXT_107A = "107aOrders.asp"
-
 MSHA_DATASETS = {
     "accidents": "https://arlweb.msha.gov/OpenGovernmentData/DataSets/Accidents.zip",
     "accidents_definitions": "https://arlweb.msha.gov/OpenGovernmentData/DataSets/Accidents_Definition_File.txt",
@@ -57,7 +54,7 @@ MSHA_DATASETS = {
     "quartz_samples_definitions": "https://arlweb.msha.gov/OpenGovernmentData/DataSets/Quartz_Samples_Definition_File.txt",
     "violations": "https://arlweb.msha.gov/OpenGovernmentData/DataSets/Violations.zip",
     "violations_definitions": "https://arlweb.msha.gov/OpenGovernmentData/DataSets/violations_Definition_File.txt",
-    "107a": "https://arlweb.msha.gov/OpenGovernmentData/107a/107aOrders.xlsx",
+    "107a": "https://arlweb.msha.gov/OpenGovernmentData/DataSets/OrdersIssued.zip",
 }
 """Dictionary of expected MSHA data and definition files, and corresponding URLs."""
 
@@ -78,13 +75,6 @@ class MshaArchiver(AbstractDatasetArchiver):
         links = [link.split("/")[-1] for link in links]
         full_links = [URL_BASE + "DataSets/" + link for link in links]
 
-        # Get 107a table link from separate webpage.
-        link_pattern_107a = re.compile(r"(?:107a\/)([a-zA-Z0-7]+).xlsx")
-        links_107a = await self.get_hyperlinks(URL_107A + EXT_107A, link_pattern_107a)
-        links_107a = [link.split("/")[-1] for link in links_107a]
-        full_links_107a = [URL_BASE + "107a/" + link for link in links_107a]
-
-        full_links += full_links_107a
         logger.debug(full_links)
 
         if any(item not in list(set(MSHA_DATASETS.values())) for item in full_links):
