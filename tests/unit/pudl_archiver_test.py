@@ -74,7 +74,7 @@ async def test_archive_datasets(
         "pudl_archiver.DepositionOrchestrator.run", new=mocked_orchestrator_success
     )
     await archive_datasets(["eia860"], summary_file=summary_file)
-    mocked_json_dump.assert_called_once_with([successful_run.dict()], indent=2)
+    mocked_json_dump.assert_called_once_with([successful_run.model_dump()], indent=2)
 
     # Set run() return value to failure summary and test
     mocked_json_dump.reset_mock()
@@ -84,7 +84,7 @@ async def test_archive_datasets(
     )
     with pytest.raises(RuntimeError):
         await archive_datasets(["eia860"], summary_file=summary_file)
-    mocked_json_dump.assert_called_once_with([failed_run.dict()], indent=2)
+    mocked_json_dump.assert_called_once_with([failed_run.model_dump()], indent=2)
 
     # Set run() return value to unchanged summary and test
     mocked_json_dump.reset_mock()
@@ -93,4 +93,4 @@ async def test_archive_datasets(
         "pudl_archiver.DepositionOrchestrator.run", new=mocked_orchestrator_unchanged
     )
     await archive_datasets(["eia860"], summary_file=summary_file)
-    mocked_json_dump.assert_called_once_with([unchanged_run.dict()], indent=2)
+    mocked_json_dump.assert_called_once_with([unchanged_run.model_dump()], indent=2)
