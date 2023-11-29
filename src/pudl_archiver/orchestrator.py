@@ -186,9 +186,7 @@ class DepositionOrchestrator:
             await self._apply_change(deletion)
 
         new_datapackage, old_datapackage = await self._update_datapackage(resources)
-        run_summary = self.downloader.generate_summary(
-            old_datapackage, new_datapackage, resources
-        )
+        run_summary = self._summarize_run(old_datapackage, new_datapackage, resources)
 
         if not self.changes:
             # must run *after* potentially updating datapackage.json
@@ -203,6 +201,23 @@ class DepositionOrchestrator:
 
         await self._publish()
         return run_summary
+
+    def _summarize_run(
+        self,
+        old_datapackage: DataPackage,
+        new_datapackage: DataPackage,
+        resources: dict[str, ResourceInfo],
+    ) -> RunSummary:
+        validations = self.downloader.validate_dataset(
+            old_datapackage, new_datapackage, resources
+        )
+
+        return RunSummary.create_summary(
+            self.data_source_id,
+            old_datapackage,
+            new_datapackage,
+            validations,
+        )
 
     async def _download_then_upload_resources(
         self, downloader: AbstractDatasetArchiver
