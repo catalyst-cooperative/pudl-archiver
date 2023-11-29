@@ -9,15 +9,15 @@ import zipfile
 from enum import Enum
 from functools import cache
 from pathlib import Path
+from typing import Annotated
 from urllib.parse import urlparse
 from zipfile import ZIP_DEFLATED
 
 import aiohttp
 import feedparser
-import pydantic
 from arelle import Cntlr, ModelManager, ModelXbrl
 from dateutil import rrule
-from pydantic import BaseModel, Field, HttpUrl, root_validator, validator
+from pydantic import BaseModel, Field, HttpUrl, field_validator, model_validator
 from tqdm import tqdm
 
 from pudl_archiver.archivers.classes import ResourceInfo
@@ -35,7 +35,7 @@ be found in month specific feeds that can be retrieved by appending a query stri
 to this URL to specify the month and year desired.
 """
 
-Year = pydantic.conint(ge=2000, le=datetime.datetime.today().year)
+Year = Annotated[int, Field(ge=1994, le=datetime.datetime.today().year)]
 """Constrained pydantic integer type with all years containing XBRL data."""
 
 
@@ -86,14 +86,16 @@ class FeedEntry(BaseModel):
     ferc_year: Year
     ferc_period: str
 
-    @root_validator(pre=True)
+    @model_validator(mode="before")
+    @classmethod
     def extract_url(cls, entry: dict):  # noqa: N805
         """Get download URL for inline html in feed entry."""
         link = XBRL_LINK_PATTERN.search(entry["summary_detail"]["value"])
         entry["download_url"] = link.group(1).replace(" ", "%")
         return entry
 
-    @validator("published_parsed", pre=True)
+    @field_validator("published_parsed", mode="before")
+    @classmethod
     def parse_timestamp(cls, timestamp: time.struct_time):  # noqa: N805
         """Parse timestamp to a standard datetime object.
 

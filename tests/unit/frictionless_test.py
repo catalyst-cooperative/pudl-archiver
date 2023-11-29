@@ -34,4 +34,4 @@ def test_datapackage():
         "ferc1", deposition_files, resources, version="1.0.0"
     )
 
-    assert Package(descriptor=dp.dict(by_alias=True)).metadata_valid
+    assert Package(descriptor=dp.model_dump(by_alias=True)).metadata_valid

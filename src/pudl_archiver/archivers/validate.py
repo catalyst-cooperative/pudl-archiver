@@ -22,7 +22,7 @@ class ValidationTestResult(BaseModel):
 class PartitionDiff(BaseModel):
     """Model summarizing changes in partitions."""
 
-    key: Any
+    key: Any = None
     value: str | None = None
     previous_value: str | None = None
     diff_type: Literal["CREATE", "UPDATE", "DELETE"]
@@ -129,7 +129,7 @@ def _process_partition_diffs(
         new_val = new_partitions.get(key)
 
         match baseline_val, new_val:
-            case None, created_part_val:
+            case [None, created_part_val]:
                 partition_diffs.append(
                     PartitionDiff(
                         key=key,
@@ -137,7 +137,7 @@ def _process_partition_diffs(
                         diff_type="CREATE",
                     )
                 )
-            case deleted_part_val, None:
+            case [deleted_part_val, None]:
                 partition_diffs.append(
                     PartitionDiff(
                         key=key,
@@ -145,7 +145,7 @@ def _process_partition_diffs(
                         diff_type="DELETE",
                     )
                 )
-            case old_val, new_val if old_val != new_val:
+            case [old_val, new_val] if old_val != new_val:
                 partition_diffs.append(
                     PartitionDiff(
                         key=key,
