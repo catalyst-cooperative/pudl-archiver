@@ -88,8 +88,8 @@ class PartitionDiff(BaseModel):
     """Model summarizing changes in partitions."""
 
     key: Any = None
-    value: str | None = None
-    previous_value: str | None = None
+    value: str | int | list[str | int] | None = None
+    previous_value: str | int | list[str | int] | None = None
     diff_type: Literal["CREATE", "UPDATE", "DELETE"]
 
 
