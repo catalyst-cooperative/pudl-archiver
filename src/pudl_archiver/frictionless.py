@@ -1,7 +1,8 @@
 """Core routines for frictionless data package construction."""
-from collections import namedtuple
+import zipfile
 from collections.abc import Iterable
 from datetime import datetime
+from io import BytesIO
 from pathlib import Path
 from typing import Any
 
@@ -12,15 +13,61 @@ from pydantic import BaseModel, Field, field_serializer
 from pudl_archiver.utils import Url
 from pudl_archiver.zenodo.entities import DepositionFile
 
-ResourceInfo = namedtuple("ResourceInfo", ["local_path", "partitions"])
-"""Tuple to wrap info about downloaded resource."""
-
 MEDIA_TYPES: dict[str, str] = {
     "zip": "application/zip",
     "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     "csv": "text/csv",
     "txt": "text/csv",
 }
+
+
+class ZipLayout(BaseModel):
+    """Define expected layout of a zipfile."""
+
+    file_paths: set[Path]
+
+    def validate_zip(self, file_path: Path) -> tuple[bool, list[str]]:
+        """Validate that zipfile layout matches expectations."""
+        # Avoid circular import
+        from pudl_archiver.archivers.validate import _validate_file_type
+
+        notes = []
+        success = True
+        with zipfile.ZipFile(file_path) as resource:
+            files = {Path(name) for name in resource.namelist()}
+
+            # Check that zipfile contains only expected files
+            if files != self.file_paths:
+                success = False
+                if extra_files := list(map(str, files - self.file_paths)):
+                    notes.append(
+                        f"{file_path.name} contains unexpected files: {extra_files}"
+                    )
+
+                if missing_files := list(map(str, self.file_paths - files)):
+                    notes.append(f"{file_path.name} is missing files: {missing_files}")
+
+            # Check that all files in zipfile are valid based on their extension
+            invalid_files = [
+                f"The file, {str(filename)}, in {file_path.name} is invalid."
+                for filename in files
+                if not _validate_file_type(
+                    filename, BytesIO(resource.read(str(filename)))
+                )
+            ]
+            if len(invalid_files) > 0:
+                notes += invalid_files
+                success = False
+
+        return success, notes
+
+
+class ResourceInfo(BaseModel):
+    """Class providing information about downloaded resource."""
+
+    local_path: Path
+    partitions: dict[str, Any]
+    layout: ZipLayout | None = None
 
 
 class Resource(BaseModel):
