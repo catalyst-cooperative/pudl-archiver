@@ -13,7 +13,6 @@ from dotenv import load_dotenv
 from pudl.metadata.classes import DataSource
 from pudl.metadata.constants import LICENSES
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver, ResourceInfo
-from pudl_archiver.archivers.validate import Unchanged
 from pudl_archiver.depositors.zenodo import ZenodoClientError
 from pudl_archiver.orchestrator import DepositionOrchestrator
 from pudl_archiver.utils import retry_async
@@ -283,7 +282,7 @@ async def test_zenodo_workflow(
 
     # no updates to make, should not leave the conceptdoi pointing at a draft
     v4_summary = await orchestrator.run()
-    assert isinstance(v4_summary, Unchanged)
+    assert len(v4_summary.file_changes) == 0
 
     # unfortunately, it looks like Zenodo doesn't propagate deletion instantly - retry this a few times.
     latest_for_conceptdoi = await retry_async(
