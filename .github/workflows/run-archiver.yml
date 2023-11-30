@@ -76,10 +76,14 @@ jobs:
       - name: Munge summaries together
         id: all_summaries
         run: |
-          ./scripts/make_slack_notification_message.py --summary-files *_run_summary.json | tee -a "$GITHUB_OUTPUT"
+          {
+            echo 'SLACK_PAYLOAD<<EOF'
+            ./scripts/make_slack_notification_message.py --summary-files *_run_summary.json
+            echo EOF
+          } >> "$GITHUB_OUTPUT"
       - name: Inform the Codemonkeys
         uses: slackapi/slack-github-action@v1.24.0
         with:
-          payload: ${{steps.all_summaries.outputs.ALL_SUMMARIES_JSON}}
+          payload: ${{steps.all_summaries.outputs.SLACK_PAYLOAD}}
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }} # required

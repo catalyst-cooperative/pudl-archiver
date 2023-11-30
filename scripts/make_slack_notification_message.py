@@ -60,7 +60,7 @@ def main(summary_files: list[Path]):
 
     print(
         json.dumps(
-            {"attachments": [{"blocks": changed_blocks + unchanged_blocks}]},
+            {"attachments": [{"blocks": changed_blocks + unchanged_blocks}]}, indent=2
         )
     )
 
