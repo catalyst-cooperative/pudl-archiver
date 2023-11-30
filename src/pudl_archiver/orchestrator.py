@@ -190,11 +190,17 @@ class DepositionOrchestrator:
 
         if not self.changes:
             # must run *after* potentially updating datapackage.json
-            logger.info("No changes detected, deleting.")
+            logger.info(
+                "No changes detected, kept draft at "
+                f"{self.new_deposition.links.html} for inspection."
+            )
             return run_summary
 
         if not run_summary.success:
-            logger.error("Archive validation failed. Not publishing new archive.")
+            logger.error(
+                "Archive validation failed. Not publishing new archive, kept "
+                f"draft at {self.new_deposition.links.html} for inspection."
+            )
             return run_summary
 
         await self._publish()

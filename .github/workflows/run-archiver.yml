@@ -23,8 +23,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
 
       - name: Install Conda environment using mamba
         uses: mamba-org/setup-micromamba@v1
@@ -67,6 +65,7 @@ jobs:
     needs: archive-run
     if: ${{ always() }}
     steps:
+      - uses: actions/checkout@v4
       - name: Download summaries
         id: download
         uses: actions/download-artifact@v3
@@ -74,22 +73,16 @@ jobs:
           name: run-summaries
       - name: show summaries
         run: ls -R
-      - name: Munge summaries together with JQ
+      - name: Munge summaries together
         id: all_summaries
         run: |
-          jq -s -c 'flatten | group_by(.dataset_name) | map({(.[0].dataset_name): map(del(.dataset_name))}) | add' *_run_summary.json > all_summaries.json
-          {
-            echo 'ALL_SUMMARIES_JSON<<EOF'
-            sed 's/"/\\"/g' all_summaries.json
-            echo
-            echo 'EOF'
-          } >> "$GITHUB_OUTPUT"
+          ./scripts/make_slack_notification_message.py --summary-files *_run_summary.json
       - name: Inform the Codemonkeys
         uses: slackapi/slack-github-action@v1.24.0
         with:
           payload: |
             {
-              "text": "Archive run ${{ job.status }}! Summary:\n```\n${{steps.all_summaries.outputs.ALL_SUMMARIES_JSON}}\n```"
+              "text": "Archive run ${{ job.status }}!\n${{steps.all_summaries.outputs.ALL_SUMMARIES_JSON}}"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }} # required
