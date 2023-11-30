@@ -73,7 +73,7 @@ jobs:
         run: ls -R
       - name: Munge summaries together
         id: all_summaries
-        run: ./scripts/make_slack_notification_message.py --summary-files *_run_summary.json > slack-payload.json
+        run: ./scripts/make_slack_notification_message.py --summary-files *_run_summary.json | tee slack-payload.json
       - name: Inform the Codemonkeys
         uses: slackapi/slack-github-action@v1.24.0
         with:

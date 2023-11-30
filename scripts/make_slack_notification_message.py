@@ -62,7 +62,7 @@ def main(summary_files: list[Path]):
         json.dumps(
             {
                 "text": "Archiver run completed!",
-                "attachments": [{"blocks": changed_blocks + unchanged_blocks}],
+                "blocks": changed_blocks + unchanged_blocks,
             },
             indent=2,
         )
