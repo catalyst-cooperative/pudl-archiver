@@ -15,6 +15,7 @@ jobs:
       matrix:
         dataset:
           - eia860
+          - eia860m
           - eia923
 
       fail-fast: false
