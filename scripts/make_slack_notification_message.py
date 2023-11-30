@@ -2,6 +2,7 @@
 """Format summary files for Slack perusal. Only uses stdlib."""
 
 import argparse
+import itertools
 import json
 from pathlib import Path
 
@@ -25,19 +26,43 @@ def main(summary_files: list[Path]):
         name = summary["dataset_name"]
         url = summary["record_url"]
         if file_changes := summary["file_changes"]:
-            changes = f"\n  ```\n{json.dumps(file_changes, indent=2)}\n  ```"
+            changes = f"```\n{json.dumps(file_changes, indent=2)}\n```"
         else:
-            changes = " No changes."
-        return f"* [{name}]({url}):{changes}"
+            changes = "No changes."
+        return [
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"<{url}|*{name}*>\n{changes}",
+                },
+            },
+        ]
 
-    unchanged = ["## Unchanged"] + [
-        format_summary(s) for s in summaries if len(s["file_changes"]) == 0
-    ]
-    changed = ["## Changed"] + [
-        format_summary(s) for s in summaries if len(s["file_changes"]) > 0
-    ]
+    unchanged_blocks = list(
+        itertools.chain.from_iterable(
+            format_summary(s) for s in summaries if not s["file_changes"]
+        )
+    )
+    changed_blocks = list(
+        itertools.chain.from_iterable(
+            format_summary(s) for s in summaries if s["file_changes"]
+        )
+    )
 
-    print("\n".join(unchanged + changed))
+    def header_block(text):
+        return {"type": "header", "text": {"type": "plain_text", "text": text}}
+
+    if changed_blocks:
+        changed_blocks = [header_block("Changed")] + changed_blocks
+    if unchanged_blocks:
+        unchanged_blocks = [header_block("Unchanged")] + unchanged_blocks
+
+    print(
+        json.dumps(
+            {"attachments": [{"blocks": changed_blocks + unchanged_blocks}]},
+        )
+    )
 
 
 if __name__ == "__main__":
