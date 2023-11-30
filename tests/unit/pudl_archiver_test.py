@@ -19,6 +19,7 @@ def successful_run():
         file_changes=[],
         date="date",
         previous_version_date="date",
+        record_url="https://www.catalyst.coop/bogus-record-url",
     )
 
 
@@ -37,6 +38,7 @@ def failed_run():
         file_changes=[],
         date="date",
         previous_version_date="date",
+        record_url="https://www.catalyst.coop/bogus-record-url",
     )
 
 

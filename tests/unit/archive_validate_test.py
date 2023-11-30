@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 from pudl_archiver.archivers import validate
 from pudl_archiver.frictionless import Resource, ZipLayout
+from pudl_archiver.utils import Url
 
 
 @pytest.mark.parametrize(
@@ -151,6 +152,7 @@ def test_create_run_summary(baseline_resources, new_resources, diffs, mocker):
         baseline_datapackage=baseline,
         new_datapackage=new,
         validation_tests=[],
+        record_url=Url("https://www.catalyst.coop/bogus-record-url"),
     )
     test_diffs = summary.file_changes
     assert test_diffs == diffs
@@ -294,5 +296,6 @@ def test_run_summary_success(specs, expected_success):
         file_changes=[],
         date="2023-11-29",
         previous_version_date="2023-11-28",
+        record_url=Url("https://www.catalyst.coop/bogus-record-url"),
     )
     assert summary.success == expected_success

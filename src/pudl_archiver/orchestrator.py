@@ -191,12 +191,10 @@ class DepositionOrchestrator:
         if not self.changes:
             # must run *after* potentially updating datapackage.json
             logger.info("No changes detected, deleting.")
-            await self.depositor.delete_deposition(self.new_deposition)
             return run_summary
 
         if not run_summary.success:
             logger.error("Archive validation failed. Not publishing new archive.")
-            await self.depositor.delete_deposition(self.new_deposition)
             return run_summary
 
         await self._publish()
@@ -217,6 +215,7 @@ class DepositionOrchestrator:
             old_datapackage,
             new_datapackage,
             validations,
+            record_url=self.new_deposition.links.html,
         )
 
     async def _download_then_upload_resources(

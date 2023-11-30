@@ -9,6 +9,7 @@ from typing import Any, Literal
 from pydantic import BaseModel
 
 from pudl_archiver.frictionless import DataPackage, Resource, ZipLayout
+from pudl_archiver.utils import Url
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
@@ -112,6 +113,7 @@ class RunSummary(BaseModel):
     previous_version: str = ""
     date: str
     previous_version_date: str
+    record_url: Url
 
     @property
     def success(self) -> bool:
@@ -129,6 +131,7 @@ class RunSummary(BaseModel):
         baseline_datapackage: DataPackage | None,
         new_datapackage: DataPackage,
         validation_tests: list[ValidationTestResult],
+        record_url: Url,
     ) -> "RunSummary":
         """Create a summary of archive changes from two DataPackage descriptors."""
         baseline_resources = {}
@@ -160,6 +163,7 @@ class RunSummary(BaseModel):
             previous_version=previous_version,
             date=new_datapackage.created,
             previous_version_date=previous_version_date,
+            record_url=record_url,
         )
 
 
