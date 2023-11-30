@@ -80,7 +80,7 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
       - name: Inform the Codemonkeys
-        uses: 8398a7/action-slack@v3
+        uses: 8398a7/action-slack@v3 # uses unofficial slack action because official one doesn't handle payload correctly https://github.com/slackapi/slack-github-action/issues/261
         with:
           status: custom
           custom_payload: ${{ steps.all_summaries.outputs.SLACK_PAYLOAD }}

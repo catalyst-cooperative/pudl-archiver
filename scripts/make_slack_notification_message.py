@@ -53,17 +53,22 @@ def main(summary_files: list[Path]):
     def header_block(text):
         return {"type": "header", "text": {"type": "plain_text", "text": text}}
 
+    def section_block(text):
+        return {"type": "section", "text": {"type": "mrkdwn", "text": text}}
+
     if changed_blocks:
-        changed_blocks = [header_block("Changed")] + changed_blocks
+        changed_blocks = [section_block("*Changed*")] + changed_blocks
     if unchanged_blocks:
-        unchanged_blocks = [header_block("Unchanged")] + unchanged_blocks
+        unchanged_blocks = [section_block("*Unchanged*")] + unchanged_blocks
 
     print(
         json.dumps(
             {
                 "attachments": [
                     {
-                        "blocks": changed_blocks + unchanged_blocks,
+                        "blocks": [header_block("Archiver Run Outcomes")]
+                        + changed_blocks
+                        + unchanged_blocks,
                     }
                 ]
             },
