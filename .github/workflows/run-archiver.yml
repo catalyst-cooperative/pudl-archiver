@@ -85,4 +85,4 @@ jobs:
           status: custom
           custom_payload: ${{ steps.all_summaries.outputs.SLACK_PAYLOAD }}
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }} # required
+          SLACK_WEBHOOK_URL: ${{ secrets.PUDL_DEPLOY_SLACK_TOKEN }}
