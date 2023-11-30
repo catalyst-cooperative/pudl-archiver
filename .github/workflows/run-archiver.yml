@@ -50,7 +50,7 @@ jobs:
           ZENODO_TOKEN_UPLOAD: ${{ secrets.ZENODO_TOKEN_UPLOAD }}
           ZENODO_TOKEN_PUBLISH: ${{ secrets.ZENODO_TOKEN_PUBLISH }}
         run: |
-          pudl_archiver --sandbox --datasets ${{ matrix.dataset }} --dry-run --summary-file ${{ matrix.dataset }}_run_summary.json
+          pudl_archiver --sandbox --datasets ${{ matrix.dataset }} --summary-file ${{ matrix.dataset }}_run_summary.json
 
       - name: Upload run summaries
         id: upload_summaries
