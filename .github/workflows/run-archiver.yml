@@ -79,6 +79,24 @@ jobs:
             ./scripts/make_slack_notification_message.py --summary-files *_run_summary.json | tee slack-payload.json
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
+      - name: test Slack Action
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          payload: |
+            {
+              "text": "Text: GitHub Action build result: ${{ job.status }}",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Block: GitHub Action build result: ${{ job.status }}"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }} # required
       - name: Inform the Codemonkeys
         uses: slackapi/slack-github-action@v1.24.0
         with:
