@@ -15,14 +15,14 @@ def _parse_args():
     return parser.parse_args()
 
 
-def main(summary_files: list[Path]):
+def main(summary_files: list[Path]) -> None:
     """Format summary files for Slack perusal."""
     summaries = []
     for summary_file in summary_files:
         with summary_file.open() as f:
             summaries.extend(json.loads(f.read()))
 
-    def format_summary(summary):
+    def format_summary(summary: dict) -> list[dict]:
         name = summary["dataset_name"]
         url = summary["record_url"]
         if file_changes := summary["file_changes"]:
@@ -50,10 +50,10 @@ def main(summary_files: list[Path]):
         )
     )
 
-    def header_block(text):
+    def header_block(text: str) -> dict:
         return {"type": "header", "text": {"type": "plain_text", "text": text}}
 
-    def section_block(text):
+    def section_block(text: str) -> dict:
         return {"type": "section", "text": {"type": "mrkdwn", "text": text}}
 
     if changed_blocks:
