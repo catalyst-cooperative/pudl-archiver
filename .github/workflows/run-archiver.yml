@@ -15,9 +15,7 @@ jobs:
       matrix:
         dataset:
           - eia860
-          - eia860m
           - eia923
-          - epacems
 
       fail-fast: false
     runs-on: ubuntu-latest
@@ -75,15 +73,10 @@ jobs:
         run: ls -R
       - name: Munge summaries together
         id: all_summaries
-        run: |
-          {
-            echo 'SLACK_PAYLOAD<<EOF'
-            ./scripts/make_slack_notification_message.py --summary-files *_run_summary.json
-            echo EOF
-          } >> "$GITHUB_OUTPUT"
+        run: ./scripts/make_slack_notification_message.py --summary-files *_run_summary.json > slack-payload.json
       - name: Inform the Codemonkeys
         uses: slackapi/slack-github-action@v1.24.0
         with:
-          payload: ${{steps.all_summaries.outputs.SLACK_PAYLOAD}}
+          payload-file-path: slack-payload.json
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }} # required
