@@ -80,10 +80,10 @@ jobs:
             ./scripts/make_slack_notification_message.py --summary-files *_run_summary.json | tee slack-payload.json
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
-      - name: Inform the Codemonkeys
+      - name: Post update to pudl-deployment
         uses: slackapi/slack-github-action@v1.24.0
         with:
+          channel-id: "C03FHB9N0PQ"
           payload: ${{ steps.all_summaries.outputs.SLACK_PAYLOAD }}
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }} # required
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+          SLACK_BOT_TOKEN: ${{ secrets.PUDL_DEPLOY_SLACK_TOKEN }}
