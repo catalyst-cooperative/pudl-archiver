@@ -81,9 +81,9 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
       - name: Inform the Codemonkeys
-        uses: 8398a7/action-slack@v3 # uses unofficial slack action because official one doesn't handle payload correctly https://github.com/slackapi/slack-github-action/issues/261
+        uses: slackapi/slack-github-action@v1.24.0
         with:
-          status: custom
-          custom_payload: ${{ steps.all_summaries.outputs.SLACK_PAYLOAD }}
+          payload: ${{ steps.all_summaries.outputs.SLACK_PAYLOAD }}
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }} # required
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
