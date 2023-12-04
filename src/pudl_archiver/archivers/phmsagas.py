@@ -80,8 +80,8 @@ class PhmsaGasArchiver(AbstractDatasetArchiver):
         start_year = int(filename.split("_")[-2])
         end_year = filename.split("_")[-1]
         # If end year is present, this will include data through last year.
-        end_year = datetime.now().year if end_year == "present" else int(end_year)
-        years = list(range(start_year, end_year))
+        end_year = datetime.now().year - 1 if end_year == "present" else int(end_year)
+        years = list(range(start_year, end_year + 1))
 
         download_path = self.download_directory / f"{self.name}-{filename}.zip"
         await self.download_zipfile(url, download_path)

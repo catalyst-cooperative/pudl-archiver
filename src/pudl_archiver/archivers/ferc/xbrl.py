@@ -21,6 +21,7 @@ from pydantic import BaseModel, Field, HttpUrl, field_validator, model_validator
 from tqdm import tqdm
 
 from pudl_archiver.archivers.classes import ResourceInfo
+from pudl_archiver.frictionless import ZipLayout
 from pudl_archiver.utils import retry_async
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
@@ -232,6 +233,7 @@ async def archive_taxonomy(
     archive_path = output_dir / f"ferc{form_number}-xbrl-taxonomy-{year}.zip"
 
     # Loop through all files and save to appropriate location in archive
+    archive_files = set()
     with zipfile.ZipFile(archive_path, "w", compression=ZIP_DEFLATED) as archive:
         for url in taxonomy.urlDocs:
             url_parsed = urlparse(url)
@@ -244,6 +246,7 @@ async def archive_taxonomy(
             response = await retry_async(session.get, args=[url])
             response_bytes = await retry_async(response.content.read)
             path = Path(url_parsed.path).relative_to("/")
+            archive_files.add(path)
 
             with archive.open(str(path), "w") as f:
                 f.write(response_bytes)
@@ -251,6 +254,7 @@ async def archive_taxonomy(
     return ResourceInfo(
         local_path=archive_path,
         partitions={"year": year, "data_format": "XBRL_TAXONOMY"},
+        layout=ZipLayout(file_paths=archive_files),
     )
 
 

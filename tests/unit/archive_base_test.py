@@ -112,19 +112,25 @@ async def test_resource_chunks(
                 yield self.get_resource(i)
 
         async def get_resource(self, i):
-            return ResourceInfo(local_path=Path(self.download_directory), partitions=i)
+            return ResourceInfo(
+                local_path=Path(self.download_directory), partitions={"idx": i}
+            )
 
     tmpdir_mock = mocker.Mock(side_effect=[Path(f"path{i}") for i in range(6)])
     mocker.patch(
         "pudl_archiver.archivers.classes.tempfile.TemporaryDirectory",
         new=tmpdir_mock,
     )
-    mocker.patch("pudl_archiver.archivers.classes.FileValidation.from_path")
+
+    # Mock out file validations
+    mocker.patch("pudl_archiver.archivers.classes.validate.validate_filetype")
+    mocker.patch("pudl_archiver.archivers.classes.validate.validate_file_not_empty")
+    mocker.patch("pudl_archiver.archivers.classes.validate.validate_zip_layout")
 
     # Initialize MockArchiver class
     archiver = MockArchiver(concurrency_limit, directory_per_resource_chunk)
     async for name, resource in archiver.download_all_resources():
-        assert download_paths[resource.partitions] == name
+        assert download_paths[resource.partitions["idx"]] == name
 
 
 @pytest.mark.asyncio
@@ -303,7 +309,7 @@ async def test_get_hyperlinks(docname, pattern, links, request, html_docs):
                     name="test2",
                     description="test2",
                     success=False,
-                    ignore_failure=True,
+                    required_for_run_success=False,
                 ),
             ],
             True,
