@@ -17,6 +17,7 @@ jobs:
           - eia860
           - eia860m
           - eia923
+          - epacems
 
       fail-fast: false
     runs-on: ubuntu-latest

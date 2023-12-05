@@ -1,5 +1,18 @@
 #! /usr/bin/env python
-"""Format summary files for Slack perusal. Only uses stdlib."""
+"""Format summary files for Slack perusal. Only uses stdlib.
+
+Outputs a JSON payload to put into the Slack Github Action:
+
+https://github.com/slackapi/slack-github-action
+
+Which follows the attachments format (see
+https://api.slack.com/methods/chat.postMessage#arg_attachments) in the Slack API
+- see the Block Kit Builder (https://app.slack.com/block-kit-builder/) for an
+interactive playground for the API.
+
+We stuff everything into an attachment because that lets us automatically
+hide large messages (such as a file diff) behind a "See more" action.
+"""
 
 import argparse
 import itertools
