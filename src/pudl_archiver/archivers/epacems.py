@@ -11,6 +11,7 @@ from pudl_archiver.archivers.classes import (
     ArchiveAwaitable,
     ResourceInfo,
 )
+from pudl_archiver.frictionless import ZipLayout
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
@@ -82,5 +83,7 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
             f"File no. {request_count}: Downloaded {year} Q{quarter} EPA CEMS hourly emissions data."
         )
         return ResourceInfo(
-            local_path=archive_path, partitions={"year": year, "quarter": quarter}
+            local_path=archive_path,
+            partitions={"year": year, "quarter": quarter},
+            layout=ZipLayout(filepaths=[filename]),
         )
