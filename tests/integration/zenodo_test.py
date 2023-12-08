@@ -1,5 +1,4 @@
 """Test zenodo client api."""
-import asyncio
 import os
 import tempfile
 import time
@@ -13,10 +12,7 @@ from dotenv import load_dotenv
 from pudl.metadata.classes import DataSource
 from pudl.metadata.constants import LICENSES
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver, ResourceInfo
-from pudl_archiver.archivers.validate import Unchanged
-from pudl_archiver.depositors.zenodo import ZenodoClientError
 from pudl_archiver.orchestrator import DepositionOrchestrator
-from pudl_archiver.utils import retry_async
 from pudl_archiver.zenodo.entities import (
     Deposition,
     DepositionCreator,
@@ -236,6 +232,12 @@ async def test_zenodo_workflow(
     )
     verify_files(test_files["original"], v1_refreshed)
 
+    # the /records/ URL doesn't work until the record is published, but
+    # deposit/ works from draft through publication
+    assert str(v1_summary.record_url).replace("deposit", "records") == str(
+        v1_refreshed.links.html
+    )
+
     # Update files
     v2_resources = {
         file_data["path"].name: ResourceInfo(
@@ -283,19 +285,12 @@ async def test_zenodo_workflow(
 
     # no updates to make, should not leave the conceptdoi pointing at a draft
     v4_summary = await orchestrator.run()
-    assert isinstance(v4_summary, Unchanged)
+    assert len(v4_summary.file_changes) == 0
 
-    # unfortunately, it looks like Zenodo doesn't propagate deletion instantly - retry this a few times.
-    latest_for_conceptdoi = await retry_async(
-        orchestrator.depositor.get_deposition,
-        args=[str(orchestrator.deposition.conceptdoi)],
-        kwargs={"published_only": True},
-        retry_on=(
-            ZenodoClientError,
-            aiohttp.ClientError,
-            asyncio.TimeoutError,
-            IndexError,
-        ),
-        retry_base_s=0.5,
+    # legacy Zenodo API "get latest for concept DOI" endpoint is very slow to update,
+    # but requesting the DOI directly updates quickly.
+    res = requests.get(
+        f"https://sandbox.zenodo.org/doi/{v3_refreshed.conceptdoi}",
+        timeout=10.0,
     )
-    assert latest_for_conceptdoi.id_ == v3_refreshed.id_
+    assert str(v3_refreshed.id_) in res.text

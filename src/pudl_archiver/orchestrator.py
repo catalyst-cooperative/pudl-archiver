@@ -12,7 +12,7 @@ import yaml
 from pydantic import BaseModel, ConfigDict
 
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver
-from pudl_archiver.archivers.validate import RunSummary, Unchanged
+from pudl_archiver.archivers.validate import RunSummary
 from pudl_archiver.depositors import ZenodoDepositor
 from pudl_archiver.frictionless import DataPackage, ResourceInfo
 from pudl_archiver.utils import retry_async
@@ -167,7 +167,7 @@ class DepositionOrchestrator:
         self.deposition_files = {f.filename: f for f in self.new_deposition.files}
         self.changes: list[_DepositionChange] = []
 
-    async def run(self) -> RunSummary | Unchanged:
+    async def run(self) -> RunSummary:
         """Run the entire deposition update process.
 
         1. Create pending deposition version to stage changes.
@@ -177,7 +177,7 @@ class DepositionOrchestrator:
         5. Update the dataset settings if this was a new deposition.
 
         Returns:
-            RunSummary object or Unchanged if no changes are detected or run is a dry run.
+            RunSummary object.
         """
         await self._initialize()
 
@@ -186,24 +186,43 @@ class DepositionOrchestrator:
             await self._apply_change(deletion)
 
         new_datapackage, old_datapackage = await self._update_datapackage(resources)
-        run_summary = self.downloader.generate_summary(
-            old_datapackage, new_datapackage, resources
-        )
+        run_summary = self._summarize_run(old_datapackage, new_datapackage, resources)
 
         if not self.changes:
-            # must run *after* updating datapackage.json
-            logger.info("No changes detected.")
-            await self.depositor.delete_deposition(self.new_deposition)
-            return Unchanged(dataset_name=self.data_source_id)
+            # must run *after* potentially updating datapackage.json
+            logger.info(
+                "No changes detected, kept draft at "
+                f"{self.new_deposition.links.html} for inspection."
+            )
+            return run_summary
 
         if not run_summary.success:
-            logger.error("Archive validation failed. Not publishing new archive.")
-            await self.depositor.delete_deposition(self.new_deposition)
+            logger.error(
+                "Archive validation failed. Not publishing new archive, kept "
+                f"draft at {self.new_deposition.links.html} for inspection."
+            )
             return run_summary
 
         await self._publish()
-
         return run_summary
+
+    def _summarize_run(
+        self,
+        old_datapackage: DataPackage,
+        new_datapackage: DataPackage,
+        resources: dict[str, ResourceInfo],
+    ) -> RunSummary:
+        validations = self.downloader.validate_dataset(
+            old_datapackage, new_datapackage, resources
+        )
+
+        return RunSummary.create_summary(
+            self.data_source_id,
+            old_datapackage,
+            new_datapackage,
+            validations,
+            record_url=self.new_deposition.links.html,
+        )
 
     async def _download_then_upload_resources(
         self, downloader: AbstractDatasetArchiver
