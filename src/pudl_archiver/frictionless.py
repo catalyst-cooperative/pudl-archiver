@@ -157,7 +157,7 @@ class DataPackage(BaseModel):
         name: str,
         files: Iterable[DepositionFile],
         resources: dict[str, ResourceInfo],
-        version: str,
+        version: str | None,
     ) -> "DataPackage":
         """Create a frictionless datapackage from a list of files and partitions.
 
