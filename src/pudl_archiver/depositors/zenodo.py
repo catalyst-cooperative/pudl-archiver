@@ -8,7 +8,7 @@ import aiohttp
 import semantic_version  # type: ignore  # noqa: PGH003
 
 from pudl_archiver.utils import retry_async
-from pudl_archiver.zenodo.entities import Deposition, DepositionMetadata
+from pudl_archiver.zenodo.entities import Deposition, DepositionMetadata, Record
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
@@ -171,15 +171,17 @@ class ZenodoDepositor:
             The latest deposition associated with the concept DOI.
         """
         concept_rec_id = concept_doi.split(".")[2]
-        response = await self.request(
-            "GET",
-            f"{self.api_root}/records/{concept_rec_id}",
-            headers=self.auth_write,
-            log_label=f"Get latest record for {concept_doi}",
+        record = Record(
+            **await self.request(
+                "GET",
+                f"{self.api_root}/records/{concept_rec_id}",
+                headers=self.auth_write,
+                log_label=f"Get latest record for {concept_doi}",
+            )
         )
-        return await self.get_record(response["id"])
+        return await self.get_deposition_by_id(record.id_)
 
-    async def get_record(self, rec_id: int) -> Deposition:
+    async def get_deposition_by_id(self, rec_id: int) -> Deposition:
         """Get a deposition by its record ID directly instead of through concept.
 
         Args:
@@ -253,15 +255,17 @@ class ZenodoDepositor:
                 existing_deposition = await self.get_deposition(
                     str(deposition.conceptdoi)
                 )
-                new_draft = await self.request(
-                    "POST",
-                    f"{self.api_root}/records/{existing_deposition.id_}/versions",
-                    log_label=f"Get existing draft deposition for {existing_deposition.id_}",
-                    headers=self.auth_write,
+                new_draft = Record(
+                    **await self.request(
+                        "POST",
+                        f"{self.api_root}/records/{existing_deposition.id_}/versions",
+                        log_label=f"Get existing draft deposition for {existing_deposition.id_}",
+                        headers=self.auth_write,
+                    )
                 )
                 await self.request(
                     "DELETE",
-                    new_draft["links"]["self"],
+                    new_draft.links.self,
                     log_label=f"Delete existing draft deposition for {existing_deposition.id_}",
                     headers=self.auth_write,
                     parse_json=False,

@@ -108,11 +108,6 @@ class DepositionOrchestrator:
         Returns:
             DepositionOrchestrator
         """
-        if sandbox:
-            self.api_root = "https://sandbox.zenodo.org/api"
-        else:
-            self.api_root = "https://zenodo.org/api"
-
         self.sandbox = sandbox
         self.data_source_id = data_source_id
 
@@ -342,7 +337,9 @@ class DepositionOrchestrator:
         """
         if self.new_deposition is None:
             return None, None
-        self.new_deposition = await self.depositor.get_record(self.new_deposition.id_)
+        self.new_deposition = await self.depositor.get_deposition_by_id(
+            self.new_deposition.id_
+        )
 
         logger.info(f"Creating new datapackage.json for {self.data_source_id}")
         files = {file.filename: file for file in self.new_deposition.files}

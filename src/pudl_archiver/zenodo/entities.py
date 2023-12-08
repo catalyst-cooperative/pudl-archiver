@@ -195,3 +195,10 @@ class Deposition(BaseModel):
     state: Literal["inprogress", "done", "error", "submitted", "unsubmitted"]
     submitted: bool
     title: str
+
+
+class Record(BaseModel):
+    """The /records/ endpoints return a slightly different data structure."""
+
+    id_: int = Field(alias="id")
+    links: DepositionLinks

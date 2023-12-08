@@ -227,7 +227,7 @@ async def test_zenodo_workflow(
     v1_summary = await orchestrator.run()
     assert v1_summary.success
 
-    v1_refreshed = await orchestrator.depositor.get_record(
+    v1_refreshed = await orchestrator.depositor.get_deposition_by_id(
         orchestrator.new_deposition.id_
     )
     verify_files(test_files["original"], v1_refreshed)
@@ -266,7 +266,7 @@ async def test_zenodo_workflow(
     v2_summary = await orchestrator.run()
     assert v2_summary.success
 
-    v2_refreshed = await orchestrator.depositor.get_record(
+    v2_refreshed = await orchestrator.depositor.get_deposition_by_id(
         orchestrator.new_deposition.id_
     )
     verify_files(test_files["updated"], v2_refreshed)
@@ -279,7 +279,7 @@ async def test_zenodo_workflow(
     assert len(v3_summary.file_changes) == 0
     assert len(orchestrator.changes) == 1
 
-    v3_refreshed = await orchestrator.depositor.get_record(
+    v3_refreshed = await orchestrator.depositor.get_deposition_by_id(
         orchestrator.new_deposition.id_
     )
 
