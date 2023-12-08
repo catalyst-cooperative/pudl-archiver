@@ -82,7 +82,7 @@ async def archive_datasets(
                 session,
                 upload_key,
                 publish_key,
-                deposition_settings=Path("dataset_doi.yaml"),
+                dataset_settings_path=Path("dataset_doi.yaml"),
                 create_new=initialize,
                 dry_run=dry_run,
                 sandbox=sandbox,
