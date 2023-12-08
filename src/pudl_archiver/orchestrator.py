@@ -91,7 +91,7 @@ class DepositionOrchestrator:
         session: aiohttp.ClientSession,
         upload_key: str,
         publish_key: str,
-        deposition_settings: Path,
+        dataset_settings_path: Path,
         create_new: bool = False,
         dry_run: bool = True,
         sandbox: bool = True,
@@ -106,7 +106,7 @@ class DepositionOrchestrator:
             session: Async http client session manager.
             upload_key: Zenodo API upload key.
             publish_key: Zenodo API publish key.
-            deposition_settings: where the various production/sandbox concept
+            dataset_settings_path: where the various production/sandbox concept
                 DOIs are stored.
             create_new: whether or not we are initializing a new Zenodo Concept DOI.
             dry_run: Whether or not we upload files to Zenodo in this run.
@@ -134,8 +134,8 @@ class DepositionOrchestrator:
         self.dry_run = dry_run
 
         self.create_new = create_new
-        self.dataset_settings_path = deposition_settings
-        with Path.open(deposition_settings) as f:
+        self.dataset_settings_path = dataset_settings_path
+        with Path.open(dataset_settings_path) as f:
             self.dataset_settings = {
                 name: DatasetSettings(**dois)
                 for name, dois in yaml.safe_load(f).items()

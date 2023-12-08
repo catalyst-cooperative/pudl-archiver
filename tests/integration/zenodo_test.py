@@ -178,7 +178,7 @@ async def test_zenodo_workflow(
         "session": session,
         "upload_key": upload_key,
         "publish_key": publish_key,
-        "deposition_settings": test_settings,
+        "dataset_settings_path": test_settings,
         "dry_run": False,
         "sandbox": True,
         "auto_publish": True,
