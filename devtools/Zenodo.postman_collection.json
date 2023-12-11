@@ -3,29 +3,64 @@
 		"_postman_id": "94da0a65-3428-451d-b05d-59caaadaa99a",
 		"name": "Zenodo",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "25334351"
+		"_exporter_id": "25334351",
+		"_collection_link": "https://catalystcoop.postman.co/workspace/Team-Workspace~35c1bbbd-25fb-4cfa-8885-b009fd8b3b77/collection/25334351-94da0a65-3428-451d-b05d-59caaadaa99a?action=share&source=collection_link&creator=25334351"
 	},
 	"item": [
 		{
-			"name": "List depositions",
-			"request": {
-				"method": "GET",
-				"header": []
-			},
-			"response": []
-		},
-		{
-			"name": "Get deposition",
+			"name": "Depositions - List",
 			"request": {
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "https://sandbox.zenodo.org/api/deposit/depositions/:id",
-					"protocol": "https",
+					"raw": "{{base_url}}/api/deposit/depositions?q=conceptdoi:\"{{doi_prefix}}/zenodo.6629\"",
 					"host": [
-						"sandbox",
-						"zenodo",
-						"org"
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"deposit",
+						"depositions"
+					],
+					"query": [
+						{
+							"key": "q",
+							"value": "conceptdoi:\"{{doi_prefix}}/zenodo.6629\"",
+							"description": "Search query (using Elasticsearch query string syntax)."
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Depositions - Create",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/deposit/depositions",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"deposit",
+						"depositions"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Depositions - Retrieve",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/deposit/depositions/:id",
+					"host": [
+						"{{base_url}}"
 					],
 					"path": [
 						"api",
@@ -36,7 +71,7 @@
 					"variable": [
 						{
 							"key": "id",
-							"value": "1113941"
+							"value": ""
 						}
 					]
 				}
@@ -44,17 +79,14 @@
 			"response": []
 		},
 		{
-			"name": "List deposition files",
+			"name": "Depositions - Update",
 			"request": {
-				"method": "GET",
+				"method": "PUT",
 				"header": [],
 				"url": {
-					"raw": "https://sandbox.zenodo.org/api/deposit/depositions/:id",
-					"protocol": "https",
+					"raw": "{{base_url}}/api/deposit/depositions/:id",
 					"host": [
-						"sandbox",
-						"zenodo",
-						"org"
+						"{{base_url}}"
 					],
 					"path": [
 						"api",
@@ -65,7 +97,7 @@
 					"variable": [
 						{
 							"key": "id",
-							"value": "1113941"
+							"value": ""
 						}
 					]
 				}
@@ -73,52 +105,25 @@
 			"response": []
 		},
 		{
-			"name": "Publish deposition",
+			"name": "Depositions - Delete",
 			"request": {
-				"method": "POST",
+				"method": "DELETE",
 				"header": [],
 				"url": {
-					"raw": "https://sandbox.zenodo.org/api/deposit/depositions/1113941/actions/publish",
-					"protocol": "https",
+					"raw": "{{base_url}}/api/deposit/depositions/:id",
 					"host": [
-						"sandbox",
-						"zenodo",
-						"org"
+						"{{base_url}}"
 					],
 					"path": [
 						"api",
 						"deposit",
 						"depositions",
-						"1113941",
-						"actions",
-						"publish"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "Create file (bucket)",
-			"request": {
-				"method": "POST",
-				"header": [],
-				"url": {
-					"raw": "https://sandbox.zenodo.org/api/files/:bucket",
-					"protocol": "https",
-					"host": [
-						"sandbox",
-						"zenodo",
-						"org"
-					],
-					"path": [
-						"api",
-						"files",
-						":bucket"
+						":id"
 					],
 					"variable": [
 						{
-							"key": "bucket",
-							"value": null
+							"key": "id",
+							"value": ""
 						}
 					]
 				}
@@ -126,7 +131,34 @@
 			"response": []
 		},
 		{
-			"name": "Create file (files API)",
+			"name": "Deposition files - List",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/deposit/depositions/:id/files",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"deposit",
+						"depositions",
+						":id",
+						"files"
+					],
+					"variable": [
+						{
+							"key": "id",
+							"value": "6630"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Deposition files - Create",
 			"request": {
 				"method": "POST",
 				"header": [],
@@ -146,24 +178,293 @@
 					]
 				},
 				"url": {
-					"raw": "https://sandbox.zenodo.org/api/deposit/depositions/:doi/files",
-					"protocol": "https",
+					"raw": "{{base_url}}/api/deposit/depositions/:id/files",
 					"host": [
-						"sandbox",
-						"zenodo",
-						"org"
+						"{{base_url}}"
 					],
 					"path": [
 						"api",
 						"deposit",
 						"depositions",
-						":doi",
+						":id",
 						"files"
 					],
 					"variable": [
 						{
-							"key": "doi",
-							"value": "1146821"
+							"key": "id",
+							"value": ""
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Deposition files - Retrieve",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": []
+				},
+				"url": {
+					"raw": "{{base_url}}/api/deposit/depositions/:id/files/:file_id",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"deposit",
+						"depositions",
+						":id",
+						"files",
+						":file_id"
+					],
+					"variable": [
+						{
+							"key": "id",
+							"value": ""
+						},
+						{
+							"key": "file_id",
+							"value": ""
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Deposition files - Update",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": []
+				},
+				"url": {
+					"raw": "{{base_url}}/api/deposit/depositions/:id/files/:file_id",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"deposit",
+						"depositions",
+						":id",
+						"files",
+						":file_id"
+					],
+					"variable": [
+						{
+							"key": "id",
+							"value": ""
+						},
+						{
+							"key": "file_id",
+							"value": ""
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Deposition files - Delete",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": []
+				},
+				"url": {
+					"raw": "{{base_url}}/api/deposit/depositions/:id/files/:file_id",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"deposit",
+						"depositions",
+						":id",
+						"files",
+						":file_id"
+					],
+					"variable": [
+						{
+							"key": "id",
+							"value": ""
+						},
+						{
+							"key": "file_id",
+							"value": ""
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Deposition actions - Publish",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/deposit/depositions/:id/actions/publish",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"deposit",
+						"depositions",
+						":id",
+						"actions",
+						"publish"
+					],
+					"variable": [
+						{
+							"key": "id",
+							"value": ""
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Deposition actions - Edit",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/deposit/depositions/:id/actions/edit",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"deposit",
+						"depositions",
+						":id",
+						"actions",
+						"edit"
+					],
+					"variable": [
+						{
+							"key": "id",
+							"value": ""
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Deposition actions - Discard",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/deposit/depositions/:id/actions/discard",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"deposit",
+						"depositions",
+						":id",
+						"actions",
+						"discard"
+					],
+					"variable": [
+						{
+							"key": "id",
+							"value": ""
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Deposition actions - New version",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/deposit/depositions/:id/actions/newversion",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"deposit",
+						"depositions",
+						":id",
+						"actions",
+						"newversion"
+					],
+					"variable": [
+						{
+							"key": "id",
+							"value": ""
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Records - List",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/records?q=\"\"",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"records"
+					],
+					"query": [
+						{
+							"key": "q",
+							"value": "\"\""
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Records - Retrieve",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/records/:id",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"records",
+						":id"
+					],
+					"variable": [
+						{
+							"key": "id",
+							"value": ""
 						}
 					]
 				}

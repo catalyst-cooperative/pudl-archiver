@@ -1,0 +1,37 @@
+{
+	"info": {
+		"_postman_id": "f7955c46-5507-46c3-aa05-fae38a987261",
+		"name": "New Zenodo",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "25334351",
+		"_collection_link": "https://catalystcoop.postman.co/workspace/Team-Workspace~35c1bbbd-25fb-4cfa-8885-b009fd8b3b77/collection/25334351-f7955c46-5507-46c3-aa05-fae38a987261?action=share&source=collection_link&creator=25334351"
+	},
+	"item": [
+		{
+			"name": "Record versions - Create",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/records/:id/versions",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"records",
+						":id",
+						"versions"
+					],
+					"variable": [
+						{
+							"key": "id",
+							"value": ""
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
