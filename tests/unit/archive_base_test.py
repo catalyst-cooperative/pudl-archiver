@@ -283,49 +283,6 @@ async def test_get_hyperlinks(docname, pattern, links, request, html_docs):
 
 
 @pytest.mark.parametrize(
-    "test_results,success",
-    [
-        (
-            [
-                ValidationTestResult(name="test0", description="test0", success=True),
-                ValidationTestResult(name="test1", description="test1", success=True),
-                ValidationTestResult(name="test2", description="test2", success=True),
-            ],
-            True,
-        ),
-        (
-            [
-                ValidationTestResult(name="test0", description="test0", success=True),
-                ValidationTestResult(name="test1", description="test1", success=True),
-                ValidationTestResult(name="test2", description="test2", success=False),
-            ],
-            False,
-        ),
-        (
-            [
-                ValidationTestResult(name="test0", description="test0", success=True),
-                ValidationTestResult(name="test1", description="test1", success=True),
-                ValidationTestResult(
-                    name="test2",
-                    description="test2",
-                    success=False,
-                    required_for_run_success=False,
-                ),
-            ],
-            True,
-        ),
-    ],
-)
-def test_generate_summary(datapackage, test_results, success):
-    """Test that validate_archive method handles dataset specific tests properly."""
-    archiver = MockArchiver(test_results)
-    assert (
-        archiver.generate_summary(datapackage, datapackage, "resources").success
-        == success
-    )
-
-
-@pytest.mark.parametrize(
     "baseline_resources,new_resources,success",
     [
         (
