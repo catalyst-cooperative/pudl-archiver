@@ -8,7 +8,7 @@ import aiohttp
 import semantic_version  # type: ignore  # noqa: PGH003
 
 from pudl_archiver.utils import retry_async
-from pudl_archiver.zenodo.entities import Deposition, DepositionMetadata
+from pudl_archiver.zenodo.entities import Deposition, DepositionMetadata, Record
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
@@ -170,29 +170,18 @@ class ZenodoDepositor:
         Returns:
             The latest deposition associated with the concept DOI.
         """
-        url = f"{self.api_root}/deposit/depositions"
-        params = {"q": f'conceptdoi:"{concept_doi}"'}
-
-        response = await self.request(
-            "GET",
-            url,
-            f"Query depositions for {concept_doi}",
-            params=params,
-            headers=self.auth_write,
-        )
-        if len(response) > 1:
-            logger.info(
-                f"{concept_doi} points at multiple records: {[r['id'] for r in response]}"
+        concept_rec_id = concept_doi.split(".")[2]
+        record = Record(
+            **await self.request(
+                "GET",
+                f"{self.api_root}/records/{concept_rec_id}",
+                headers=self.auth_write,
+                log_label=f"Get latest record for {concept_doi}",
             )
-        depositions = [Deposition(**dep) for dep in response]
+        )
+        return await self.get_deposition_by_id(record.id_)
 
-        if published_only:
-            depositions = [dep for dep in depositions if dep.submitted]
-
-        latest_deposition = sorted(depositions, key=lambda d: d.id_)[-1]
-        return await self.get_record(latest_deposition.id_)
-
-    async def get_record(self, rec_id: int) -> Deposition:
+    async def get_deposition_by_id(self, rec_id: int) -> Deposition:
         """Get a deposition by its record ID directly instead of through concept.
 
         Args:
@@ -213,8 +202,19 @@ class ZenodoDepositor:
     ) -> Deposition:
         """Get a new version of a deposition.
 
-        First creates a new version, which is a snapshot of the old one, then
-        updates that version with a new version number.
+        1. Get a fresh new draft based on the deposition.
+        2. Increment its major version number.
+
+        Guaranteeing a fresh new draft that looks like the existing record is
+        surprisingly difficult, due to instability in Zenodo's deposition
+        querying functionality.
+
+        1. Try to create a new version of the deposition.
+        2. If that fails, that is because there is already a draft.
+        3. Since the existing draft may have been changed from its initial state, delete it.
+           a. The only way to find the existing draft is to use the undocumented `POST /records/:id:/versions` API endpoint, which will either create a new draft or return an existing one.
+           b. We need to extract the deposition ID from the above output in order to delete it.
+        4.
 
         Args:
             deposition: the deposition you want to get the new version of.
@@ -224,12 +224,13 @@ class ZenodoDepositor:
             A new Deposition that is a snapshot of the old one you passed in,
             with a new major version number.
         """
+        # if this is a draft, either this is a potentially dirty draft (in
+        # which case, delete it) - or, this is the first deposition of a
+        # concept and we should just return it unharmed.
         if not deposition.submitted:
             if clobber:
                 await self.delete_deposition(deposition)
-                deposition = await self.get_deposition(
-                    str(deposition.conceptdoi), published_only=True
-                )
+                deposition = await self.get_deposition(str(deposition.conceptdoi))
             else:
                 return deposition
 
@@ -242,6 +243,7 @@ class ZenodoDepositor:
                 url,
                 log_label="Creating new version",
                 headers=self.auth_write,
+                retry_count=2,
             )
         # Except if abandoned in progress draft
         except ZenodoClientError as excinfo:
@@ -250,11 +252,24 @@ class ZenodoDepositor:
                 and "remove all files first" in excinfo.errors[0]["messages"][0].lower()
             ):
                 logger.info("Delete abandoned version and create new one.")
-                # Get ID of problematic in progress version
-                draft_deposition = await self.get_deposition(
-                    str(deposition.conceptdoi), published_only=False
+                existing_deposition = await self.get_deposition(
+                    str(deposition.conceptdoi)
                 )
-                await self.delete_deposition(draft_deposition)
+                new_draft = Record(
+                    **await self.request(
+                        "POST",
+                        f"{self.api_root}/records/{existing_deposition.id_}/versions",
+                        log_label=f"Get existing draft deposition for {existing_deposition.id_}",
+                        headers=self.auth_write,
+                    )
+                )
+                await self.request(
+                    "DELETE",
+                    new_draft.links.self,
+                    log_label=f"Delete existing draft deposition for {existing_deposition.id_}",
+                    headers=self.auth_write,
+                    parse_json=False,
+                )
             response = await self.request(
                 "POST",
                 url,

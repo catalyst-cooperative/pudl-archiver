@@ -1,5 +1,4 @@
 """Test zenodo client api."""
-import asyncio
 import os
 import tempfile
 import time
@@ -13,10 +12,8 @@ from dotenv import load_dotenv
 from pudl.metadata.classes import DataSource
 from pudl.metadata.constants import LICENSES
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver, ResourceInfo
-from pudl_archiver.archivers.validate import Unchanged
-from pudl_archiver.depositors.zenodo import ZenodoClientError
+from pudl_archiver.archivers.validate import RunSummary
 from pudl_archiver.orchestrator import DepositionOrchestrator
-from pudl_archiver.utils import retry_async
 from pudl_archiver.zenodo.entities import (
     Deposition,
     DepositionCreator,
@@ -172,12 +169,16 @@ async def test_zenodo_workflow(
             # Verify that contents of file are correct
             assert res.text.encode() == file_data["contents"]
 
+    async def refresh_record_info(run_summary: RunSummary) -> Deposition:
+        record_id = run_summary.record_url.path.rsplit("/", maxsplit=1)[1]
+        return await orchestrator.depositor.get_deposition_by_id(record_id)
+
     deposition_interface_args = {
         "data_source_id": "pudl_test",
         "session": session,
         "upload_key": upload_key,
         "publish_key": publish_key,
-        "deposition_settings": test_settings,
+        "dataset_settings_path": test_settings,
         "dry_run": False,
         "sandbox": True,
         "auto_publish": True,
@@ -231,10 +232,14 @@ async def test_zenodo_workflow(
     v1_summary = await orchestrator.run()
     assert v1_summary.success
 
-    v1_refreshed = await orchestrator.depositor.get_record(
-        orchestrator.new_deposition.id_
-    )
+    v1_refreshed = await refresh_record_info(v1_summary)
     verify_files(test_files["original"], v1_refreshed)
+
+    # the /records/ URL doesn't work until the record is published, but
+    # deposit/ works from draft through publication
+    assert str(v1_summary.record_url).replace("deposit", "records") == str(
+        v1_refreshed.links.html
+    )
 
     # Update files
     v2_resources = {
@@ -264,9 +269,7 @@ async def test_zenodo_workflow(
     v2_summary = await orchestrator.run()
     assert v2_summary.success
 
-    v2_refreshed = await orchestrator.depositor.get_record(
-        orchestrator.new_deposition.id_
-    )
+    v2_refreshed = await refresh_record_info(v2_summary)
     verify_files(test_files["updated"], v2_refreshed)
 
     # try keeping everything the same except the canonical URL - should trigger a datapackage.json-only change
@@ -277,25 +280,15 @@ async def test_zenodo_workflow(
     assert len(v3_summary.file_changes) == 0
     assert len(orchestrator.changes) == 1
 
-    v3_refreshed = await orchestrator.depositor.get_record(
-        orchestrator.new_deposition.id_
-    )
-
+    v3_refreshed = await refresh_record_info(v3_summary)
     # no updates to make, should not leave the conceptdoi pointing at a draft
     v4_summary = await orchestrator.run()
-    assert isinstance(v4_summary, Unchanged)
+    assert len(v4_summary.file_changes) == 0
 
-    # unfortunately, it looks like Zenodo doesn't propagate deletion instantly - retry this a few times.
-    latest_for_conceptdoi = await retry_async(
-        orchestrator.depositor.get_deposition,
-        args=[str(orchestrator.deposition.conceptdoi)],
-        kwargs={"published_only": True},
-        retry_on=(
-            ZenodoClientError,
-            aiohttp.ClientError,
-            asyncio.TimeoutError,
-            IndexError,
-        ),
-        retry_base_s=0.5,
+    # legacy Zenodo API "get latest for concept DOI" endpoint is very slow to update,
+    # but requesting the DOI directly updates quickly.
+    res = requests.get(
+        f"https://sandbox.zenodo.org/doi/{v3_refreshed.conceptdoi}",
+        timeout=10.0,
     )
-    assert latest_for_conceptdoi.id_ == v3_refreshed.id_
+    assert str(v3_refreshed.id_) in res.text
