@@ -195,3 +195,15 @@ class Deposition(BaseModel):
     state: Literal["inprogress", "done", "error", "submitted", "unsubmitted"]
     submitted: bool
     title: str
+
+    @property
+    def files_map(self) -> dict[str, DepositionFile]:
+        """Files associated with their filenames."""
+        return {f.filename: f for f in self.files}
+
+
+class Record(BaseModel):
+    """The /records/ endpoints return a slightly different data structure."""
+
+    id_: int = Field(alias="id")
+    links: DepositionLinks
