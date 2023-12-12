@@ -51,7 +51,7 @@ API tokens are required to interact with Zenodo. There is one set of tokens for 
 the sandbox server, and one for the production server. The archiver tool expects these tokens
 to be set in the following environment variables: `ZENODO_TOKEN_PUBLISH` and `ZENODO_TOKEN_UPLOAD`
 or `ZENODO_SANDBOX_TOKEN_PUBLISH` and `ZENODO_SANDBOX_TOKEN_UPLOAD` for the sandbox server.
-Catalyst uses a set of institutional tokens - you can contact a mainter for tokens.
+Catalyst uses a set of institutional tokens - you can contact a maintainer for tokens.
 
 If you want to interact with the `epacems` archiver, you'll need to get a
 [personal API](https://www.epa.gov/power-sector/cam-api-portal#/api-key-signup) key and
