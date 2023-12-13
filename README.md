@@ -71,7 +71,6 @@ There are also four optional flags available:
 - `--initialize`: used for creating an archive for a new dataset that doesn't
   currently exist on zenodo. If successful, this command will automatically add
   the new Zenodo DOI to the `dataset_doi.yaml` file.
-- `--dry-run`: used for testing, it ignores all Zenodo write operations.
 - `--all`: shortcut for archiving all datasets that we have defined archivers
   for. Overrides `--datasets`.
 
