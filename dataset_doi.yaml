@@ -26,7 +26,7 @@ epacamd_eia:
   production_doi: 10.5281/zenodo.6633769
   sandbox_doi: 10.5072/zenodo.3136
 epacems:
-  production_doi: 10.5281/zenodo.4127054
+  production_doi: 10.5281/zenodo.10233185
   sandbox_doi: 10.5072/zenodo.2236
 ferc1:
   production_doi: 10.5281/zenodo.4127043

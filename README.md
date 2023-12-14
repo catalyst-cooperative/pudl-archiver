@@ -27,7 +27,7 @@ regular environment, the sandbox can be wiped clean at any time. When testing up
 you'll want to upload to the sandbox first. Because we want to keep our Zenodo as clean
 as possible, we keep the upload tokens internal to Catalyst. If there's data you want to
 see integrated, and you're not part of the team, send us an email at
-hello@catalyst.coop.
+<hello@catalyst.coop>.
 
 One last thing-- Zenodo archives for particular datasets are referred to as
 "depositions". Each dataset is it's own deposition that gets created when the dataset is
@@ -46,10 +46,16 @@ conda activate pudl-cataloger
 ```
 
 ## Setting up environment
+
 API tokens are required to interact with Zenodo. There is one set of tokens for accessing
 the sandbox server, and one for the production server. The archiver tool expects these tokens
 to be set in the following environment variables: `ZENODO_TOKEN_PUBLISH` and `ZENODO_TOKEN_UPLOAD`
 or `ZENODO_SANDBOX_TOKEN_PUBLISH` and `ZENODO_SANDBOX_TOKEN_UPLOAD` for the sandbox server.
+Catalyst uses a set of institutional tokens - you can contact a maintainer for tokens.
+
+If you want to interact with the `epacems` archiver, you'll need to get a
+[personal API](https://www.epa.gov/power-sector/cam-api-portal#/api-key-signup) key and
+store it as an environment variable at `EPACEMS_API_KEY`.
 
 ## Usage
 
