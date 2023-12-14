@@ -38,7 +38,6 @@ async def archive_datasets(
     sandbox: bool = True,
     initialize: bool = False,
     only_years: list[int] | None = None,
-    dry_run: bool = True,
     summary_file: Path | None = None,
     download_dir: str | None = None,
     auto_publish: bool = False,
@@ -84,7 +83,6 @@ async def archive_datasets(
                 publish_key,
                 dataset_settings_path=Path("dataset_doi.yaml"),
                 create_new=initialize,
-                dry_run=dry_run,
                 sandbox=sandbox,
                 auto_publish=auto_publish,
             )

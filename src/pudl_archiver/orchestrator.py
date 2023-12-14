@@ -93,7 +93,6 @@ class DepositionOrchestrator:
         publish_key: str,
         dataset_settings_path: Path,
         create_new: bool = False,
-        dry_run: bool = True,
         sandbox: bool = True,
         auto_publish: bool = False,
     ):
@@ -109,7 +108,6 @@ class DepositionOrchestrator:
             dataset_settings_path: where the various production/sandbox concept
                 DOIs are stored.
             create_new: whether or not we are initializing a new Zenodo Concept DOI.
-            dry_run: Whether or not we upload files to Zenodo in this run.
             sandbox: Whether or not we are in a sandbox environment
             auto_publish: Whether we automatically publish the draft when we're
                 done, vs. letting a human approve of it.
@@ -131,7 +129,6 @@ class DepositionOrchestrator:
         self.depositor = ZenodoDepositor(upload_key, publish_key, session, self.sandbox)
         self.downloader = downloader
 
-        self.dry_run = dry_run
 
         self.create_new = create_new
         self.dataset_settings_path = dataset_settings_path
@@ -238,9 +235,6 @@ class DepositionOrchestrator:
         async for name, resource in downloader.download_all_resources():
             resources[name] = resource
             change = self._generate_change(name, resource, draft.files_map)
-            # Leave immediately after generating changes if dry_run
-            if self.dry_run:
-                continue
             if change:
                 await self._apply_change(draft, change)
         return resources
@@ -294,9 +288,7 @@ class DepositionOrchestrator:
             change: the change to make
         """
         self.changes.append(change)
-        if self.dry_run:
-            logger.info(f"Dry run, skipping {change}")
-            return
+       
         if change.action_type in [_DepositionAction.DELETE, _DepositionAction.UPDATE]:
             file_info = draft.files_map[change.name]
             await self.depositor.delete_file(draft, file_info.filename)
@@ -429,9 +421,7 @@ class DepositionOrchestrator:
         return False
 
     async def _publish(self, draft: Deposition) -> None:
-        if self.dry_run:
-            logger.info("Dry run - not publishing at all.")
-            return
+        
         if self.auto_publish:
             published = await self.depositor.publish_deposition(draft)
             if self.create_new:
