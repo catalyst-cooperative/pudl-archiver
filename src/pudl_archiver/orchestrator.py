@@ -129,7 +129,6 @@ class DepositionOrchestrator:
         self.depositor = ZenodoDepositor(upload_key, publish_key, session, self.sandbox)
         self.downloader = downloader
 
-
         self.create_new = create_new
         self.dataset_settings_path = dataset_settings_path
         with Path.open(dataset_settings_path) as f:
@@ -288,7 +287,7 @@ class DepositionOrchestrator:
             change: the change to make
         """
         self.changes.append(change)
-       
+
         if change.action_type in [_DepositionAction.DELETE, _DepositionAction.UPDATE]:
             file_info = draft.files_map[change.name]
             await self.depositor.delete_file(draft, file_info.filename)
@@ -421,7 +420,6 @@ class DepositionOrchestrator:
         return False
 
     async def _publish(self, draft: Deposition) -> None:
-        
         if self.auto_publish:
             published = await self.depositor.publish_deposition(draft)
             if self.create_new:
