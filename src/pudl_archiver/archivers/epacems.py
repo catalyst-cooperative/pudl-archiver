@@ -78,6 +78,10 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
         # Create zipfile to store year/quarter combinations of files
         filename = f"epacems-{year}-{quarter}.csv"
         archive_path = self.download_directory / f"epacems-{year}-{quarter}.zip"
+        # TODO: When we are ready to make a new archive, we want to transition to
+        # using this file formart so its more in line with the partition.
+        # filename = f"epacems-{year}q{quarter}.csv"
+        # archive_path = self.download_directory / f"epacems-{year}q{quarter}.zip"
         # Override the default asyncio timeout to 14 minutes, just under the API limit.
         await self.download_and_zip_file(
             url=url, filename=filename, archive_path=archive_path, timeout=60 * 14

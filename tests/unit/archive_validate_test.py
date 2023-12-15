@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 from pudl_archiver.archivers import validate
 from pudl_archiver.frictionless import Resource, ZipLayout
+from pudl_archiver.utils import Url
 
 
 @pytest.mark.parametrize(
@@ -151,6 +152,7 @@ def test_create_run_summary(baseline_resources, new_resources, diffs, mocker):
         baseline_datapackage=baseline,
         new_datapackage=new,
         validation_tests=[],
+        record_url=Url("https://www.catalyst.coop/bogus-record-url"),
     )
     test_diffs = summary.file_changes
     assert test_diffs == diffs
@@ -239,3 +241,61 @@ def test_zip_layout_validation(
         and (len(missing_files) == 0)
         and (len(invalid_files) == 0)
     )
+
+
+@pytest.mark.parametrize(
+    "specs,expected_success",
+    [
+        (
+            [
+                {"required_for_run_success": True, "success": True},
+                {"required_for_run_success": True, "success": True},
+            ],
+            True,
+        ),
+        (
+            [
+                {"required_for_run_success": True, "success": True},
+                {"required_for_run_success": True, "success": False},
+            ],
+            False,
+        ),
+        (
+            [
+                {"required_for_run_success": True, "success": True},
+                {"required_for_run_success": False, "success": False},
+            ],
+            True,
+        ),
+        (
+            [
+                {"required_for_run_success": True, "success": True},
+                {"required_for_run_success": False, "success": True},
+            ],
+            True,
+        ),
+        (
+            [],
+            True,
+        ),
+    ],
+)
+def test_run_summary_success(specs, expected_success):
+    validations = [
+        validate.ValidationTestResult(
+            name=f"test{i}",
+            description=f"test{i}",
+            required_for_run_success=spec["required_for_run_success"],
+            success=spec["success"],
+        )
+        for i, spec in enumerate(specs)
+    ]
+    summary = validate.RunSummary(
+        dataset_name="test",
+        validation_tests=validations,
+        file_changes=[],
+        date="2023-11-29",
+        previous_version_date="2023-11-28",
+        record_url=Url("https://www.catalyst.coop/bogus-record-url"),
+    )
+    assert summary.success == expected_success

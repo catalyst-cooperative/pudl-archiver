@@ -248,12 +248,12 @@ class AbstractDatasetArchiver(ABC):
             required_for_run_success=self.check_missing_files,
         )
 
-    def generate_summary(
+    def validate_dataset(
         self,
         baseline_datapackage: DataPackage | None,
         new_datapackage: DataPackage,
         resources: dict[str, ResourceInfo],
-    ) -> validate.RunSummary:
+    ) -> list[validate.ValidationTestResult]:
         """Run a series of validation tests for a new archive, and return results.
 
         Args:
@@ -264,7 +264,7 @@ class AbstractDatasetArchiver(ABC):
         Returns:
             Bool indicating whether or not all tests passed.
         """
-        validations = []
+        validations: list[validate.ValidationTestResult] = []
         validations.append(
             self._check_missing_files(baseline_datapackage, new_datapackage)
         )
@@ -275,9 +275,7 @@ class AbstractDatasetArchiver(ABC):
             baseline_datapackage, new_datapackage, resources
         )
 
-        return validate.RunSummary.create_summary(
-            self.name, baseline_datapackage, new_datapackage, validations
-        )
+        return validations
 
     def dataset_validate_archive(
         self,
