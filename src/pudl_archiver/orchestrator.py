@@ -188,14 +188,15 @@ class DepositionOrchestrator:
 
         draft = await self.depositor.get_deposition_by_id(draft.id_)
         new_datapackage, old_datapackage = await self._update_datapackage(
-            draft, resources
+            original=original, draft=draft, resources=resources
         )
         run_summary = self._summarize_run(
             old_datapackage, new_datapackage, resources, draft.links.html
         )
 
-        if not self.changes:
-            # must run *after* potentially updating datapackage.json
+        if len(run_summary.file_changes) == 0 and not self._datapackage_worth_changing(
+            old_datapackage, new_datapackage
+        ):
             logger.info(
                 f"No changes detected, kept draft at {draft.links.html} for "
                 "inspection."
@@ -347,6 +348,7 @@ class DepositionOrchestrator:
 
     async def _update_datapackage(
         self,
+        original: Deposition,
         draft: Deposition,
         resources: dict[str, ResourceInfo],
     ) -> tuple[DataPackage, DataPackage | None]:
@@ -362,9 +364,8 @@ class DepositionOrchestrator:
         """
         logger.info(f"Creating new datapackage.json for {self.data_source_id}")
         old_datapackage = None
-        if "datapackage.json" in draft.files_map:
-            # Download old datapackage - we haven't updated it yet.
-            url = draft.files_map["datapackage.json"].links.download
+        if "datapackage.json" in original.files_map:
+            url = original.files_map["datapackage.json"].links.canonical
             response = await self.depositor.request(
                 "GET",
                 url,
@@ -373,8 +374,7 @@ class DepositionOrchestrator:
                 headers=self.depositor.auth_write,
             )
             response_bytes = await retry_async(response.read)
-            old_datapackage = DataPackage.parse_raw(response_bytes)
-            draft.files_map.pop("datapackage.json")
+            old_datapackage = DataPackage.model_validate_json(response_bytes)
 
         # Create updated datapackage
         datapackage = DataPackage.from_filelist(
@@ -390,34 +390,31 @@ class DepositionOrchestrator:
             )
         )
 
-        if old_datapackage is None:
+        if "datapackage.json" in draft.files_map:
+            action = _DepositionAction.UPDATE
+        else:
+            action = _DepositionAction.CREATE
+
+        if self._datapackage_worth_changing(old_datapackage, datapackage):
             await self._apply_change(
                 draft,
                 _DepositionChange(
-                    action_type=_DepositionAction.CREATE,
+                    action_type=action,
                     name="datapackage.json",
                     resource=datapackage_json,
                 ),
             )
-        else:
-            if self._datapackage_worth_changing(old_datapackage, datapackage):
-                await self._apply_change(
-                    draft,
-                    _DepositionChange(
-                        action_type=_DepositionAction.UPDATE,
-                        name="datapackage.json",
-                        resource=datapackage_json,
-                    ),
-                )
 
         return datapackage, old_datapackage
 
     def _datapackage_worth_changing(
-        self, old_datapackage: DataPackage, new_datapackage: DataPackage
+        self, old_datapackage: DataPackage | None, new_datapackage: DataPackage
     ) -> bool:
         # ignore differences in created/version
         # ignore differences resource paths if it's just some ID number changing...
-        for field in new_datapackage.dict():
+        if old_datapackage is None:
+            return True
+        for field in new_datapackage.model_dump():
             if field in {"created", "version"}:
                 continue
             if field == "resources":
