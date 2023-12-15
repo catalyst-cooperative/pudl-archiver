@@ -6,12 +6,13 @@ from pathlib import Path
 
 import requests
 
+from pudl_archiver.archivers import validate
 from pudl_archiver.archivers.classes import (
     AbstractDatasetArchiver,
     ArchiveAwaitable,
     ResourceInfo,
 )
-from pudl_archiver.frictionless import ZipLayout
+from pudl_archiver.frictionless import DataPackage, ZipLayout
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
@@ -87,3 +88,18 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
             partitions={"year": year, "quarter": quarter},
             layout=ZipLayout(filepaths=[filename]),
         )
+
+    def dataset_validate_archive(
+        self,
+        baseline_datapackage: DataPackage | None, # create a fake one of these in the unit test
+        new_datapackage: DataPackage, # create a fake one of these in the unit test
+        resources: dict[str, ResourceInfo], # create a fake one using ResourceInfo.from_json(json_blob) - this should probably reflect the new dataset
+    ) -> list[validate.DatasetSpecificValidation]:
+        """Hook to add archive validation tests specific to each dataset."""
+        logger.info("hi")
+        success=True
+        return {
+        "name": "blah",
+        "description": "blah",
+        "success": success,
+    }
