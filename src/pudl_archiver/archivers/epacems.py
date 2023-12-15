@@ -2,7 +2,6 @@
 import json
 import logging
 import os
-import re
 from pathlib import Path
 
 import pandas as pd
@@ -104,32 +103,39 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
         """Look for consecutive year quarter partitions in CEMS archive."""
         year_quarters = [x.parts["year_quarter"] for x in new_datapackage.resources]
         yq_split = [x.split("q") for x in year_quarters]
-        yq_df = (
-            pd.DataFrame(yq_split, columns=["year", "quarter"])
-            .apply(pd.to_numeric, errors="coerce")
+        yq_df = pd.DataFrame(yq_split, columns=["year", "quarter"]).apply(
+            pd.to_numeric, errors="coerce"
         )
         newest_year = yq_df.year.max()
-        success=True
-        description=""
+        success = True
+        description = ""
 
         # Test that there are no extraneous quarter values like q5
-        if not yq_df["quarter"].isin(range(1,5)).all():
-            success=False
-            description = description + f"""
+        if not yq_df["quarter"].isin(range(1, 5)).all():
+            success = False
+            description = (
+                description
+                + f"""
                 f"The following years have bad quarters: \
                 {yq_df[yq_df['quarter'].isin(range(1,5))].year.unique().tolist()}. """
+            )
         # Test that all old years have all four quarters
-        q_groups = yq_df[yq_df["year"]!=newest_year].groupby("year").count()
+        q_groups = yq_df[yq_df["year"] != newest_year].groupby("year").count()
         if not q_groups.quarter.isin([4]).all():
-            success=False
-            description = description + f"""
+            success = False
+            description = (
+                description
+                + f"""
                 f"The following years do not have four quarters: \
                     {q_groups[q_groups['quarter']!=4].index.tolist()}. """
+            )
         # Test that the newest year has consecutive quarters
-        new_quarters = yq_df[yq_df["year"]==newest_year].quarter.unique().tolist()
-        if len(set(range(1,len(new_quarters)+1)) - set(new_quarters)) != 0:
-            success=False
-            description = description + "There are missing quarters in the new year of data. "
+        new_quarters = yq_df[yq_df["year"] == newest_year].quarter.unique().tolist()
+        if len(set(range(1, len(new_quarters) + 1)) - set(new_quarters)) != 0:
+            success = False
+            description = (
+                description + "There are missing quarters in the new year of data. "
+            )
 
         return {
             "name": "dataset_validate_archive",
