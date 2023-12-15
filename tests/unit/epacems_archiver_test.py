@@ -231,6 +231,7 @@ fake_new_datapackage_success = DataPackage.model_validate_json(json.dumps({
     "created": "2023-11-30 20:51:43.255388",
     "version": "1",
 }))
+# Fails because it's missing 1997q1 - (last year, non-consecutive)
 fake_new_datapackage_fail1 = DataPackage.model_validate_json(json.dumps({
     "name": "epacems",
     "title": "Test EPACEMS",
@@ -397,6 +398,7 @@ fake_new_datapackage_fail1 = DataPackage.model_validate_json(json.dumps({
     "created": "2023-11-30 20:51:43.255388",
     "version": "1",
 }))
+# Fails because it's missing 1996q4 - (middle year, non-complete)
 fake_new_datapackage_fail2 = DataPackage.model_validate_json(json.dumps({
     "name": "epacems",
     "title": "Test EPACEMS",
