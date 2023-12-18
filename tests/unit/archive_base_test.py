@@ -405,6 +405,407 @@ def test_check_missing_files(datapackage, baseline_resources, new_resources, suc
     assert validation_result.success == success
 
 
+@pytest.mark.parametrize(
+    "baseline_resources,new_resources,success",
+    [
+        (
+            # Test when file size changes by > threshold for any one file
+            [
+                Resource(
+                    name="resource0",
+                    path="https://www.example.com",
+                    remote_url="https://www.example.com",
+                    title="",
+                    parts={},
+                    mediatype="",
+                    format="",
+                    bytes=10,
+                    hash="",
+                ),
+                Resource(
+                    name="resource1",
+                    path="https://www.example.com",
+                    remote_url="https://www.example.com",
+                    title="",
+                    parts={},
+                    mediatype="",
+                    format="",
+                    bytes=10,
+                    hash="",
+                ),
+            ],
+            [
+                Resource(
+                    name="resource0",
+                    path="https://www.example.com",
+                    remote_url="https://www.example.com",
+                    title="",
+                    parts={},
+                    mediatype="",
+                    format="",
+                    bytes=20,
+                    hash="",
+                ),
+                Resource(
+                    name="resource1",
+                    path="https://www.example.com",
+                    remote_url="https://www.example.com",
+                    title="",
+                    parts={},
+                    mediatype="",
+                    format="",
+                    bytes=10,
+                    hash="",
+                ),
+            ],
+            False,
+        ),
+        (
+            # Test when file size increases or decreases by < threshold for one file
+            [
+                Resource(
+                    name="resource0",
+                    path="https://www.example.com",
+                    remote_url="https://www.example.com",
+                    title="",
+                    parts={},
+                    mediatype="",
+                    format="",
+                    bytes=10,
+                    hash="",
+                ),
+                Resource(
+                    name="resource1",
+                    path="https://www.example.com",
+                    remote_url="https://www.example.com",
+                    title="",
+                    parts={},
+                    mediatype="",
+                    format="",
+                    bytes=10,
+                    hash="",
+                ),
+            ],
+            [
+                Resource(
+                    name="resource0",
+                    path="https://www.example.com",
+                    remote_url="https://www.example.com",
+                    title="",
+                    parts={},
+                    mediatype="",
+                    format="",
+                    bytes=11,
+                    hash="",
+                ),
+                Resource(
+                    name="resource1",
+                    path="https://www.example.com",
+                    remote_url="https://www.example.com",
+                    title="",
+                    parts={},
+                    mediatype="",
+                    format="",
+                    bytes=9,
+                    hash="",
+                ),
+            ],
+            True,
+        ),
+        (
+            # Test comparison ignores deleted files
+            [
+                Resource(
+                    name="resource0",
+                    path="https://www.example.com",
+                    remote_url="https://www.example.com",
+                    title="",
+                    parts={},
+                    mediatype="",
+                    format="",
+                    bytes=10,
+                    hash="",
+                ),
+                Resource(
+                    name="resource1",
+                    path="https://www.example.com",
+                    remote_url="https://www.example.com",
+                    title="",
+                    parts={},
+                    mediatype="",
+                    format="",
+                    bytes=10,
+                    hash="",
+                ),
+            ],
+            [
+                Resource(
+                    name="resource0",
+                    path="https://www.example.com",
+                    remote_url="https://www.example.com",
+                    title="",
+                    parts={},
+                    mediatype="",
+                    format="",
+                    bytes=10,
+                    hash="",
+                ),
+            ],
+            True,
+        ),
+        (
+            # Test comparison ignores added files
+            [
+                Resource(
+                    name="resource0",
+                    path="https://www.example.com",
+                    remote_url="https://www.example.com",
+                    title="",
+                    parts={},
+                    mediatype="",
+                    format="",
+                    bytes=10,
+                    hash="",
+                ),
+            ],
+            [
+                Resource(
+                    name="resource0",
+                    path="https://www.example.com",
+                    remote_url="https://www.example.com",
+                    title="",
+                    parts={},
+                    mediatype="",
+                    format="",
+                    bytes=10,
+                    hash="",
+                ),
+                Resource(
+                    name="resource1",
+                    path="https://www.example.com",
+                    remote_url="https://www.example.com",
+                    title="",
+                    parts={},
+                    mediatype="",
+                    format="",
+                    bytes=10,
+                    hash="",
+                ),
+            ],
+            True,
+        ),
+    ],
+)
+def test_check_file_size(datapackage, baseline_resources, new_resources, success):
+    """Test the ``_check_missing_files`` validation test."""
+    archiver = MockArchiver(None)
+
+    baseline_datapackage = copy.deepcopy(datapackage)
+    baseline_datapackage.resources = baseline_resources
+
+    new_datapackage = copy.deepcopy(datapackage)
+    new_datapackage.resources = new_resources
+
+    validation_result = archiver._check_file_size(baseline_datapackage, new_datapackage)
+    assert validation_result.success == success
+
+
+@pytest.mark.parametrize(
+    "baseline_resources,new_resources,success",
+    [
+        (
+            # Test when dataset increases by greater than allotted threshold
+            [
+                Resource(
+                    name="resource0",
+                    path="https://www.example.com",
+                    remote_url="https://www.example.com",
+                    title="",
+                    parts={},
+                    mediatype="",
+                    format="",
+                    bytes=10,
+                    hash="",
+                ),
+                Resource(
+                    name="resource1",
+                    path="https://www.example.com",
+                    remote_url="https://www.example.com",
+                    title="",
+                    parts={},
+                    mediatype="",
+                    format="",
+                    bytes=10,
+                    hash="",
+                ),
+            ],
+            [
+                Resource(
+                    name="resource0",
+                    path="https://www.example.com",
+                    remote_url="https://www.example.com",
+                    title="",
+                    parts={},
+                    mediatype="",
+                    format="",
+                    bytes=20,
+                    hash="",
+                ),
+                Resource(
+                    name="resource1",
+                    path="https://www.example.com",
+                    remote_url="https://www.example.com",
+                    title="",
+                    parts={},
+                    mediatype="",
+                    format="",
+                    bytes=10,
+                    hash="",
+                ),
+            ],
+            False,
+        ),
+        (
+            # Test when dataset size doesn't change even when file sizes do
+            [
+                Resource(
+                    name="resource0",
+                    path="https://www.example.com",
+                    remote_url="https://www.example.com",
+                    title="",
+                    parts={},
+                    mediatype="",
+                    format="",
+                    bytes=10,
+                    hash="",
+                ),
+                Resource(
+                    name="resource1",
+                    path="https://www.example.com",
+                    remote_url="https://www.example.com",
+                    title="",
+                    parts={},
+                    mediatype="",
+                    format="",
+                    bytes=10,
+                    hash="",
+                ),
+            ],
+            [
+                Resource(
+                    name="resource0",
+                    path="https://www.example.com",
+                    remote_url="https://www.example.com",
+                    title="",
+                    parts={},
+                    mediatype="",
+                    format="",
+                    bytes=11,
+                    hash="",
+                ),
+                Resource(
+                    name="resource1",
+                    path="https://www.example.com",
+                    remote_url="https://www.example.com",
+                    title="",
+                    parts={},
+                    mediatype="",
+                    format="",
+                    bytes=9,
+                    hash="",
+                ),
+            ],
+            True,
+        ),
+        (
+            # Test when dataset shrinks by greater than allotted threshold
+            [
+                Resource(
+                    name="resource0",
+                    path="https://www.example.com",
+                    remote_url="https://www.example.com",
+                    title="",
+                    parts={},
+                    mediatype="",
+                    format="",
+                    bytes=10,
+                    hash="",
+                ),
+                Resource(
+                    name="resource1",
+                    path="https://www.example.com",
+                    remote_url="https://www.example.com",
+                    title="",
+                    parts={},
+                    mediatype="",
+                    format="",
+                    bytes=10,
+                    hash="",
+                ),
+            ],
+            [
+                Resource(
+                    name="resource0",
+                    path="https://www.example.com",
+                    remote_url="https://www.example.com",
+                    title="",
+                    parts={},
+                    mediatype="",
+                    format="",
+                    bytes=10,
+                    hash="",
+                ),
+            ],
+            False,
+        ),
+        (
+            # Test for no change
+            [
+                Resource(
+                    name="resource0",
+                    path="https://www.example.com",
+                    remote_url="https://www.example.com",
+                    title="",
+                    parts={},
+                    mediatype="",
+                    format="",
+                    bytes=10,
+                    hash="",
+                ),
+            ],
+            [
+                Resource(
+                    name="resource0",
+                    path="https://www.example.com",
+                    remote_url="https://www.example.com",
+                    title="",
+                    parts={},
+                    mediatype="",
+                    format="",
+                    bytes=10,
+                    hash="",
+                ),
+            ],
+            True,
+        ),
+    ],
+)
+def test_check_dataset_size(datapackage, baseline_resources, new_resources, success):
+    """Test the ``_check_missing_files`` validation test."""
+    archiver = MockArchiver(None)
+
+    baseline_datapackage = copy.deepcopy(datapackage)
+    baseline_datapackage.resources = baseline_resources
+
+    new_datapackage = copy.deepcopy(datapackage)
+    new_datapackage.resources = new_resources
+
+    validation_result = archiver._check_dataset_size(
+        baseline_datapackage, new_datapackage
+    )
+    assert validation_result.success == success
+
+
 def test_year_filter():
     archiver = MockArchiver(None, only_years=[2020, 2022])
     assert archiver.valid_year(2020)

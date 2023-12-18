@@ -60,6 +60,8 @@ class AbstractDatasetArchiver(ABC):
     # Configure which generic validation tests to run
     check_missing_files: bool = True
     check_empty_invalid_files: bool = True
+    check_file_size: bool = True
+    check_dataset_size: bool = True
 
     def __init__(
         self,
@@ -248,6 +250,83 @@ class AbstractDatasetArchiver(ABC):
             required_for_run_success=self.check_missing_files,
         )
 
+    def _check_file_size(
+        self,
+        baseline_datapackage: DataPackage | None,
+        new_datapackage: DataPackage,
+        allowed_file_rel_diff: float = 0.1,
+    ) -> validate.DatasetSpecificValidation:
+        """Check if any one file's size has changed by |>allowed_file_rel_diff|."""
+        baseline_resources = set()
+        too_changed_files = set()
+        notes = None
+
+        if baseline_datapackage is not None:
+            baseline_resources = {
+                resource.name: resource.bytes_
+                for resource in baseline_datapackage.resources
+            }
+
+        new_resources = {
+            resource.name: resource.bytes_ for resource in new_datapackage.resources
+        }
+
+        # Check to see that file size hasn't changed by more than |>allowed_file_rel_diff|
+        # for each dataset in the baseline datapackage
+        for resource_name in baseline_resources:
+            if resource_name in new_resources:
+                file_size_change = abs(
+                    (new_resources[resource_name] - baseline_resources[resource_name])
+                    / baseline_resources[resource_name]
+                )
+                if file_size_change > allowed_file_rel_diff:
+                    too_changed_files.update({resource_name: file_size_change})
+
+        if too_changed_files:  # If files are "too changed"
+            notes = [
+                f"The following files have absolute changes in file size >|{allowed_file_rel_diff:.0%}|: {too_changed_files}"
+            ]
+
+        return validate.DatasetSpecificValidation(
+            name="Individual file size test",
+            description=f"Check for files from previous version of archive that have changed in size by more than {allowed_file_rel_diff:.0%}.",
+            success=not bool(too_changed_files),  # If dictionary empty, test passes
+            notes=notes,
+            required_for_run_success=self.check_file_size,
+        )
+
+    def _check_dataset_size(
+        self,
+        baseline_datapackage: DataPackage | None,
+        new_datapackage: DataPackage,
+        allowed_dataset_rel_diff: float = 0.1,
+    ) -> validate.DatasetSpecificValidation:
+        """Check if a dataset's overall size has changed by more than |>allowed_dataset_rel_diff|."""
+        notes = None
+
+        if baseline_datapackage is not None:
+            baseline_size = sum(
+                [resource.bytes_ for resource in baseline_datapackage.resources]
+            )
+
+        new_size = sum([resource.bytes_ for resource in new_datapackage.resources])
+
+        # Check to see that overall dataset size hasn't changed by more than
+        # |>allowed_dataset_rel_diff|
+        dataset_size_change = abs((new_size - baseline_size) / baseline_size)
+        if dataset_size_change > allowed_dataset_rel_diff:
+            notes = [
+                f"The new dataset is >|{allowed_dataset_rel_diff:.0%}| different in size than the last archive."
+            ]
+
+        return validate.DatasetSpecificValidation(
+            name="Dataset file size test",
+            description=f"Check if overall archive size has changed by more than {allowed_dataset_rel_diff:.0%} from last archive.",
+            success=dataset_size_change < allowed_dataset_rel_diff,
+            notes=notes,
+            required_for_run_success=self.check_dataset_size,
+        )
+
     def validate_dataset(
         self,
         baseline_datapackage: DataPackage | None,
@@ -265,12 +344,21 @@ class AbstractDatasetArchiver(ABC):
             Bool indicating whether or not all tests passed.
         """
         validations: list[validate.ValidationTestResult] = []
+
+        # Run baseline set of validations for dataset using datapackage
         validations.append(
             self._check_missing_files(baseline_datapackage, new_datapackage)
         )
+        # TO DO: pass config for %age off!
+        validations.append(self._check_file_size(baseline_datapackage, new_datapackage))
+        validations.append(
+            self._check_dataset_size(baseline_datapackage, new_datapackage)
+        )
 
+        # Add per-file validations
         validations += self.file_validations
 
+        # Add dataset-specific file validations
         validations += self.dataset_validate_archive(
             baseline_datapackage, new_datapackage, resources
         )
