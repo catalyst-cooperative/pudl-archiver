@@ -182,7 +182,12 @@ class DepositionOrchestrator:
             original = await self._get_existing_deposition(
                 self.dataset_settings, self.data_source_id
             )
-            draft = await self.depositor.get_new_version(original, clobber=True)
+            draft = await self.depositor.get_new_version(
+                original,
+                clobber=True,
+                data_source_id=self.data_source_id,
+                refresh_metadata=self.refresh_metadata,
+            )
 
         resources = await self._download_then_upload_resources(draft, self.downloader)
         for deletion in self._get_deletions(draft, resources):
