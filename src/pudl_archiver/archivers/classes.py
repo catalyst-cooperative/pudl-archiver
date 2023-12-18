@@ -303,6 +303,7 @@ class AbstractDatasetArchiver(ABC):
     ) -> validate.DatasetSpecificValidation:
         """Check if a dataset's overall size has changed by more than |>allowed_dataset_rel_diff|."""
         notes = None
+        baseline_size = None
 
         if baseline_datapackage is not None:
             baseline_size = sum(
@@ -313,11 +314,14 @@ class AbstractDatasetArchiver(ABC):
 
         # Check to see that overall dataset size hasn't changed by more than
         # |>allowed_dataset_rel_diff|
-        dataset_size_change = abs((new_size - baseline_size) / baseline_size)
-        if dataset_size_change > allowed_dataset_rel_diff:
-            notes = [
-                f"The new dataset is >|{allowed_dataset_rel_diff:.0%}| different in size than the last archive."
-            ]
+        if baseline_size is not None:
+            dataset_size_change = abs((new_size - baseline_size) / baseline_size)
+            if dataset_size_change > allowed_dataset_rel_diff:
+                notes = [
+                    f"The new dataset is {dataset_size_change:.0%} different in size than the last archive, which exceeds the set threshold of {allowed_dataset_rel_diff:.0%}."
+                ]
+        else:
+            dataset_size_change = 0.0
 
         return validate.DatasetSpecificValidation(
             name="Dataset file size test",

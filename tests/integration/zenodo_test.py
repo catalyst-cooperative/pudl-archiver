@@ -73,7 +73,7 @@ def test_files():
         },
         "updated_file.txt": {
             "original": b"This file should updated during deposition update.",
-            "updated": b"These are the updates.",
+            "updated": b"This file changes during the deposition update.",
         },
         "deleted_file.txt": {
             "original": b"This file should deleted during deposition update.",
