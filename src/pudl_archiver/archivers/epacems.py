@@ -3,6 +3,9 @@ import datetime
 import json
 import logging
 import os
+import zipfile
+from collections.abc import Iterable
+from itertools import groupby
 
 import requests
 from pydantic import BaseModel
@@ -74,22 +77,24 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
                 for file in bulk_files
                 if (file.metadata.data_type == "Emissions")
                 and (file.metadata.data_sub_type == "Hourly")
-                and (file.metadata.quarter in {1})
+                and (file.metadata.quarter in {1, 2, 3, 4})
                 and self.valid_year(file.metadata.year)
             ]
             logger.info(f"Downloading {len(quarterly_emissions_files)} total files.")
             logger.debug(f"File info: {quarterly_emissions_files}")
-            for i, cems_file in enumerate(quarterly_emissions_files):
-                yield self.get_year_quarter_resource(
-                    file=cems_file, request_count=i + 1
-                )  # Count files starting at 1 for human legibility.
+            files_by_year = groupby(
+                sorted(quarterly_emissions_files, key=lambda bf: bf.metadata.year or 0),
+                lambda bf: bf.metadata.year,
+            )
+            for year, files in files_by_year:
+                yield self.get_year_resource(year, list(files))
         else:
             raise AssertionError(
                 f"EPACEMS API request did not succeed: {file_list.status_code}"
             )
 
-    async def get_year_quarter_resource(
-        self, file: BulkFile, request_count: int
+    async def get_year_resource(
+        self, year: int, files: Iterable[BulkFile]
     ) -> ResourceInfo:
         """Download all available data for a single quarter in a year.
 
@@ -99,27 +104,33 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
                 for expected format of dictionary.
             request_count: the number of the request.
         """
-        url = self.base_url + file.s3_path
-        year = file.metadata.year
-        quarter = file.metadata.quarter
+        archive_path = self.download_directory / f"epacems-{year}.zip"
+        for file in files:
+            url = self.base_url + file.s3_path
+            quarter = file.metadata.quarter
 
-        # Useful to debug at download time-outs.
-        logger.info(f"Downloading {year} Q{quarter} EPACEMS data from {url}.")
+            # Useful to debug at download time-outs.
+            logger.info(f"Downloading {year} Q{quarter} EPACEMS data from {url}.")
 
-        # Create zipfile to store year/quarter combinations of files
-        filename = f"epacems-{year}-{quarter}.csv"
-        archive_path = self.download_directory / f"epacems-{year}-{quarter}.zip"
-        # TODO: When we are ready to make a new archive, we want to transition to
-        # using this file formart so its more in line with the partition.
-        # filename = f"epacems-{year}q{quarter}.csv"
-        # archive_path = self.download_directory / f"epacems-{year}q{quarter}.zip"
-        # Override the default asyncio timeout to 14 minutes, just under the API limit.
-        await self.download_and_zip_file(
-            url=url, filename=filename, archive_path=archive_path, timeout=60 * 14
-        )
-        logger.info(  # Verbose but helpful to track progress
-            f"File no. {request_count}: Downloaded {year} Q{quarter} EPA CEMS hourly emissions data."
-        )
+            # Create zipfile to store year/quarter combinations of files
+            filename = f"epacems-{year}q{quarter}.csv"
+            file_path = self.download_directory / filename
+
+            await self.download_file(url=url, file=file_path, timeout=60 * 14)
+
+            with zipfile.ZipFile(
+                archive_path,
+                "a",
+                compression=zipfile.ZIP_DEFLATED,
+            ) as archive, file_path.open("rb") as f:
+                archive.writestr(filename, f.read())
+
+            file_path.unlink()
+
         return ResourceInfo(
-            local_path=archive_path, partitions={"year_quarter": f"{year}q{quarter}"}
+            local_path=archive_path,
+            partitions={
+                "year": year,
+                "quarter": sorted([file.metadata.quarter for file in files]),
+            },
         )

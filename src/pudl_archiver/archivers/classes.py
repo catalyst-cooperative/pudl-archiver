@@ -323,6 +323,7 @@ class AbstractDatasetArchiver(ABC):
         for resource_chunk in resource_chunks:
             for resource_coroutine in asyncio.as_completed(resource_chunk):
                 resource_info = await resource_coroutine
+                self.logger.warning(f"{resource_info=}")
                 self.logger.info(f"Downloaded {resource_info.local_path}.")
 
                 # Perform various file validations
