@@ -265,7 +265,7 @@ async def test_zenodo_workflow(
     time.sleep(1)
 
     # Disable test and re-run
-    orchestrator.downloader.check_missing_files = False
+    orchestrator.downloader.fail_on_missing_files = False
     v2_summary = await orchestrator.run()
     assert v2_summary.success
 
