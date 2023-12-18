@@ -286,12 +286,14 @@ class AbstractDatasetArchiver(ABC):
         """Hook to add archive validation tests specific to each dataset."""
         return []
 
-    def valid_year(self, year: int | str):
+    def valid_year(self, year: int | str | None):
         """Check if this year is one we are interested in.
 
         Args:
             year: the year to check against our self.only_years
         """
+        if not year:
+            return False
         return (not self.only_years) or int(year) in self.only_years
 
     async def download_all_resources(

@@ -1,10 +1,12 @@
 """Download EPACEMS data."""
+import datetime
 import json
 import logging
 import os
-from pathlib import Path
 
 import requests
+from pydantic import BaseModel
+from pydantic.alias_generators import to_camel
 
 from pudl_archiver.archivers.classes import (
     AbstractDatasetArchiver,
@@ -13,6 +15,38 @@ from pudl_archiver.archivers.classes import (
 )
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
+
+
+class BulkFile(BaseModel):
+    """Data transfer object from EPA.
+
+    See https://www.epa.gov/power-sector/cam-api-portal#/swagger/camd-services
+    for details.
+    """
+
+    class Metadata(BaseModel):
+        """Metadata about a specific file."""
+
+        year: int | None = None
+        quarter: int | None = None
+        data_type: str
+        data_sub_type: str | None = None
+
+        class Config:  # noqa: D106
+            alias_generator = to_camel
+            allow_population_by_field_name = True
+
+    filename: str
+    s3_path: str
+    bytes: int  # noqa: A003
+    mega_bytes: float
+    giga_bytes: float
+    last_updated: datetime.datetime
+    metadata: Metadata
+
+    class Config:  # noqa: D106
+        alias_generator = to_camel
+        allow_population_by_field_name = True
 
 
 class EpaCemsArchiver(AbstractDatasetArchiver):
@@ -34,14 +68,14 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
         if file_list.status_code == 200:
             resjson = file_list.content.decode("utf8").replace("'", '"')
             file_list.close()  # Close connection.
-            bulk_files = json.loads(resjson)
+            bulk_files = (BulkFile(**f) for f in json.loads(resjson))
             quarterly_emissions_files = [
                 file
                 for file in bulk_files
-                if (file["metadata"]["dataType"] == "Emissions")
-                and (file["metadata"]["dataSubType"] == "Hourly")
-                and ("quarter" in file["metadata"])
-                and (self.valid_year(file["metadata"]["year"]))
+                if (file.metadata.data_type == "Emissions")
+                and (file.metadata.data_sub_type == "Hourly")
+                and (file.metadata.quarter in {1})
+                and self.valid_year(file.metadata.year)
             ]
             logger.info(f"Downloading {len(quarterly_emissions_files)} total files.")
             logger.debug(f"File info: {quarterly_emissions_files}")
@@ -55,8 +89,8 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
             )
 
     async def get_year_quarter_resource(
-        self, file: dict[str, str | dict[str, str]], request_count: int | None
-    ) -> tuple[Path, dict]:
+        self, file: BulkFile, request_count: int
+    ) -> ResourceInfo:
         """Download all available data for a single quarter in a year.
 
         Args:
@@ -65,9 +99,9 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
                 for expected format of dictionary.
             request_count: the number of the request.
         """
-        url = self.base_url + file["s3Path"]
-        year = file["metadata"]["year"]
-        quarter = file["metadata"]["quarter"]
+        url = self.base_url + file.s3_path
+        year = file.metadata.year
+        quarter = file.metadata.quarter
 
         # Useful to debug at download time-outs.
         logger.info(f"Downloading {year} Q{quarter} EPACEMS data from {url}.")
