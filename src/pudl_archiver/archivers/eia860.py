@@ -20,9 +20,9 @@ class Eia860Archiver(AbstractDatasetArchiver):
         """Download EIA-860 resources."""
         link_pattern = re.compile(r"eia860(\d{4})(ER)*.zip")
         for link in await self.get_hyperlinks(BASE_URL, link_pattern):
-            year = link_pattern.search(link).group(1)
+            year = int(link_pattern.search(link).group(1))
             if self.valid_year(year):
-                yield self.get_year_resource(link, link_pattern.search(link))
+                yield self.get_year_resource(link, year)
 
     async def get_year_resource(self, link: str, year: int) -> tuple[Path, dict]:
         """Download zip file."""

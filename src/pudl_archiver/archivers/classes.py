@@ -12,11 +12,7 @@ from pathlib import Path
 
 import aiohttp
 
-from pudl_archiver.archivers.validate import (
-    FileValidation,
-    RunSummary,
-    ValidationTestResult,
-)
+from pudl_archiver.archivers import validate
 from pudl_archiver.frictionless import DataPackage, ResourceInfo
 from pudl_archiver.utils import retry_async
 
@@ -95,7 +91,7 @@ class AbstractDatasetArchiver(ABC):
         if only_years is None:
             only_years = []
         self.only_years = only_years
-        self.file_validations: dict[str, FileValidation] = {}
+        self.file_validations: list[validate.FileSpecificValidation] = []
 
         # Create logger
         self.logger = logging.getLogger(f"catalystcoop.{__name__}")
@@ -174,9 +170,11 @@ class AbstractDatasetArchiver(ABC):
 
         # Write to zipfile
         with zipfile.ZipFile(
-            archive_path, "w", compression=zipfile.ZIP_DEFLATED
-        ) as archive, archive.open(filename, "w") as f_disk:
-            f_disk.write(response_bytes)
+            archive_path,
+            "w",
+            compression=zipfile.ZIP_DEFLATED,
+        ) as archive:
+            archive.writestr(filename, response_bytes)
 
     async def get_hyperlinks(
         self,
@@ -223,7 +221,7 @@ class AbstractDatasetArchiver(ABC):
         self,
         baseline_datapackage: DataPackage | None,
         new_datapackage: DataPackage,
-    ) -> ValidationTestResult:
+    ) -> validate.DatasetSpecificValidation:
         """Check for any files from previous archive version missing in new version."""
         baseline_resources = set()
         if baseline_datapackage is not None:
@@ -236,52 +234,26 @@ class AbstractDatasetArchiver(ABC):
         # Check for any files only in baseline_datapackage
         missing_files = baseline_resources - new_resources
 
-        note = None
+        notes = None
         if len(missing_files) > 0:
-            note = f"The following files would be deleted by new archive version: {missing_files}"
+            notes = [
+                f"The following files would be deleted by new archive version: {missing_files}"
+            ]
 
-        return ValidationTestResult(
+        return validate.DatasetSpecificValidation(
             name="Missing file test",
             description="Check for files from previous version of archive that would be deleted by the new version",
             success=len(missing_files) == 0,
-            note=note,
+            notes=notes,
+            required_for_run_success=self.check_missing_files,
         )
 
-    def _check_valid_files(self) -> ValidationTestResult:
-        """Check for invalid or empty files."""
-        invalid_files = [
-            name
-            for name, validation in self.file_validations.items()
-            if not validation.valid_type
-        ]
-
-        empty_files = [
-            name
-            for name, validation in self.file_validations.items()
-            if not validation.not_empty
-        ]
-
-        note = None
-        if len(invalid_files) > 0:
-            note = f"The following files were determined to be invalid based on their extension: {invalid_files}"
-
-        if len(empty_files) > 0:
-            empty_note = f"The following files are empty: {empty_files}"
-            note = ". ".join([note, empty_note]) if note else empty_note
-
-        return ValidationTestResult(
-            name="Empty/invalid file test",
-            description="Validate files based on their extension, and check that no files are empty",
-            success=not ((len(invalid_files) > 0) or (len(empty_files) > 0)),
-            note=note,
-        )
-
-    def generate_summary(
+    def validate_dataset(
         self,
         baseline_datapackage: DataPackage | None,
         new_datapackage: DataPackage,
         resources: dict[str, ResourceInfo],
-    ) -> RunSummary:
+    ) -> list[validate.ValidationTestResult]:
         """Run a series of validation tests for a new archive, and return results.
 
         Args:
@@ -292,31 +264,25 @@ class AbstractDatasetArchiver(ABC):
         Returns:
             Bool indicating whether or not all tests passed.
         """
-        validations = []
-        missing_file_validation = self._check_missing_files(
-            baseline_datapackage, new_datapackage
+        validations: list[validate.ValidationTestResult] = []
+        validations.append(
+            self._check_missing_files(baseline_datapackage, new_datapackage)
         )
-        missing_file_validation.ignore_failure = not self.check_missing_files
-        validations.append(missing_file_validation)
 
-        valid_file_validation = self._check_valid_files()
-        valid_file_validation.ignore_failure = not self.check_empty_invalid_files
-        validations.append(valid_file_validation)
+        validations += self.file_validations
 
         validations += self.dataset_validate_archive(
             baseline_datapackage, new_datapackage, resources
         )
 
-        return RunSummary.create_summary(
-            self.name, baseline_datapackage, new_datapackage, validations
-        )
+        return validations
 
     def dataset_validate_archive(
         self,
         baseline_datapackage: DataPackage | None,
         new_datapackage: DataPackage,
         resources: dict[str, ResourceInfo],
-    ) -> list[ValidationTestResult]:
+    ) -> list[validate.DatasetSpecificValidation]:
         """Hook to add archive validation tests specific to each dataset."""
         return []
 
@@ -357,10 +323,22 @@ class AbstractDatasetArchiver(ABC):
                 resource_info = await resource_coroutine
                 self.logger.info(f"Downloaded {resource_info.local_path}.")
 
-                # Validate filetype
-                self.file_validations[
-                    str(resource_info.local_path.name)
-                ] = FileValidation.from_path(resource_info.local_path)
+                # Perform various file validations
+                self.file_validations.extend(
+                    [
+                        validate.validate_filetype(
+                            resource_info.local_path, self.check_empty_invalid_files
+                        ),
+                        validate.validate_file_not_empty(
+                            resource_info.local_path, self.check_empty_invalid_files
+                        ),
+                        validate.validate_zip_layout(
+                            resource_info.local_path,
+                            resource_info.layout,
+                            self.check_empty_invalid_files,
+                        ),
+                    ]
+                )
 
                 # Return downloaded
                 yield str(resource_info.local_path.name), resource_info

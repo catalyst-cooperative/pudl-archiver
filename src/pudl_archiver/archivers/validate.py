@@ -1,11 +1,17 @@
 """Defines models used for validating/summarizing an archiver run."""
+import logging
+import xml.etree.ElementTree as Et  # nosec: B405
 import zipfile
+from io import BytesIO
 from pathlib import Path
 from typing import Any, Literal
 
 from pydantic import BaseModel
 
-from pudl_archiver.frictionless import DataPackage, Resource
+from pudl_archiver.frictionless import DataPackage, Resource, ZipLayout
+from pudl_archiver.utils import Url
+
+logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 
 class ValidationTestResult(BaseModel):
@@ -13,38 +19,79 @@ class ValidationTestResult(BaseModel):
 
     name: str
     description: str
-    ignore_failure: bool = False
-    resource_name: str | None = None  # If test is specific to a single resource
+    required_for_run_success: bool = True
     success: bool
-    note: str | None = None  # Optional note to provide details like why test failed
+    notes: list[
+        str
+    ] | None = None  # Optional note to provide details like why test failed
+
+    # Flag to allow ignoring tests that pass to avoid cluttering the summary
+    always_serialize_in_summary: bool = True
+
+
+class DatasetSpecificValidation(ValidationTestResult):
+    """ValidationTestResult specific to an entire dataset."""
+
+
+class FileSpecificValidation(ValidationTestResult):
+    """ValidationTestResult specific to a single file."""
+
+    resource_name: Path
+    always_serialize_in_summary: bool = False
+
+
+def validate_filetype(
+    path: Path, required_for_run_success: bool
+) -> FileSpecificValidation:
+    """Check that file is valid based on type."""
+    return FileSpecificValidation(
+        name="Valid Filetype Test",
+        description="Check that file appears to be valid based on it's extension.",
+        required_for_run_success=required_for_run_success,
+        resource_name=path,
+        success=_validate_file_type(path, BytesIO(path.read_bytes())),
+    )
+
+
+def validate_file_not_empty(
+    path: Path, required_for_run_success: bool
+) -> FileSpecificValidation:
+    """Check that file is valid based on type."""
+    return FileSpecificValidation(
+        name="Empty File Test",
+        description="Check that file is not empty.",
+        required_for_run_success=required_for_run_success,
+        resource_name=path,
+        success=path.stat().st_size > 0,
+    )
+
+
+def validate_zip_layout(
+    path: Path, layout: ZipLayout | None, required_for_run_success: bool
+) -> FileSpecificValidation:
+    """Check that file is valid based on type."""
+    if layout is not None:
+        valid_layout, layout_notes = layout.validate_zip(path)
+    else:
+        valid_layout, layout_notes = True, []
+
+    return FileSpecificValidation(
+        name="Zipfile Layout Test",
+        description="Check that the internal layout of a zipfile is as expected.",
+        required_for_run_success=required_for_run_success,
+        resource_name=path,
+        success=valid_layout,
+        notes=layout_notes,
+    )
 
 
 class PartitionDiff(BaseModel):
     """Model summarizing changes in partitions."""
 
-    key: Any
-    value: str | None = None
-    previous_value: str | None = None
+    key: Any = None
+    value: str | int | list[str | int] | None = None
+    previous_value: str | int | list[str | int] | None = None
     diff_type: Literal["CREATE", "UPDATE", "DELETE"]
-
-
-class FileValidation(BaseModel):
-    """Check that file is valid based on datatype and that it's not empty."""
-
-    valid_type: bool
-    not_empty: bool
-
-    @classmethod
-    def from_path(cls, path: Path):
-        """Validate file type and check that file is not empty."""
-        valid_type = True
-
-        # xlsx file should be a zipfile under the hood
-        if path.suffix == ".zip" or path.suffix == ".xlsx":
-            valid_type = zipfile.is_zipfile(path)
-
-        not_empty = path.stat().st_size > 0
-        return cls(valid_type=valid_type, not_empty=not_empty)
 
 
 class FileDiff(BaseModel):
@@ -54,13 +101,6 @@ class FileDiff(BaseModel):
     diff_type: Literal["CREATE", "UPDATE", "DELETE"]
     size_diff: int
     partition_changes: list[PartitionDiff] = []
-
-
-class Unchanged(BaseModel):
-    """Alternative model to ``RunSummary`` returned when no changes are detected."""
-
-    dataset_name: str
-    reason: str = "No changes detected."
 
 
 class RunSummary(BaseModel):
@@ -73,12 +113,14 @@ class RunSummary(BaseModel):
     previous_version: str = ""
     date: str
     previous_version_date: str
+    record_url: Url
 
     @property
     def success(self) -> bool:
-        """Return True if all tests not marked as ``ignore_failure`` passed."""
+        """Return True if all tests marked as ``required_for_run_success`` passed."""
         test_results = [
-            (test.success or test.ignore_failure) for test in self.validation_tests
+            (test.success or not test.required_for_run_success)
+            for test in self.validation_tests
         ]
         return all(test_results)
 
@@ -89,6 +131,7 @@ class RunSummary(BaseModel):
         baseline_datapackage: DataPackage | None,
         new_datapackage: DataPackage,
         validation_tests: list[ValidationTestResult],
+        record_url: Url,
     ) -> "RunSummary":
         """Create a summary of archive changes from two DataPackage descriptors."""
         baseline_resources = {}
@@ -110,18 +153,24 @@ class RunSummary(BaseModel):
 
         return cls(
             dataset_name=name,
-            validation_tests=validation_tests,
+            validation_tests=[
+                test
+                for test in validation_tests
+                if (not test.success) or test.always_serialize_in_summary
+            ],
             file_changes=file_changes,
             version=new_datapackage.version,
             previous_version=previous_version,
             date=new_datapackage.created,
             previous_version_date=previous_version_date,
+            record_url=record_url,
         )
 
 
 def _process_partition_diffs(
     baseline_partitions: dict[str, Any], new_partitions: dict[str, Any]
 ) -> list[PartitionDiff]:
+    """Summarize how partitions have changed."""
     all_partition_keys = {*baseline_partitions.keys(), *new_partitions.keys()}
     partition_diffs = []
     for key in all_partition_keys:
@@ -129,7 +178,7 @@ def _process_partition_diffs(
         new_val = new_partitions.get(key)
 
         match baseline_val, new_val:
-            case None, created_part_val:
+            case [None, created_part_val]:
                 partition_diffs.append(
                     PartitionDiff(
                         key=key,
@@ -137,7 +186,7 @@ def _process_partition_diffs(
                         diff_type="CREATE",
                     )
                 )
-            case deleted_part_val, None:
+            case [deleted_part_val, None]:
                 partition_diffs.append(
                     PartitionDiff(
                         key=key,
@@ -145,7 +194,7 @@ def _process_partition_diffs(
                         diff_type="DELETE",
                     )
                 )
-            case old_val, new_val if old_val != new_val:
+            case [old_val, new_val] if old_val != new_val:
                 partition_diffs.append(
                     PartitionDiff(
                         key=key,
@@ -161,9 +210,12 @@ def _process_partition_diffs(
 def _process_resource_diffs(
     baseline_resources: dict[str, Resource], new_resources: dict[str, Resource]
 ) -> list[FileDiff]:
+    """Check how resources have changed."""
+    # Get sets of resources from previous version and new version
     baseline_set = set(baseline_resources.keys())
     new_set = set(new_resources.keys())
 
+    # Compare sets
     resource_overlap = baseline_set.intersection(new_set)
     created_resources = new_set - baseline_set
     deleted_resources = baseline_set - new_set
@@ -198,6 +250,7 @@ def _process_resource_diffs(
             baseline_resource.parts, new_resource.parts
         )
 
+        # Consider resource to have changed if the file hash or partitions have changed
         if file_changed or (len(partition_diffs) > 0):
             changed_resources.append(
                 FileDiff(
@@ -209,3 +262,26 @@ def _process_resource_diffs(
             )
 
     return [*changed_resources, *created_resources, *deleted_resources]
+
+
+def _validate_file_type(path: Path, buffer: BytesIO) -> bool:
+    """Check that file appears valid based on extension."""
+    extension = path.suffix
+
+    if extension == ".zip" or extension == ".xlsx":
+        return zipfile.is_zipfile(buffer)
+
+    if extension == ".xml" or extension == ".xbrl" or extension == ".xsd":
+        return _validate_xml(buffer)
+
+    logger.warning(f"No validations defined for files of type: {extension} - {path}")
+    return True
+
+
+def _validate_xml(buffer: BytesIO) -> bool:
+    try:
+        Et.parse(buffer)  # noqa: S314
+    except Et.ParseError:
+        return False
+
+    return True

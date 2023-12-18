@@ -112,19 +112,25 @@ async def test_resource_chunks(
                 yield self.get_resource(i)
 
         async def get_resource(self, i):
-            return ResourceInfo(local_path=Path(self.download_directory), partitions=i)
+            return ResourceInfo(
+                local_path=Path(self.download_directory), partitions={"idx": i}
+            )
 
     tmpdir_mock = mocker.Mock(side_effect=[Path(f"path{i}") for i in range(6)])
     mocker.patch(
         "pudl_archiver.archivers.classes.tempfile.TemporaryDirectory",
         new=tmpdir_mock,
     )
-    mocker.patch("pudl_archiver.archivers.classes.FileValidation.from_path")
+
+    # Mock out file validations
+    mocker.patch("pudl_archiver.archivers.classes.validate.validate_filetype")
+    mocker.patch("pudl_archiver.archivers.classes.validate.validate_file_not_empty")
+    mocker.patch("pudl_archiver.archivers.classes.validate.validate_zip_layout")
 
     # Initialize MockArchiver class
     archiver = MockArchiver(concurrency_limit, directory_per_resource_chunk)
     async for name, resource in archiver.download_all_resources():
-        assert download_paths[resource.partitions] == name
+        assert download_paths[resource.partitions["idx"]] == name
 
 
 @pytest.mark.asyncio
@@ -274,49 +280,6 @@ async def test_get_hyperlinks(docname, pattern, links, request, html_docs):
 
     found_links = await archiver.get_hyperlinks("fake_url", pattern)
     assert set(found_links) == set(links)
-
-
-@pytest.mark.parametrize(
-    "test_results,success",
-    [
-        (
-            [
-                ValidationTestResult(name="test0", description="test0", success=True),
-                ValidationTestResult(name="test1", description="test1", success=True),
-                ValidationTestResult(name="test2", description="test2", success=True),
-            ],
-            True,
-        ),
-        (
-            [
-                ValidationTestResult(name="test0", description="test0", success=True),
-                ValidationTestResult(name="test1", description="test1", success=True),
-                ValidationTestResult(name="test2", description="test2", success=False),
-            ],
-            False,
-        ),
-        (
-            [
-                ValidationTestResult(name="test0", description="test0", success=True),
-                ValidationTestResult(name="test1", description="test1", success=True),
-                ValidationTestResult(
-                    name="test2",
-                    description="test2",
-                    success=False,
-                    ignore_failure=True,
-                ),
-            ],
-            True,
-        ),
-    ],
-)
-def test_generate_summary(datapackage, test_results, success):
-    """Test that validate_archive method handles dataset specific tests properly."""
-    archiver = MockArchiver(test_results)
-    assert (
-        archiver.generate_summary(datapackage, datapackage, "resources").success
-        == success
-    )
 
 
 @pytest.mark.parametrize(

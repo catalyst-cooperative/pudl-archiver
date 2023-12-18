@@ -4,10 +4,7 @@ name: run-archiver
 on:
   workflow_dispatch:
   schedule:
-    - cron: "21 4 * * 0" # Sundays 4:21 AM UTC
-  push:
-    branches:
-      - "daz/**"
+    - cron: "21 4 1 * *" # 4:21 AM UTC, first of every month
 
 jobs:
   archive-run:
@@ -17,31 +14,15 @@ jobs:
     strategy:
       matrix:
         dataset:
-          - censusdp1tract
-          - eia176
           - eia860
           - eia860m
-          - eia861
           - eia923
-          - eia_bulk_elec
-          - eiawater
-          - epacamd_eia
           - epacems
-          - ferc1
-          - ferc2
-          - ferc6
-          - ferc60
-          - ferc714
-          - ferceqr
-          - mshamines
-          - phmsagas
 
       fail-fast: false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
 
       - name: Install Conda environment using mamba
         uses: mamba-org/setup-micromamba@v1
@@ -67,16 +48,16 @@ jobs:
           ZENODO_SANDBOX_TOKEN_UPLOAD: ${{ secrets.ZENODO_SANDBOX_TOKEN_UPLOAD }}
           ZENODO_SANDBOX_TOKEN_PUBLISH: ${{ secrets.ZENODO_SANDBOX_TOKEN_PUBLISH }}
           EPACEMS_API_KEY: ${{ secrets.EPACEMS_API_KEY }}
-          # They're in the repository secrets, but we need more QA/QC checks
-          # ZENODO_TOKEN_UPLOAD: ${{ secrets.ZENODO_TOKEN_UPLOAD }}
-          # ZENODO_TOKEN_PUBLISH: ${{ secrets.ZENODO_TOKEN_PUBLISH }}
+          ZENODO_TOKEN_UPLOAD: ${{ secrets.ZENODO_TOKEN_UPLOAD }}
+          ZENODO_TOKEN_PUBLISH: ${{ secrets.ZENODO_TOKEN_PUBLISH }}
         run: |
-          pudl_archiver --sandbox --datasets ${{ matrix.dataset }} --summary-file ${{ matrix.dataset }}_run_summary.json
+          pudl_archiver --datasets ${{ matrix.dataset }} --summary-file ${{ matrix.dataset }}_run_summary.json
 
-      - name: Archive code coverage results
+      - name: Upload run summaries
+        id: upload_summaries
         uses: actions/upload-artifact@v3
         with:
-          name: $${{ matrix.dataset }}-run-summary
+          name: run-summaries
           path: ${{ matrix.dataset }}_run_summary.json
 
   archive-notify:
@@ -84,21 +65,26 @@ jobs:
     needs: archive-run
     if: ${{ always() }}
     steps:
-      - name: Inform the Codemonkeys
-        uses: 8398a7/action-slack@v3
+      - uses: actions/checkout@v4
+      - name: Download summaries
+        id: download
+        uses: actions/download-artifact@v3
         with:
-          status: custom
-          fields: workflow,job,commit,repo,ref,author,took
-          custom_payload: |
-            {
-              username: 'action-slack',
-              icon_emoji: ':octocat:',
-              attachments: [{
-                color: '${{ needs.archive-run.result }}' === 'success' ? 'good' : '${{ needs.archive-run.result }}' === 'failure' ? 'danger' : 'warning',
-                text: `${process.env.AS_REPO}@${process.env.AS_REF}\n ${process.env.AS_WORKFLOW} (${process.env.AS_COMMIT})\n by ${process.env.AS_AUTHOR}\n Status: ${{ needs.archive-run.result }}`,
-              }]
-            }
+          name: run-summaries
+      - name: show summaries
+        run: ls -R
+      - name: Munge summaries together
+        id: all_summaries
+        run: |
+          {
+            echo "SLACK_PAYLOAD<<EOF"
+            ./scripts/make_slack_notification_message.py --summary-files *_run_summary.json | tee slack-payload.json
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+      - name: Post update to pudl-deployment
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          channel-id: "C03FHB9N0PQ"
+          payload: ${{ steps.all_summaries.outputs.SLACK_PAYLOAD }}
         env:
-          GITHUB_TOKEN: ${{ github.token }} # required
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }} # required
-          MATRIX_CONTEXT: ${{ toJson(matrix) }} # required
+          SLACK_BOT_TOKEN: ${{ secrets.PUDL_DEPLOY_SLACK_TOKEN }}

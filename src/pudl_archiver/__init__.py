@@ -9,7 +9,7 @@ import aiohttp
 
 import pudl_archiver.orchestrator  # noqa: F401
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver
-from pudl_archiver.archivers.validate import Unchanged
+from pudl_archiver.archivers.validate import RunSummary
 from pudl_archiver.orchestrator import DepositionOrchestrator
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
@@ -83,7 +83,7 @@ async def archive_datasets(
                 session,
                 upload_key,
                 publish_key,
-                deposition_settings=Path("dataset_doi.yaml"),
+                dataset_settings_path=Path("dataset_doi.yaml"),
                 create_new=initialize,
                 dry_run=dry_run,
                 sandbox=sandbox,
@@ -108,14 +108,18 @@ async def archive_datasets(
             raise exceptions[-1][1]
 
     if summary_file is not None:
-        run_summaries = [result.dict() for _, result in results]
+        run_summaries = [
+            result.dict()
+            for _, result in results
+            if not isinstance(result, BaseException)
+        ]
 
         with summary_file.open("w") as f:
             f.write(json.dumps(run_summaries, indent=2))
 
     # Check validation results of all runs that aren't unchanged
     validation_results = [
-        result.success for _, result in results if not isinstance(result, Unchanged)
+        result.success for _, result in results if isinstance(result, RunSummary)
     ]
     if not all(validation_results):
         raise RuntimeError("Error: archive validation tests failed.")

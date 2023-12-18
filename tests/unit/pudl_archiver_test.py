@@ -1,13 +1,7 @@
 """Test archiver pudl_archiver."""
 import pytest
 from pudl_archiver import archive_datasets
-from pudl_archiver.archivers.validate import RunSummary, Unchanged, ValidationTestResult
-
-
-@pytest.fixture()
-def unchanged_run():
-    """Return a run_summary with a success."""
-    return Unchanged(dataset_name="success")
+from pudl_archiver.archivers.validate import RunSummary, ValidationTestResult
 
 
 @pytest.fixture()
@@ -25,6 +19,7 @@ def successful_run():
         file_changes=[],
         date="date",
         previous_version_date="date",
+        record_url="https://www.catalyst.coop/bogus-record-url",
     )
 
 
@@ -43,6 +38,7 @@ def failed_run():
         file_changes=[],
         date="date",
         previous_version_date="date",
+        record_url="https://www.catalyst.coop/bogus-record-url",
     )
 
 
@@ -50,11 +46,17 @@ def failed_run():
 async def test_archive_datasets(
     successful_run: RunSummary,
     failed_run: RunSummary,
-    unchanged_run: RunSummary,
     mocker,
     tmp_path,
 ):
     """Test that archive datasets creates run_summary file."""
+    mocker.patch.dict(
+        "os.environ",
+        {
+            "ZENODO_SANDBOX_TOKEN_UPLOAD": "bogus",
+            "ZENODO_SANDBOX_TOKEN_PUBLISH": "bogus too",
+        },
+    )
     summary_file = tmp_path / "summary_file"
     with summary_file.open("w") as f:
         f.write("file")
@@ -66,7 +68,7 @@ async def test_archive_datasets(
         "pudl_archiver.DepositionOrchestrator.run", new=mocked_orchestrator_success
     )
     await archive_datasets(["eia860"], summary_file=summary_file)
-    mocked_json_dump.assert_called_once_with([successful_run.dict()], indent=2)
+    mocked_json_dump.assert_called_once_with([successful_run.model_dump()], indent=2)
 
     # Set run() return value to failure summary and test
     mocked_json_dump.reset_mock()
@@ -76,13 +78,4 @@ async def test_archive_datasets(
     )
     with pytest.raises(RuntimeError):
         await archive_datasets(["eia860"], summary_file=summary_file)
-    mocked_json_dump.assert_called_once_with([failed_run.dict()], indent=2)
-
-    # Set run() return value to unchanged summary and test
-    mocked_json_dump.reset_mock()
-    mocked_orchestrator_unchanged = mocker.AsyncMock(return_value=unchanged_run)
-    mocker.patch(
-        "pudl_archiver.DepositionOrchestrator.run", new=mocked_orchestrator_unchanged
-    )
-    await archive_datasets(["eia860"], summary_file=summary_file)
-    mocked_json_dump.assert_called_once_with([unchanged_run.dict()], indent=2)
+    mocked_json_dump.assert_called_once_with([failed_run.model_dump()], indent=2)

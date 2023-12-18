@@ -4,23 +4,15 @@ See https://developers.zenodo.org/#entities for more info.
 """
 import datetime
 import re
-from typing import Literal
+from typing import Annotated, Literal
 
 from pudl.metadata.classes import Contributor, DataSource
-from pydantic import AnyHttpUrl, BaseModel, ConstrainedStr, Field, validator
+from pydantic import BaseModel, Field, StringConstraints, field_validator
 
+from pudl_archiver.utils import Url
 
-class Doi(ConstrainedStr):
-    """The DOI format for production Zenodo."""
-
-    regex = re.compile(r"10\.5281/zenodo\.\d+")
-
-
-class SandboxDoi(ConstrainedStr):
-    """The DOI format for sandbox Zenodo."""
-
-    regex = re.compile(r"10\.5072/zenodo\.\d+")
-
+Doi = Annotated[str, StringConstraints(pattern=r"10\.5281/zenodo\.\d+")]
+SandboxDoi = Annotated[str, StringConstraints(pattern=r"10\.5072/zenodo\.\d+")]
 
 PUDL_DESCRIPTION = """
 <p>This archive contains raw input data for the Public Utility Data Liberation (PUDL)
@@ -72,7 +64,8 @@ class DepositionMetadata(BaseModel):
     version: str | None = None
     communities: list[dict[str, str]] | None = None
 
-    @validator("doi", pre=True)
+    @field_validator("doi", mode="before")
+    @classmethod
     def check_empty_string(cls, doi: str):  # noqa: N805
         """Sometimes zenodo returns an empty string for the `doi`. Convert to None."""
         if doi == "":
@@ -112,10 +105,10 @@ class DepositionMetadata(BaseModel):
 class FileLinks(BaseModel):
     """Pydantic model representing zenodo deposition file Links."""
 
-    self: AnyHttpUrl | None = None
-    version: AnyHttpUrl | None = None
-    uploads: AnyHttpUrl | None = None
-    download: AnyHttpUrl | None = None
+    self: Url | None = None
+    version: Url | None = None
+    uploads: Url | None = None
+    download: Url | None = None
 
     @property
     def canonical(self):
@@ -132,7 +125,7 @@ class FileLinks(BaseModel):
             r"(?P<base_url>https?://.*zenodo.org).*"
             r"(?P<record_id>/records/\d+).*"
             r"(?P<filename>/files/[^/]+)",
-            self.download,
+            str(self.download),
         )
         if match is None:
             raise ValueError(f"Got bad Zenodo download URL: {self.download}")
@@ -173,15 +166,15 @@ class DepositionFile(BaseModel):
 class DepositionLinks(BaseModel):
     """Pydantic model representing zenodo deposition Links."""
 
-    bucket: AnyHttpUrl | None = None
-    discard: AnyHttpUrl | None = None
-    edit: AnyHttpUrl | None = None
-    files: AnyHttpUrl | None = None
-    html: AnyHttpUrl | None = None
-    latest_draft: AnyHttpUrl | None = None
-    latest_draft_html: AnyHttpUrl | None = None
-    publish: AnyHttpUrl | None = None
-    self: AnyHttpUrl | None = None
+    bucket: Url | None = None
+    discard: Url | None = None
+    edit: Url | None = None
+    files: Url | None = None
+    html: Url | None = None
+    latest_draft: Url | None = None
+    latest_draft_html: Url | None = None
+    publish: Url | None = None
+    self: Url | None = None
 
 
 class Deposition(BaseModel):
@@ -200,7 +193,19 @@ class Deposition(BaseModel):
     links: DepositionLinks
     owner: int
     record_id: int
-    record_url: AnyHttpUrl | None = None
+    record_url: Url | None = None
     state: Literal["inprogress", "done", "error", "submitted", "unsubmitted"]
     submitted: bool
     title: str
+
+    @property
+    def files_map(self) -> dict[str, DepositionFile]:
+        """Files associated with their filenames."""
+        return {f.filename: f for f in self.files}
+
+
+class Record(BaseModel):
+    """The /records/ endpoints return a slightly different data structure."""
+
+    id_: int = Field(alias="id")
+    links: DepositionLinks
