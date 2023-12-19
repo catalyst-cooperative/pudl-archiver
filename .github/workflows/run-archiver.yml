@@ -55,7 +55,7 @@ jobs:
 
       - name: Upload run summaries
         id: upload_summaries
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: run-summaries
           path: ${{ matrix.dataset }}_run_summary.json
@@ -68,7 +68,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Download summaries
         id: download
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: run-summaries
       - name: show summaries
