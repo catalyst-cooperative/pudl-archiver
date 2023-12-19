@@ -91,7 +91,7 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
         return ResourceInfo(
             local_path=archive_path,
             partitions={"year": year, "quarter": quarter},
-            layout=ZipLayout(filepaths=[filename]),
+            layout=ZipLayout(file_paths=[filename]),
         )
 
     def dataset_validate_archive(
@@ -100,7 +100,11 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
         new_datapackage: DataPackage,
         resources: dict[str, ResourceInfo],
     ) -> list[validate.DatasetSpecificValidation]:
-        """Look for consecutive year quarter partitions in CEMS archive."""
+        """Look for consecutive year quarter partitions in CEMS archive.
+
+        If this test passes, archives are consecutive and contain no missing quarters.
+
+        """
         year_quarters = [x.parts["year_quarter"] for x in new_datapackage.resources]
         yq_split = [x.split("q") for x in year_quarters]
         yq_df = pd.DataFrame(yq_split, columns=["year", "quarter"]).apply(
