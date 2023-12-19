@@ -3,7 +3,6 @@ import datetime
 import json
 import logging
 import os
-import zipfile
 from collections.abc import Iterable
 from itertools import groupby
 
@@ -16,6 +15,7 @@ from pudl_archiver.archivers.classes import (
     ArchiveAwaitable,
     ResourceInfo,
 )
+from pudl_archiver.frictionless import ZipLayout
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
@@ -112,6 +112,7 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
             files: the files we've associated with this year.
         """
         archive_path = self.download_directory / f"epacems-{year}.zip"
+        data_paths_in_archive = set()
         for file in files:
             url = self.base_url + file.s3_path
             quarter = file.metadata.quarter
@@ -122,14 +123,12 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
             filename = f"epacems-{year}q{quarter}.csv"
             file_path = self.download_directory / filename
             await self.download_file(url=url, file=file_path, timeout=60 * 14)
-
-            with zipfile.ZipFile(
-                archive_path,
-                "a",
-                compression=zipfile.ZIP_DEFLATED,
-            ) as archive, file_path.open("rb") as f:
-                archive.writestr(filename, f.read())
-
+            self.add_to_archive(
+                target_archive=archive_path,
+                name=filename,
+                blob=file_path.open("rb"),
+            )
+            data_paths_in_archive.add(filename)
             # Don't want to leave multiple giant CSVs on disk, so delete
             # immediately after they're safely stored in the ZIP
             file_path.unlink()
@@ -141,4 +140,5 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
                     [f"{year}q{file.metadata.quarter}" for file in files]
                 ),
             },
+            layout=ZipLayout(file_paths=data_paths_in_archive),
         )

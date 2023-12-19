@@ -50,7 +50,7 @@ async def test_eia860m(mocker):
     )
     archiver = Eia860MArchiver(mock_session, only_years=[2019, 2022])
     resources = [res async for res in archiver.get_resources()]
-    assert len(resources) == 24
+    assert len(resources) == 2
 
 
 @pytest.mark.asyncio

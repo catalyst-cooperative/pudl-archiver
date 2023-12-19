@@ -188,6 +188,21 @@ class AbstractDatasetArchiver(ABC):
         ) as archive:
             archive.writestr(filename, response_bytes)
 
+    def add_to_archive(self, target_archive: Path, name: str, blob: typing.BinaryIO):
+        """Add a file to a ZIP archive.
+
+        Args:
+            target_archive: path to target archive.
+            name: name of the file *within* the archive.
+            blob: the content you'd like to write to the archive.
+        """
+        with zipfile.ZipFile(
+            target_archive,
+            "a",
+            compression=zipfile.ZIP_DEFLATED,
+        ) as archive:
+            archive.writestr(name, blob.read())
+
     async def get_hyperlinks(
         self,
         url: str,
