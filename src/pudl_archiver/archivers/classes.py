@@ -24,7 +24,7 @@ MEDIA_TYPES: dict[str, str] = {
     "csv": "text/csv",
 }
 
-ArchiveAwaitable = typing.Generator[typing.Awaitable[ResourceInfo], None, None]
+ArchiveAwaitable = typing.AsyncGenerator[typing.Awaitable[ResourceInfo], None]
 """Return type of method get_resources.
 
 The method get_resources should yield an awaitable that returns a ResourceInfo named tuple.
@@ -98,7 +98,7 @@ class AbstractDatasetArchiver(ABC):
         self.logger.info(f"Archiving {self.name}")
 
     @abstractmethod
-    async def get_resources(self) -> ArchiveAwaitable:
+    def get_resources(self) -> ArchiveAwaitable:
         """Abstract method that each data source must implement to download all resources.
 
         This method should be a generator that yields awaitable objects that will download
@@ -106,6 +106,18 @@ class AbstractDatasetArchiver(ABC):
         partitions. What this means in practice is calling an `async` function and yielding
         the results without awaiting them. This allows the base class to gather all of these
         awaitables and download the resources concurrently.
+
+        While this method is defined without the `async` keyword, the
+        overriding methods should be `async`.
+
+        This is because, if there's no `yield` in the method body, static type
+        analysis doesn't know that `async def ...` should return
+        `Generator[Awaitable[ResourceInfo],...]` vs.
+        `Coroutine[Generator[Awaitable[ResourceInfo]],...]`
+
+        See
+        https://stackoverflow.com/questions/68905848/how-to-correctly-specify-type-hints-with-asyncgenerator-and-asynccontextmanager
+        for details.
         """
         ...
 
@@ -286,14 +298,12 @@ class AbstractDatasetArchiver(ABC):
         """Hook to add archive validation tests specific to each dataset."""
         return []
 
-    def valid_year(self, year: int | str | None):
+    def valid_year(self, year: int | str):
         """Check if this year is one we are interested in.
 
         Args:
             year: the year to check against our self.only_years
         """
-        if not year:
-            return False
         return (not self.only_years) or int(year) in self.only_years
 
     async def download_all_resources(
@@ -323,7 +333,6 @@ class AbstractDatasetArchiver(ABC):
         for resource_chunk in resource_chunks:
             for resource_coroutine in asyncio.as_completed(resource_chunk):
                 resource_info = await resource_coroutine
-                self.logger.warning(f"{resource_info=}")
                 self.logger.info(f"Downloaded {resource_info.local_path}.")
 
                 # Perform various file validations
