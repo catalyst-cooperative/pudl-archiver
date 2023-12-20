@@ -24,6 +24,10 @@ MEDIA_TYPES: dict[str, str] = {
     "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     "csv": "text/csv",
 }
+VALID_PARTITION_RANGES: dict[str, list] = {
+    "year_quarter": [1, 4, 7, 10],
+    "year_month": list(range(1, 13)),
+}
 
 ArchiveAwaitable = typing.AsyncGenerator[typing.Awaitable[ResourceInfo], None]
 """Return type of method get_resources.
@@ -370,19 +374,14 @@ class AbstractDatasetArchiver(ABC):
         self, new_datapackage: DataPackage
     ) -> validate.DatasetSpecificValidation:
         """Check that the archived data are continuous and complete."""
-        description = "Test that data are continuous and complete"
         success = True
         note = []
-        part_range_dict = {
-            "year_quarter": [1, 4, 7, 10],
-            "year_month": list(range(1, 13)),
-        }
         # Identify whether it's a year_quarter or year_month record.
         # This is only possible because we expect all partitions in a given archive to
         # have the same part label.
         part_label = list(new_datapackage.resources[0].parts.keys())[0]
         # Only perform this test if the part label is year quarter or year month
-        if part_label in part_range_dict:
+        if part_label in VALID_PARTITION_RANGES:
             # Make a dictionary of part type and parts (ex: {"year_quarter": [1995q1, 1995q2]}) from the new
             # archive datapackage to make it easier to loop through.
             parts_dict_list = [resource.parts for resource in new_datapackage.resources]
@@ -410,27 +409,27 @@ class AbstractDatasetArchiver(ABC):
                     )
                 # If it's not the newest year of data, make sure all expected months are there.
                 if date_list_years[0] != newest_year_part:
-                    if date_list_months != part_range_dict[part_label]:
+                    if date_list_months != VALID_PARTITION_RANGES[part_label]:
                         success = False
                         note.append(
                             f"Resource paritions: {date_list_months} do not match expected partitions: \
-                                {part_range_dict[part_label]} for {part_label} partitions. "
+                                {VALID_PARTITION_RANGES[part_label]} for {part_label} partitions. "
                         )
                 # If it is the newest year of data, make sure the records are consecutive.
                 # (i.e., not missing a quarter or month).
                 elif (
-                    part_range_dict[part_label][: len(date_list_months)]
+                    VALID_PARTITION_RANGES[part_label][: len(date_list_months)]
                     != date_list_months
                 ):
                     success = False
                     note.append(
                         f"Resource partitions from the most recent year: \
                         {date_list_months} do not match expected partitions: \
-                        {part_range_dict[part_label][:len(date_list_months)]}. "
+                        {VALID_PARTITION_RANGES[part_label][:len(date_list_months)]}. "
                     )
         return validate.DatasetSpecificValidation(
             name="Validate data continuity",
-            description=description,
+            description="Test that data are continuous and complete",
             success=success,
             notes=note,
             required_for_run_success=self.fail_on_data_continuity,
