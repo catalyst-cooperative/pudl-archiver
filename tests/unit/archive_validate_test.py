@@ -2,6 +2,7 @@
 import copy
 import itertools
 import json
+import logging
 import zipfile
 from pathlib import Path
 
@@ -11,6 +12,9 @@ from dateutil.relativedelta import relativedelta
 from pudl_archiver.archivers import validate
 from pudl_archiver.frictionless import DataPackage, Resource, ZipLayout
 from pudl_archiver.utils import Url
+
+logger = logging.getLogger(f"catalystcoop.{__name__}")
+
 
 
 @pytest.mark.parametrize(
@@ -411,6 +415,10 @@ fake_new_datapackage_quarter_fail2.resources[1].parts["year_quarter"] = ["1996q1
 # Fails because it's missing the rest of the months after 03.
 fake_new_datapackage_month_fail2 = copy.deepcopy(fake_new_datapackage_month_success)
 fake_new_datapackage_month_fail2.resources[1].parts["year_month"] = ["1996-01", "1996-02", "1996-03"]
+# Test one year of data
+fake_new_datapackage_month_fail3 = copy.deepcopy(fake_new_datapackage_month_success)
+fake_new_datapackage_month_fail3.resources = [fake_new_datapackage_month_fail3.resources[0]]
+
 
 @pytest.mark.parametrize(
     "new_datapackage,success",
@@ -421,6 +429,7 @@ fake_new_datapackage_month_fail2.resources[1].parts["year_month"] = ["1996-01", 
         (fake_new_datapackage_month_fail1, False),
         (fake_new_datapackage_quarter_fail2, False),
         (fake_new_datapackage_month_fail2, False),
+        (fake_new_datapackage_month_fail3, True),
     ],
 )
 def test_validate_data_continuity(
@@ -428,6 +437,7 @@ def test_validate_data_continuity(
 ):
     """Test the dataset archiving valiation for epacems."""
     validation = validate.validate_data_continuity(new_datapackage)
+    logger.info(validation)
     if validation["success"] != success:
         raise AssertionError(
             f"Expected test success to be {success} but it was {validation['success']}."

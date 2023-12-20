@@ -292,7 +292,7 @@ def validate_data_continuity(new_datapackage: DataPackage) -> DatasetSpecificVal
     """Check that the archived data are continuous and complete."""
     description = "Test that data are continuous and complete"
     success = True
-    note = ""
+    note = []
     part_range_dict = {
         "year_quarter": [1,4,7,10],
         "year_month": list(range(1,13))
@@ -316,12 +316,12 @@ def validate_data_continuity(new_datapackage: DataPackage) -> DatasetSpecificVal
         # Make sure each partition only contains one year of data.
         if len(set(date_list_years)) > 1:
             success = False
-            note = note + f"Partition contains more than one year: {set(date_list_years)}. "
+            note.append(f"Partition contains more than one year: {set(date_list_years)}. ")
         # If it's not the newest year of data, make sure all expected months are there.
         if date_list_years[0] != newest_year_part:
             if date_list_months != part_range_dict[part_label]:
                 success = False
-                note = note + (
+                note.append(
                     f"Resource paritions: {date_list_months} do not match expected partitions: \
                         {part_range_dict[part_label]} for {part_label} partitions. "
                 )
@@ -329,9 +329,10 @@ def validate_data_continuity(new_datapackage: DataPackage) -> DatasetSpecificVal
         # (i.e., not missing a quarter or month).
         elif part_range_dict[part_label][:len(date_list_months)] != date_list_months:
             success = False
-            note = note + (f"Resource partitions from the most recent year: \
-                    {date_list_months} do not match expected partitions: \
-                    {part_range_dict[part_label][:len(date_list_months)]}. "
+            note.append(
+                f"Resource partitions from the most recent year: \
+                {date_list_months} do not match expected partitions: \
+                {part_range_dict[part_label][:len(date_list_months)]}. "
             )
     return {
             "name": "validate_data_continuity",
