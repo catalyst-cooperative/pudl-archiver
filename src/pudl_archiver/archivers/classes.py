@@ -373,62 +373,58 @@ class AbstractDatasetArchiver(ABC):
     def _check_data_continuity(
         self, new_datapackage: DataPackage
     ) -> validate.DatasetSpecificValidation:
-        """Check that the archived data are continuous and complete."""
+        """Check that the archived data partitions are continuous and unique."""
         success = True
-        note = []
-        part_label = ""
-        # Identify whether it's a year_quarter or year_month record.
-        # This is only possible because we expect all partitions in a given archive to
-        # have the same part label.
-        if list(new_datapackage.resources[0].parts.keys()):
-            part_label = list(new_datapackage.resources[0].parts.keys())[0]
+        note = None
+        partition_names = []
+        dataset_partitions = []
+
+        # Unpack partitions of a dataset.
+        for resource in new_datapackage.resources:
+            if not resource.parts:  # Skip resources without partitions
+                continue
+            partition_names += list(resource.parts)
+            dataset_partitions += list(resource.parts.values())[0]
+
+        partition_names = set(partition_names)
+
         # Only perform this test if the part label is year quarter or year month
-        if part_label in VALID_PARTITION_RANGES:
-            # Make a dictionary of part type and parts (ex: {"year_quarter": [1995q1, 1995q2]}) from the new
-            # archive datapackage to make it easier to loop through.
-            parts_dict_list = [resource.parts for resource in new_datapackage.resources]
-            # Identify the newest year for the whole archive
-            newest_year_part = max(
-                [
-                    pd.to_datetime(x).year
-                    for y in [
-                        value for item in parts_dict_list for value in item.values()
-                    ]
-                    for x in y
-                ]
+        # Note that this currently only works if there is one set of partitions,
+        # and will fail if year_month and form are used to partition a dataset, e.g.
+        if any(partition in VALID_PARTITION_RANGES for partition in partition_names):
+            partition_to_test = [
+                partition
+                for partition in partition_names
+                if partition in VALID_PARTITION_RANGES
+            ][0]
+            interval = (
+                "QS"
+                if partition_to_test == "year_quarter"
+                else "MS"
+                if partition_to_test == "year_month"
+                else None
             )
-            # Loop through each resource to make sure it's partitions appear as expected.
-            for resource in new_datapackage.resources:
-                date_list = [pd.to_datetime(x) for x in resource.parts[part_label]]
-                date_list.sort()
-                date_list_months = [date.month for date in date_list]
-                date_list_years = [date.year for date in date_list]
-                # Make sure each partition only contains one year of data.
-                if len(set(date_list_years)) > 1:
+
+            if interval:
+                expected_date_range = pd.date_range(
+                    min(dataset_partitions), max(dataset_partitions), freq=interval
+                )
+                observed_date_range = pd.to_datetime(dataset_partitions)
+
+                if observed_date_range.has_duplicates:
                     success = False
-                    note.append(
-                        f"Partition contains more than one year: {set(date_list_years)}. "
-                    )
-                # If it's not the newest year of data, make sure all expected months are there.
-                if date_list_years[0] != newest_year_part:
-                    if date_list_months != VALID_PARTITION_RANGES[part_label]:
+                    note = [
+                        f"Partition contains duplicate time periods of data: f{observed_date_range.duplicated()}"
+                    ]
+
+                else:
+                    diff = expected_date_range.difference(observed_date_range)
+                    if not diff.empty:
                         success = False
-                        note.append(
-                            f"Resource paritions: {date_list_months} do not match expected partitions: \
-                                {VALID_PARTITION_RANGES[part_label]} for {part_label} partitions. "
-                        )
-                # If it is the newest year of data, make sure the records are consecutive.
-                # (i.e., not missing a quarter or month).
-                elif (
-                    VALID_PARTITION_RANGES[part_label][: len(date_list_months)]
-                    != date_list_months
-                ):
-                    success = False
-                    note.append(
-                        f"Resource partitions from the most recent year: \
-                        {date_list_months} do not match expected partitions: \
-                        {VALID_PARTITION_RANGES[part_label][:len(date_list_months)]}. "
-                    )
+                        note = [
+                            f"Downloaded partitions are not consecutive. Missing the following {partition_to_test} partitions: {diff.to_numpy()}"
+                        ]
+
         return validate.DatasetSpecificValidation(
             name="Validate data continuity",
             description="Test that data are continuous and complete",

@@ -561,7 +561,6 @@ fake_new_datapackage_quarter_success = DataPackage.model_validate_json(
                     "role": "publisher",
                     "zenodo_role": "distributor",
                     "organization": "Catalyst Cooperative",
-                    # "orcid": null
                 }
             ],
             "sources": [{"blah": "blah"}],
@@ -583,7 +582,6 @@ fake_new_datapackage_quarter_success = DataPackage.model_validate_json(
                     "title": "epacems-1995.zip",
                     "parts": {
                         "year_quarter": [
-                            "1995q1",
                             "1995q2",
                             "1995q3",
                             "1995q4",
