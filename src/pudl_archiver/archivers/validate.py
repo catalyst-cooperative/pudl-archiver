@@ -6,7 +6,6 @@ from io import BytesIO
 from pathlib import Path
 from typing import Any, Literal
 
-import pandas as pd
 from pydantic import BaseModel
 
 from pudl_archiver.frictionless import DataPackage, Resource, ZipLayout
