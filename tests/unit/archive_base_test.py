@@ -697,7 +697,4 @@ def test_check_data_continuity(new_datapackage, success):
     """Test the dataset archiving valiation for epacems."""
     archiver = MockArchiver(None)
     validation = archiver._check_data_continuity(new_datapackage)
-    if validation.success != success:
-        raise AssertionError(
-            f"Expected test success to be {success} but it was {validation['success']}."
-        )
+    assert validation.success == success
