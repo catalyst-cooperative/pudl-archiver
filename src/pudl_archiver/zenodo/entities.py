@@ -62,7 +62,7 @@ class DepositionMetadata(BaseModel):
     prereserve_doi: dict | bool = False
     keywords: list[str] | None = None
     version: str | None = None
-    communities: list[dict[str, str]] | None = None
+    communities: list[dict[str, str]] | None = [{"identifier": "catalyst-cooperative"}]
 
     @field_validator("doi", mode="before")
     @classmethod
@@ -98,7 +98,6 @@ class DepositionMetadata(BaseModel):
             license=data_source.license_raw.name,
             keywords=data_source.keywords,
             version="1.0.0",
-            communities=[{"identifier": "catalyst-cooperative"}],
         )
 
 
