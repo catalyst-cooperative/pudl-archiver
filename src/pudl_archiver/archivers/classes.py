@@ -399,7 +399,7 @@ class AbstractDatasetArchiver(ABC):
             baseline_datapackage, new_datapackage, resources
         )
 
-        validations += validate.validate_data_continuity(new_datapackage)
+        validations.append(validate.validate_data_continuity(new_datapackage))
 
         return validations
 

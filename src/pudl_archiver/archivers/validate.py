@@ -343,8 +343,8 @@ def validate_data_continuity(new_datapackage: DataPackage) -> DatasetSpecificVal
                     {part_range_dict[part_label][:len(date_list_months)]}. "
                 )
     return DatasetSpecificValidation(
-        name="validate_data_continuity",
+        name="Validate data continuity",
         description=description,
         success=success,
-        note=note,
+        notes=note,
     )
