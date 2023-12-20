@@ -376,10 +376,12 @@ class AbstractDatasetArchiver(ABC):
         """Check that the archived data are continuous and complete."""
         success = True
         note = []
+        part_label = ""
         # Identify whether it's a year_quarter or year_month record.
         # This is only possible because we expect all partitions in a given archive to
         # have the same part label.
-        part_label = list(new_datapackage.resources[0].parts.keys())[0]
+        if list(new_datapackage.resources[0].parts.keys()):
+            part_label = list(new_datapackage.resources[0].parts.keys())[0]
         # Only perform this test if the part label is year quarter or year month
         if part_label in VALID_PARTITION_RANGES:
             # Make a dictionary of part type and parts (ex: {"year_quarter": [1995q1, 1995q2]}) from the new
