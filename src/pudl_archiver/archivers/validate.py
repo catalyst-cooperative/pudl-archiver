@@ -297,45 +297,50 @@ def validate_data_continuity(new_datapackage: DataPackage) -> DatasetSpecificVal
         "year_quarter": [1,4,7,10],
         "year_month": list(range(1,13))
     }
-    # Make a dictionary of part type and parts (ex: {"quarter_year": [1995q1, 1995q2]}) from the new
-    # archive datapackage to make it easier to loop through.
-    parts_dict_list = [resource.parts for resource in new_datapackage.resources]
-    # Identify the newest year for the whole archive
-    newest_year_part = max(
-        [
-            pd.to_datetime(x).year
-            for y in [value for item in parts_dict_list for value in item.values()]
-            for x in y
-        ]
-    )
-    # Loop through each resource to make sure it's partitions appear as expected.
-    for resource in new_datapackage.resources:
-        part_label = [x for x, y in resource.parts.items()][0]
-        date_list = [pd.to_datetime(x) for x in resource.parts[part_label]]
-        date_list.sort()
-        date_list_months = [date.month for date in date_list]
-        date_list_years = [date.year for date in date_list]
-        # Make sure each partition only contains one year of data.
-        if len(set(date_list_years)) > 1:
-            success = False
-            note.append(f"Partition contains more than one year: {set(date_list_years)}. ")
-        # If it's not the newest year of data, make sure all expected months are there.
-        if date_list_years[0] != newest_year_part:
-            if date_list_months != part_range_dict[part_label]:
+    # Identify whether it's a year_quarter or year_month record.
+    # This is only possible because we expect all partitions in a given archive to
+    # have the same part label.
+    part_label = list(new_datapackage.resources[0].parts.keys())[0]
+    # Only perform this test if the part label is year quarter or year month
+    if part_label in part_range_dict:
+        # Make a dictionary of part type and parts (ex: {"year_quarter": [1995q1, 1995q2]}) from the new
+        # archive datapackage to make it easier to loop through.
+        parts_dict_list = [resource.parts for resource in new_datapackage.resources]
+        # Identify the newest year for the whole archive
+        newest_year_part = max(
+            [
+                pd.to_datetime(x).year
+                for y in [value for item in parts_dict_list for value in item.values()]
+                for x in y
+            ]
+        )
+        # Loop through each resource to make sure it's partitions appear as expected.
+        for resource in new_datapackage.resources:
+            date_list = [pd.to_datetime(x) for x in resource.parts[part_label]]
+            date_list.sort()
+            date_list_months = [date.month for date in date_list]
+            date_list_years = [date.year for date in date_list]
+            # Make sure each partition only contains one year of data.
+            if len(set(date_list_years)) > 1:
+                success = False
+                note.append(f"Partition contains more than one year: {set(date_list_years)}. ")
+            # If it's not the newest year of data, make sure all expected months are there.
+            if date_list_years[0] != newest_year_part:
+                if date_list_months != part_range_dict[part_label]:
+                    success = False
+                    note.append(
+                        f"Resource paritions: {date_list_months} do not match expected partitions: \
+                            {part_range_dict[part_label]} for {part_label} partitions. "
+                    )
+            # If it is the newest year of data, make sure the records are consecutive.
+            # (i.e., not missing a quarter or month).
+            elif part_range_dict[part_label][: len(date_list_months)] != date_list_months:
                 success = False
                 note.append(
-                    f"Resource paritions: {date_list_months} do not match expected partitions: \
-                        {part_range_dict[part_label]} for {part_label} partitions. "
+                    f"Resource partitions from the most recent year: \
+                    {date_list_months} do not match expected partitions: \
+                    {part_range_dict[part_label][:len(date_list_months)]}. "
                 )
-        # If it is the newest year of data, make sure the records are consecutive.
-        # (i.e., not missing a quarter or month).
-        elif part_range_dict[part_label][: len(date_list_months)] != date_list_months:
-            success = False
-            note.append(
-                f"Resource partitions from the most recent year: \
-                {date_list_months} do not match expected partitions: \
-                {part_range_dict[part_label][:len(date_list_months)]}. "
-            )
     return {
         "name": "validate_data_continuity",
         "description": description,

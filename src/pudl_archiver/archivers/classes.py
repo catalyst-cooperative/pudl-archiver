@@ -302,6 +302,8 @@ class AbstractDatasetArchiver(ABC):
             baseline_datapackage, new_datapackage, resources
         )
 
+        validations += validate.validate_data_continuity(new_datapackage)
+
         return validations
 
     def dataset_validate_archive(
@@ -311,7 +313,7 @@ class AbstractDatasetArchiver(ABC):
         resources: dict[str, ResourceInfo],
     ) -> list[validate.DatasetSpecificValidation]:
         """Hook to add archive validation tests specific to each dataset."""
-        return [validate.validate_data_continuity(new_datapackage)]
+        return []
 
     def valid_year(self, year: int | str):
         """Check if this year is one we are interested in.
