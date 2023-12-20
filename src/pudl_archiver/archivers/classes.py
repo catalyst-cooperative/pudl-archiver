@@ -421,6 +421,10 @@ class AbstractDatasetArchiver(ABC):
                         note = [
                             f"Downloaded partitions are not consecutive. Missing the following {partition_to_test} partitions: {diff.to_numpy()}"
                         ]
+        else:
+            note = [
+                "The dataset partitions are not configured for this test, and the test was not run."
+            ]
 
         return validate.DatasetSpecificValidation(
             name="Validate data continuity",
