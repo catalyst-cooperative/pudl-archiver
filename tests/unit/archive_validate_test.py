@@ -304,6 +304,7 @@ def test_run_summary_success(specs, expected_success):
     )
     assert summary.success == expected_success
 
+
 # Test inputs for test_validate_data_continuity function
 fake_new_datapackage_quarter_success = DataPackage.model_validate_json(
     json.dumps(
@@ -340,12 +341,14 @@ fake_new_datapackage_quarter_success = DataPackage.model_validate_json(
                     "path": "https://zenodo.org/records/10306114/files/epacems-1995.zip",
                     "remote_url": "https://zenodo.org/records/10306114/files/epacems-1995.zip",
                     "title": "epacems-1995.zip",
-                    "parts": {"year_quarter": [
-                        "1995q1",
-                        "1995q2",
-                        "1995q3",
-                        "1995q4",
-                    ]},
+                    "parts": {
+                        "year_quarter": [
+                            "1995q1",
+                            "1995q2",
+                            "1995q3",
+                            "1995q4",
+                        ]
+                    },
                     "encoding": "utf-8",
                     "mediatype": "application/zip",
                     "format": ".zip",
@@ -358,12 +361,14 @@ fake_new_datapackage_quarter_success = DataPackage.model_validate_json(
                     "path": "https://zenodo.org/records/10306114/files/epacems-1996.zip",
                     "remote_url": "https://zenodo.org/records/10306114/files/epacems-1996.zip",
                     "title": "epacems-1996.zip",
-                    "parts": {"year_quarter": [
-                        "1996q1",
-                        "1996q2",
-                        "1996q3",
-                        "1996q4",
-                    ]},
+                    "parts": {
+                        "year_quarter": [
+                            "1996q1",
+                            "1996q2",
+                            "1996q3",
+                            "1996q4",
+                        ]
+                    },
                     "encoding": "utf-8",
                     "mediatype": "application/zip",
                     "format": ".zip",
@@ -376,10 +381,12 @@ fake_new_datapackage_quarter_success = DataPackage.model_validate_json(
                     "path": "https://zenodo.org/records/10306114/files/epacems-1997.zip",
                     "remote_url": "https://zenodo.org/records/10306114/files/epacems-1997.zip",
                     "title": "epacems-1997.zip",
-                    "parts": {"year_quarter": [
-                        "1997q1",
-                        "1997q2",
-                    ]},
+                    "parts": {
+                        "year_quarter": [
+                            "1997q1",
+                            "1997q2",
+                        ]
+                    },
                     "encoding": "utf-8",
                     "mediatype": "application/zip",
                     "format": ".zip",
@@ -396,21 +403,37 @@ fake_new_datapackage_month_success = copy.deepcopy(fake_new_datapackage_quarter_
 # Make a successful monthly datapackage based on the quarterly one
 for resource in fake_new_datapackage_month_success.resources:
     resource_months_min = pd.to_datetime(min(resource.parts["year_quarter"]))
-    resource_months_max = pd.to_datetime(max(resource.parts["year_quarter"])) + relativedelta(months=3)
-    dd_idx = pd.date_range(start=resource_months_min, end=resource_months_max, freq = "M")
-    resource.parts = {"year_month": [pd.to_datetime(x).strftime("%Y-%m") for x in dd_idx]}
+    resource_months_max = pd.to_datetime(
+        max(resource.parts["year_quarter"])
+    ) + relativedelta(months=3)
+    dd_idx = pd.date_range(start=resource_months_min, end=resource_months_max, freq="M")
+    resource.parts = {
+        "year_month": [pd.to_datetime(x).strftime("%Y-%m") for x in dd_idx]
+    }
 # Fails because it's missing 1997q1 - (last year, non-consecutive)
 fake_new_datapackage_quarter_fail1 = copy.deepcopy(fake_new_datapackage_quarter_success)
 fake_new_datapackage_quarter_fail1.resources[2].parts["year_quarter"] = ["1997q2"]
 # Fails because it's missing 1997-02 - (last year, non-consecutive)
 fake_new_datapackage_month_fail1 = copy.deepcopy(fake_new_datapackage_month_success)
-fake_new_datapackage_month_fail1.resources[2].parts["year_month"] = ["1997-01", "1997-03"]
+fake_new_datapackage_month_fail1.resources[2].parts["year_month"] = [
+    "1997-01",
+    "1997-03",
+]
 # Fails because it's missing 1996q4 - (middle year, non-complete)
 fake_new_datapackage_quarter_fail2 = copy.deepcopy(fake_new_datapackage_quarter_success)
-fake_new_datapackage_quarter_fail2.resources[1].parts["year_quarter"] = ["1996q1", "1996q2", "1996q3"]
+fake_new_datapackage_quarter_fail2.resources[1].parts["year_quarter"] = [
+    "1996q1",
+    "1996q2",
+    "1996q3",
+]
 # Fails because it's missing the rest of the months after 03.
 fake_new_datapackage_month_fail2 = copy.deepcopy(fake_new_datapackage_month_success)
-fake_new_datapackage_month_fail2.resources[1].parts["year_month"] = ["1996-01", "1996-02", "1996-03"]
+fake_new_datapackage_month_fail2.resources[1].parts["year_month"] = [
+    "1996-01",
+    "1996-02",
+    "1996-03",
+]
+
 
 @pytest.mark.parametrize(
     "new_datapackage,success",
@@ -423,9 +446,7 @@ fake_new_datapackage_month_fail2.resources[1].parts["year_month"] = ["1996-01", 
         (fake_new_datapackage_month_fail2, False),
     ],
 )
-def test_validate_data_continuity(
-    new_datapackage, success
-):
+def test_validate_data_continuity(new_datapackage, success):
     """Test the dataset archiving valiation for epacems."""
     validation = validate.validate_data_continuity(new_datapackage)
     if validation["success"] != success:

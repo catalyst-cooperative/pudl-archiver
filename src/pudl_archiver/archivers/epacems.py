@@ -6,18 +6,16 @@ import os
 from collections.abc import Iterable
 from itertools import groupby
 
-import pandas as pd
 import requests
 from pydantic import BaseModel, ValidationError
 from pydantic.alias_generators import to_camel
 
-from pudl_archiver.archivers import validate
 from pudl_archiver.archivers.classes import (
     AbstractDatasetArchiver,
     ArchiveAwaitable,
     ResourceInfo,
 )
-from pudl_archiver.frictionless import DataPackage, ZipLayout
+from pudl_archiver.frictionless import ZipLayout
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 

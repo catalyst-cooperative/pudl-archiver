@@ -293,22 +293,21 @@ def validate_data_continuity(new_datapackage: DataPackage) -> DatasetSpecificVal
     description = "Test that data are continuous and complete"
     success = True
     note = ""
-    part_range_dict = {
-        "year_quarter": [1,4,7,10],
-        "year_month": list(range(1,13))
-    }
+    part_range_dict = {"year_quarter": [1, 4, 7, 10], "year_month": list(range(1, 13))}
     # Make a dictionary of part type and parts (ex: {"quarter_year": [1995q1, 1995q2]}) from the new
     # archive datapackage to make it easier to loop through.
     parts_dict_list = [resource.parts for resource in new_datapackage.resources]
     # Identify the newest year for the whole archive
     newest_year_part = max(
-        [pd.to_datetime(x).year for y in [
-            value for item in parts_dict_list for value in item.values()
-        ] for x in y]
+        [
+            pd.to_datetime(x).year
+            for y in [value for item in parts_dict_list for value in item.values()]
+            for x in y
+        ]
     )
     # Loop through each resource to make sure it's partitions appear as expected.
     for resource in new_datapackage.resources:
-        part_label = [x for x,y in resource.parts.items()][0]
+        part_label = [x for x, y in resource.parts.items()][0]
         date_list = [pd.to_datetime(x) for x in resource.parts[part_label]]
         date_list.sort()
         date_list_months = [date.month for date in date_list]
@@ -316,7 +315,10 @@ def validate_data_continuity(new_datapackage: DataPackage) -> DatasetSpecificVal
         # Make sure each partition only contains one year of data.
         if len(set(date_list_years)) > 1:
             success = False
-            note = note + f"Partition contains more than one year: {set(date_list_years)}. "
+            note = (
+                note
+                + f"Partition contains more than one year: {set(date_list_years)}. "
+            )
         # If it's not the newest year of data, make sure all expected months are there.
         if date_list_years[0] != newest_year_part:
             if date_list_months != part_range_dict[part_label]:
@@ -327,15 +329,16 @@ def validate_data_continuity(new_datapackage: DataPackage) -> DatasetSpecificVal
                 )
         # If it is the newest year of data, make sure the records are consecutive.
         # (i.e., not missing a quarter or month).
-        elif part_range_dict[part_label][:len(date_list_months)] != date_list_months:
+        elif part_range_dict[part_label][: len(date_list_months)] != date_list_months:
             success = False
-            note = note + (f"Resource partitions from the most recent year: \
+            note = note + (
+                f"Resource partitions from the most recent year: \
                     {date_list_months} do not match expected partitions: \
                     {part_range_dict[part_label][:len(date_list_months)]}. "
             )
     return {
-            "name": "validate_data_continuity",
-            "description": description,
-            "success": success,
-            "note": note,
-        }
+        "name": "validate_data_continuity",
+        "description": description,
+        "success": success,
+        "note": note,
+    }
