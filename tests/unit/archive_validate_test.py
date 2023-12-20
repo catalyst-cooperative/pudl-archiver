@@ -16,7 +16,6 @@ from pudl_archiver.utils import Url
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 
-
 @pytest.mark.parametrize(
     "baseline_partitions,new_partitions,diffs",
     [
@@ -432,10 +431,16 @@ fake_new_datapackage_quarter_fail2.resources[1].parts["year_quarter"] = [
 ]
 # Fails because it's missing the rest of the months after 03.
 fake_new_datapackage_month_fail2 = copy.deepcopy(fake_new_datapackage_month_success)
-fake_new_datapackage_month_fail2.resources[1].parts["year_month"] = ["1996-01", "1996-02", "1996-03"]
+fake_new_datapackage_month_fail2.resources[1].parts["year_month"] = [
+    "1996-01",
+    "1996-02",
+    "1996-03",
+]
 # Test one year of data
 fake_new_datapackage_month_fail3 = copy.deepcopy(fake_new_datapackage_month_success)
-fake_new_datapackage_month_fail3.resources = [fake_new_datapackage_month_fail3.resources[0]]
+fake_new_datapackage_month_fail3.resources = [
+    fake_new_datapackage_month_fail3.resources[0]
+]
 
 
 @pytest.mark.parametrize(
