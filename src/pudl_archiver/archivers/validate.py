@@ -293,10 +293,7 @@ def validate_data_continuity(new_datapackage: DataPackage) -> DatasetSpecificVal
     description = "Test that data are continuous and complete"
     success = True
     note = []
-    part_range_dict = {
-        "year_quarter": [1,4,7,10],
-        "year_month": list(range(1,13))
-    }
+    part_range_dict = {"year_quarter": [1, 4, 7, 10], "year_month": list(range(1, 13))}
     # Identify whether it's a year_quarter or year_month record.
     # This is only possible because we expect all partitions in a given archive to
     # have the same part label.
@@ -323,7 +320,9 @@ def validate_data_continuity(new_datapackage: DataPackage) -> DatasetSpecificVal
             # Make sure each partition only contains one year of data.
             if len(set(date_list_years)) > 1:
                 success = False
-                note.append(f"Partition contains more than one year: {set(date_list_years)}. ")
+                note.append(
+                    f"Partition contains more than one year: {set(date_list_years)}. "
+                )
             # If it's not the newest year of data, make sure all expected months are there.
             if date_list_years[0] != newest_year_part:
                 if date_list_months != part_range_dict[part_label]:
@@ -334,7 +333,9 @@ def validate_data_continuity(new_datapackage: DataPackage) -> DatasetSpecificVal
                     )
             # If it is the newest year of data, make sure the records are consecutive.
             # (i.e., not missing a quarter or month).
-            elif part_range_dict[part_label][: len(date_list_months)] != date_list_months:
+            elif (
+                part_range_dict[part_label][: len(date_list_months)] != date_list_months
+            ):
                 success = False
                 note.append(
                     f"Resource partitions from the most recent year: \
