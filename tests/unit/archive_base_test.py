@@ -685,14 +685,14 @@ fake_new_datapackage_month_fail3.resources = [
         (fake_new_datapackage_month_fail2, False),
         (fake_new_datapackage_month_fail3, True),
     ],
-     ids=[
-         "all_expected_quarter_files",
-         "all_expected_month_files",
-         "missing_1997q1",
-         "missing_1997-02",
-         "missing_1996q4",
-         "missing_rest_of_year",
-         "test_one_year",
+    ids=[
+        "all_expected_quarter_files",
+        "all_expected_month_files",
+        "missing_1997q1",
+        "missing_1997-02",
+        "missing_1996q4",
+        "missing_rest_of_year",
+        "test_one_year",
     ],
 )
 def test_check_data_continuity(new_datapackage, success):
