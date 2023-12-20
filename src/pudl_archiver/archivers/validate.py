@@ -293,10 +293,7 @@ def validate_data_continuity(new_datapackage: DataPackage) -> DatasetSpecificVal
     description = "Test that data are continuous and complete"
     success = True
     note = []
-    part_range_dict = {
-        "year_quarter": [1,4,7,10],
-        "year_month": list(range(1,13))
-    }
+    part_range_dict = {"year_quarter": [1, 4, 7, 10], "year_month": list(range(1, 13))}
     # Make a dictionary of part type and parts (ex: {"quarter_year": [1995q1, 1995q2]}) from the new
     # archive datapackage to make it easier to loop through.
     parts_dict_list = [resource.parts for resource in new_datapackage.resources]
@@ -318,7 +315,9 @@ def validate_data_continuity(new_datapackage: DataPackage) -> DatasetSpecificVal
         # Make sure each partition only contains one year of data.
         if len(set(date_list_years)) > 1:
             success = False
-            note.append(f"Partition contains more than one year: {set(date_list_years)}. ")
+            note.append(
+                f"Partition contains more than one year: {set(date_list_years)}. "
+            )
         # If it's not the newest year of data, make sure all expected months are there.
         if date_list_years[0] != newest_year_part:
             if date_list_months != part_range_dict[part_label]:
