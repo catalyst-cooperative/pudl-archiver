@@ -23,7 +23,7 @@ async def test_eia860(mocker):
 
 
 @pytest.mark.asyncio
-async def test_eia860m(mocker):
+async def test_eia860m(mocker, tmp_path):
     mock_session = mocker.AsyncMock()
     urls = [
         f"https://www.eia.gov/electricity/data/eia860m/xls/{m}_generator{y}.xlsx"
@@ -48,9 +48,21 @@ async def test_eia860m(mocker):
         "pudl_archiver.archivers.eia860m.Eia860MArchiver.get_hyperlinks",
         get_hyperlinks,
     )
+
+    def make_fake_file(_url, file, **_kwargs):
+        with (tmp_path / file).open("w") as f:
+            f.write(f"fake data for {file}")
+
+    mocker.patch(
+        "pudl_archiver.archivers.eia860m.Eia860MArchiver.download_file",
+        mocker.AsyncMock(side_effect=make_fake_file),
+    )
     archiver = Eia860MArchiver(mock_session, only_years=[2019, 2022])
     resources = [res async for res in archiver.get_resources()]
-    assert len(resources) == 24
+    assert len(resources) == 2
+    for resource in resources:
+        info = await resource
+        assert len(info.partitions["year_month"]) == 12
 
 
 @pytest.mark.asyncio
