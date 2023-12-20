@@ -11,6 +11,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 
 import aiohttp
+import pandas as pd
 
 from pudl_archiver.archivers import validate
 from pudl_archiver.frictionless import DataPackage, ResourceInfo
@@ -64,6 +65,7 @@ class AbstractDatasetArchiver(ABC):
     allowed_file_rel_diff: float = 0.25
     fail_on_dataset_size_change: bool = True
     allowed_dataset_rel_diff: float = 0.15
+    fail_on_data_continuity: bool = True
 
     def __init__(
         self,
@@ -364,6 +366,68 @@ class AbstractDatasetArchiver(ABC):
             required_for_run_success=self.fail_on_dataset_size_change,
         )
 
+    def _check_data_continuity(self, new_datapackage: DataPackage) -> validate.DatasetSpecificValidation:
+        """Check that the archived data are continuous and complete."""
+        description = "Test that data are continuous and complete"
+        success = True
+        note = []
+        part_range_dict = {"year_quarter": [1, 4, 7, 10], "year_month": list(range(1, 13))}
+        # Identify whether it's a year_quarter or year_month record.
+        # This is only possible because we expect all partitions in a given archive to
+        # have the same part label.
+        part_label = list(new_datapackage.resources[0].parts.keys())[0]
+        # Only perform this test if the part label is year quarter or year month
+        if part_label in part_range_dict:
+            # Make a dictionary of part type and parts (ex: {"year_quarter": [1995q1, 1995q2]}) from the new
+            # archive datapackage to make it easier to loop through.
+            parts_dict_list = [resource.parts for resource in new_datapackage.resources]
+            # Identify the newest year for the whole archive
+            newest_year_part = max(
+                [
+                    pd.to_datetime(x).year
+                    for y in [value for item in parts_dict_list for value in item.values()]
+                    for x in y
+                ]
+            )
+            # Loop through each resource to make sure it's partitions appear as expected.
+            for resource in new_datapackage.resources:
+                date_list = [pd.to_datetime(x) for x in resource.parts[part_label]]
+                date_list.sort()
+                date_list_months = [date.month for date in date_list]
+                date_list_years = [date.year for date in date_list]
+                # Make sure each partition only contains one year of data.
+                if len(set(date_list_years)) > 1:
+                    success = False
+                    note.append(
+                        f"Partition contains more than one year: {set(date_list_years)}. "
+                    )
+                # If it's not the newest year of data, make sure all expected months are there.
+                if date_list_years[0] != newest_year_part:
+                    if date_list_months != part_range_dict[part_label]:
+                        success = False
+                        note.append(
+                            f"Resource paritions: {date_list_months} do not match expected partitions: \
+                                {part_range_dict[part_label]} for {part_label} partitions. "
+                        )
+                # If it is the newest year of data, make sure the records are consecutive.
+                # (i.e., not missing a quarter or month).
+                elif (
+                    part_range_dict[part_label][: len(date_list_months)] != date_list_months
+                ):
+                    success = False
+                    note.append(
+                        f"Resource partitions from the most recent year: \
+                        {date_list_months} do not match expected partitions: \
+                        {part_range_dict[part_label][:len(date_list_months)]}. "
+                    )
+        return validate.DatasetSpecificValidation(
+            name="Validate data continuity",
+            description=description,
+            success=success,
+            notes=note,
+            required_for_run_success=self.fail_on_data_continuity
+        )
+
     def validate_dataset(
         self,
         baseline_datapackage: DataPackage | None,
@@ -390,6 +454,7 @@ class AbstractDatasetArchiver(ABC):
         validations.append(
             self._check_dataset_size(baseline_datapackage, new_datapackage)
         )
+        validations.append(self._check_data_continuity(new_datapackage))
 
         # Add per-file validations
         validations += self.file_validations
@@ -398,8 +463,6 @@ class AbstractDatasetArchiver(ABC):
         validations += self.dataset_validate_archive(
             baseline_datapackage, new_datapackage, resources
         )
-
-        validations.append(validate.validate_data_continuity(new_datapackage))
 
         return validations
 
