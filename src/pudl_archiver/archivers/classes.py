@@ -61,9 +61,9 @@ class AbstractDatasetArchiver(ABC):
     fail_on_missing_files: bool = True
     fail_on_empty_invalid_files: bool = True
     fail_on_file_size_change: bool = True
-    allowed_file_rel_diff: float = 0.1
+    allowed_file_rel_diff: float = 0.25
     fail_on_dataset_size_change: bool = True
-    allowed_dataset_rel_diff: float = 0.1
+    allowed_dataset_rel_diff: float = 0.15
 
     def __init__(
         self,
@@ -285,35 +285,38 @@ class AbstractDatasetArchiver(ABC):
         new_datapackage: DataPackage,
     ) -> validate.DatasetSpecificValidation:
         """Check if any one file's size has changed by |>allowed_file_rel_diff|."""
-        baseline_resources = set()
-        too_changed_files = set()
         notes = None
-
-        if baseline_datapackage is not None:
+        if baseline_datapackage is None:
+            too_changed_files = False  # No files to compare to
+        else:
             baseline_resources = {
                 resource.name: resource.bytes_
                 for resource in baseline_datapackage.resources
             }
+            too_changed_files = {}
 
-        new_resources = {
-            resource.name: resource.bytes_ for resource in new_datapackage.resources
-        }
+            new_resources = {
+                resource.name: resource.bytes_ for resource in new_datapackage.resources
+            }
 
-        # Check to see that file size hasn't changed by more than |>allowed_file_rel_diff|
-        # for each dataset in the baseline datapackage
-        for resource_name in baseline_resources:
-            if resource_name in new_resources:
-                file_size_change = abs(
-                    (new_resources[resource_name] - baseline_resources[resource_name])
-                    / baseline_resources[resource_name]
-                )
-                if file_size_change > self.allowed_file_rel_diff:
-                    too_changed_files.update({resource_name: file_size_change})
+            # Check to see that file size hasn't changed by more than |>allowed_file_rel_diff|
+            # for each dataset in the baseline datapackage
+            for resource_name in baseline_resources:
+                if resource_name in new_resources:
+                    file_size_change = abs(
+                        (
+                            new_resources[resource_name]
+                            - baseline_resources[resource_name]
+                        )
+                        / baseline_resources[resource_name]
+                    )
+                    if file_size_change > self.allowed_file_rel_diff:
+                        too_changed_files.update({resource_name: file_size_change})
 
-        if too_changed_files:  # If files are "too changed"
-            notes = [
-                f"The following files have absolute changes in file size >|{self.allowed_file_rel_diff:.0%}|: {too_changed_files}"
-            ]
+            if too_changed_files:  # If files are "too changed"
+                notes = [
+                    f"The following files have absolute changes in file size >|{self.allowed_file_rel_diff:.0%}|: {too_changed_files}"
+                ]
 
         return validate.DatasetSpecificValidation(
             name="Individual file size test",
@@ -330,25 +333,23 @@ class AbstractDatasetArchiver(ABC):
     ) -> validate.DatasetSpecificValidation:
         """Check if a dataset's overall size has changed by more than |>allowed_dataset_rel_diff|."""
         notes = None
-        baseline_size = None
 
-        if baseline_datapackage is not None:
+        if baseline_datapackage is None:
+            dataset_size_change = 0.0  # No change in size if no baseline
+        else:
             baseline_size = sum(
                 [resource.bytes_ for resource in baseline_datapackage.resources]
             )
 
-        new_size = sum([resource.bytes_ for resource in new_datapackage.resources])
+            new_size = sum([resource.bytes_ for resource in new_datapackage.resources])
 
-        # Check to see that overall dataset size hasn't changed by more than
-        # |>allowed_dataset_rel_diff|
-        if baseline_size is not None:
+            # Check to see that overall dataset size hasn't changed by more than
+            # |>allowed_dataset_rel_diff|
             dataset_size_change = abs((new_size - baseline_size) / baseline_size)
             if dataset_size_change > self.allowed_dataset_rel_diff:
                 notes = [
                     f"The new dataset is {dataset_size_change:.0%} different in size than the last archive, which exceeds the set threshold of {self.allowed_dataset_rel_diff:.0%}."
                 ]
-        else:
-            dataset_size_change = 0.0
 
         return validate.DatasetSpecificValidation(
             name="Dataset file size test",
@@ -380,7 +381,6 @@ class AbstractDatasetArchiver(ABC):
         validations.append(
             self._check_missing_files(baseline_datapackage, new_datapackage)
         )
-        # TO DO: pass config for %age off!
         validations.append(self._check_file_size(baseline_datapackage, new_datapackage))
         validations.append(
             self._check_dataset_size(baseline_datapackage, new_datapackage)

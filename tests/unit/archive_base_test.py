@@ -43,6 +43,21 @@ def file_data():
     return b"Junk test file data"
 
 
+def _resource_w_size(name, size):
+    """Create resource with variable size for use in tests."""
+    return Resource(
+        name=name,
+        path=f"https://www.example.com/{name}",
+        remote_url="https://www.example.com",
+        title="",
+        parts={},
+        mediatype="",
+        format="",
+        bytes=size,
+        hash="",
+    )
+
+
 class MockArchiver(AbstractDatasetArchiver):
     """Class to test AbstractDatasetArchiver."""
 
@@ -286,108 +301,23 @@ async def test_get_hyperlinks(docname, pattern, links, request, html_docs):
     "baseline_resources,new_resources,success",
     [
         (
+            [_resource_w_size("resource0", 0), _resource_w_size("resource1", 0)],
             [
-                Resource(
-                    name="resource0",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=0,
-                    hash="",
-                ),
-                Resource(
-                    name="resource1",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=0,
-                    hash="",
-                ),
-            ],
-            [
-                Resource(
-                    name="resource0",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=0,
-                    hash="",
-                ),
-                Resource(
-                    name="resource1",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=0,
-                    hash="",
-                ),
-                Resource(
-                    name="resource2",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=0,
-                    hash="",
-                ),
+                _resource_w_size("resource0", 0),
+                _resource_w_size("resource1", 0),
+                _resource_w_size("resource2", 0),
             ],
             True,
         ),
         (
+            [_resource_w_size("resource0", 0), _resource_w_size("resource1", 0)],
             [
-                Resource(
-                    name="resource0",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=0,
-                    hash="",
-                ),
-                Resource(
-                    name="resource1",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=0,
-                    hash="",
-                ),
-            ],
-            [
-                Resource(
-                    name="resource0",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=0,
-                    hash="",
-                ),
+                _resource_w_size("resource0", 0),
             ],
             False,
         ),
     ],
+    ids=["create_file", "delete_file"],
 )
 def test_check_missing_files(datapackage, baseline_resources, new_resources, success):
     """Test the ``_check_missing_files`` validation test."""
@@ -409,199 +339,73 @@ def test_check_missing_files(datapackage, baseline_resources, new_resources, suc
     "baseline_resources,new_resources,success",
     [
         (
-            # Test when file size changes by > threshold for any one file
             [
-                Resource(
-                    name="resource0",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=10,
-                    hash="",
-                ),
-                Resource(
-                    name="resource1",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=10,
-                    hash="",
-                ),
+                _resource_w_size("resource0", 10),
+                _resource_w_size("resource1", 10),
             ],
             [
-                Resource(
-                    name="resource0",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=20,
-                    hash="",
-                ),
-                Resource(
-                    name="resource1",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=10,
-                    hash="",
-                ),
+                _resource_w_size("resource0", 20),
+                _resource_w_size("resource1", 10),
             ],
             False,
         ),
         (
-            # Test when file size increases or decreases by < threshold for one file
             [
-                Resource(
-                    name="resource0",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=10,
-                    hash="",
-                ),
-                Resource(
-                    name="resource1",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=10,
-                    hash="",
-                ),
+                _resource_w_size("resource0", 10),
+                _resource_w_size("resource1", 10),
             ],
             [
-                Resource(
-                    name="resource0",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=11,
-                    hash="",
-                ),
-                Resource(
-                    name="resource1",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=9,
-                    hash="",
-                ),
+                _resource_w_size("resource0", 11),
+                _resource_w_size("resource1", 9),
             ],
             True,
         ),
         (
-            # Test comparison ignores deleted files
             [
-                Resource(
-                    name="resource0",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=10,
-                    hash="",
-                ),
-                Resource(
-                    name="resource1",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=10,
-                    hash="",
-                ),
+                _resource_w_size("resource0", 10),
+                _resource_w_size("resource1", 10),
             ],
             [
-                Resource(
-                    name="resource0",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=10,
-                    hash="",
-                ),
+                _resource_w_size("resource0", 10),
             ],
             True,
         ),
         (
-            # Test comparison ignores added files
             [
-                Resource(
-                    name="resource0",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=10,
-                    hash="",
-                ),
+                _resource_w_size("resource0", 10),
             ],
             [
-                Resource(
-                    name="resource0",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=10,
-                    hash="",
-                ),
-                Resource(
-                    name="resource1",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=10,
-                    hash="",
-                ),
+                _resource_w_size("resource0", 10),
+                _resource_w_size("resource1", 10),
+            ],
+            True,
+        ),
+        (
+            None,
+            [
+                _resource_w_size("resource0", 10),
+                _resource_w_size("resource1", 10),
             ],
             True,
         ),
     ],
+    ids=[
+        "file_too_big",
+        "file_change_acceptable",
+        "file_deleted",
+        "file_created",
+        "no_base_datapackage",
+    ],
 )
 def test_check_file_size(datapackage, baseline_resources, new_resources, success):
-    """Test the ``_check_missing_files`` validation test."""
+    """Test the ``_check_file_size`` validation test."""
     archiver = MockArchiver(None)
 
-    baseline_datapackage = copy.deepcopy(datapackage)
-    baseline_datapackage.resources = baseline_resources
+    if baseline_resources is None:
+        baseline_datapackage = None
+    else:
+        baseline_datapackage = copy.deepcopy(datapackage)
+        baseline_datapackage.resources = baseline_resources
 
     new_datapackage = copy.deepcopy(datapackage)
     new_datapackage.resources = new_resources
@@ -614,188 +418,72 @@ def test_check_file_size(datapackage, baseline_resources, new_resources, success
     "baseline_resources,new_resources,success",
     [
         (
-            # Test when dataset increases by greater than allotted threshold
             [
-                Resource(
-                    name="resource0",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=10,
-                    hash="",
-                ),
-                Resource(
-                    name="resource1",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=10,
-                    hash="",
-                ),
+                _resource_w_size("resource0", 10),
+                _resource_w_size("resource1", 10),
             ],
             [
-                Resource(
-                    name="resource0",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=20,
-                    hash="",
-                ),
-                Resource(
-                    name="resource1",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=10,
-                    hash="",
-                ),
+                _resource_w_size("resource0", 20),
+                _resource_w_size("resource1", 10),
             ],
             False,
         ),
         (
-            # Test when dataset size doesn't change even when file sizes do
             [
-                Resource(
-                    name="resource0",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=10,
-                    hash="",
-                ),
-                Resource(
-                    name="resource1",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=10,
-                    hash="",
-                ),
+                _resource_w_size("resource0", 10),
+                _resource_w_size("resource1", 10),
             ],
             [
-                Resource(
-                    name="resource0",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=11,
-                    hash="",
-                ),
-                Resource(
-                    name="resource1",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=9,
-                    hash="",
-                ),
+                _resource_w_size("resource0", 11),
+                _resource_w_size("resource1", 9),
             ],
             True,
         ),
         (
-            # Test when dataset shrinks by greater than allotted threshold
             [
-                Resource(
-                    name="resource0",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=10,
-                    hash="",
-                ),
-                Resource(
-                    name="resource1",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=10,
-                    hash="",
-                ),
+                _resource_w_size("resource0", 10),
+                _resource_w_size("resource1", 10),
             ],
             [
-                Resource(
-                    name="resource0",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=10,
-                    hash="",
-                ),
+                _resource_w_size("resource0", 10),
             ],
             False,
         ),
         (
-            # Test for no change
             [
-                Resource(
-                    name="resource0",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=10,
-                    hash="",
-                ),
+                _resource_w_size("resource0", 10),
             ],
             [
-                Resource(
-                    name="resource0",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=10,
-                    hash="",
-                ),
+                _resource_w_size("resource0", 10),
+            ],
+            True,
+        ),
+        (
+            None,
+            [
+                _resource_w_size("resource0", 10),
+                _resource_w_size("resource1", 10),
             ],
             True,
         ),
     ],
+    ids=[
+        "increase_too_big",
+        "file_change_no_overall_change",
+        "decrease_too_big",
+        "no_change",
+        "no_base_datapackage",
+    ],
 )
 def test_check_dataset_size(datapackage, baseline_resources, new_resources, success):
-    """Test the ``_check_missing_files`` validation test."""
+    """Test the ``_check_dataset_size`` validation test."""
     archiver = MockArchiver(None)
 
-    baseline_datapackage = copy.deepcopy(datapackage)
-    baseline_datapackage.resources = baseline_resources
+    if baseline_resources is None:
+        baseline_datapackage = None
+    else:
+        baseline_datapackage = copy.deepcopy(datapackage)
+        baseline_datapackage.resources = baseline_resources
 
     new_datapackage = copy.deepcopy(datapackage)
     new_datapackage.resources = new_resources
