@@ -302,13 +302,15 @@ def validate_data_continuity(new_datapackage: DataPackage) -> DatasetSpecificVal
     parts_dict_list = [resource.parts for resource in new_datapackage.resources]
     # Identify the newest year for the whole archive
     newest_year_part = max(
-        [pd.to_datetime(x).year for y in [
-            value for item in parts_dict_list for value in item.values()
-        ] for x in y]
+        [
+            pd.to_datetime(x).year
+            for y in [value for item in parts_dict_list for value in item.values()]
+            for x in y
+        ]
     )
     # Loop through each resource to make sure it's partitions appear as expected.
     for resource in new_datapackage.resources:
-        part_label = [x for x,y in resource.parts.items()][0]
+        part_label = [x for x, y in resource.parts.items()][0]
         date_list = [pd.to_datetime(x) for x in resource.parts[part_label]]
         date_list.sort()
         date_list_months = [date.month for date in date_list]
@@ -327,7 +329,7 @@ def validate_data_continuity(new_datapackage: DataPackage) -> DatasetSpecificVal
                 )
         # If it is the newest year of data, make sure the records are consecutive.
         # (i.e., not missing a quarter or month).
-        elif part_range_dict[part_label][:len(date_list_months)] != date_list_months:
+        elif part_range_dict[part_label][: len(date_list_months)] != date_list_months:
             success = False
             note.append(
                 f"Resource partitions from the most recent year: \
@@ -335,8 +337,8 @@ def validate_data_continuity(new_datapackage: DataPackage) -> DatasetSpecificVal
                 {part_range_dict[part_label][:len(date_list_months)]}. "
             )
     return {
-            "name": "validate_data_continuity",
-            "description": description,
-            "success": success,
-            "note": note,
-        }
+        "name": "validate_data_continuity",
+        "description": description,
+        "success": success,
+        "note": note,
+    }
