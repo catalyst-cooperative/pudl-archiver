@@ -303,15 +303,20 @@ class AbstractDatasetArchiver(ABC):
             # for each dataset in the baseline datapackage
             for resource_name in baseline_resources:
                 if resource_name in new_resources:
-                    file_size_change = abs(
-                        (
-                            new_resources[resource_name]
-                            - baseline_resources[resource_name]
+                    try:
+                        file_size_change = abs(
+                            (
+                                new_resources[resource_name]
+                                - baseline_resources[resource_name]
+                            )
+                            / baseline_resources[resource_name]
                         )
-                        / baseline_resources[resource_name]
-                    )
-                    if file_size_change > self.allowed_file_rel_diff:
-                        too_changed_files.update({resource_name: file_size_change})
+                        if file_size_change > self.allowed_file_rel_diff:
+                            too_changed_files.update({resource_name: file_size_change})
+                    except ZeroDivisionError:
+                        logger.warning(
+                            f"Original file size was zero for {resource_name}. Ignoring file size check as originally archived file was likely corrupted."
+                        )
 
             if too_changed_files:  # If files are "too changed"
                 notes = [

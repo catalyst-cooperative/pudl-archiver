@@ -1,6 +1,7 @@
 """Test archiver abstract base class."""
 import copy
 import io
+import logging
 import re
 import tempfile
 import zipfile
@@ -412,6 +413,42 @@ def test_check_file_size(datapackage, baseline_resources, new_resources, success
 
     validation_result = archiver._check_file_size(baseline_datapackage, new_datapackage)
     assert validation_result.success == success
+
+
+@pytest.mark.parametrize(
+    "baseline_resources,new_resources,success",
+    [
+        (
+            [
+                _resource_w_size("resource0", 0),
+                _resource_w_size("resource1", 10),
+            ],
+            [
+                _resource_w_size("resource0", 10),
+                _resource_w_size("resource1", 10),
+            ],
+            True,
+        ),
+    ],
+)
+def test_check_zero_file_size(
+    datapackage, baseline_resources, new_resources, success, caplog
+):
+    """Test the ``_check_file_size`` validation test."""
+    archiver = MockArchiver(None)
+
+    baseline_datapackage = copy.deepcopy(datapackage)
+    baseline_datapackage.resources = baseline_resources
+
+    new_datapackage = copy.deepcopy(datapackage)
+    new_datapackage.resources = new_resources
+
+    with caplog.at_level(logging.WARN):
+        validation_result = archiver._check_file_size(
+            baseline_datapackage, new_datapackage
+        )
+    assert validation_result.success == success
+    assert "Original file size was zero" in caplog.text
 
 
 @pytest.mark.parametrize(
