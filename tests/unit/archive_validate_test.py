@@ -459,7 +459,7 @@ def test_validate_data_continuity(new_datapackage, success):
     """Test the dataset archiving valiation for epacems."""
     validation = validate.validate_data_continuity(new_datapackage)
     logger.info(validation)
-    if validation["success"] != success:
+    if validation.success != success:
         raise AssertionError(
             f"Expected test success to be {success} but it was {validation['success']}."
         )

@@ -341,9 +341,9 @@ def validate_data_continuity(new_datapackage: DataPackage) -> DatasetSpecificVal
                     {date_list_months} do not match expected partitions: \
                     {part_range_dict[part_label][:len(date_list_months)]}. "
                 )
-    return {
-        "name": "validate_data_continuity",
-        "description": description,
-        "success": success,
-        "note": note,
-    }
+    return DatasetSpecificValidation(
+        name="validate_data_continuity",
+        description=description,
+        success=success,
+        note=note,
+    )
