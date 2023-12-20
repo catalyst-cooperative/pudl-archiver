@@ -17,6 +17,7 @@ hide large messages (such as a file diff) behind a "See more" action.
 import argparse
 import itertools
 import json
+from collections import defaultdict
 from pathlib import Path
 
 
@@ -39,16 +40,19 @@ def main(summary_files: list[Path]) -> None:
         name = summary["dataset_name"]
         url = summary["record_url"]
         if file_changes := summary["file_changes"]:
-            changes = f"```\n{json.dumps(file_changes, indent=2)}\n```"
+            abridged_changes = defaultdict(list)
+            for change in file_changes:
+                abridged_changes[change["diff_type"]].append(change["name"])
+            changes = f"```\n{json.dumps(abridged_changes, indent=2)}\n```"
         else:
             changes = "No changes."
+
+        max_len = 3000
+        text = f"<{url}|*{name}*>\n{changes}"[:max_len]
         return [
             {
                 "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": f"<{url}|*{name}*>\n{changes}",
-                },
+                "text": {"type": "mrkdwn", "text": text},
             },
         ]
 
