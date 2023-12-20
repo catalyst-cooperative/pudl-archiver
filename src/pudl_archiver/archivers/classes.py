@@ -315,7 +315,7 @@ class AbstractDatasetArchiver(ABC):
                             too_changed_files.update({resource_name: file_size_change})
                     except ZeroDivisionError:
                         logger.warning(
-                            f"Original file size was zero for {resource_name}. Ignoring file size check as originally archived file was likely corrupted."
+                            f"Original file size was zero for {resource_name}. Ignoring file size check."
                         )
 
             if too_changed_files:  # If files are "too changed"
