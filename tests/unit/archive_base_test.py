@@ -544,6 +544,7 @@ def test_year_filter():
     archiver_no_filter = MockArchiver(None)
     assert archiver_no_filter.valid_year(2021)
 
+
 # Test inputs for test_validate_data_continuity function
 fake_new_datapackage_quarter_success = DataPackage.model_validate_json(
     json.dumps(

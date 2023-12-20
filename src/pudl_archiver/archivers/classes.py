@@ -366,12 +366,17 @@ class AbstractDatasetArchiver(ABC):
             required_for_run_success=self.fail_on_dataset_size_change,
         )
 
-    def _check_data_continuity(self, new_datapackage: DataPackage) -> validate.DatasetSpecificValidation:
+    def _check_data_continuity(
+        self, new_datapackage: DataPackage
+    ) -> validate.DatasetSpecificValidation:
         """Check that the archived data are continuous and complete."""
         description = "Test that data are continuous and complete"
         success = True
         note = []
-        part_range_dict = {"year_quarter": [1, 4, 7, 10], "year_month": list(range(1, 13))}
+        part_range_dict = {
+            "year_quarter": [1, 4, 7, 10],
+            "year_month": list(range(1, 13)),
+        }
         # Identify whether it's a year_quarter or year_month record.
         # This is only possible because we expect all partitions in a given archive to
         # have the same part label.
@@ -385,7 +390,9 @@ class AbstractDatasetArchiver(ABC):
             newest_year_part = max(
                 [
                     pd.to_datetime(x).year
-                    for y in [value for item in parts_dict_list for value in item.values()]
+                    for y in [
+                        value for item in parts_dict_list for value in item.values()
+                    ]
                     for x in y
                 ]
             )
@@ -412,7 +419,8 @@ class AbstractDatasetArchiver(ABC):
                 # If it is the newest year of data, make sure the records are consecutive.
                 # (i.e., not missing a quarter or month).
                 elif (
-                    part_range_dict[part_label][: len(date_list_months)] != date_list_months
+                    part_range_dict[part_label][: len(date_list_months)]
+                    != date_list_months
                 ):
                     success = False
                     note.append(
@@ -425,7 +433,7 @@ class AbstractDatasetArchiver(ABC):
             description=description,
             success=success,
             notes=note,
-            required_for_run_success=self.fail_on_data_continuity
+            required_for_run_success=self.fail_on_data_continuity,
         )
 
     def validate_dataset(
