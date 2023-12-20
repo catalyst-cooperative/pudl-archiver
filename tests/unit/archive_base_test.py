@@ -1,6 +1,7 @@
 """Test archiver abstract base class."""
 import copy
 import io
+import logging
 import re
 import tempfile
 import zipfile
@@ -41,6 +42,21 @@ def good_zipfile():
 def file_data():
     """Create test file data for download_file test."""
     return b"Junk test file data"
+
+
+def _resource_w_size(name, size):
+    """Create resource with variable size for use in tests."""
+    return Resource(
+        name=name,
+        path=f"https://www.example.com/{name}",
+        remote_url="https://www.example.com",
+        title="",
+        parts={},
+        mediatype="",
+        format="",
+        bytes=size,
+        hash="",
+    )
 
 
 class MockArchiver(AbstractDatasetArchiver):
@@ -286,108 +302,23 @@ async def test_get_hyperlinks(docname, pattern, links, request, html_docs):
     "baseline_resources,new_resources,success",
     [
         (
+            [_resource_w_size("resource0", 0), _resource_w_size("resource1", 0)],
             [
-                Resource(
-                    name="resource0",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=0,
-                    hash="",
-                ),
-                Resource(
-                    name="resource1",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=0,
-                    hash="",
-                ),
-            ],
-            [
-                Resource(
-                    name="resource0",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=0,
-                    hash="",
-                ),
-                Resource(
-                    name="resource1",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=0,
-                    hash="",
-                ),
-                Resource(
-                    name="resource2",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=0,
-                    hash="",
-                ),
+                _resource_w_size("resource0", 0),
+                _resource_w_size("resource1", 0),
+                _resource_w_size("resource2", 0),
             ],
             True,
         ),
         (
+            [_resource_w_size("resource0", 0), _resource_w_size("resource1", 0)],
             [
-                Resource(
-                    name="resource0",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=0,
-                    hash="",
-                ),
-                Resource(
-                    name="resource1",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=0,
-                    hash="",
-                ),
-            ],
-            [
-                Resource(
-                    name="resource0",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=0,
-                    hash="",
-                ),
+                _resource_w_size("resource0", 0),
             ],
             False,
         ),
     ],
+    ids=["create_file", "delete_file"],
 )
 def test_check_missing_files(datapackage, baseline_resources, new_resources, success):
     """Test the ``_check_missing_files`` validation test."""
@@ -400,6 +331,201 @@ def test_check_missing_files(datapackage, baseline_resources, new_resources, suc
     new_datapackage.resources = new_resources
 
     validation_result = archiver._check_missing_files(
+        baseline_datapackage, new_datapackage
+    )
+    assert validation_result.success == success
+
+
+@pytest.mark.parametrize(
+    "baseline_resources,new_resources,success",
+    [
+        (
+            [
+                _resource_w_size("resource0", 10),
+                _resource_w_size("resource1", 10),
+            ],
+            [
+                _resource_w_size("resource0", 20),
+                _resource_w_size("resource1", 10),
+            ],
+            False,
+        ),
+        (
+            [
+                _resource_w_size("resource0", 10),
+                _resource_w_size("resource1", 10),
+            ],
+            [
+                _resource_w_size("resource0", 11),
+                _resource_w_size("resource1", 9),
+            ],
+            True,
+        ),
+        (
+            [
+                _resource_w_size("resource0", 10),
+                _resource_w_size("resource1", 10),
+            ],
+            [
+                _resource_w_size("resource0", 10),
+            ],
+            True,
+        ),
+        (
+            [
+                _resource_w_size("resource0", 10),
+            ],
+            [
+                _resource_w_size("resource0", 10),
+                _resource_w_size("resource1", 10),
+            ],
+            True,
+        ),
+        (
+            None,
+            [
+                _resource_w_size("resource0", 10),
+                _resource_w_size("resource1", 10),
+            ],
+            True,
+        ),
+    ],
+    ids=[
+        "file_too_big",
+        "file_change_acceptable",
+        "file_deleted",
+        "file_created",
+        "no_base_datapackage",
+    ],
+)
+def test_check_file_size(datapackage, baseline_resources, new_resources, success):
+    """Test the ``_check_file_size`` validation test."""
+    archiver = MockArchiver(None)
+
+    if baseline_resources is None:
+        baseline_datapackage = None
+    else:
+        baseline_datapackage = copy.deepcopy(datapackage)
+        baseline_datapackage.resources = baseline_resources
+
+    new_datapackage = copy.deepcopy(datapackage)
+    new_datapackage.resources = new_resources
+
+    validation_result = archiver._check_file_size(baseline_datapackage, new_datapackage)
+    assert validation_result.success == success
+
+
+@pytest.mark.parametrize(
+    "baseline_resources,new_resources,success",
+    [
+        (
+            [
+                _resource_w_size("resource0", 0),
+                _resource_w_size("resource1", 10),
+            ],
+            [
+                _resource_w_size("resource0", 10),
+                _resource_w_size("resource1", 10),
+            ],
+            True,
+        ),
+    ],
+)
+def test_check_zero_file_size(
+    datapackage, baseline_resources, new_resources, success, caplog
+):
+    """Test the ``_check_file_size`` validation test."""
+    archiver = MockArchiver(None)
+
+    baseline_datapackage = copy.deepcopy(datapackage)
+    baseline_datapackage.resources = baseline_resources
+
+    new_datapackage = copy.deepcopy(datapackage)
+    new_datapackage.resources = new_resources
+
+    with caplog.at_level(logging.WARN):
+        validation_result = archiver._check_file_size(
+            baseline_datapackage, new_datapackage
+        )
+    assert validation_result.success == success
+    assert "Original file size was zero" in caplog.text
+
+
+@pytest.mark.parametrize(
+    "baseline_resources,new_resources,success",
+    [
+        (
+            [
+                _resource_w_size("resource0", 10),
+                _resource_w_size("resource1", 10),
+            ],
+            [
+                _resource_w_size("resource0", 20),
+                _resource_w_size("resource1", 10),
+            ],
+            False,
+        ),
+        (
+            [
+                _resource_w_size("resource0", 10),
+                _resource_w_size("resource1", 10),
+            ],
+            [
+                _resource_w_size("resource0", 11),
+                _resource_w_size("resource1", 9),
+            ],
+            True,
+        ),
+        (
+            [
+                _resource_w_size("resource0", 10),
+                _resource_w_size("resource1", 10),
+            ],
+            [
+                _resource_w_size("resource0", 10),
+            ],
+            False,
+        ),
+        (
+            [
+                _resource_w_size("resource0", 10),
+            ],
+            [
+                _resource_w_size("resource0", 10),
+            ],
+            True,
+        ),
+        (
+            None,
+            [
+                _resource_w_size("resource0", 10),
+                _resource_w_size("resource1", 10),
+            ],
+            True,
+        ),
+    ],
+    ids=[
+        "increase_too_big",
+        "file_change_no_overall_change",
+        "decrease_too_big",
+        "no_change",
+        "no_base_datapackage",
+    ],
+)
+def test_check_dataset_size(datapackage, baseline_resources, new_resources, success):
+    """Test the ``_check_dataset_size`` validation test."""
+    archiver = MockArchiver(None)
+
+    if baseline_resources is None:
+        baseline_datapackage = None
+    else:
+        baseline_datapackage = copy.deepcopy(datapackage)
+        baseline_datapackage.resources = baseline_resources
+
+    new_datapackage = copy.deepcopy(datapackage)
+    new_datapackage.resources = new_resources
+
+    validation_result = archiver._check_dataset_size(
         baseline_datapackage, new_datapackage
     )
     assert validation_result.success == success

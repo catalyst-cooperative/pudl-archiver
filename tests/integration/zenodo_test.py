@@ -74,7 +74,7 @@ def test_files():
         },
         "updated_file.txt": {
             "original": b"This file should updated during deposition update.",
-            "updated": b"These are the updates.",
+            "updated": b"This file changes during the deposition update.",
         },
         "deleted_file.txt": {
             "original": b"This file should deleted during deposition update.",
@@ -266,7 +266,7 @@ async def test_zenodo_workflow(
     time.sleep(1)
 
     # Disable test and re-run
-    orchestrator.downloader.check_missing_files = False
+    orchestrator.downloader.fail_on_missing_files = False
     v2_summary = await orchestrator.run()
     assert v2_summary.success
 
