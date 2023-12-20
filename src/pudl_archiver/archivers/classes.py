@@ -24,10 +24,7 @@ MEDIA_TYPES: dict[str, str] = {
     "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     "csv": "text/csv",
 }
-VALID_PARTITION_RANGES: dict[str, list] = {
-    "year_quarter": [1, 4, 7, 10],
-    "year_month": list(range(1, 13)),
-}
+VALID_PARTITION_RANGES: list[str] = ["year_quarter", "year_month"]
 
 ArchiveAwaitable = typing.AsyncGenerator[typing.Awaitable[ResourceInfo], None]
 """Return type of method get_resources.
