@@ -2,6 +2,7 @@
 import os
 import tempfile
 import time
+import unittest
 from pathlib import Path
 
 import aiohttp
@@ -272,13 +273,14 @@ async def test_zenodo_workflow(
     v2_refreshed = await refresh_record_info(v2_summary)
     verify_files(test_files["updated"], v2_refreshed)
 
-    # try keeping everything the same except the canonical URL - should trigger a datapackage.json-only change
-    mocker.patch(
-        "pudl_archiver.zenodo.entities.FileLinks.canonical", "https://www.bogus.bogus"
-    )
-    v3_summary = await orchestrator.run()
+    # force a datapackage.json update
+    with unittest.mock.patch(
+        "pudl_archiver.orchestrator.DepositionOrchestrator._datapackage_worth_changing",
+        lambda *_args: True,
+    ):
+        v3_summary = await orchestrator.run()
     assert len(v3_summary.file_changes) == 0
-    assert len(orchestrator.changes) == 1
+    assert len(orchestrator.changes) == 4
 
     v3_refreshed = await refresh_record_info(v3_summary)
     # no updates to make, should not leave the conceptdoi pointing at a draft
