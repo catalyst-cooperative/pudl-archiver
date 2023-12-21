@@ -1,20 +1,17 @@
 """Test archiver abstract base class."""
 import copy
 import io
-import json
 import logging
 import re
 import tempfile
 import zipfile
 from pathlib import Path
 
-import pandas as pd
 import pytest
 from aiohttp import ClientSession
-from dateutil.relativedelta import relativedelta
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver, ArchiveAwaitable
 from pudl_archiver.archivers.validate import ValidationTestResult
-from pudl_archiver.frictionless import DataPackage, Resource, ResourceInfo
+from pudl_archiver.frictionless import Resource, ResourceInfo
 
 
 @pytest.fixture()
@@ -558,133 +555,6 @@ def test_year_filter():
 
     archiver_no_filter = MockArchiver(None)
     assert archiver_no_filter.valid_year(2021)
-
-
-# Test inputs for test_validate_data_continuity function
-fake_new_datapackage_quarter_success = DataPackage.model_validate_json(
-    json.dumps(
-        {
-            "name": "epacems",
-            "title": "Test EPACEMS",
-            "description": "Describe EPACEMS",
-            "keywords": ["epa"],
-            "contributors": [
-                {
-                    "title": "Catalyst Cooperative",
-                    "path": "https://catalyst.coop/",
-                    "email": "pudl@catalyst.coop",
-                    "role": "publisher",
-                    "zenodo_role": "distributor",
-                    "organization": "Catalyst Cooperative",
-                }
-            ],
-            "sources": [{"blah": "blah"}],
-            "profile": "data-package",
-            "homepage": "https://catalyst.coop/pudl/",
-            "licenses": [
-                {
-                    "name": "other-pd",
-                    "title": "U.S. Government Works",
-                    "path": "https://www.usa.gov/publicdomain/label/1.0/",
-                }
-            ],
-            "resources": [
-                {
-                    "profile": "data-resource",
-                    "name": "epacems-1995.zip",
-                    "path": "https://zenodo.org/records/10306114/files/epacems-1995.zip",
-                    "remote_url": "https://zenodo.org/records/10306114/files/epacems-1995.zip",
-                    "title": "epacems-1995.zip",
-                    "parts": {
-                        "year_quarter": [
-                            "1995q2",
-                            "1995q3",
-                            "1995q4",
-                        ]
-                    },
-                    "encoding": "utf-8",
-                    "mediatype": "application/zip",
-                    "format": ".zip",
-                    "bytes": 18392692,
-                    "hash": "f4ab7fbaa673fa7592feb6977cc41611",
-                },
-                {
-                    "profile": "data-resource",
-                    "name": "epacems-1996.zip",
-                    "path": "https://zenodo.org/records/10306114/files/epacems-1996.zip",
-                    "remote_url": "https://zenodo.org/records/10306114/files/epacems-1996.zip",
-                    "title": "epacems-1996.zip",
-                    "parts": {
-                        "year_quarter": [
-                            "1996q1",
-                            "1996q2",
-                            "1996q3",
-                            "1996q4",
-                        ]
-                    },
-                    "encoding": "utf-8",
-                    "mediatype": "application/zip",
-                    "format": ".zip",
-                    "bytes": 18921381,
-                    "hash": "fb35601de4e849a6cd123e32f59623f9",
-                },
-                {
-                    "profile": "data-resource",
-                    "name": "epacems-1997.zip",
-                    "path": "https://zenodo.org/records/10306114/files/epacems-1997.zip",
-                    "remote_url": "https://zenodo.org/records/10306114/files/epacems-1997.zip",
-                    "title": "epacems-1997.zip",
-                    "parts": {
-                        "year_quarter": [
-                            "1997q1",
-                            "1997q2",
-                        ]
-                    },
-                    "encoding": "utf-8",
-                    "mediatype": "application/zip",
-                    "format": ".zip",
-                    "bytes": 21734463,
-                    "hash": "e9ece6bb8190e14d44834bf0a068ac5d",
-                },
-            ],
-            "created": "2023-11-30 20:51:43.255388",
-            "version": "1",
-        }
-    )
-)
-fake_new_datapackage_month_success = copy.deepcopy(fake_new_datapackage_quarter_success)
-for resource in fake_new_datapackage_month_success.resources:
-    resource_months_min = pd.to_datetime(min(resource.parts["year_quarter"]))
-    resource_months_max = pd.to_datetime(
-        max(resource.parts["year_quarter"])
-    ) + relativedelta(months=3)
-    dd_idx = pd.date_range(start=resource_months_min, end=resource_months_max, freq="M")
-    resource.parts = {
-        "year_month": [pd.to_datetime(x).strftime("%Y-%m") for x in dd_idx]
-    }
-fake_new_datapackage_quarter_fail1 = copy.deepcopy(fake_new_datapackage_quarter_success)
-fake_new_datapackage_quarter_fail1.resources[2].parts["year_quarter"] = ["1997q2"]
-fake_new_datapackage_month_fail1 = copy.deepcopy(fake_new_datapackage_month_success)
-fake_new_datapackage_month_fail1.resources[2].parts["year_month"] = [
-    "1997-01",
-    "1997-03",
-]
-fake_new_datapackage_quarter_fail2 = copy.deepcopy(fake_new_datapackage_quarter_success)
-fake_new_datapackage_quarter_fail2.resources[1].parts["year_quarter"] = [
-    "1996q1",
-    "1996q2",
-    "1996q3",
-]
-fake_new_datapackage_month_fail2 = copy.deepcopy(fake_new_datapackage_month_success)
-fake_new_datapackage_month_fail2.resources[1].parts["year_month"] = [
-    "1996-01",
-    "1996-02",
-    "1996-03",
-]
-fake_new_datapackage_month_fail3 = copy.deepcopy(fake_new_datapackage_month_success)
-fake_new_datapackage_month_fail3.resources = [
-    fake_new_datapackage_month_fail3.resources[0]
-]
 
 
 @pytest.mark.parametrize(
