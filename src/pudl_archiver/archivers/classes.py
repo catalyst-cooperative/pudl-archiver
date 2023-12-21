@@ -11,6 +11,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 
 import aiohttp
+import pandas as pd
 
 from pudl_archiver.archivers import validate
 from pudl_archiver.frictionless import DataPackage, ResourceInfo
@@ -23,6 +24,7 @@ MEDIA_TYPES: dict[str, str] = {
     "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     "csv": "text/csv",
 }
+VALID_PARTITION_RANGES: dict[str, str] = {"year_quarter": "QS", "year_month": "MS"}
 
 ArchiveAwaitable = typing.AsyncGenerator[typing.Awaitable[ResourceInfo], None]
 """Return type of method get_resources.
@@ -64,6 +66,7 @@ class AbstractDatasetArchiver(ABC):
     allowed_file_rel_diff: float = 0.25
     fail_on_dataset_size_change: bool = True
     allowed_dataset_rel_diff: float = 0.15
+    fail_on_data_continuity: bool = True
 
     def __init__(
         self,
@@ -95,7 +98,7 @@ class AbstractDatasetArchiver(ABC):
         if only_years is None:
             only_years = []
         self.only_years = only_years
-        self.file_validations: list[validate.FileSpecificValidation] = []
+        self.file_validations: list[validate.FileUniversalValidation] = []
 
         # Create logger
         self.logger = logging.getLogger(f"catalystcoop.{__name__}")
@@ -252,7 +255,7 @@ class AbstractDatasetArchiver(ABC):
         self,
         baseline_datapackage: DataPackage | None,
         new_datapackage: DataPackage,
-    ) -> validate.DatasetSpecificValidation:
+    ) -> validate.DatasetUniversalValidation:
         """Check for any files from previous archive version missing in new version."""
         baseline_resources = set()
         if baseline_datapackage is not None:
@@ -271,7 +274,7 @@ class AbstractDatasetArchiver(ABC):
                 f"The following files would be deleted by new archive version: {missing_files}"
             ]
 
-        return validate.DatasetSpecificValidation(
+        return validate.DatasetUniversalValidation(
             name="Missing file test",
             description="Check for files from previous version of archive that would be deleted by the new version",
             success=len(missing_files) == 0,
@@ -283,7 +286,7 @@ class AbstractDatasetArchiver(ABC):
         self,
         baseline_datapackage: DataPackage | None,
         new_datapackage: DataPackage,
-    ) -> validate.DatasetSpecificValidation:
+    ) -> validate.DatasetUniversalValidation:
         """Check if any one file's size has changed by |>allowed_file_rel_diff|."""
         notes = None
         if baseline_datapackage is None:
@@ -323,7 +326,7 @@ class AbstractDatasetArchiver(ABC):
                     f"The following files have absolute changes in file size >|{self.allowed_file_rel_diff:.0%}|: {too_changed_files}"
                 ]
 
-        return validate.DatasetSpecificValidation(
+        return validate.DatasetUniversalValidation(
             name="Individual file size test",
             description=f"Check for files from previous version of archive that have changed in size by more than {self.allowed_file_rel_diff:.0%}.",
             success=not bool(too_changed_files),  # If dictionary empty, test passes
@@ -335,7 +338,7 @@ class AbstractDatasetArchiver(ABC):
         self,
         baseline_datapackage: DataPackage | None,
         new_datapackage: DataPackage,
-    ) -> validate.DatasetSpecificValidation:
+    ) -> validate.DatasetUniversalValidation:
         """Check if a dataset's overall size has changed by more than |>allowed_dataset_rel_diff|."""
         notes = None
 
@@ -356,12 +359,84 @@ class AbstractDatasetArchiver(ABC):
                     f"The new dataset is {dataset_size_change:.0%} different in size than the last archive, which exceeds the set threshold of {self.allowed_dataset_rel_diff:.0%}."
                 ]
 
-        return validate.DatasetSpecificValidation(
+        return validate.DatasetUniversalValidation(
             name="Dataset file size test",
             description=f"Check if overall archive size has changed by more than {self.allowed_dataset_rel_diff:.0%} from last archive.",
             success=dataset_size_change < self.allowed_dataset_rel_diff,
             notes=notes,
             required_for_run_success=self.fail_on_dataset_size_change,
+        )
+
+    def _check_data_continuity(
+        self, new_datapackage: DataPackage
+    ) -> validate.DatasetUniversalValidation:
+        """Check that the archived data partitions are continuous and unique."""
+        success = True
+        note = None
+        partition_to_test = []
+        dataset_partitions = []
+
+        # Unpack partitions of a dataset.
+        for resource in new_datapackage.resources:
+            if not resource.parts:  # Skip resources without partitions
+                continue
+            for partition_name, partition_values in resource.parts.items():
+                if (
+                    partition_name in VALID_PARTITION_RANGES
+                ):  # If partition to be tested
+                    partition_to_test += (
+                        [partition_name]
+                        if partition_name not in partition_to_test
+                        else []
+                    )  # Compile unique partition keys
+                    dataset_partitions += (
+                        partition_values
+                        if isinstance(partition_values, list)
+                        else [partition_values]
+                    )  # Unpack lists where needed
+
+        # Only perform this test if the part label is year quarter or year month
+        # Note that this currently only works if there is one set of partitions,
+        # and will fail if year_month and form are used to partition a dataset, e.g.
+        if partition_to_test:
+            if len(partition_to_test) == 1:
+                interval = VALID_PARTITION_RANGES[partition_to_test[0]]
+                expected_date_range = pd.date_range(
+                    min(dataset_partitions), max(dataset_partitions), freq=interval
+                )
+                observed_date_range = pd.to_datetime(dataset_partitions)
+                diff = expected_date_range.difference(observed_date_range)
+
+                if observed_date_range.has_duplicates:
+                    success = False
+                    note = [
+                        f"Partition contains duplicate time periods of data: f{observed_date_range.duplicated()}"
+                    ]
+                elif not diff.empty:
+                    success = False
+                    note = [
+                        f"Downloaded partitions are not continuous. Missing the following {partition_to_test} partitions: {diff.to_numpy()}"
+                    ]
+                else:
+                    success = True
+                    note = ["All tested partitions are continuous and non-duplicated."]
+            else:
+                success = False
+                note = [
+                    f"The test is not configured to handle more than one partition tested at a time: {partition_to_test}"
+                ]
+        else:
+            success = True
+            note = [
+                "The dataset partitions are not configured for this test, and the test was not run."
+            ]
+
+        return validate.DatasetUniversalValidation(
+            name="Validate data continuity",
+            description=f'Test {", ".join(list(VALID_PARTITION_RANGES.keys()))} partitions for continuity and duplication.',
+            success=success,
+            notes=note,
+            required_for_run_success=self.fail_on_data_continuity,
         )
 
     def validate_dataset(
@@ -390,6 +465,7 @@ class AbstractDatasetArchiver(ABC):
         validations.append(
             self._check_dataset_size(baseline_datapackage, new_datapackage)
         )
+        validations.append(self._check_data_continuity(new_datapackage))
 
         # Add per-file validations
         validations += self.file_validations
@@ -406,7 +482,7 @@ class AbstractDatasetArchiver(ABC):
         baseline_datapackage: DataPackage | None,
         new_datapackage: DataPackage,
         resources: dict[str, ResourceInfo],
-    ) -> list[validate.DatasetSpecificValidation]:
+    ) -> list[validate.DatasetUniversalValidation]:
         """Hook to add archive validation tests specific to each dataset."""
         return []
 
