@@ -47,7 +47,7 @@ def file_data():
     return b"Junk test file data"
 
 
-def _resource_w_size(name, size):
+def _resource_w_size(name: str, size: int):
     """Create resource with variable size for use in tests."""
     return Resource(
         name=name,
@@ -58,6 +58,21 @@ def _resource_w_size(name, size):
         mediatype="",
         format="",
         bytes=size,
+        hash="",
+    )
+
+
+def _resource_w_parts(name: str, parts: dict):
+    """Create resource with variable size for use in tests."""
+    return Resource(
+        name=name,
+        path=f"https://www.example.com/{name}",
+        remote_url="https://www.example.com",
+        title="",
+        parts=parts,
+        mediatype="",
+        format="",
+        bytes=10,
         hash="",
     )
 
@@ -673,28 +688,139 @@ fake_new_datapackage_month_fail3.resources = [
 
 
 @pytest.mark.parametrize(
-    "new_datapackage,success",
+    "new_resources,success,notes",
     [
-        (fake_new_datapackage_quarter_success, True),
-        (fake_new_datapackage_month_success, True),
-        (fake_new_datapackage_quarter_fail1, False),
-        (fake_new_datapackage_month_fail1, False),
-        (fake_new_datapackage_quarter_fail2, False),
-        (fake_new_datapackage_month_fail2, False),
-        (fake_new_datapackage_month_fail3, True),
+        (
+            [
+                _resource_w_parts(
+                    "resource0",
+                    {"year_quarter": ["1995q1", "1995q2", "1995q3", "1995q4"]},
+                ),
+                _resource_w_parts(
+                    "resource1", {"year_quarter": ["1996q1", "1996q2", "1996q3"]}
+                ),
+            ],
+            True,
+            "All tested partitions",
+        ),
+        (
+            [
+                _resource_w_parts(
+                    "resource0",
+                    {"year_month": [f"1995-{month:02d}" for month in range(2, 13)]},
+                ),
+                _resource_w_parts(
+                    "resource1",
+                    {"year_month": [f"1996-{month:02d}" for month in range(1, 8)]},
+                ),
+            ],
+            True,
+            "All tested partitions",
+        ),
+        (
+            [
+                _resource_w_parts(
+                    "resource0", {"year_quarter": ["1995q1", "1995q3", "1995q4"]}
+                ),
+                _resource_w_parts(
+                    "resource1", {"year_quarter": ["1996q1", "1996q2", "1996q3"]}
+                ),
+            ],
+            False,
+            "not consecutive",
+        ),
+        (
+            [
+                _resource_w_parts(
+                    "resource0",
+                    {
+                        "year_quarter": [
+                            "1995q1",
+                            "1995q1",
+                            "1995q2",
+                            "1995q3",
+                            "1995q4",
+                        ]
+                    },
+                )
+            ],
+            False,
+            "duplicate time periods",
+        ),
+        (
+            [
+                _resource_w_parts("resource0", {"year_quarter": "1995q1"}),
+                _resource_w_parts("resource1", {"year_quarter": "1995q2"}),
+            ],
+            True,
+            "All tested partitions",
+        ),
+        (
+            [
+                _resource_w_parts("resource0", {"year": "1995"}),
+                _resource_w_parts("resource1", {"year": "1996"}),
+            ],
+            True,
+            "not configured for this test",
+        ),
+        (
+            [
+                _resource_w_parts(
+                    "resource1", {"year_quarter": ["1996q1", "1996q2", "1996q3"]}
+                ),
+                _resource_w_parts(
+                    "resource0",
+                    {"year_quarter": ["1995q1", "1995q2", "1995q3", "1995q4"]},
+                ),
+            ],
+            True,
+            "All tested partitions",
+        ),
+        (
+            [
+                _resource_w_parts(
+                    "resource0", {"year_quarter": ["1995q1", "1995q2"], "form": "junk"}
+                ),
+                _resource_w_parts(
+                    "resource1",
+                    {"year_quarter": ["1995q3", "1995q4"], "form": "random"},
+                ),
+            ],
+            True,
+            "All tested partitions",
+        ),
+        (
+            [
+                _resource_w_parts(
+                    "resource0",
+                    {"year_quarter": ["1995q1", "1995q2"], "year_month": "1995-01"},
+                ),
+                _resource_w_parts(
+                    "resource1",
+                    {"year_quarter": ["1995q3", "1995q4"], "year_month": "1995-06"},
+                ),
+            ],
+            False,
+            "more than one partition",
+        ),
     ],
     ids=[
         "all_expected_quarter_files",
         "all_expected_month_files",
-        "missing_1997q1",
-        "missing_1997-02",
-        "missing_1996q4",
-        "missing_rest_of_year",
-        "test_one_year",
+        "missing_partition",
+        "duplicated_partition",
+        "partitions_not_lists",
+        "partition_not_tested",
+        "out_of_order_files",
+        "multiple_partitions",
+        "multiple_tested_partitions",
     ],
 )
-def test_check_data_continuity(new_datapackage, success):
+def test_check_data_continuity(datapackage, new_resources, success, notes):
     """Test the dataset archiving valiation for epacems."""
     archiver = MockArchiver(None)
+    new_datapackage = copy.deepcopy(datapackage)
+    new_datapackage.resources = new_resources
     validation = archiver._check_data_continuity(new_datapackage)
     assert validation.success == success
+    assert notes in validation.notes[0]  # Check exact success/fail reason
