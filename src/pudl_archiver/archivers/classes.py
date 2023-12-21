@@ -415,7 +415,7 @@ class AbstractDatasetArchiver(ABC):
                 elif not diff.empty:
                     success = False
                     note = [
-                        f"Downloaded partitions are not consecutive. Missing the following {partition_to_test} partitions: {diff.to_numpy()}"
+                        f"Downloaded partitions are not continuous. Missing the following {partition_to_test} partitions: {diff.to_numpy()}"
                     ]
                 else:
                     success = True

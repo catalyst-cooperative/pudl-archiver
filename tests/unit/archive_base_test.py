@@ -597,7 +597,7 @@ def test_year_filter():
                 ),
             ],
             False,
-            "not consecutive",
+            "not continuous",
         ),
         (
             [
