@@ -1,5 +1,6 @@
 """Test archive validate module."""
 import itertools
+import logging
 import zipfile
 from pathlib import Path
 
@@ -7,6 +8,8 @@ import pytest
 from pudl_archiver.archivers import validate
 from pudl_archiver.frictionless import Resource, ZipLayout
 from pudl_archiver.utils import Url
+
+logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 
 @pytest.mark.parametrize(

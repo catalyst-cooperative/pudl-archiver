@@ -231,97 +231,50 @@ class ZenodoDepositor:
             A new Deposition that is a snapshot of the old one you passed in,
             with a new major version number.
         """
-        # if this is a draft, either this is a potentially dirty draft (in
-        # which case, delete it) - or, this is the first deposition of a
-        # concept and we should just return it unharmed.
-        if not deposition.submitted:
-            if clobber:
-                await self.delete_deposition(deposition)
-                deposition = await self.get_deposition(str(deposition.conceptdoi))
-            else:
-                return deposition
-
-        url = f"{self.api_root}/deposit/depositions/{deposition.id_}/actions/newversion"
-
-        # create a new unpublished deposition version
-        try:
-            response = await self.request(
+        # just get the new draft from new API.
+        new_draft_record = Record(
+            **await self.request(
                 "POST",
-                url,
-                log_label="Creating new version",
-                headers=self.auth_write,
-                retry_count=2,
-            )
-        # Except if abandoned in progress draft
-        except ZenodoClientError as excinfo:
-            if (
-                clobber
-                and "remove all files first" in excinfo.errors[0]["messages"][0].lower()
-            ):
-                logger.info("Delete abandoned version and create new one.")
-                existing_deposition = await self.get_deposition(
-                    str(deposition.conceptdoi)
-                )
-                new_draft = Record(
-                    **await self.request(
-                        "POST",
-                        f"{self.api_root}/records/{existing_deposition.id_}/versions",
-                        log_label=f"Get existing draft deposition for {existing_deposition.id_}",
-                        headers=self.auth_write,
-                    )
-                )
-                await self.request(
-                    "DELETE",
-                    new_draft.links.self,
-                    log_label=f"Delete existing draft deposition for {existing_deposition.id_}",
-                    headers=self.auth_write,
-                    parse_json=False,
-                )
-            response = await self.request(
-                "POST",
-                url,
-                log_label="Creating new version",
+                f"{self.api_root}/records/{deposition.id_}/versions",
+                log_label=f"Get existing draft deposition for {deposition.id_}",
                 headers=self.auth_write,
             )
+        )
+        # then, get the deposition based on that ID.
+        new_draft_deposition = await self.get_deposition_by_id(new_draft_record.id_)
 
-        old_metadata = deposition.metadata.dict(by_alias=True)
-        new_version = Deposition(**response)
+        # Update metadata of new deposition with new version info
+        base_metadata = deposition.metadata.model_dump(by_alias=True)
 
         if refresh_metadata:
             logger.info("Re-creating deposition metadata from PUDL source data.")
-            source_metadata = DepositionMetadata.from_data_source(data_source_id).dict(
+            draft_metadata = DepositionMetadata.from_data_source(data_source_id).dict(
                 by_alias=True
             )
         else:
-            source_metadata = new_version.metadata.dict(by_alias=True)
+            draft_metadata = new_draft_deposition.metadata.model_dump(by_alias=True)
 
-        # If version not in response for new version, get from most recent deposition
-        if source_metadata["version"] is None:
-            source_metadata["version"] = old_metadata["version"]
-
-        metadata = {}
-        for key, val in source_metadata.items():
-            if key not in ["doi", "prereserve_doi", "publication_date"]:
-                metadata[key] = val
-
-        previous = semantic_version.Version(source_metadata["version"])
-        version_info = previous.next_major()
-
-        metadata["version"] = str(version_info)
-
-        # Update metadata of new deposition with new version info
+        metadata = {
+            key: val
+            for key, val in (base_metadata | draft_metadata).items()
+            if key not in {"doi", "prereserve_doi", "publication_date"}
+        }
+        base_version = semantic_version.Version(base_metadata["version"])
+        new_version = base_version.next_major()
+        metadata["version"] = str(new_version)
+        logging.info(f"{base_metadata=}\n{draft_metadata=}\n{metadata=}")
         data = json.dumps({"metadata": metadata})
-
         # Get url to newest deposition
-        new_deposition_url = new_version.links.latest_draft
+        new_deposition_url = new_draft_deposition.links.latest_draft
         headers = {
             "Content-Type": "application/json",
         } | self.auth_write
-
         response = await self.request(
             "PUT",
             new_deposition_url,
-            log_label=f"Updating version number from {previous} ({new_version.id_}) to {version_info}",
+            log_label=f"Updating version number from {base_version} "
+            f"(from {deposition.id_}) to {new_version} "
+            f"(on {new_draft_deposition.id_})",
             data=data,
             headers=headers,
         )

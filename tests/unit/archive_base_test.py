@@ -1,6 +1,7 @@
 """Test archiver abstract base class."""
 import copy
 import io
+import logging
 import re
 import tempfile
 import zipfile
@@ -41,6 +42,36 @@ def good_zipfile():
 def file_data():
     """Create test file data for download_file test."""
     return b"Junk test file data"
+
+
+def _resource_w_size(name: str, size: int):
+    """Create resource with variable size for use in tests."""
+    return Resource(
+        name=name,
+        path=f"https://www.example.com/{name}",
+        remote_url="https://www.example.com",
+        title="",
+        parts={},
+        mediatype="",
+        format="",
+        bytes=size,
+        hash="",
+    )
+
+
+def _resource_w_parts(name: str, parts: dict):
+    """Create resource with variable size for use in tests."""
+    return Resource(
+        name=name,
+        path=f"https://www.example.com/{name}",
+        remote_url="https://www.example.com",
+        title="",
+        parts=parts,
+        mediatype="",
+        format="",
+        bytes=10,
+        hash="",
+    )
 
 
 class MockArchiver(AbstractDatasetArchiver):
@@ -286,108 +317,23 @@ async def test_get_hyperlinks(docname, pattern, links, request, html_docs):
     "baseline_resources,new_resources,success",
     [
         (
+            [_resource_w_size("resource0", 0), _resource_w_size("resource1", 0)],
             [
-                Resource(
-                    name="resource0",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=0,
-                    hash="",
-                ),
-                Resource(
-                    name="resource1",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=0,
-                    hash="",
-                ),
-            ],
-            [
-                Resource(
-                    name="resource0",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=0,
-                    hash="",
-                ),
-                Resource(
-                    name="resource1",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=0,
-                    hash="",
-                ),
-                Resource(
-                    name="resource2",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=0,
-                    hash="",
-                ),
+                _resource_w_size("resource0", 0),
+                _resource_w_size("resource1", 0),
+                _resource_w_size("resource2", 0),
             ],
             True,
         ),
         (
+            [_resource_w_size("resource0", 0), _resource_w_size("resource1", 0)],
             [
-                Resource(
-                    name="resource0",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=0,
-                    hash="",
-                ),
-                Resource(
-                    name="resource1",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=0,
-                    hash="",
-                ),
-            ],
-            [
-                Resource(
-                    name="resource0",
-                    path="https://www.example.com",
-                    remote_url="https://www.example.com",
-                    title="",
-                    parts={},
-                    mediatype="",
-                    format="",
-                    bytes=0,
-                    hash="",
-                ),
+                _resource_w_size("resource0", 0),
             ],
             False,
         ),
     ],
+    ids=["create_file", "delete_file"],
 )
 def test_check_missing_files(datapackage, baseline_resources, new_resources, success):
     """Test the ``_check_missing_files`` validation test."""
@@ -405,6 +351,201 @@ def test_check_missing_files(datapackage, baseline_resources, new_resources, suc
     assert validation_result.success == success
 
 
+@pytest.mark.parametrize(
+    "baseline_resources,new_resources,success",
+    [
+        (
+            [
+                _resource_w_size("resource0", 10),
+                _resource_w_size("resource1", 10),
+            ],
+            [
+                _resource_w_size("resource0", 20),
+                _resource_w_size("resource1", 10),
+            ],
+            False,
+        ),
+        (
+            [
+                _resource_w_size("resource0", 10),
+                _resource_w_size("resource1", 10),
+            ],
+            [
+                _resource_w_size("resource0", 11),
+                _resource_w_size("resource1", 9),
+            ],
+            True,
+        ),
+        (
+            [
+                _resource_w_size("resource0", 10),
+                _resource_w_size("resource1", 10),
+            ],
+            [
+                _resource_w_size("resource0", 10),
+            ],
+            True,
+        ),
+        (
+            [
+                _resource_w_size("resource0", 10),
+            ],
+            [
+                _resource_w_size("resource0", 10),
+                _resource_w_size("resource1", 10),
+            ],
+            True,
+        ),
+        (
+            None,
+            [
+                _resource_w_size("resource0", 10),
+                _resource_w_size("resource1", 10),
+            ],
+            True,
+        ),
+    ],
+    ids=[
+        "file_too_big",
+        "file_change_acceptable",
+        "file_deleted",
+        "file_created",
+        "no_base_datapackage",
+    ],
+)
+def test_check_file_size(datapackage, baseline_resources, new_resources, success):
+    """Test the ``_check_file_size`` validation test."""
+    archiver = MockArchiver(None)
+
+    if baseline_resources is None:
+        baseline_datapackage = None
+    else:
+        baseline_datapackage = copy.deepcopy(datapackage)
+        baseline_datapackage.resources = baseline_resources
+
+    new_datapackage = copy.deepcopy(datapackage)
+    new_datapackage.resources = new_resources
+
+    validation_result = archiver._check_file_size(baseline_datapackage, new_datapackage)
+    assert validation_result.success == success
+
+
+@pytest.mark.parametrize(
+    "baseline_resources,new_resources,success",
+    [
+        (
+            [
+                _resource_w_size("resource0", 0),
+                _resource_w_size("resource1", 10),
+            ],
+            [
+                _resource_w_size("resource0", 10),
+                _resource_w_size("resource1", 10),
+            ],
+            True,
+        ),
+    ],
+)
+def test_check_zero_file_size(
+    datapackage, baseline_resources, new_resources, success, caplog
+):
+    """Test the ``_check_file_size`` validation test."""
+    archiver = MockArchiver(None)
+
+    baseline_datapackage = copy.deepcopy(datapackage)
+    baseline_datapackage.resources = baseline_resources
+
+    new_datapackage = copy.deepcopy(datapackage)
+    new_datapackage.resources = new_resources
+
+    with caplog.at_level(logging.WARN):
+        validation_result = archiver._check_file_size(
+            baseline_datapackage, new_datapackage
+        )
+    assert validation_result.success == success
+    assert "Original file size was zero" in caplog.text
+
+
+@pytest.mark.parametrize(
+    "baseline_resources,new_resources,success",
+    [
+        (
+            [
+                _resource_w_size("resource0", 10),
+                _resource_w_size("resource1", 10),
+            ],
+            [
+                _resource_w_size("resource0", 20),
+                _resource_w_size("resource1", 10),
+            ],
+            False,
+        ),
+        (
+            [
+                _resource_w_size("resource0", 10),
+                _resource_w_size("resource1", 10),
+            ],
+            [
+                _resource_w_size("resource0", 11),
+                _resource_w_size("resource1", 9),
+            ],
+            True,
+        ),
+        (
+            [
+                _resource_w_size("resource0", 10),
+                _resource_w_size("resource1", 10),
+            ],
+            [
+                _resource_w_size("resource0", 10),
+            ],
+            False,
+        ),
+        (
+            [
+                _resource_w_size("resource0", 10),
+            ],
+            [
+                _resource_w_size("resource0", 10),
+            ],
+            True,
+        ),
+        (
+            None,
+            [
+                _resource_w_size("resource0", 10),
+                _resource_w_size("resource1", 10),
+            ],
+            True,
+        ),
+    ],
+    ids=[
+        "increase_too_big",
+        "file_change_no_overall_change",
+        "decrease_too_big",
+        "no_change",
+        "no_base_datapackage",
+    ],
+)
+def test_check_dataset_size(datapackage, baseline_resources, new_resources, success):
+    """Test the ``_check_dataset_size`` validation test."""
+    archiver = MockArchiver(None)
+
+    if baseline_resources is None:
+        baseline_datapackage = None
+    else:
+        baseline_datapackage = copy.deepcopy(datapackage)
+        baseline_datapackage.resources = baseline_resources
+
+    new_datapackage = copy.deepcopy(datapackage)
+    new_datapackage.resources = new_resources
+
+    validation_result = archiver._check_dataset_size(
+        baseline_datapackage, new_datapackage
+    )
+    assert validation_result.success == success
+
+
 def test_year_filter():
     archiver = MockArchiver(None, only_years=[2020, 2022])
     assert archiver.valid_year(2020)
@@ -414,3 +555,142 @@ def test_year_filter():
 
     archiver_no_filter = MockArchiver(None)
     assert archiver_no_filter.valid_year(2021)
+
+
+@pytest.mark.parametrize(
+    "new_resources,success,notes",
+    [
+        (
+            [
+                _resource_w_parts(
+                    "resource0",
+                    {"year_quarter": ["1995q1", "1995q2", "1995q3", "1995q4"]},
+                ),
+                _resource_w_parts(
+                    "resource1", {"year_quarter": ["1996q1", "1996q2", "1996q3"]}
+                ),
+            ],
+            True,
+            "All tested partitions",
+        ),
+        (
+            [
+                _resource_w_parts(
+                    "resource0",
+                    {"year_month": [f"1995-{month:02d}" for month in range(2, 13)]},
+                ),
+                _resource_w_parts(
+                    "resource1",
+                    {"year_month": [f"1996-{month:02d}" for month in range(1, 8)]},
+                ),
+            ],
+            True,
+            "All tested partitions",
+        ),
+        (
+            [
+                _resource_w_parts(
+                    "resource0", {"year_quarter": ["1995q1", "1995q3", "1995q4"]}
+                ),
+                _resource_w_parts(
+                    "resource1", {"year_quarter": ["1996q1", "1996q2", "1996q3"]}
+                ),
+            ],
+            False,
+            "not continuous",
+        ),
+        (
+            [
+                _resource_w_parts(
+                    "resource0",
+                    {
+                        "year_quarter": [
+                            "1995q1",
+                            "1995q1",
+                            "1995q2",
+                            "1995q3",
+                            "1995q4",
+                        ]
+                    },
+                )
+            ],
+            False,
+            "duplicate time periods",
+        ),
+        (
+            [
+                _resource_w_parts("resource0", {"year_quarter": "1995q1"}),
+                _resource_w_parts("resource1", {"year_quarter": "1995q2"}),
+            ],
+            True,
+            "All tested partitions",
+        ),
+        (
+            [
+                _resource_w_parts("resource0", {"year": "1995"}),
+                _resource_w_parts("resource1", {"year": "1996"}),
+            ],
+            True,
+            "not configured for this test",
+        ),
+        (
+            [
+                _resource_w_parts(
+                    "resource1", {"year_quarter": ["1996q1", "1996q2", "1996q3"]}
+                ),
+                _resource_w_parts(
+                    "resource0",
+                    {"year_quarter": ["1995q1", "1995q2", "1995q3", "1995q4"]},
+                ),
+            ],
+            True,
+            "All tested partitions",
+        ),
+        (
+            [
+                _resource_w_parts(
+                    "resource0", {"year_quarter": ["1995q1", "1995q2"], "form": "junk"}
+                ),
+                _resource_w_parts(
+                    "resource1",
+                    {"year_quarter": ["1995q3", "1995q4"], "form": "random"},
+                ),
+            ],
+            True,
+            "All tested partitions",
+        ),
+        (
+            [
+                _resource_w_parts(
+                    "resource0",
+                    {"year_quarter": ["1995q1", "1995q2"], "year_month": "1995-01"},
+                ),
+                _resource_w_parts(
+                    "resource1",
+                    {"year_quarter": ["1995q3", "1995q4"], "year_month": "1995-06"},
+                ),
+            ],
+            False,
+            "more than one partition",
+        ),
+    ],
+    ids=[
+        "all_expected_quarter_files",
+        "all_expected_month_files",
+        "missing_partition",
+        "duplicated_partition",
+        "partitions_not_lists",
+        "partition_not_tested",
+        "out_of_order_files",
+        "multiple_partitions",
+        "multiple_tested_partitions",
+    ],
+)
+def test_check_data_continuity(datapackage, new_resources, success, notes):
+    """Test the dataset archiving valiation for epacems."""
+    archiver = MockArchiver(None)
+    new_datapackage = copy.deepcopy(datapackage)
+    new_datapackage.resources = new_resources
+    validation = archiver._check_data_continuity(new_datapackage)
+    assert validation.success == success
+    assert notes in validation.notes[0]  # Check exact success/fail reason

@@ -29,12 +29,12 @@ class ValidationTestResult(BaseModel):
     always_serialize_in_summary: bool = True
 
 
-class DatasetSpecificValidation(ValidationTestResult):
-    """ValidationTestResult specific to an entire dataset."""
+class DatasetUniversalValidation(ValidationTestResult):
+    """ValidationTestResult applied to an entire dataset for all data sources."""
 
 
-class FileSpecificValidation(ValidationTestResult):
-    """ValidationTestResult specific to a single file."""
+class FileUniversalValidation(ValidationTestResult):
+    """ValidationTestResult applied to a single file for all data sources."""
 
     resource_name: Path
     always_serialize_in_summary: bool = False
@@ -42,9 +42,9 @@ class FileSpecificValidation(ValidationTestResult):
 
 def validate_filetype(
     path: Path, required_for_run_success: bool
-) -> FileSpecificValidation:
+) -> FileUniversalValidation:
     """Check that file is valid based on type."""
-    return FileSpecificValidation(
+    return FileUniversalValidation(
         name="Valid Filetype Test",
         description="Check that file appears to be valid based on it's extension.",
         required_for_run_success=required_for_run_success,
@@ -55,9 +55,9 @@ def validate_filetype(
 
 def validate_file_not_empty(
     path: Path, required_for_run_success: bool
-) -> FileSpecificValidation:
+) -> FileUniversalValidation:
     """Check that file is valid based on type."""
-    return FileSpecificValidation(
+    return FileUniversalValidation(
         name="Empty File Test",
         description="Check that file is not empty.",
         required_for_run_success=required_for_run_success,
@@ -68,14 +68,14 @@ def validate_file_not_empty(
 
 def validate_zip_layout(
     path: Path, layout: ZipLayout | None, required_for_run_success: bool
-) -> FileSpecificValidation:
+) -> FileUniversalValidation:
     """Check that file is valid based on type."""
     if layout is not None:
         valid_layout, layout_notes = layout.validate_zip(path)
     else:
         valid_layout, layout_notes = True, []
 
-    return FileSpecificValidation(
+    return FileUniversalValidation(
         name="Zipfile Layout Test",
         description="Check that the internal layout of a zipfile is as expected.",
         required_for_run_success=required_for_run_success,
