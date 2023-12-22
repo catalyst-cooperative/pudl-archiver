@@ -17,6 +17,8 @@ class Eia860MArchiver(AbstractDatasetArchiver):
     """EIA-860M archiver."""
 
     name = "eia860m"
+    fail_on_missing_files = False
+    fail_on_dataset_size_change = False
     month_map = {
         name.lower(): number for number, name in enumerate(calendar.month_name)
     }
