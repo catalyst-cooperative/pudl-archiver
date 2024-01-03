@@ -57,7 +57,7 @@ jobs:
         id: upload_summaries
         uses: actions/upload-artifact@v4
         with:
-          name: run-summaries
+          name: run-summaries-${{ matrix.dataset }}
           path: ${{ matrix.dataset }}_run_summary.json
 
   archive-notify:
@@ -70,7 +70,8 @@ jobs:
         id: download
         uses: actions/download-artifact@v4
         with:
-          name: run-summaries
+          pattern: run-summaries-*
+          merge-multiple: true
       - name: show summaries
         run: ls -R
       - name: Munge summaries together
