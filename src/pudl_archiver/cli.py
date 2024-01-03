@@ -60,10 +60,17 @@ def parse_main():
         action="store_true",
         help="Automatically publish a deposition, rather than requiring manual review before publishing.",
     )
+    (
+        parser.add_argument(
+            "--download-dir",
+            help="Directory to download files to. Use tmpdir if not specified.",
+            default=None,
+        ),
+    )
     parser.add_argument(
-        "--download-dir",
-        help="Directory to download files to. Use tmpdir if not specified.",
-        default=None,
+        "--refresh-metadata",
+        action="store_true",
+        help="Regenerate metadata from PUDL data source rather than existing archived metadata.",
     )
     return parser.parse_args()
 
