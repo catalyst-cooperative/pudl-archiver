@@ -129,8 +129,36 @@ You will need to run the initialize command to create a new zenodo deposition, a
 update the config file with the new DOI:
 
 ```
-pudl_archiver --datasets {new_dataset_name} --initialize
+pudl_archiver --datasets {new_dataset_name} --initialize --summary-file {new_dataset_name}-summary.json
 ```
+
+Using the `--summary-file` flag will save a .json file summarizing the results of all
+validation tests, which is useful for reviewing your dataset. Note that this step will
+require you to create your own
+[Zenodo validation credentials](https://zenodo.org/account/settings/applications/tokens/new/)
+if you are not a core Catalyst developer.
+
+### Step 3: Manually review your archive before publication.
+
+If the archiver run is successful, it will produce a link to the draft archive. Though
+many of the validation steps are automated, it is worthwhile manually reviewing archives
+before publication, since a Zenodo record cannot be deleted once published. Here are
+some recommended additional manual steps for verification:
+
+1. Open the `*-summary.json` file that your archiver run produced. It will contain
+the `name`, `description` and `success` of each test run on the archive, along with any
+notes. If your draft archive was successfully created all tests have passed, but it's
+worthwhile skimming through the file to make sure all expected tests have been run and
+there are no notable warnings in the `notes`.
+2. On Zenodo, "preview" the draft archive and check to see that nothing seems unusual
+(e.g., missing years of data, new partition formats, contributors).
+3. Look at the `datapackage.json`. Does the dataset metadata look as expected? How about
+the metadata for each resource?
+4. Click to download one or two files from the archive. Extract them and open them to
+make sure they look as expected.
+
+When you're ready to submit this archive, hit "publish"! Then head over to the
+[pudl](https://github.com/catalyst-cooperative/pudl) repo to integrate the new archive.
 
 ## Development
 
