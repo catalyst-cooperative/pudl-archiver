@@ -5,7 +5,7 @@ authors = [{name = "PUDL", email = "pudl@catalyst.coop"}]
 requires-python = ">=3.11,<3.12"
 
 dependencies = [
-    "catalystcoop.pudl @ git+https://github.com/catalyst-cooperative/pudl.git@dev",
+    "catalystcoop.pudl @ git+https://github.com/catalyst-cooperative/pudl.git",
     "coloredlogs>=14",
     "feedparser>=6.0",
     "tqdm>=4.64",
@@ -63,7 +63,7 @@ pudl_archiver = "pudl_archiver.cli:main"
 
 [build-system]
 requires = [
-    "setuptools<69,>=66",
+    "setuptools>=66",
 ]
 build-backend = "setuptools.build_meta"
 
