@@ -15,7 +15,7 @@ import pandas as pd
 
 from pudl_archiver.archivers import validate
 from pudl_archiver.frictionless import DataPackage, ResourceInfo
-from pudl_archiver.utils import retry_async
+from pudl_archiver.utils import add_to_archive_stable_hash, retry_async
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
@@ -193,7 +193,9 @@ class AbstractDatasetArchiver(ABC):
             "w",
             compression=zipfile.ZIP_DEFLATED,
         ) as archive:
-            archive.writestr(filename, response_bytes)
+            add_to_archive_stable_hash(
+                archive=archive, filename=filename, data=response_bytes
+            )
 
     def add_to_archive(self, target_archive: Path, name: str, blob: typing.BinaryIO):
         """Add a file to a ZIP archive.
@@ -208,7 +210,7 @@ class AbstractDatasetArchiver(ABC):
             "a",
             compression=zipfile.ZIP_DEFLATED,
         ) as archive:
-            archive.writestr(name, blob.read())
+            add_to_archive_stable_hash(archive=archive, filename=name, data=blob.read())
 
     async def get_hyperlinks(
         self,

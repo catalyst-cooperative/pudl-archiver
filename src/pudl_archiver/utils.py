@@ -1,6 +1,7 @@
 """Utility functions used in multiple places within PUDL archiver."""
 import asyncio
 import logging
+import zipfile
 from collections.abc import Awaitable, Callable
 from typing import Annotated, Any
 
@@ -53,3 +54,20 @@ async def retry_async(
                 f"Error while executing {coro} (try #{try_count}, retry in {retry_delay_s}s): {type(e)} - {e}"
             )
             await asyncio.sleep(retry_delay_s)
+
+
+def add_to_archive_stable_hash(archive: zipfile.ZipFile, filename, data: bytes):
+    """Add a file to a ZIP archive in a way that makes the hash deterministic.
+
+    ZIP files include some datetime metadata that changes based on when you add
+    the file to the archive. This makes their hashes inherently unstable.
+
+    We set the datetime to the earliest possible ZIP datetime, 1980-01-01 (not
+    1970! just a quirk of ZIP) to make the hashes stable.
+    """
+    info = zipfile.ZipInfo(
+        filename=filename,
+        # Set fixed date to enable hash comparisons between archives
+        date_time=(1980, 1, 1, 0, 0, 0),
+    )
+    archive.writestr(info, data)
