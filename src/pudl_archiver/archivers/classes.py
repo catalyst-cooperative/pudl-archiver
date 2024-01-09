@@ -193,7 +193,12 @@ class AbstractDatasetArchiver(ABC):
             "w",
             compression=zipfile.ZIP_DEFLATED,
         ) as archive:
-            archive.writestr(filename, response_bytes)
+            info = zipfile.ZipInfo(
+                filename=filename,
+                # Set fixed date to enable hash comparisons between archives
+                date_time=(1980, 1, 1, 0, 0, 0),
+            )
+            archive.writestr(info, response_bytes)
 
     def add_to_archive(self, target_archive: Path, name: str, blob: typing.BinaryIO):
         """Add a file to a ZIP archive.
@@ -208,7 +213,12 @@ class AbstractDatasetArchiver(ABC):
             "a",
             compression=zipfile.ZIP_DEFLATED,
         ) as archive:
-            archive.writestr(name, blob.read())
+            info = zipfile.ZipInfo(
+                filename=name,
+                # Set fixed date to enable hash comparisons between archives
+                date_time=(1980, 1, 1, 0, 0, 0),
+            )
+            archive.writestr(info, blob.read())
 
     async def get_hyperlinks(
         self,
