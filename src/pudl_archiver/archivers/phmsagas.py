@@ -89,7 +89,7 @@ class PhmsaGasArchiver(AbstractDatasetArchiver):
         return ResourceInfo(
             local_path=download_path,
             partitions={
-                "years": years,
+                "year": years,
                 "form": form,
             },
         )
