@@ -2,8 +2,8 @@
 import logging
 import re
 import typing
-from datetime import datetime
 from pathlib import Path
+from zipfile import ZipFile
 
 from pudl_archiver.archivers.classes import (
     AbstractDatasetArchiver,
@@ -76,15 +76,26 @@ class PhmsaGasArchiver(AbstractDatasetArchiver):
         if form not in PHMSA_FORMS:
             logger.warning(f"New form type found: {form}.")
 
+        download_path = self.download_directory / f"{self.name}-{filename}.zip"
+        await self.download_zipfile(url, download_path)
+
         # From start and end year, get partitions
         start_year = int(filename.split("_")[-2])
         end_year = filename.split("_")[-1]
-        # If end year is present, this will include data through last year.
-        end_year = datetime.now().year - 1 if end_year == "present" else int(end_year)
-        years = list(range(start_year, end_year + 1))
 
-        download_path = self.download_directory / f"{self.name}-{filename}.zip"
-        await self.download_zipfile(url, download_path)
+        # If end year is present, open zipfile and get last year of excel data in it.
+        if end_year == "present":
+            file_years = sorted(
+                [
+                    int(file.split("_")[-1].replace(".xlsx", ""))
+                    for file in ZipFile(download_path).namelist()
+                    if file.endswith(".xlsx")
+                ]
+            )
+            end_year = max(file_years)
+        else:
+            end_year = int(end_year)
+        years = list(range(start_year, end_year + 1))
 
         return ResourceInfo(
             local_path=download_path,
