@@ -85,14 +85,14 @@ class PhmsaGasArchiver(AbstractDatasetArchiver):
 
         # If end year is present, open zipfile and get last year of excel data in it.
         if end_year == "present":
-            excel_files = sorted(
+            file_years = sorted(
                 [
-                    file
+                    int(file.split("_")[-1].replace(".xlsx", ""))
                     for file in ZipFile(download_path).namelist()
                     if file.endswith(".xlsx")
                 ]
             )
-            end_year = int(excel_files[-1].split("_")[-1].replace(".xlsx", ""))
+            end_year = max(file_years)
         else:
             end_year = int(end_year)
         years = list(range(start_year, end_year + 1))
