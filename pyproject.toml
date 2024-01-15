@@ -32,7 +32,7 @@ classifiers = [
 dev = [
     "build>=1.0,<1.1",
     "ruff>=0.1,<0.2",
-    "tox>=4.0,<4.12",  # Python test environment manager
+    "tox>=4.0,<4.13",  # Python test environment manager
     "twine>=3.3,<4.1",  # Used to make releases to PyPI
     "types-requests",
 ]
