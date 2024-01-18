@@ -8,9 +8,5 @@ dependencies:
   - pip>=21,<24
   - python>=3.11,<3.12
   - setuptools>=66
-  # fiona is a transitive dependency which needs GDAL. so we install with conda
-  # TODO: we shouldn't have to install all this geo stuff, so once we break the
-  # dependency on `pudl` we should remove this too.
-  - fiona>=1.9.5
   - pip:
       - --editable ./[dev,docs,tests]
