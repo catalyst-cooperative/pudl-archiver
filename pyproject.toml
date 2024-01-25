@@ -5,14 +5,15 @@ authors = [{name = "PUDL", email = "pudl@catalyst.coop"}]
 requires-python = ">=3.11,<3.12"
 
 dependencies = [
+    "arelle-release>=2.3,<2.22",
     "catalystcoop.pudl @ git+https://github.com/catalyst-cooperative/pudl.git",
     "coloredlogs>=14",
     "feedparser>=6.0",
-    "tqdm>=4.64",
-    "python-dotenv~=1.0.0",
-    "arelle-release>=2.3,<2.22",
-    "semantic_version>=2.8,<3",
+    "frictionless>=4.40,<5",
     "pydantic>=2.0,<3",
+    "python-dotenv~=1.0.0",
+    "semantic_version>=2.8,<3",
+    "tqdm>=4.64",
 ]
 
 classifiers = [
