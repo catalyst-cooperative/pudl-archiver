@@ -1,27 +1,132 @@
 """Download EIA 176 data."""
-from pathlib import Path
+import datetime
+import logging
+
+import pandas as pd
+from pydantic import BaseModel
+from pydantic.alias_generators import to_camel
 
 from pudl_archiver.archivers.classes import (
     AbstractDatasetArchiver,
     ArchiveAwaitable,
     ResourceInfo,
 )
+from pudl_archiver.frictionless import ZipLayout
+
+logger = logging.getLogger(f"catalystcoop.{__name__}")
+
+
+class NaturalGasData(BaseModel):
+    """Data transfer object from EIA."""
+
+    class Years(BaseModel):
+        """Metadata about years for a specific dataset."""
+
+        ayear: int
+
+        class Config:  # noqa: D106
+            alias_generator = to_camel
+            populate_by_name = True
+
+    code: str
+    defaultsortby: str
+    defaultitems: str
+    defaultunittype: str
+    description: str
+    last_updated: datetime.datetime
+    available_years: list[Years]
+    min_year: Years
+    max_year: Years
+    default_start_year: int
+    default_end_year: int
+
+    class Config:  # noqa: D106
+        alias_generator = to_camel
+        populate_by_name = True
 
 
 class Eia176Archiver(AbstractDatasetArchiver):
     """EIA 176 archiver."""
 
     name = "eia176"
+    base_url = "https://www.eia.gov/naturalgas/ngqs/data/report/RPC/data/"
+    items_url = "https://www.eia.gov/naturalgas/ngqs/data/items"
+
+    async def get_items(self, url: str = items_url) -> list[str]:
+        """Get list of item codes from EIA NQGS portal."""
+        items_response = await self.get_json(url)
+        items_list = [item["item"] for item in items_response]
+        return items_list
 
     async def get_resources(self) -> ArchiveAwaitable:
-        """Download bulk EIA 176 data."""
-        yield self.get_bulk_resource()
+        """Download EIA 176 resources."""
+        items_list = await self.get_items(url=self.items_url)
+        for year in range(1997, 2023):
+            year = str(year)
+            yield self.get_year_resource(year, items_list=items_list)
 
-    async def get_bulk_resource(self) -> tuple[Path, dict]:
-        """Download zip file."""
-        # Use archive link if year is not most recent year
-        url = "https://www.eia.gov/naturalgas/ngqs/all_ng_data.zip"
-        download_path = self.download_directory / "eia176.zip"
-        await self.download_zipfile(url, download_path)
+    async def get_year_resource(self, year: str, items_list: list[str]) -> ResourceInfo:
+        """Download all available data for a year.
 
-        return ResourceInfo(local_path=download_path, partitions={})
+        We do this by getting the list of all items available for Form 176,
+        iteratively calling them into the URL, getting the JSON and transforming it into
+        a csv that is then zipped.
+
+        Args:
+            year: the year we're downloading data for
+        """
+        archive_path = self.download_directory / f"eia176-{year}.zip"
+        csv_name = f"eia176_{year}.csv"
+
+        dataframes = []
+
+        for i in range(0, len(items_list), 20):
+            logger.info(f"Getting items {i}-{i+20} of data for {year}")
+            # Chunk items list into 20 to avoid error message
+            download_url = self.base_url + f"{year}/{year}/ICA/Name/"
+            items = items_list[i : i + 20]
+            for item in items:
+                download_url += f"{item}/"
+            download_url = download_url[:-1]  # Drop trailing slash
+
+            json_response = await self.get_json(download_url)
+            # Get data into dataframes
+            try:
+                dataframes.append(
+                    pd.DataFrame.from_dict(json_response["data"], orient="columns")
+                )
+            except Exception as ex:
+                logger.warning(
+                    f"{ex}: skipping dataframe for {year} - see {download_url}"
+                )
+
+        logger.info(f"Compiling data for {year}")
+        dataframe = pd.concat(dataframes)
+
+        # Rename columns and add year column
+        # Instead of using year for value column, rename "value"
+        column_dict = {
+            item["field"]: str(item["headerName"]).lower()
+            if str(item["headerName"]).lower() != year
+            else "value"
+            for item in json_response["columns"]
+        }
+
+        dataframe = dataframe.rename(columns=column_dict)
+
+        dataframe.to_csv(
+            archive_path,
+            encoding="utf-8",
+            mode="a",
+            index=False,
+            compression={"method": "zip", "archive_name": csv_name},
+        )
+
+        # TO DO - deal with the zipfile hash / use the existing class better.
+        return ResourceInfo(
+            local_path=archive_path,
+            partitions={
+                "year": year,
+            },
+            layout=ZipLayout(file_paths=(csv_name)),
+        )
