@@ -1,6 +1,7 @@
 """Download EIA 176 data."""
 import datetime
 import logging
+import zipfile
 
 import pandas as pd
 from pydantic import BaseModel
@@ -12,6 +13,7 @@ from pudl_archiver.archivers.classes import (
     ResourceInfo,
 )
 from pudl_archiver.frictionless import ZipLayout
+from pudl_archiver.utils import add_to_archive_stable_hash
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
@@ -111,22 +113,28 @@ class Eia176Archiver(AbstractDatasetArchiver):
             else "value"
             for item in json_response["columns"]
         }
-
-        dataframe = dataframe.rename(columns=column_dict)
-
-        dataframe.to_csv(
-            archive_path,
-            encoding="utf-8",
-            mode="a",
-            index=False,
-            compression={"method": "zip", "archive_name": csv_name},
+        dataframe = dataframe.rename(columns=column_dict).sort_values(
+            ["company", "item"]
         )
 
-        # TO DO - deal with the zipfile hash / use the existing class better.
+        # Convert to CSV in-memory and write to .zip with stable hash
+        csv_data = dataframe.to_csv(
+            encoding="utf-8",
+            index=False,
+        )
+        with zipfile.ZipFile(
+            archive_path,
+            "a",
+            compression=zipfile.ZIP_DEFLATED,
+        ) as archive:
+            add_to_archive_stable_hash(
+                archive=archive, filename=csv_name, data=csv_data
+            )
+
         return ResourceInfo(
             local_path=archive_path,
             partitions={
                 "year": year,
             },
-            layout=ZipLayout(file_paths=(csv_name)),
+            layout=ZipLayout(file_paths={csv_name}),
         )

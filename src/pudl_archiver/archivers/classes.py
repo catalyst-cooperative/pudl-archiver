@@ -215,7 +215,7 @@ class AbstractDatasetArchiver(ABC):
     async def get_json(self, url: str, **kwargs) -> dict[str, str]:
         """Get a JSON and return it as a dictionary."""
         response = await retry_async(self.session.get, args=[url], kwargs=kwargs)
-        response_json = response.json()  # FIX ME!
+        response_json = await response.json()  # FIX ME!
         return response_json
 
     async def get_hyperlinks(
