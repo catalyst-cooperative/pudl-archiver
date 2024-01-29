@@ -12,6 +12,8 @@ from pathlib import Path
 
 import aiohttp
 import pandas as pd
+from pydantic import BaseModel
+from pydantic.alias_generators import to_camel
 
 from pudl_archiver.archivers import validate
 from pudl_archiver.frictionless import DataPackage, ResourceInfo
@@ -215,7 +217,7 @@ class AbstractDatasetArchiver(ABC):
     async def get_json(self, url: str, **kwargs) -> dict[str, str]:
         """Get a JSON and return it as a dictionary."""
         response = await retry_async(self.session.get, args=[url], kwargs=kwargs)
-        response_json = await response.json()  # FIX ME!
+        response_json = await response.json()
         return response_json
 
     async def get_hyperlinks(
@@ -556,3 +558,31 @@ class AbstractDatasetArchiver(ABC):
                 tmp_dir = tempfile.TemporaryDirectory()
                 self.download_directory = Path(tmp_dir.name)
                 self.logger.info(f"New download directory {self.download_directory}")
+
+
+class EIANaturalGasData(BaseModel):
+    """Data transfer object from EIA NGQV."""
+
+    class Years(BaseModel):
+        """Metadata about years for a specific dataset."""
+
+        ayear: int
+
+        class Config:  # noqa: D106
+            alias_generator = to_camel
+            populate_by_name = True
+
+    code: str
+    defaultsortby: str
+    defaultunittype: str
+    description: str
+    last_updated: str
+    available_years: list[Years]
+    min_year: Years
+    max_year: Years
+    default_start_year: int
+    default_end_year: int
+
+    class Config:  # noqa: D106
+        alias_generator = to_camel
+        populate_by_name = True

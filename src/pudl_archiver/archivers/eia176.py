@@ -1,11 +1,8 @@
 """Download EIA 176 data."""
-import datetime
 import logging
 import zipfile
 
 import pandas as pd
-from pydantic import BaseModel
-from pydantic.alias_generators import to_camel
 
 from pudl_archiver.archivers.classes import (
     AbstractDatasetArchiver,
@@ -16,35 +13,6 @@ from pudl_archiver.frictionless import ZipLayout
 from pudl_archiver.utils import add_to_archive_stable_hash
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
-
-
-class NaturalGasData(BaseModel):
-    """Data transfer object from EIA."""
-
-    class Years(BaseModel):
-        """Metadata about years for a specific dataset."""
-
-        ayear: int
-
-        class Config:  # noqa: D106
-            alias_generator = to_camel
-            populate_by_name = True
-
-    code: str
-    defaultsortby: str
-    defaultitems: str
-    defaultunittype: str
-    description: str
-    last_updated: datetime.datetime
-    available_years: list[Years]
-    min_year: Years
-    max_year: Years
-    default_start_year: int
-    default_end_year: int
-
-    class Config:  # noqa: D106
-        alias_generator = to_camel
-        populate_by_name = True
 
 
 class Eia176Archiver(AbstractDatasetArchiver):
@@ -83,7 +51,7 @@ class Eia176Archiver(AbstractDatasetArchiver):
         dataframes = []
 
         for i in range(0, len(items_list), 20):
-            logger.info(f"Getting items {i}-{i+20} of data for {year}")
+            logger.debug(f"Getting items {i}-{i+20} of data for {year}")
             # Chunk items list into 20 to avoid error message
             download_url = self.base_url + f"{year}/{year}/ICA/Name/"
             items = items_list[i : i + 20]
@@ -105,8 +73,7 @@ class Eia176Archiver(AbstractDatasetArchiver):
         logger.info(f"Compiling data for {year}")
         dataframe = pd.concat(dataframes)
 
-        # Rename columns and add year column
-        # Instead of using year for value column, rename "value"
+        # Rename columns. Instead of using year for value column, rename "value"
         column_dict = {
             item["field"]: str(item["headerName"]).lower()
             if str(item["headerName"]).lower() != year
