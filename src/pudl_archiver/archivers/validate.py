@@ -268,8 +268,14 @@ def _validate_file_type(path: Path, buffer: BytesIO) -> bool:
     """Check that file appears valid based on extension."""
     extension = path.suffix
 
-    if extension == ".zip" or extension == ".xlsx":
+    if extension == ".xlsx":
         return zipfile.is_zipfile(buffer)
+
+    if extension == ".zip":
+        if zipfile.is_zipfile(buffer):
+            zip_test = zipfile.ZipFile(buffer).testzip()
+            return zip_test is None  # None if no error
+        return False
 
     if extension == ".xml" or extension == ".xbrl" or extension == ".xsd":
         return _validate_xml(buffer)
