@@ -37,7 +37,6 @@ class FileUniversalValidation(ValidationTestResult):
     """ValidationTestResult applied to a single file for all data sources."""
 
     resource_name: Path
-    always_serialize_in_summary: bool = False
 
 
 def validate_filetype(
@@ -46,7 +45,7 @@ def validate_filetype(
     """Check that file is valid based on type."""
     return FileUniversalValidation(
         name="Valid Filetype Test",
-        description="Check that file appears to be valid based on it's extension.",
+        description="Check that all files appear to be valid based on their extensions.",
         required_for_run_success=required_for_run_success,
         resource_name=path,
         success=_validate_file_type(path, BytesIO(path.read_bytes())),
@@ -59,7 +58,7 @@ def validate_file_not_empty(
     """Check that file is valid based on type."""
     return FileUniversalValidation(
         name="Empty File Test",
-        description="Check that file is not empty.",
+        description="Check that files are not empty.",
         required_for_run_success=required_for_run_success,
         resource_name=path,
         success=path.stat().st_size > 0,
@@ -77,7 +76,7 @@ def validate_zip_layout(
 
     return FileUniversalValidation(
         name="Zipfile Layout Test",
-        description="Check that the internal layout of a zipfile is as expected.",
+        description="Check that the internal layout of zipfiles are as expected.",
         required_for_run_success=required_for_run_success,
         resource_name=path,
         success=valid_layout,
@@ -268,8 +267,14 @@ def _validate_file_type(path: Path, buffer: BytesIO) -> bool:
     """Check that file appears valid based on extension."""
     extension = path.suffix
 
-    if extension == ".zip" or extension == ".xlsx":
+    if extension == ".xlsx":
         return zipfile.is_zipfile(buffer)
+
+    if extension == ".zip":
+        if zipfile.is_zipfile(buffer):
+            zip_test = zipfile.ZipFile(buffer).testzip()
+            return zip_test is None  # None if no error
+        return False
 
     if extension == ".xml" or extension == ".xbrl" or extension == ".xsd":
         return _validate_xml(buffer)

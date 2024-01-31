@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 from aiohttp import ClientSession
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver, ArchiveAwaitable
-from pudl_archiver.archivers.validate import ValidationTestResult
+from pudl_archiver.archivers.validate import ValidationTestResult, validate_filetype
 from pudl_archiver.frictionless import Resource, ResourceInfo
 
 
@@ -694,3 +694,16 @@ def test_check_data_continuity(datapackage, new_resources, success, notes):
     validation = archiver._check_data_continuity(new_datapackage)
     assert validation.success == success
     assert notes in validation.notes[0]  # Check exact success/fail reason
+
+
+def test_check_file_type(
+    mocker,
+    good_zipfile,
+    bad_zipfile,
+):
+    """Test the ``_check_file_size`` validation test."""
+    validation_result = validate_filetype(good_zipfile, True)
+    assert validation_result.success
+
+    validation_result = validate_filetype(bad_zipfile, True)
+    assert not validation_result.success
