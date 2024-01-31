@@ -1,14 +1,15 @@
-"""Download EIA 757a data."""
+"""Shared methods for data from EIA Natural Gas Quarterly Viewer (NGQV)."""
 import logging
 import zipfile
 from collections.abc import Iterable
 
 import pandas as pd
+from pydantic import BaseModel
+from pydantic.alias_generators import to_camel
 
 from pudl_archiver.archivers.classes import (
     AbstractDatasetArchiver,
     ArchiveAwaitable,
-    EIANaturalGasData,
     ResourceInfo,
 )
 from pudl_archiver.frictionless import ZipLayout
@@ -17,11 +18,40 @@ from pudl_archiver.utils import add_to_archive_stable_hash
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 
-class Eia757AArchiver(AbstractDatasetArchiver):
-    """EIA 757A archiver."""
+class EIANaturalGasData(BaseModel):
+    """Data transfer object from EIA NGQV."""
 
-    name = "eia757a"
-    base_url = "https://www.eia.gov/naturalgas/ngqs/data/report"
+    class Years(BaseModel):
+        """Metadata about years for a specific dataset."""
+
+        ayear: int
+
+        class Config:  # noqa: D106
+            alias_generator = to_camel
+            populate_by_name = True
+
+    code: str
+    defaultsortby: str
+    defaultunittype: str
+    description: str
+    last_updated: str
+    available_years: list[Years]
+    min_year: Years
+    max_year: Years
+    default_start_year: int
+    default_end_year: int
+
+    class Config:  # noqa: D106
+        alias_generator = to_camel
+        populate_by_name = True
+
+
+class EiaNGQVArchiver(AbstractDatasetArchiver):
+    """EIA NGQV generic archiver. Subclass by form."""
+
+    name: str
+    form: str  # What to use to search for dataset in NGQV responses
+    base_url: str = "https://www.eia.gov/naturalgas/ngqs/data/report"
 
     async def get_datasets(self, url: str, form: str) -> Iterable[EIANaturalGasData]:
         """Return metadata for all forms for selected dataset."""
@@ -31,8 +61,8 @@ class Eia757AArchiver(AbstractDatasetArchiver):
         return datasets
 
     async def get_resources(self) -> ArchiveAwaitable:
-        """Download EIA 757A resources."""
-        datasets_list = await self.get_datasets(url=self.base_url, form="757")
+        """Download EIA 191 resources."""
+        datasets_list = await self.get_datasets(url=self.base_url, form=self.form)
 
         for dataset in datasets_list:
             # Get all available years
@@ -51,8 +81,8 @@ class Eia757AArchiver(AbstractDatasetArchiver):
         Args:
             year: the year we're downloading data for
         """
-        archive_path = self.download_directory / f"eia757a-{year}.zip"
-        csv_name = f"eia757a_{year}.csv"
+        archive_path = self.download_directory / f"{self.name}-{year}.zip"
+        csv_name = f"{self.name}_{year}.csv"
 
         download_url = self.base_url + f"/{dataset.code}/data/{year}/{year}/ICA/Name"
 

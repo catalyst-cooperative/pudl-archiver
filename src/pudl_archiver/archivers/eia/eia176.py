@@ -66,8 +66,8 @@ class Eia176Archiver(AbstractDatasetArchiver):
                     pd.DataFrame.from_dict(json_response["data"], orient="columns")
                 )
             except Exception as ex:
-                logger.warning(
-                    f"{ex}: skipping dataframe for {year} - see {download_url}"
+                raise AssertionError(
+                    f"{ex}: Error processing dataframe for {year} - see {download_url}."
                 )
 
         logger.info(f"Compiling data for {year}")
