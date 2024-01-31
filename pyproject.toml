@@ -9,7 +9,7 @@ dependencies = [
     "catalystcoop.pudl @ git+https://github.com/catalyst-cooperative/pudl.git",
     "coloredlogs>=14",
     "feedparser>=6.0",
-    "frictionless>=4.40,<6",
+    "frictionless>=4.40,<5",
     "pydantic>=2.0,<3",
     "python-dotenv~=1.0.0",
     "semantic_version>=2.8,<3",
