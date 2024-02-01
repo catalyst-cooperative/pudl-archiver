@@ -61,7 +61,7 @@ class EiaNGQVArchiver(AbstractDatasetArchiver):
         return datasets
 
     async def get_resources(self) -> ArchiveAwaitable:
-        """Download EIA 191 resources."""
+        """Download EIA NGQV resources for specified form."""
         datasets_list = await self.get_datasets(url=self.base_url, form=self.form)
 
         for dataset in datasets_list:
