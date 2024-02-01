@@ -127,6 +127,7 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
                 target_archive=archive_path,
                 name=filename,
                 blob=file_path.open("rb"),
+                compress_level=8,
             )
             data_paths_in_archive.add(filename)
             # Don't want to leave multiple giant CSVs on disk, so delete

@@ -197,18 +197,26 @@ class AbstractDatasetArchiver(ABC):
                 archive=archive, filename=filename, data=response_bytes
             )
 
-    def add_to_archive(self, target_archive: Path, name: str, blob: typing.BinaryIO):
+    def add_to_archive(
+        self,
+        target_archive: Path,
+        name: str,
+        blob: typing.BinaryIO,
+        compress_level: int | None = None,
+    ):
         """Add a file to a ZIP archive.
 
         Args:
             target_archive: path to target archive.
             name: name of the file *within* the archive.
             blob: the content you'd like to write to the archive.
+            compress_level: the level of compression (0-9). Defaults to 6 if None.
         """
         with zipfile.ZipFile(
             target_archive,
             "a",
             compression=zipfile.ZIP_DEFLATED,
+            compresslevel=compress_level,
         ) as archive:
             add_to_archive_stable_hash(archive=archive, filename=name, data=blob.read())
 
