@@ -21,13 +21,7 @@ jobs:
           - eia_bulk_elec
 
       fail-fast: false
-    runs-on:
-      - if: ${{ matrix.dataset == 'epacems'}}
-        group: large-runner-group
-        label: ubuntu-22.04-4core
-
-      - if: ${{ ! matrix.dataset == 'epacems'}}
-        label: ubuntu-latest
+    runs-on: ${{ matrix.dataset == 'epacems' && 'group=large-runner-group, label=ubuntu-22.04-4core' || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v4
 
