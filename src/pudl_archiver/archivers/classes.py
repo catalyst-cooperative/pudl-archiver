@@ -19,7 +19,6 @@ from pudl_archiver.frictionless import DataPackage, ResourceInfo
 from pudl_archiver.utils import (
     add_to_archive_stable_hash,
     retry_async,
-    retry_async_contextmanager,
 )
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
@@ -55,6 +54,15 @@ class _HyperlinkExtractor(HTMLParser):
             for attr, val in attrs:
                 if attr == "href":
                     self.hyperlinks.add(val)
+
+
+async def _download_file(
+    session: aiohttp.ClientSession, url: str, file: Path | io.BytesIO, **kwargs
+):
+    async with session.get(url, **kwargs) as response:
+        with file.open("wb") if isinstance(file, Path) else nullcontext(file) as f:
+            async for chunk in response.content.iter_chunked(1024):
+                f.write(chunk)
 
 
 class AbstractDatasetArchiver(ABC):
@@ -166,12 +174,7 @@ class AbstractDatasetArchiver(ABC):
             file: Local path to write file to disk or bytes object to save file in memory.
             kwargs: Key word args to pass to request.
         """
-        async with retry_async_contextmanager(
-            self.session.get, args=[url], kwargs=kwargs
-        ) as response:
-            with file.open("wb") if isinstance(file, Path) else nullcontext(file) as f:
-                async for chunk in response.content.iter_chunked(1024):
-                    f.write(chunk)
+        await retry_async(_download_file, [self.session, url, file], kwargs)
 
     async def download_and_zip_file(
         self,

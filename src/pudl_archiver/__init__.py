@@ -68,7 +68,10 @@ async def archive_datasets(
 
     connector = aiohttp.TCPConnector(limit_per_host=20, force_close=True)
     async with aiohttp.ClientSession(
-        trace_configs=[trace_config], connector=connector, raise_for_status=False
+        trace_configs=[trace_config],
+        connector=connector,
+        raise_for_status=False,
+        read_timeout=10 * 60,
     ) as session:
         # List to gather all archivers to run asyncronously
         tasks = []
