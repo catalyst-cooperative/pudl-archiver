@@ -70,4 +70,5 @@ def add_to_archive_stable_hash(archive: zipfile.ZipFile, filename, data: bytes):
         # Set fixed date to enable hash comparisons between archives
         date_time=(1980, 1, 1, 0, 0, 0),
     )
+    info.compress_type = zipfile.ZIP_DEFLATED
     archive.writestr(info, data)
