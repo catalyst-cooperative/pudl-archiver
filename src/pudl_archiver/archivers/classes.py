@@ -7,6 +7,7 @@ import tempfile
 import typing
 import zipfile
 from abc import ABC, abstractmethod
+from contextlib import nullcontext
 from html.parser import HTMLParser
 from pathlib import Path
 
@@ -15,7 +16,11 @@ import pandas as pd
 
 from pudl_archiver.archivers import validate
 from pudl_archiver.frictionless import DataPackage, ResourceInfo
-from pudl_archiver.utils import add_to_archive_stable_hash, retry_async
+from pudl_archiver.utils import (
+    add_to_archive_stable_hash,
+    retry_async,
+    retry_async_contextmanager,
+)
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
@@ -161,13 +166,12 @@ class AbstractDatasetArchiver(ABC):
             file: Local path to write file to disk or bytes object to save file in memory.
             kwargs: Key word args to pass to request.
         """
-        response = await retry_async(self.session.get, args=[url], kwargs=kwargs)
-        response_bytes = await retry_async(response.read)
-        if isinstance(file, Path):
-            with Path.open(file, "wb") as f:
-                f.write(response_bytes)
-        elif isinstance(file, io.BytesIO):
-            file.write(response_bytes)
+        async with retry_async_contextmanager(
+            self.session.get, args=[url], kwargs=kwargs
+        ) as response:
+            with file.open("wb") if isinstance(file, Path) else nullcontext(file) as f:
+                async for chunk in response.content.iter_chunked(1024):
+                    f.write(chunk)
 
     async def download_and_zip_file(
         self,
