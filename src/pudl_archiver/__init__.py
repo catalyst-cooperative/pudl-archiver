@@ -3,9 +3,11 @@ import asyncio
 import json
 import logging
 import os
+import zipfile
 from pathlib import Path
 
 import aiohttp
+import pandas as pd
 
 import pudl_archiver.orchestrator  # noqa: F401
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver
@@ -27,7 +29,18 @@ def all_archivers():
     for module in module_names:
         # AbstractDatasetArchiver won't know about the subclasses unless they are imported
         __import__(module)
-    return AbstractDatasetArchiver.__subclasses__()
+
+    def all_subclasses(cls):
+        """If a subclass has subclasses, include them in the list. Remove intermediaries."""
+        subclasses = set(cls.__subclasses__())
+        for c in subclasses.copy():
+            subsubclasses = set(c.__subclasses__())
+            if subsubclasses:
+                subclasses.remove(c)
+                subclasses = subclasses.union(subsubclasses)
+        return subclasses
+
+    return all_subclasses(AbstractDatasetArchiver)
 
 
 ARCHIVERS = {archiver.name: archiver for archiver in all_archivers()}

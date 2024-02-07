@@ -1,8 +1,8 @@
 import pytest
-from pudl_archiver.archivers.eia860 import Eia860Archiver
-from pudl_archiver.archivers.eia860m import Eia860MArchiver
-from pudl_archiver.archivers.eia861 import Eia861Archiver
-from pudl_archiver.archivers.eia923 import Eia923Archiver
+from pudl_archiver.archivers.eia.eia860 import Eia860Archiver
+from pudl_archiver.archivers.eia.eia860m import Eia860MArchiver
+from pudl_archiver.archivers.eia.eia861 import Eia861Archiver
+from pudl_archiver.archivers.eia.eia923 import Eia923Archiver
 
 
 @pytest.mark.asyncio
@@ -14,7 +14,7 @@ async def test_eia860(mocker):
     ]
     get_hyperlinks = mocker.AsyncMock(return_value=urls)
     mocker.patch(
-        "pudl_archiver.archivers.eia860.Eia860Archiver.get_hyperlinks",
+        "pudl_archiver.archivers.eia.eia860.Eia860Archiver.get_hyperlinks",
         get_hyperlinks,
     )
     archiver = Eia860Archiver(mock_session, only_years=[2019, 2022])
@@ -45,7 +45,7 @@ async def test_eia860m(mocker, tmp_path):
     ]
     get_hyperlinks = mocker.AsyncMock(return_value=urls)
     mocker.patch(
-        "pudl_archiver.archivers.eia860m.Eia860MArchiver.get_hyperlinks",
+        "pudl_archiver.archivers.eia.eia860m.Eia860MArchiver.get_hyperlinks",
         get_hyperlinks,
     )
 
@@ -54,7 +54,7 @@ async def test_eia860m(mocker, tmp_path):
             f.write(f"fake data for {file}")
 
     mocker.patch(
-        "pudl_archiver.archivers.eia860m.Eia860MArchiver.download_file",
+        "pudl_archiver.archivers.eia.eia860m.Eia860MArchiver.download_file",
         mocker.AsyncMock(side_effect=make_fake_file),
     )
     archiver = Eia860MArchiver(mock_session, only_years=[2019, 2022])
@@ -74,7 +74,7 @@ async def test_eia861(mocker):
     ]
     get_hyperlinks = mocker.AsyncMock(return_value=urls)
     mocker.patch(
-        "pudl_archiver.archivers.eia861.Eia861Archiver.get_hyperlinks",
+        "pudl_archiver.archivers.eia.eia861.Eia861Archiver.get_hyperlinks",
         get_hyperlinks,
     )
     archiver = Eia861Archiver(mock_session, only_years=[2019, 2022])
@@ -91,7 +91,7 @@ async def test_eia923(mocker):
     ]
     get_hyperlinks = mocker.AsyncMock(return_value=urls)
     mocker.patch(
-        "pudl_archiver.archivers.eia923.Eia923Archiver.get_hyperlinks",
+        "pudl_archiver.archivers.eia.eia923.Eia923Archiver.get_hyperlinks",
         get_hyperlinks,
     )
     archiver = Eia923Archiver(mock_session, only_years=[2019, 2022])
