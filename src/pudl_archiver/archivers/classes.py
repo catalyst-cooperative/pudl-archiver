@@ -212,6 +212,12 @@ class AbstractDatasetArchiver(ABC):
         ) as archive:
             add_to_archive_stable_hash(archive=archive, filename=name, data=blob.read())
 
+    async def get_json(self, url: str, **kwargs) -> dict[str, str]:
+        """Get a JSON and return it as a dictionary."""
+        response = await retry_async(self.session.get, args=[url], kwargs=kwargs)
+        response_json = await response.json()
+        return response_json
+
     async def get_hyperlinks(
         self,
         url: str,
