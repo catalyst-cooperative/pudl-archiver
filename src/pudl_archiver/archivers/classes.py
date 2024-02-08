@@ -1,6 +1,7 @@
 """Defines base class for archiver."""
 import asyncio
 import io
+import json
 import logging
 import math
 import tempfile
@@ -222,8 +223,8 @@ class AbstractDatasetArchiver(ABC):
     async def get_json(self, url: str, **kwargs) -> dict[str, str]:
         """Get a JSON and return it as a dictionary."""
         response = await retry_async(self.session.get, args=[url], kwargs=kwargs)
-        response_json = await response.json()
-        return response_json
+        response_bytes = await retry_async(response.read)
+        return json.loads(response_bytes)
 
     async def get_hyperlinks(
         self,
