@@ -224,7 +224,11 @@ class AbstractDatasetArchiver(ABC):
         """Get a JSON and return it as a dictionary."""
         response = await retry_async(self.session.get, args=[url], kwargs=kwargs)
         response_bytes = await retry_async(response.read)
-        return json.loads(response_bytes)
+        try:
+            json_obj = json.loads(response_bytes.decode("utf-8"))
+        except json.JSONDecodeError:
+            logger.warn(f"Invalid JSON string: {response_bytes}")
+        return json_obj
 
     async def get_hyperlinks(
         self,
