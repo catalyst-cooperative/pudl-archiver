@@ -1,12 +1,14 @@
 """Defines base class for archiver."""
 import asyncio
 import io
+import json
 import logging
 import math
 import tempfile
 import typing
 import zipfile
 from abc import ABC, abstractmethod
+from contextlib import nullcontext
 from html.parser import HTMLParser
 from pathlib import Path
 
@@ -15,7 +17,10 @@ import pandas as pd
 
 from pudl_archiver.archivers import validate
 from pudl_archiver.frictionless import DataPackage, ResourceInfo
-from pudl_archiver.utils import add_to_archive_stable_hash, retry_async
+from pudl_archiver.utils import (
+    add_to_archive_stable_hash,
+    retry_async,
+)
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
@@ -50,6 +55,15 @@ class _HyperlinkExtractor(HTMLParser):
             for attr, val in attrs:
                 if attr == "href":
                     self.hyperlinks.add(val)
+
+
+async def _download_file(
+    session: aiohttp.ClientSession, url: str, file: Path | io.BytesIO, **kwargs
+):
+    async with session.get(url, **kwargs) as response:
+        with file.open("wb") if isinstance(file, Path) else nullcontext(file) as f:
+            async for chunk in response.content.iter_chunked(1024):
+                f.write(chunk)
 
 
 class AbstractDatasetArchiver(ABC):
@@ -161,13 +175,7 @@ class AbstractDatasetArchiver(ABC):
             file: Local path to write file to disk or bytes object to save file in memory.
             kwargs: Key word args to pass to request.
         """
-        response = await retry_async(self.session.get, args=[url], kwargs=kwargs)
-        response_bytes = await retry_async(response.read)
-        if isinstance(file, Path):
-            with Path.open(file, "wb") as f:
-                f.write(response_bytes)
-        elif isinstance(file, io.BytesIO):
-            file.write(response_bytes)
+        await retry_async(_download_file, [self.session, url, file], kwargs)
 
     async def download_and_zip_file(
         self,
@@ -215,8 +223,12 @@ class AbstractDatasetArchiver(ABC):
     async def get_json(self, url: str, **kwargs) -> dict[str, str]:
         """Get a JSON and return it as a dictionary."""
         response = await retry_async(self.session.get, args=[url], kwargs=kwargs)
-        response_json = await response.json()
-        return response_json
+        response_bytes = await retry_async(response.read)
+        try:
+            json_obj = json.loads(response_bytes.decode("utf-8"))
+        except json.JSONDecodeError:
+            logger.warn(f"Invalid JSON string: {response_bytes}")
+        return json_obj
 
     async def get_hyperlinks(
         self,

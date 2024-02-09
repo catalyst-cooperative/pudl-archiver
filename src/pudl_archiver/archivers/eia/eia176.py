@@ -24,6 +24,7 @@ class Eia176Archiver(AbstractDatasetArchiver):
 
     async def get_items(self, url: str = items_url) -> list[str]:
         """Get list of item codes from EIA NQGS portal."""
+        logger.info("Getting list of items in Form 176.")
         items_response = await self.get_json(url)
         items_list = [item["item"] for item in items_response]
         return items_list
