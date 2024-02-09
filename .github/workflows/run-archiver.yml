@@ -14,7 +14,6 @@ jobs:
     strategy:
       matrix:
         dataset:
-          - eia176
           - eia191
           - eia757a
           - eia860
