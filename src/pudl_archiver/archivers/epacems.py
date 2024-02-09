@@ -123,7 +123,7 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
 
             filename = f"epacems-{year}q{quarter}.csv"
             file_path = self.download_directory / filename
-            await self.download_file(url=url, file=file_path, timeout=60 * 14)
+            await self.download_file(url=url, file=file_path)
             self.add_to_archive(
                 target_archive=archive_path,
                 name=filename,

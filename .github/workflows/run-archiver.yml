@@ -56,7 +56,7 @@ jobs:
           pudl_archiver --datasets ${{ matrix.dataset }} --summary-file ${{ matrix.dataset }}_run_summary.json
 
       - name: Upload run summaries
-        if: failure() || success()
+        if: always()
         id: upload_summaries
         uses: actions/upload-artifact@v4
         with:

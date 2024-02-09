@@ -200,8 +200,8 @@ async def test_download_zipfile(mocker, bad_zipfile, good_zipfile):
 async def test_download_file(mocker, tmp_path):
     """Test download_file.
 
-    Tests that expected data is written to file on disk or in memory. Doesn't
-    actually download any files.
+    Tests that expected data is written to file on disk or in memory. We use Catalyst's
+    README.md file to ensure that downloads produce the same content as a direct GET.
     """
 
     def _ground_truth_download(url):
