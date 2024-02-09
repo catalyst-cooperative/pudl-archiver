@@ -55,8 +55,11 @@ class _HyperlinkExtractor(HTMLParser):
 class AbstractDatasetArchiver(ABC):
     """An abstract base archiver class."""
 
+    #: Name of dataset
     name: str
+    #: Number of resources to download concurrently (if None there will be no limit)
     concurrency_limit: int | None = None
+    #: Create a temporary directory for each chunk of resources
     directory_per_resource_chunk: bool = False
 
     # Configure which generic validation tests to run
