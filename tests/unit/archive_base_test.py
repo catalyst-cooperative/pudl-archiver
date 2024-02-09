@@ -8,6 +8,7 @@ import zipfile
 from pathlib import Path
 
 import pytest
+import requests
 from aiohttp import ClientSession
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver, ArchiveAwaitable
 from pudl_archiver.archivers.validate import ValidationTestResult, validate_filetype
@@ -196,43 +197,34 @@ async def test_download_zipfile(mocker, bad_zipfile, good_zipfile):
 
 
 @pytest.mark.asyncio
-async def test_download_file(mocker, file_data):
+async def test_download_file(mocker, tmp_path):
     """Test download_file.
 
-    Tests that expected data is written to file on disk or in memory. Doesn't
-    actually download any files.
+    Tests that expected data is written to file on disk or in memory. We use Catalyst's
+    README.md file to ensure that downloads produce the same content as a direct GET.
     """
+
+    def _ground_truth_download(url):
+        return requests.get(url, timeout=1000).content
+
+    url = "https://github.com/catalyst-cooperative/pudl-archiver/blob/main/README.md"
+    file_content = _ground_truth_download(url)
+
     # Initialize MockArchiver class
     archiver = MockArchiver(None)
 
-    session_mock = mocker.AsyncMock(name="session_mock")
-    archiver.session = session_mock
+    async with ClientSession() as session:
+        archiver.session = session
+        file = io.BytesIO()
 
-    # Set return value
-    response_mock = mocker.AsyncMock()
-    response_mock.read = mocker.AsyncMock(return_value=file_data)
-    session_mock.get = mocker.AsyncMock(return_value=response_mock)
+        # Call method
+        await archiver.download_file(url, file)
+        assert file.getvalue() == file_content
 
-    # Prepare args
-    url = "https://www.fake.url.com"
-    file = io.BytesIO()
-
-    # Call method
-    await archiver.download_file(url, file)
-
-    session_mock.get.assert_called_once_with(url)
-
-    assert file.getvalue() == file_data
-
-    # Rerun test with path to file
-    session_mock.get.reset_mock()
-    with tempfile.TemporaryDirectory() as path:
-        file_path = Path(path) / "test"
+        # Rerun with path to file
+        file_path = tmp_path / "test"
         await archiver.download_file(url, file_path)
-
-        session_mock.get.assert_called_once_with(url)
-        file = file_path.open("rb")
-        assert file.read() == file_data
+        assert file_path.read_bytes() == file_content
 
 
 @pytest.mark.asyncio
