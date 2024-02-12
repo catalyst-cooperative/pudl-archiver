@@ -163,6 +163,9 @@ class AbstractDatasetArchiver(ABC):
             url: URL to file to download.
             file: Local path to write file to disk or bytes object to save file in memory.
             kwargs: Key word args to pass to request.
+
+        Returns:
+            Tuple of url and file (path or bytes).
         """
         response = await retry_async(self.session.get, args=[url], kwargs=kwargs)
         response_bytes = await retry_async(response.read)
@@ -171,7 +174,7 @@ class AbstractDatasetArchiver(ABC):
                 f.write(response_bytes)
         elif isinstance(file, io.BytesIO):
             file.write(response_bytes)
-        return url
+        return url, file
 
     async def download_and_zip_file(
         self,
@@ -200,35 +203,6 @@ class AbstractDatasetArchiver(ABC):
             add_to_archive_stable_hash(
                 archive=archive, filename=filename, data=response_bytes
             )
-
-    async def _rate_limited_scheduler(
-        self,
-        tasks: list[typing.Awaitable],
-        result_queue: asyncio.Queue,
-        rate_limit: int = 10,
-    ):
-        """Launch rate limited tasks."""
-
-        async def _run_task(task: typing.Awaitable, result_queue: asyncio.Queue):
-            await result_queue.put(await task)
-
-        scheduled_tasks = []
-        for task in tasks:
-            scheduled_tasks.append(asyncio.create_task(_run_task(task, result_queue)))
-            asyncio.sleep(1 / rate_limit)
-        await asyncio.gather(scheduled_tasks)
-
-    async def rate_limit_tasks(
-        self, tasks: list[typing.Awaitable], rate_limit: int = 10
-    ):
-        """Execute tasks every 1/rate_limit seconds to respect server limits."""
-        result_queue = asyncio.Queue()
-        scheduler = asyncio.create_task(
-            self._rate_limited_scheduler(tasks, result_queue, rate_limit=rate_limit)
-        )
-
-        while (not scheduler.done()) and (not result_queue.empty()):
-            yield await result_queue.get()
 
     def add_to_archive(self, target_archive: Path, name: str, blob: typing.BinaryIO):
         """Add a file to a ZIP archive.

@@ -1,6 +1,7 @@
 """Utility functions used in multiple places within PUDL archiver."""
 import asyncio
 import logging
+import typing
 import zipfile
 from collections.abc import Awaitable, Callable
 from typing import Annotated, Any
@@ -71,3 +72,39 @@ def add_to_archive_stable_hash(archive: zipfile.ZipFile, filename, data: bytes):
         date_time=(1980, 1, 1, 0, 0, 0),
     )
     archive.writestr(info, data)
+
+
+async def _rate_limited_scheduler(
+    tasks: list[typing.Awaitable],
+    result_queue: asyncio.Queue,
+    rate_limit: int = 10,
+):
+    """Launch rate limited tasks."""
+
+    async def _run_task(task: typing.Awaitable, result_queue: asyncio.Queue):
+        await result_queue.put(await task)
+
+    scheduled_tasks = []
+    for task in tasks:
+        scheduled_tasks.append(asyncio.create_task(_run_task(task, result_queue)))
+        asyncio.sleep(1 / rate_limit)
+    await asyncio.gather(scheduled_tasks)
+
+
+async def rate_limit_tasks(tasks: list[typing.Awaitable], rate_limit: int = 10):
+    """Utility function to rate limit asyncio tasks.
+
+    This function behaves as an async generator and will yield results from tasks
+    as they complete.
+
+    Args:
+        tasks: List of awaitables to be executed at rate limit.
+        rate_limit: Tasks will be executed every 1/rate_limit seconds.
+    """
+    result_queue = asyncio.Queue()
+    scheduler = asyncio.create_task(
+        _rate_limited_scheduler(tasks, result_queue, rate_limit=rate_limit)
+    )
+
+    while (not scheduler.done()) and (not result_queue.empty()):
+        yield await result_queue.get()
