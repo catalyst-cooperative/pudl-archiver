@@ -14,14 +14,7 @@ jobs:
     strategy:
       matrix:
         dataset:
-          - eia176
-          - eia191
-          - eia757a
-          - eia860
-          - eia860m
-          - eia923
-          - epacems
-          - eia_bulk_elec
+          - sec10k
 
       fail-fast: false
     runs-on: ubuntu-latest
