@@ -87,8 +87,11 @@ async def _rate_limited_scheduler(
     scheduled_tasks = []
     for task in tasks:
         scheduled_tasks.append(asyncio.create_task(_run_task(task, result_queue)))
-        asyncio.sleep(1 / rate_limit)
-    await asyncio.gather(scheduled_tasks)
+        await asyncio.sleep(1 / rate_limit)
+
+    # Wait for all tasks to complete
+    await asyncio.gather(*scheduled_tasks)
+    await result_queue.put("tasks_complete")
 
 
 async def rate_limit_tasks(tasks: list[typing.Awaitable], rate_limit: int = 10):
@@ -102,9 +105,9 @@ async def rate_limit_tasks(tasks: list[typing.Awaitable], rate_limit: int = 10):
         rate_limit: Tasks will be executed every 1/rate_limit seconds.
     """
     result_queue = asyncio.Queue()
-    scheduler = asyncio.create_task(
+    asyncio.create_task(
         _rate_limited_scheduler(tasks, result_queue, rate_limit=rate_limit)
     )
 
-    while (not scheduler.done()) and (not result_queue.empty()):
-        yield await result_queue.get()
+    while (result := await result_queue.get()) != "tasks_complete":
+        yield result
