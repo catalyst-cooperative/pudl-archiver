@@ -33,8 +33,15 @@ class Sec10KArchiver(AbstractDatasetArchiver):
     async def get_year_resource(self, year: int) -> ResourceInfo:
         """Download and zip all filings for a given year."""
         logger.info(f"Downloading files from {year}")
+
+        # Wait one second before starting next year to clear rate limit
+        await asyncio.sleep(1)
+
         year_index = await self.get_year_index(year)
         form_index = year_index[year_index["Form Type"].str.startswith("10-K")]
+
+        # Wait one second before starting next year to clear rate limit
+        await asyncio.sleep(1)
 
         download_tasks = []
         for fname in form_index["Filename"]:
@@ -55,9 +62,6 @@ class Sec10KArchiver(AbstractDatasetArchiver):
         form_index.to_csv(index_buffer)
         self.add_to_archive(year_archive, "index.csv", index_buffer)
 
-        # Wait one second before starting next year to clear rate limit
-        await asyncio.sleep(1)
-
         return ResourceInfo(local_path=year_archive, partitions={"year": year})
 
     async def get_year_index(self, year: int) -> pd.DataFrame:
@@ -75,7 +79,10 @@ class Sec10KArchiver(AbstractDatasetArchiver):
             )
 
             with gzip.open(index_file, mode="rt") as f:
-                df = pd.read_csv(f, sep="|", skiprows=skiprows)
+                try:
+                    df = pd.read_csv(f, sep="|", skiprows=skiprows)
+                except UnicodeDecodeError:
+                    df = pd.read_csv(f, sep="|", skiprows=skiprows, encoding="latin-1")
                 df["quarter"] = qtr
                 qtr_indices.append(df)
 
