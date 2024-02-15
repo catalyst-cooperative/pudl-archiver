@@ -41,7 +41,7 @@ def main(summary_files: list[Path]) -> None:
         url = summary["record_url"]
         if file_changes := summary["file_changes"]:
             abridged_changes = defaultdict(list)
-            for change in sorted(file_changes, key=lambda x: file_changes[x]["name"]):
+            for change in file_changes:
                 abridged_changes[change["diff_type"]].append(change["name"])
             changes = f"```\n{json.dumps(abridged_changes, indent=2)}\n```"
         else:
