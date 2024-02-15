@@ -61,6 +61,9 @@ class AbstractDatasetArchiver(ABC):
     concurrency_limit: int | None = None
     #: Create a temporary directory for each chunk of resources
     directory_per_resource_chunk: bool = False
+    #: Whether the dataset has implemented logic so that an interrupted run can be resumed
+    resumeable: bool = False
+    existing_files: list[str] = []
 
     # Configure which generic validation tests to run
     fail_on_missing_files: bool = True
@@ -511,12 +514,18 @@ class AbstractDatasetArchiver(ABC):
 
     async def download_all_resources(
         self,
+        existing_files: list[str],
     ) -> typing.Generator[tuple[str, ResourceInfo], None, None]:
         """Download all resources.
 
         This method uses the awaitables returned by `get_resources`. It
         coordinates downloading all resources concurrently.
         """
+        if len(existing_files) > 0 and (not self.resumeable):
+            raise RuntimeError(
+                f"Draft deposition is not empty, but dataset {self.name} is not resumeable"
+            )
+        self.existing_files = existing_files
         # Get all awaitables from get_resources
         resources = [resource async for resource in self.get_resources()]
 

@@ -72,6 +72,11 @@ def parse_main():
         action="store_true",
         help="Regenerate metadata from PUDL data source rather than existing archived metadata.",
     )
+    parser.add_argument(
+        "--resume-run",
+        action="store_true",
+        help="Attempt to resume a run that was previously interrupted. This functionality is not implemented for all datasets.",
+    )
     return parser.parse_args()
 
 

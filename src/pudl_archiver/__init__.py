@@ -56,6 +56,7 @@ async def archive_datasets(
     download_dir: str | None = None,
     auto_publish: bool = False,
     refresh_metadata: bool = False,
+    resume_run: bool = False,
 ):
     """A CLI for the PUDL Zenodo Storage system."""
     if sandbox:
@@ -102,6 +103,7 @@ async def archive_datasets(
                 sandbox=sandbox,
                 auto_publish=auto_publish,
                 refresh_metadata=refresh_metadata,
+                resume_run=resume_run,
             )
 
             tasks.append(orchestrator.run())

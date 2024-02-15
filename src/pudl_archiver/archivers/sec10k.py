@@ -24,11 +24,17 @@ class Sec10KArchiver(AbstractDatasetArchiver):
 
     name = "sec10k"
     concurrency_limit = 1
+    resumeable = True
 
-    async def get_resources(self) -> ArchiveAwaitable:
+    async def get_resources(
+        self,
+    ) -> ArchiveAwaitable:
         """Download SEC 10-K resources."""
         for year in range(1993, 2024):
-            yield self.get_year_resource(year)
+            if any([str(year) in fname for fname in self.existing_files]):  # noqa: C419
+                logger.info(f"Skipping {year}, archive already exists in deposition.")
+            else:
+                yield self.get_year_resource(year)
 
     async def get_year_resource(self, year: int) -> ResourceInfo:
         """Download and zip all filings for a given year."""
@@ -52,7 +58,7 @@ class Sec10KArchiver(AbstractDatasetArchiver):
             )
 
         year_archive = self.download_directory / f"sec10k-{year}.zip"
-        async for url, buffer in rate_limit_tasks(download_tasks, rate_limit=10):
+        async for url, buffer in rate_limit_tasks(download_tasks, rate_limit=8):
             logger.info(f"Downloaded: {url}")
             fname = url.replace(f"{BASE_URL}/", "")
             self.add_to_archive(year_archive, fname, buffer)
