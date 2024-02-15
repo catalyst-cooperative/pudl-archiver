@@ -223,6 +223,7 @@ class AbstractDatasetArchiver(ABC):
     async def get_json(self, url: str, **kwargs) -> dict[str, str]:
         """Get a JSON and return it as a dictionary."""
         response = await retry_async(self.session.get, args=[url], kwargs=kwargs)
+        logger.warn(f"Status: {response.status_code}")
         response_bytes = await retry_async(response.read)
         try:
             json_obj = json.loads(response_bytes.decode("utf-8"))
