@@ -227,7 +227,7 @@ class AbstractDatasetArchiver(ABC):
         try:
             json_obj = json.loads(response_bytes.decode("utf-8"))
         except json.JSONDecodeError:
-            logger.warn(f"Invalid JSON string: {response_bytes}")
+            raise AssertionError(f"Invalid JSON string: {response_bytes}")
         return json_obj
 
     async def get_hyperlinks(

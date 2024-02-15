@@ -21,6 +21,9 @@ class Eia176Archiver(AbstractDatasetArchiver):
     name = "eia176"
     base_url = "https://www.eia.gov/naturalgas/ngqs/data/report/RPC/data/"
     items_url = "https://www.eia.gov/naturalgas/ngqs/data/items"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:77.0) Gecko/20100101 Firefox/77.0"
+    }
 
     async def get_items(self, url: str = items_url) -> list[str]:
         """Get list of item codes from EIA NQGS portal."""
@@ -60,7 +63,7 @@ class Eia176Archiver(AbstractDatasetArchiver):
                 download_url += f"{item}/"
             download_url = download_url[:-1]  # Drop trailing slash
 
-            json_response = await self.get_json(download_url)
+            json_response = await self.get_json(download_url, headers=self.headers)
             # Get data into dataframes
             try:
                 dataframes.append(
