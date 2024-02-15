@@ -66,14 +66,14 @@ async def archive_datasets(
         publish_key = os.environ["ZENODO_TOKEN_PUBLISH"]
 
     async def on_request_start(session, trace_config_ctx, params):
-        logger.info(f"Starting request {params.url}: headers {params.headers}")
+        logger.debug(f"Starting request {params.url}: headers {params.headers}")
 
     async def on_response_chunk_received(session, trace_config_ctx, params):
-        logger.info(f"Chunk received from {params.url}")
+        logger.debug(f"Chunk received from {params.url}")
 
     async def on_request_end(session, trace_config_ctx, params):
-        logger.info(f"Ending request {params.url}: response {params.response.status}")
-        logger.info("Sent headers: %s" % params.response.request_info.headers)
+        logger.debug(f"Ending request {params.url}: response {params.response.status}")
+        logger.debug("Sent headers: %s" % params.response.request_info.headers)
 
     trace_config = aiohttp.TraceConfig()
     trace_config.on_request_start.append(on_request_start)
