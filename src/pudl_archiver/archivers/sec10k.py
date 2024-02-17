@@ -84,12 +84,13 @@ class Sec10KArchiver(AbstractDatasetArchiver):
                 headers=USER_AGENT_HEADER,
             )
 
-            with gzip.open(index_file, mode="rt") as f:
-                try:
+            try:
+                with gzip.open(index_file, mode="rt") as f:
                     df = pd.read_csv(f, sep="|", skiprows=skiprows)
-                except UnicodeDecodeError:
-                    df = pd.read_csv(f, sep="|", skiprows=skiprows, encoding="latin-1")
-                df["quarter"] = qtr
-                qtr_indices.append(df)
+            except UnicodeDecodeError:
+                with gzip.open(index_file, mode="rt", encoding="latin-1") as f:
+                    df = pd.read_csv(f, sep="|", skiprows=skiprows)
+            df["quarter"] = qtr
+            qtr_indices.append(df)
 
         return pd.concat(qtr_indices)

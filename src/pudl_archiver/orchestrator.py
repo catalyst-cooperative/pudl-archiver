@@ -188,7 +188,8 @@ class DepositionOrchestrator:
         self.changes = []
         if self.resume_run:
             run_history = checkpoints.load_checkpoint()
-            draft = run_history.deposition
+            original = run_history.deposition
+            draft = original
             self.create_new = run_history.create_new
             existing_resources = run_history.resources
         else:
