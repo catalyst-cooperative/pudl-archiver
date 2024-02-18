@@ -274,13 +274,15 @@ class DepositionOrchestrator:
             list(resources.keys())
         ):
             resources[name] = resource
-            checkpoints.save_checkpoint(draft, resources, self.create_new)
             change = self._generate_change(name, resource, draft.files_map)
             # Leave immediately after generating changes if dry_run
             if self.dry_run:
                 continue
             if change:
                 await self._apply_change(draft, change)
+            else:
+                logger.info(f"No changes detected for {resource.local_path}")
+            checkpoints.save_checkpoint(draft, resources, self.create_new)
         return resources
 
     def _generate_change(

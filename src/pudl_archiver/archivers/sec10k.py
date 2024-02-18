@@ -46,7 +46,7 @@ class Sec10KArchiver(AbstractDatasetArchiver):
 
     async def get_year_quarter(self, year: int, quarter: int) -> ResourceInfo:
         """Download and zip all filings for a given year."""
-        logger.info(f"Downloading files from {year}")
+        logger.info(f"Downloading files from {year}q{quarter}")
 
         # Wait one second before starting next year to clear rate limit
         await asyncio.sleep(1)
@@ -79,6 +79,7 @@ class Sec10KArchiver(AbstractDatasetArchiver):
         form_index.to_csv(index_buffer)
         self.add_to_archive(year_archive, "index.csv", index_buffer)
 
+        logger.info(f"Finished downloading filings from {year}q{quarter}.")
         return ResourceInfo(
             local_path=year_archive,
             partitions={"year_quarter": f"{year}q{quarter}"},
