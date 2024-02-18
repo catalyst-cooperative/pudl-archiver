@@ -26,6 +26,7 @@ def save_checkpoint(
     create_new: bool,
 ):
     """Save current state of run so it can be resumed after an interruption."""
+    BASE_PATH.mkdir(exist_ok=True)
     checkpoint = RunCheckpoint(
         dataset=dataset,
         deposition=deposition,
@@ -39,6 +40,5 @@ def save_checkpoint(
 
 def load_checkpoint(dataset: str) -> RunCheckpoint:
     """Load run history from file."""
-    BASE_PATH.mkdir(exist_ok=True)
     with (BASE_PATH / f"{dataset}.json").open() as f:
         return RunCheckpoint.model_validate_json(f.read())
