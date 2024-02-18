@@ -28,6 +28,7 @@ class Sec10KArchiver(AbstractDatasetArchiver):
     resumeable = True
     fail_on_file_size_change = False
     fail_on_dataset_size_change = False
+    directory_per_resource_chunk = True
 
     async def get_resources(
         self,
