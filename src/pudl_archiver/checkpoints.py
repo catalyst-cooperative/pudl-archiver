@@ -7,30 +7,38 @@ from pydantic import BaseModel
 from pudl_archiver.frictionless import ResourceInfo
 from pudl_archiver.zenodo.entities import Deposition
 
-HISTORY_FILE: Path = Path(".run_history.json")
+BASE_PATH = Path(".checkpoints/")
 
 
 class RunCheckpoint(BaseModel):
     """Model to cache results from a run so it can be resumed after an interruption."""
 
+    dataset: str
     deposition: Deposition
     resources: dict[str, ResourceInfo]
     create_new: bool
 
 
 def save_checkpoint(
-    deposition: Deposition, resources: dict[str, ResourceInfo], create_new: bool
+    dataset: str,
+    deposition: Deposition,
+    resources: dict[str, ResourceInfo],
+    create_new: bool,
 ):
     """Save current state of run so it can be resumed after an interruption."""
     checkpoint = RunCheckpoint(
-        deposition=deposition, resources=resources, create_new=create_new
+        dataset=dataset,
+        deposition=deposition,
+        resources=resources,
+        create_new=create_new,
     )
 
-    with HISTORY_FILE.open("w") as f:
+    with (BASE_PATH / f"{dataset}.json").open("w") as f:
         f.write(checkpoint.model_dump_json(indent=2, by_alias=True))
 
 
-def load_checkpoint() -> RunCheckpoint:
+def load_checkpoint(dataset: str) -> RunCheckpoint:
     """Load run history from file."""
-    with HISTORY_FILE.open() as f:
+    BASE_PATH.mkdir(exist_ok=True)
+    with (BASE_PATH / f"{dataset}.json").open() as f:
         return RunCheckpoint.model_validate_json(f.read())

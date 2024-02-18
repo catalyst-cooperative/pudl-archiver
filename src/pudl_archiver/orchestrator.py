@@ -187,7 +187,7 @@ class DepositionOrchestrator:
         """
         self.changes = []
         if self.resume_run:
-            run_history = checkpoints.load_checkpoint()
+            run_history = checkpoints.load_checkpoint(self.data_source_id)
             original = run_history.deposition
             draft = original
             self.create_new = run_history.create_new
@@ -282,7 +282,9 @@ class DepositionOrchestrator:
                 await self._apply_change(draft, change)
             else:
                 logger.info(f"No changes detected for {resource.local_path}")
-            checkpoints.save_checkpoint(draft, resources, self.create_new)
+            checkpoints.save_checkpoint(
+                self.data_source_id, draft, resources, self.create_new
+            )
         return resources
 
     def _generate_change(

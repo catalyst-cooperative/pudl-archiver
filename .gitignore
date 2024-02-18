@@ -12,4 +12,4 @@ coverage.xml
 **/*~
 .hypothesis/*
 .vscode/*
-.run_history.json
+.checkpoints/
