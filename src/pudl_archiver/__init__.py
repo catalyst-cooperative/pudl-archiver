@@ -73,6 +73,7 @@ async def archive_datasets(
 
     async def on_request_end(session, trace_config_ctx, params):
         logger.debug(f"Ending request {params.url}: response {params.response.status}")
+        logger.debug("Sent headers: %s" % params.response.request_info.headers)
 
     trace_config = aiohttp.TraceConfig()
     trace_config.on_request_start.append(on_request_start)
