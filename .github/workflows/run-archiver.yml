@@ -15,12 +15,22 @@ jobs:
       matrix:
         dataset:
           - eia176
+          - eia181
           - eia191
           - eia757a
           - eia860
           - eia860m
           - eia923
           - eia_bulk_elec
+          - eiawater
+          - ferc1
+          - ferc2
+          - ferc6
+          - ferc60
+          - ferc714
+          - epacamd_eia
+          - mshamines
+          - phmsagas
 
       fail-fast: false
     runs-on: ubuntu-latest

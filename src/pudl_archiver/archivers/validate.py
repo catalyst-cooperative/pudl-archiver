@@ -143,6 +143,7 @@ class RunSummary(BaseModel):
         }
 
         file_changes = _process_resource_diffs(baseline_resources, new_resources)
+        file_changes = sorted(file_changes, key=lambda d: d.name)  # Sort by filename
 
         previous_version = ""
         previous_version_date = ""
