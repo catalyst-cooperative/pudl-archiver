@@ -15,21 +15,14 @@ jobs:
       matrix:
         dataset:
           - eia176
-          - eia181
           - eia191
           - eia757a
           - eia860
+          - eia861
           - eia860m
           - eia923
           - eia_bulk_elec
           - eiawater
-          - ferc1
-          - ferc2
-          - ferc6
-          - ferc60
-          - ferc714
-          - epacamd_eia
-          - mshamines
           - phmsagas
 
       fail-fast: false
@@ -148,6 +141,7 @@ jobs:
           {
             echo "SLACK_PAYLOAD<<EOF"
             ./scripts/make_slack_notification_message.py --summary-files *_run_summary.json | tee slack-payload.json
+
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
       - name: Post update to pudl-deployment
