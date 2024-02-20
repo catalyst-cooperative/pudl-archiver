@@ -22,7 +22,6 @@ jobs:
           - eia860m
           - eia923
           - eia_bulk_elec
-          - eiawater
           - phmsagas
 
       fail-fast: false
