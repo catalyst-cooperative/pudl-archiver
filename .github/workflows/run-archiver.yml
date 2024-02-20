@@ -40,6 +40,13 @@ jobs:
           conda config --show
           printenv | sort
 
+      - name: Download checkpoints
+        id: restore_checkpoint
+        uses: actions/download-artifact@v4
+        with:
+          name: run-checkpoint-${{ matrix.dataset }}
+          path: .checkpoints/${{ matrix.dataset }}.json
+
       - name: Run archiver for ${{ matrix.dataset }}
         env:
           ZENODO_SANDBOX_TOKEN_UPLOAD: ${{ secrets.ZENODO_SANDBOX_TOKEN_UPLOAD }}
@@ -48,7 +55,7 @@ jobs:
           ZENODO_TOKEN_UPLOAD: ${{ secrets.ZENODO_TOKEN_UPLOAD }}
           ZENODO_TOKEN_PUBLISH: ${{ secrets.ZENODO_TOKEN_PUBLISH }}
         run: |
-          pudl_archiver --datasets ${{ matrix.dataset }} --summary-file ${{ matrix.dataset }}_run_summary.json
+          pudl_archiver --datasets ${{ matrix.dataset }} --summary-file ${{ matrix.dataset }}_run_summary.json --resume-run
 
       - name: Upload run summaries
         if: failure() || success()
