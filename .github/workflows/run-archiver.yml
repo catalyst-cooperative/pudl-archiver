@@ -7,7 +7,7 @@ on:
     - cron: "21 8 1 * *" # 8:21 AM UTC, first of every month
 
 jobs:
-  archive-run-eia:
+  archive-run-small:
     defaults:
       run:
         shell: bash -l {0}
@@ -22,6 +22,8 @@ jobs:
           - eia860m
           - eia923
           - eia_bulk_elec
+          - epacamd_eia
+          - mshamines
           - phmsagas
 
       fail-fast: false
@@ -66,7 +68,7 @@ jobs:
           name: run-summaries-${{ matrix.dataset }}
           path: ${{ matrix.dataset }}_run_summary.json
 
-  archive-run-cems:
+  archive-run-large:
     defaults:
       run:
         shell: bash -l {0}
@@ -121,8 +123,8 @@ jobs:
   archive-notify:
     runs-on: ubuntu-latest
     needs:
-      - archive-run-eia
-      - archive-run-cems
+      - archive-run-small
+      - archive-run-large
     if: ${{ always() }}
     steps:
       - uses: actions/checkout@v4

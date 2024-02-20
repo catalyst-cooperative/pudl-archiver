@@ -117,4 +117,4 @@ class MshaArchiver(AbstractDatasetArchiver):
         else:
             raise ValueError(f"Unexpected file extension: {link}. File not downloaded.")
 
-        return ResourceInfo(local_path=download_path, partitions={"dataset": dataset})
+        return ResourceInfo(local_path=download_path, partitions={"form": dataset})
