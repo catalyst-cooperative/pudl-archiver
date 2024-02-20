@@ -21,6 +21,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Download checkpoints
+        id: restore_checkpoint
+        uses: actions/download-artifact@v4
+        with:
+          name: run-checkpoint-${{ matrix.dataset }}
+
       - name: Install Conda environment using mamba
         uses: mamba-org/setup-micromamba@v1
         with:
@@ -39,14 +45,6 @@ jobs:
           conda config --show-sources
           conda config --show
           printenv | sort
-
-      - name: Download checkpoints
-        id: restore_checkpoint
-        uses: actions/download-artifact@v4
-        with:
-          name: run-checkpoint-${{ matrix.dataset }}
-          path: .checkpoints/${{ matrix.dataset }}.json
-          run-id: 209
 
       - name: Run archiver for ${{ matrix.dataset }}
         env:
