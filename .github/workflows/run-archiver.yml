@@ -21,10 +21,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download checkpoints
-        id: restore_checkpoint
-        uses: actions/download-artifact@v4
-
       - name: Install Conda environment using mamba
         uses: mamba-org/setup-micromamba@v1
         with:
