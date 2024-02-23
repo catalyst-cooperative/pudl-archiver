@@ -71,7 +71,6 @@ class Sec10KArchiver(AbstractDatasetArchiver):
         async for url, buffer in rate_limit_tasks(download_tasks, rate_limit=8):
             logger.info(f"Downloaded: {url}")
             fname = url.replace(f"{BASE_URL}/", "")
-            buffer.seek(0)
             self.add_to_archive(year_archive, fname, buffer)
             zip_files.add(fname)
 

@@ -220,6 +220,8 @@ class AbstractDatasetArchiver(ABC):
             "a",
             compression=zipfile.ZIP_DEFLATED,
         ) as archive:
+            # Make sure BinaryIO is at start of file or read could return wrong data
+            blob.seek(0)
             add_to_archive_stable_hash(archive=archive, filename=name, data=blob.read())
 
     async def get_json(self, url: str, **kwargs) -> dict[str, str]:
