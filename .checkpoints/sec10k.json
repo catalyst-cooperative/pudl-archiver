@@ -1,0 +1,704 @@
+{
+  "dataset": "sec10k",
+  "deposition": {
+    "conceptdoi": "10.5281/zenodo.10667076",
+    "conceptrecid": "10667076",
+    "created": "2024-02-17T21:35:33.691889Z",
+    "files": [
+      {
+        "checksum": "a3da05b83a982b56198b3bec03fb66c7",
+        "filename": "sec10k-1993.zip",
+        "id": "4398ab44-6bed-4b54-a45f-4b82c1f8a5bf",
+        "filesize": 1121112,
+        "links": {
+          "self": "https://zenodo.org/api/deposit/depositions/10674552/files/4398ab44-6bed-4b54-a45f-4b82c1f8a5bf",
+          "version": null,
+          "uploads": null,
+          "download": "https://zenodo.org/api/records/10674552/draft/files/sec10k-1993.zip/content"
+        }
+      },
+      {
+        "checksum": "a3da05b83a982b56198b3bec03fb66c7",
+        "filename": "sec10k-1993q4.zip",
+        "id": "971ad708-de1c-4967-9329-9bb520e54b0a",
+        "filesize": 1121112,
+        "links": {
+          "self": "https://zenodo.org/api/deposit/depositions/10674552/files/971ad708-de1c-4967-9329-9bb520e54b0a",
+          "version": null,
+          "uploads": null,
+          "download": "https://zenodo.org/api/records/10674552/draft/files/sec10k-1993q4.zip/content"
+        }
+      },
+      {
+        "checksum": "f99af2096290e052cc3f47e879f71c2c",
+        "filename": "sec10k-1994q3.zip",
+        "id": "5f07cae4-e9ab-48ca-8a3a-e060ced6c22d",
+        "filesize": 76198099,
+        "links": {
+          "self": "https://zenodo.org/api/deposit/depositions/10674552/files/5f07cae4-e9ab-48ca-8a3a-e060ced6c22d",
+          "version": null,
+          "uploads": null,
+          "download": "https://zenodo.org/api/records/10674552/draft/files/sec10k-1994q3.zip/content"
+        }
+      },
+      {
+        "checksum": "aad36a459d606f7d1e440bde4ac09ee7",
+        "filename": "sec10k-1995q4.zip",
+        "id": "6e6cf839-88b8-4392-b92e-5128ac5a20e9",
+        "filesize": 141677168,
+        "links": {
+          "self": "https://zenodo.org/api/deposit/depositions/10674552/files/6e6cf839-88b8-4392-b92e-5128ac5a20e9",
+          "version": null,
+          "uploads": null,
+          "download": "https://zenodo.org/api/records/10674552/draft/files/sec10k-1995q4.zip/content"
+        }
+      },
+      {
+        "checksum": "bb80a26ff6e8793b23e6b953163fa67e",
+        "filename": "sec10k-1994q2.zip",
+        "id": "0228e003-8122-496e-844e-0ee652f59275",
+        "filesize": 105786557,
+        "links": {
+          "self": "https://zenodo.org/api/deposit/depositions/10674552/files/0228e003-8122-496e-844e-0ee652f59275",
+          "version": null,
+          "uploads": null,
+          "download": "https://zenodo.org/api/records/10674552/draft/files/sec10k-1994q2.zip/content"
+        }
+      },
+      {
+        "checksum": "2b159ac21221a19f3520597c42c7af6e",
+        "filename": "sec10k-1994q1.zip",
+        "id": "dd88d793-1c7a-401f-84d8-4e7bde507f1c",
+        "filesize": 597555687,
+        "links": {
+          "self": "https://zenodo.org/api/deposit/depositions/10674552/files/dd88d793-1c7a-401f-84d8-4e7bde507f1c",
+          "version": null,
+          "uploads": null,
+          "download": "https://zenodo.org/api/records/10674552/draft/files/sec10k-1994q1.zip/content"
+        }
+      },
+      {
+        "checksum": "a24ec41fc3b3fdc1bba6a0b6844aceac",
+        "filename": "sec10k-1994q4.zip",
+        "id": "f4e7dbcc-e29c-4df2-b2ad-8e14ec9e6c2e",
+        "filesize": 82481196,
+        "links": {
+          "self": "https://zenodo.org/api/deposit/depositions/10674552/files/f4e7dbcc-e29c-4df2-b2ad-8e14ec9e6c2e",
+          "version": null,
+          "uploads": null,
+          "download": "https://zenodo.org/api/records/10674552/draft/files/sec10k-1994q4.zip/content"
+        }
+      },
+      {
+        "checksum": "ec4f50b56fb2c7ca8f0d58d5ea3f7c67",
+        "filename": "sec10k-1995q2.zip",
+        "id": "39832e05-9fca-427e-9699-35a069a090b0",
+        "filesize": 188189325,
+        "links": {
+          "self": "https://zenodo.org/api/deposit/depositions/10674552/files/39832e05-9fca-427e-9699-35a069a090b0",
+          "version": null,
+          "uploads": null,
+          "download": "https://zenodo.org/api/records/10674552/draft/files/sec10k-1995q2.zip/content"
+        }
+      },
+      {
+        "checksum": "2d6810f6655cc98d0c915d9cafba18ed",
+        "filename": "sec10k-1997q1.zip",
+        "id": "e9bd84fd-3138-448a-bc63-a42b027afdc4",
+        "filesize": 2257948391,
+        "links": {
+          "self": "https://zenodo.org/api/deposit/depositions/10674552/files/e9bd84fd-3138-448a-bc63-a42b027afdc4",
+          "version": null,
+          "uploads": null,
+          "download": "https://zenodo.org/api/records/10674552/draft/files/sec10k-1997q1.zip/content"
+        }
+      },
+      {
+        "checksum": "61d948c159a030d8b636b990960b91c6",
+        "filename": "sec10k-1996q2.zip",
+        "id": "b07a9481-1d0f-4b0b-a065-24be49816a7e",
+        "filesize": 512325308,
+        "links": {
+          "self": "https://zenodo.org/api/deposit/depositions/10674552/files/b07a9481-1d0f-4b0b-a065-24be49816a7e",
+          "version": null,
+          "uploads": null,
+          "download": "https://zenodo.org/api/records/10674552/draft/files/sec10k-1996q2.zip/content"
+        }
+      },
+      {
+        "checksum": "d62e21e725fa0c1831435ef01d829364",
+        "filename": "sec10k-1997q4.zip",
+        "id": "33e36147-694c-4d2a-898e-99436fa6205e",
+        "filesize": 336873574,
+        "links": {
+          "self": "https://zenodo.org/api/deposit/depositions/10674552/files/33e36147-694c-4d2a-898e-99436fa6205e",
+          "version": null,
+          "uploads": null,
+          "download": "https://zenodo.org/api/records/10674552/draft/files/sec10k-1997q4.zip/content"
+        }
+      },
+      {
+        "checksum": "7e13ab3b01ccf7a4ae81ba9adaf8913a",
+        "filename": "sec10k-1995q3.zip",
+        "id": "8806e70a-8b38-44de-b3ab-6fba8b0b8ed2",
+        "filesize": 149568012,
+        "links": {
+          "self": "https://zenodo.org/api/deposit/depositions/10674552/files/8806e70a-8b38-44de-b3ab-6fba8b0b8ed2",
+          "version": null,
+          "uploads": null,
+          "download": "https://zenodo.org/api/records/10674552/draft/files/sec10k-1995q3.zip/content"
+        }
+      },
+      {
+        "checksum": "7cdb43b2a6e1563b61c0eced71bec2bd",
+        "filename": "sec10k-1995q1.zip",
+        "id": "6f7e71aa-703a-4f87-a2e8-3442079ad07f",
+        "filesize": 786875315,
+        "links": {
+          "self": "https://zenodo.org/api/deposit/depositions/10674552/files/6f7e71aa-703a-4f87-a2e8-3442079ad07f",
+          "version": null,
+          "uploads": null,
+          "download": "https://zenodo.org/api/records/10674552/draft/files/sec10k-1995q1.zip/content"
+        }
+      },
+      {
+        "checksum": "0fcfc97d374e011046a9427a4ef47b59",
+        "filename": "sec10k-1996q3.zip",
+        "id": "9b91131e-b882-4cb0-b3ce-694806e2ca41",
+        "filesize": 316602461,
+        "links": {
+          "self": "https://zenodo.org/api/deposit/depositions/10674552/files/9b91131e-b882-4cb0-b3ce-694806e2ca41",
+          "version": null,
+          "uploads": null,
+          "download": "https://zenodo.org/api/records/10674552/draft/files/sec10k-1996q3.zip/content"
+        }
+      },
+      {
+        "checksum": "395311789db34b0ea3be5430b6bcde5a",
+        "filename": "sec10k-1996q1.zip",
+        "id": "18a1fb0d-95b1-4321-9d2a-88521a145f76",
+        "filesize": 935308482,
+        "links": {
+          "self": "https://zenodo.org/api/deposit/depositions/10674552/files/18a1fb0d-95b1-4321-9d2a-88521a145f76",
+          "version": null,
+          "uploads": null,
+          "download": "https://zenodo.org/api/records/10674552/draft/files/sec10k-1996q1.zip/content"
+        }
+      },
+      {
+        "checksum": "7e44bc461873e7caa4ef995d3f6de603",
+        "filename": "sec10k-1996q4.zip",
+        "id": "dc17f8e9-b00f-4eb6-8d1f-1cee670a45f7",
+        "filesize": 311244443,
+        "links": {
+          "self": "https://zenodo.org/api/deposit/depositions/10674552/files/dc17f8e9-b00f-4eb6-8d1f-1cee670a45f7",
+          "version": null,
+          "uploads": null,
+          "download": "https://zenodo.org/api/records/10674552/draft/files/sec10k-1996q4.zip/content"
+        }
+      },
+      {
+        "checksum": "3ce1c4d0a33d0dbed89714d1e08bb98d",
+        "filename": "sec10k-1998q3.zip",
+        "id": "e43810ef-a664-4e25-93a7-6f0ebf241f4d",
+        "filesize": 338138500,
+        "links": {
+          "self": "https://zenodo.org/api/deposit/depositions/10674552/files/e43810ef-a664-4e25-93a7-6f0ebf241f4d",
+          "version": null,
+          "uploads": null,
+          "download": "https://zenodo.org/api/records/10674552/draft/files/sec10k-1998q3.zip/content"
+        }
+      },
+      {
+        "checksum": "5856fb5dbe7eb53c6fc496c55575d9b0",
+        "filename": "sec10k-1999q1.zip",
+        "id": "0cc54bbc-b42d-4b89-a75c-5973e85e1b61",
+        "filesize": 2492380109,
+        "links": {
+          "self": "https://zenodo.org/api/deposit/depositions/10674552/files/0cc54bbc-b42d-4b89-a75c-5973e85e1b61",
+          "version": null,
+          "uploads": null,
+          "download": "https://zenodo.org/api/records/10674552/draft/files/sec10k-1999q1.zip/content"
+        }
+      },
+      {
+        "checksum": "5e5a25e68d272d3aacbf725f57ba81d0",
+        "filename": "sec10k-1999q3.zip",
+        "id": "47c01b8a-acb3-4b01-9d72-6b62419833c2",
+        "filesize": 318771728,
+        "links": {
+          "self": "https://zenodo.org/api/deposit/depositions/10674552/files/47c01b8a-acb3-4b01-9d72-6b62419833c2",
+          "version": null,
+          "uploads": null,
+          "download": "https://zenodo.org/api/records/10674552/draft/files/sec10k-1999q3.zip/content"
+        }
+      },
+      {
+        "checksum": "aa1c3c4cf7adb08a7a239608015f2ef3",
+        "filename": "sec10k-1998q4.zip",
+        "id": "cbbd8804-7399-406a-8e92-6e6238096917",
+        "filesize": 315669481,
+        "links": {
+          "self": "https://zenodo.org/api/deposit/depositions/10674552/files/cbbd8804-7399-406a-8e92-6e6238096917",
+          "version": null,
+          "uploads": null,
+          "download": "https://zenodo.org/api/records/10674552/draft/files/sec10k-1998q4.zip/content"
+        }
+      },
+      {
+        "checksum": "033992963b4dfb858f2e13554a2cd459",
+        "filename": "sec10k-1998q2.zip",
+        "id": "20fa8001-b66d-4a62-a3f2-894107fd2ee4",
+        "filesize": 647337948,
+        "links": {
+          "self": "https://zenodo.org/api/deposit/depositions/10674552/files/20fa8001-b66d-4a62-a3f2-894107fd2ee4",
+          "version": null,
+          "uploads": null,
+          "download": "https://zenodo.org/api/records/10674552/draft/files/sec10k-1998q2.zip/content"
+        }
+      },
+      {
+        "checksum": "d74b98189e7fabfccf2cbb878fab20ce",
+        "filename": "sec10k-1997q3.zip",
+        "id": "5ed00b74-6c03-4334-856a-a7009672baf3",
+        "filesize": 330956506,
+        "links": {
+          "self": "https://zenodo.org/api/deposit/depositions/10674552/files/5ed00b74-6c03-4334-856a-a7009672baf3",
+          "version": null,
+          "uploads": null,
+          "download": "https://zenodo.org/api/records/10674552/draft/files/sec10k-1997q3.zip/content"
+        }
+      },
+      {
+        "checksum": "5e304ddd2ca770736b41d14f032b70f7",
+        "filename": "sec10k-1997q2.zip",
+        "id": "e6761b14-be0a-49ad-b081-a2d10e9697d1",
+        "filesize": 588522809,
+        "links": {
+          "self": "https://zenodo.org/api/deposit/depositions/10674552/files/e6761b14-be0a-49ad-b081-a2d10e9697d1",
+          "version": null,
+          "uploads": null,
+          "download": "https://zenodo.org/api/records/10674552/draft/files/sec10k-1997q2.zip/content"
+        }
+      },
+      {
+        "checksum": "890c3644939f70020de4db656209d955",
+        "filename": "sec10k-1998q1.zip",
+        "id": "88594e41-37c1-4641-889d-5c648b184346",
+        "filesize": 2660053562,
+        "links": {
+          "self": "https://zenodo.org/api/deposit/depositions/10674552/files/88594e41-37c1-4641-889d-5c648b184346",
+          "version": null,
+          "uploads": null,
+          "download": "https://zenodo.org/api/records/10674552/draft/files/sec10k-1998q1.zip/content"
+        }
+      },
+      {
+        "checksum": "11809140fd6612bc47f3e35ef5eba3d8",
+        "filename": "sec10k-1999q2.zip",
+        "id": "d32a4021-4d0f-4c4f-ba31-aa9f7bc26f7d",
+        "filesize": 659335818,
+        "links": {
+          "self": "https://zenodo.org/api/deposit/depositions/10674552/files/d32a4021-4d0f-4c4f-ba31-aa9f7bc26f7d",
+          "version": null,
+          "uploads": null,
+          "download": "https://zenodo.org/api/records/10674552/draft/files/sec10k-1999q2.zip/content"
+        }
+      },
+      {
+        "checksum": "8099c1fb2054814d9a929529dd47fb98",
+        "filename": "sec10k-1999q4.zip",
+        "id": "83e56385-bb10-45d7-80ac-a5876a2ec738",
+        "filesize": 349819733,
+        "links": {
+          "self": "https://zenodo.org/api/deposit/depositions/10674552/files/83e56385-bb10-45d7-80ac-a5876a2ec738",
+          "version": null,
+          "uploads": null,
+          "download": "https://zenodo.org/api/records/10674552/draft/files/sec10k-1999q4.zip/content"
+        }
+      }
+    ],
+    "id": 10674552,
+    "metadata": {
+      "upload_type": "dataset",
+      "publication_date": "2024-02-18",
+      "language": "eng",
+      "title": "PUDL Raw Securities and Exchange Commission form 10-K",
+      "creators": [
+        {
+          "name": "Catalyst Cooperative",
+          "affiliation": "Catalyst Cooperative"
+        }
+      ],
+      "description": "<p>10-K offers a detailed picture of a company's business, the risks itfaces, and the operating and financial results for the fiscal year. Archived from \n<a href=\"https://www.sec.gov/files/form10-k.pdf\">https://www.sec.gov/files/form10-k.pdf</a></p>\n<p>This archive contains raw input data for the Public Utility Data Liberation (PUDL)\nsoftware developed by <a href=\"https://catalyst.coop\">Catalyst Cooperative</a>. It is\norganized into <a href=\"https://specs.frictionlessdata.io/data-package/\">Frictionless\nData Packages</a>. For additional information about this data and PUDL, see the\nfollowing resources:\n</p><ul>\n  <li><a href=\"https://github.com/catalyst-cooperative/pudl\">The PUDL Repository on GitHub</a></li>\n  <li><a href=\"https://catalystcoop-pudl.readthedocs.io\">PUDL Documentation</a></li>\n  <li><a href=\"https://zenodo.org/communities/catalyst-cooperative/\">Other Catalyst Cooperative data archives</a></li>\n</ul>\n<p></p>",
+      "access_right": "open",
+      "license": "other-pd",
+      "doi": null,
+      "prereserve_doi": {
+        "doi": "10.5281/zenodo.10674552",
+        "recid": 10674552
+      },
+      "keywords": [
+        "accounting",
+        "capex",
+        "capital",
+        "capital expenses",
+        "contract",
+        "cost",
+        "debt",
+        "depreciation",
+        "federal",
+        "finance",
+        "government",
+        "operating expenses",
+        "opex",
+        "ownership",
+        "plant in service",
+        "price",
+        "receipts",
+        "sec",
+        "securities and exchange commission",
+        "united states",
+        "us",
+        "usa"
+      ],
+      "version": "2.0.0"
+    },
+    "modified": "2024-02-18T19:51:32.001684Z",
+    "links": {
+      "bucket": "https://zenodo.org/api/files/c96968da-9301-4f80-8ef9-d60e08cd6f4f",
+      "discard": "https://zenodo.org/api/deposit/depositions/10674552/actions/discard",
+      "edit": "https://zenodo.org/api/deposit/depositions/10674552/actions/edit",
+      "files": "https://zenodo.org/api/deposit/depositions/10674552/files",
+      "html": "https://zenodo.org/deposit/10674552",
+      "latest_draft": "https://zenodo.org/api/deposit/depositions/10674552",
+      "latest_draft_html": "https://zenodo.org/deposit/10674552",
+      "publish": "https://zenodo.org/api/deposit/depositions/10674552/actions/publish",
+      "self": "https://zenodo.org/api/deposit/depositions/10674552"
+    },
+    "owner": 90379,
+    "record_id": 10674552,
+    "record_url": null,
+    "state": "unsubmitted",
+    "submitted": false,
+    "title": "PUDL Raw Securities and Exchange Commission form 10-K"
+  },
+  "resources": {
+    "sec10k-1993q4.zip": {
+      "local_path": "/tmp/tmp_r2d651k/sec10k-1993q4.zip",
+      "partitions": {
+        "year_quarter": "1993q4"
+      },
+      "layout": null
+    },
+    "sec10k-1994q1.zip": {
+      "local_path": "/tmp/tmp6msynfqp/sec10k-1994q1.zip",
+      "partitions": {
+        "year_quarter": "1994q1"
+      },
+      "layout": null
+    },
+    "sec10k-1994q2.zip": {
+      "local_path": "/tmp/tmp0o5k3cfs/sec10k-1994q2.zip",
+      "partitions": {
+        "year_quarter": "1994q2"
+      },
+      "layout": null
+    },
+    "sec10k-1994q3.zip": {
+      "local_path": "/tmp/tmpp1piox4v/sec10k-1994q3.zip",
+      "partitions": {
+        "year_quarter": "1994q3"
+      },
+      "layout": null
+    },
+    "sec10k-1994q4.zip": {
+      "local_path": "/tmp/tmp823vpkq1/sec10k-1994q4.zip",
+      "partitions": {
+        "year_quarter": "1994q4"
+      },
+      "layout": null
+    },
+    "sec10k-1995q1.zip": {
+      "local_path": "/tmp/tmp0b14oco_/sec10k-1995q1.zip",
+      "partitions": {
+        "year_quarter": "1995q1"
+      },
+      "layout": null
+    },
+    "sec10k-1995q2.zip": {
+      "local_path": "/tmp/tmpj7998a9o/sec10k-1995q2.zip",
+      "partitions": {
+        "year_quarter": "1995q2"
+      },
+      "layout": null
+    },
+    "sec10k-1995q3.zip": {
+      "local_path": "/tmp/tmpdef9soh2/sec10k-1995q3.zip",
+      "partitions": {
+        "year_quarter": "1995q3"
+      },
+      "layout": null
+    },
+    "sec10k-1995q4.zip": {
+      "local_path": "/tmp/tmpjjzmt1nx/sec10k-1995q4.zip",
+      "partitions": {
+        "year_quarter": "1995q4"
+      },
+      "layout": null
+    },
+    "sec10k-1996q1.zip": {
+      "local_path": "/tmp/tmp55dgq7tz/sec10k-1996q1.zip",
+      "partitions": {
+        "year_quarter": "1996q1"
+      },
+      "layout": null
+    },
+    "sec10k-1996q2.zip": {
+      "local_path": "/tmp/tmp5ing37n5/sec10k-1996q2.zip",
+      "partitions": {
+        "year_quarter": "1996q2"
+      },
+      "layout": null
+    },
+    "sec10k-1996q3.zip": {
+      "local_path": "/tmp/tmpzkipksx0/sec10k-1996q3.zip",
+      "partitions": {
+        "year_quarter": "1996q3"
+      },
+      "layout": null
+    },
+    "sec10k-1996q4.zip": {
+      "local_path": "/tmp/tmpfdo49s6b/sec10k-1996q4.zip",
+      "partitions": {
+        "year_quarter": "1996q4"
+      },
+      "layout": null
+    },
+    "sec10k-1997q1.zip": {
+      "local_path": "/tmp/tmp4ke0ka1v/sec10k-1997q1.zip",
+      "partitions": {
+        "year_quarter": "1997q1"
+      },
+      "layout": null
+    },
+    "sec10k-1997q2.zip": {
+      "local_path": "/tmp/tmpo0_r9v4h/sec10k-1997q2.zip",
+      "partitions": {
+        "year_quarter": "1997q2"
+      },
+      "layout": null
+    },
+    "sec10k-1997q3.zip": {
+      "local_path": "/tmp/tmp48ydco0b/sec10k-1997q3.zip",
+      "partitions": {
+        "year_quarter": "1997q3"
+      },
+      "layout": null
+    },
+    "sec10k-1997q4.zip": {
+      "local_path": "/tmp/tmpr6_uv4vn/sec10k-1997q4.zip",
+      "partitions": {
+        "year_quarter": "1997q4"
+      },
+      "layout": null
+    },
+    "sec10k-1998q1.zip": {
+      "local_path": "/tmp/tmp1w2i79qm/sec10k-1998q1.zip",
+      "partitions": {
+        "year_quarter": "1998q1"
+      },
+      "layout": null
+    },
+    "sec10k-1998q2.zip": {
+      "local_path": "/tmp/tmpqz8_ip2w/sec10k-1998q2.zip",
+      "partitions": {
+        "year_quarter": "1998q2"
+      },
+      "layout": null
+    },
+    "sec10k-1998q3.zip": {
+      "local_path": "/tmp/tmp3i6bh2h7/sec10k-1998q3.zip",
+      "partitions": {
+        "year_quarter": "1998q3"
+      },
+      "layout": null
+    },
+    "sec10k-1998q4.zip": {
+      "local_path": "/tmp/tmpbdbwney_/sec10k-1998q4.zip",
+      "partitions": {
+        "year_quarter": "1998q4"
+      },
+      "layout": null
+    },
+    "sec10k-1999q1.zip": {
+      "local_path": "/tmp/tmpsn7cazd5/sec10k-1999q1.zip",
+      "partitions": {
+        "year_quarter": "1999q1"
+      },
+      "layout": null
+    },
+    "sec10k-1999q2.zip": {
+      "local_path": "/tmp/tmptb77q5vh/sec10k-1999q2.zip",
+      "partitions": {
+        "year_quarter": "1999q2"
+      },
+      "layout": null
+    },
+    "sec10k-1999q3.zip": {
+      "local_path": "/tmp/tmp26nfbivh/sec10k-1999q3.zip",
+      "partitions": {
+        "year_quarter": "1999q3"
+      },
+      "layout": null
+    },
+    "sec10k-1999q4.zip": {
+      "local_path": "/tmp/tmpgc3wsn8n/sec10k-1999q4.zip",
+      "partitions": {
+        "year_quarter": "1999q4"
+      },
+      "layout": null
+    },
+    "sec10k-2000q1.zip": {
+      "local_path": "/tmp/tmpzn2qkk65/sec10k-2000q1.zip",
+      "partitions": {
+        "year_quarter": "2000q1"
+      },
+      "layout": null
+    },
+    "sec10k-2000q2.zip": {
+      "local_path": "/tmp/tmpk0nobpw1/sec10k-2000q2.zip",
+      "partitions": {
+        "year_quarter": "2000q2"
+      },
+      "layout": null
+    },
+    "sec10k-2000q3.zip": {
+      "local_path": "/tmp/tmpw7_ag6wc/sec10k-2000q3.zip",
+      "partitions": {
+        "year_quarter": "2000q3"
+      },
+      "layout": null
+    },
+    "sec10k-2000q4.zip": {
+      "local_path": "/tmp/tmpzmp1sdpb/sec10k-2000q4.zip",
+      "partitions": {
+        "year_quarter": "2000q4"
+      },
+      "layout": null
+    },
+    "sec10k-2001q1.zip": {
+      "local_path": "/tmp/tmpxkilx92p/sec10k-2001q1.zip",
+      "partitions": {
+        "year_quarter": "2001q1"
+      },
+      "layout": null
+    },
+    "sec10k-2001q2.zip": {
+      "local_path": "/tmp/tmph_gpq6k6/sec10k-2001q2.zip",
+      "partitions": {
+        "year_quarter": "2001q2"
+      },
+      "layout": null
+    },
+    "sec10k-2001q3.zip": {
+      "local_path": "/tmp/tmp2bovx4qg/sec10k-2001q3.zip",
+      "partitions": {
+        "year_quarter": "2001q3"
+      },
+      "layout": null
+    },
+    "sec10k-2001q4.zip": {
+      "local_path": "/tmp/tmpjyuatapk/sec10k-2001q4.zip",
+      "partitions": {
+        "year_quarter": "2001q4"
+      },
+      "layout": null
+    },
+    "sec10k-2002q1.zip": {
+      "local_path": "/tmp/tmp5dq0pnf8/sec10k-2002q1.zip",
+      "partitions": {
+        "year_quarter": "2002q1"
+      },
+      "layout": null
+    },
+    "sec10k-2002q2.zip": {
+      "local_path": "/tmp/tmppw18mbjc/sec10k-2002q2.zip",
+      "partitions": {
+        "year_quarter": "2002q2"
+      },
+      "layout": null
+    },
+    "sec10k-2002q3.zip": {
+      "local_path": "/tmp/tmpa1ukko8d/sec10k-2002q3.zip",
+      "partitions": {
+        "year_quarter": "2002q3"
+      },
+      "layout": null
+    },
+    "sec10k-2002q4.zip": {
+      "local_path": "/tmp/tmpulm7jta7/sec10k-2002q4.zip",
+      "partitions": {
+        "year_quarter": "2002q4"
+      },
+      "layout": null
+    },
+    "sec10k-2003q1.zip": {
+      "local_path": "/tmp/tmpifznk9ge/sec10k-2003q1.zip",
+      "partitions": {
+        "year_quarter": "2003q1"
+      },
+      "layout": null
+    },
+    "sec10k-2003q2.zip": {
+      "local_path": "/tmp/tmptfiyuwyw/sec10k-2003q2.zip",
+      "partitions": {
+        "year_quarter": "2003q2"
+      },
+      "layout": null
+    },
+    "sec10k-2003q3.zip": {
+      "local_path": "/tmp/tmp92266gg7/sec10k-2003q3.zip",
+      "partitions": {
+        "year_quarter": "2003q3"
+      },
+      "layout": null
+    },
+    "sec10k-2003q4.zip": {
+      "local_path": "/tmp/tmpyg0zobzg/sec10k-2003q4.zip",
+      "partitions": {
+        "year_quarter": "2003q4"
+      },
+      "layout": null
+    },
+    "sec10k-2004q1.zip": {
+      "local_path": "/tmp/tmpd3_qxfyk/sec10k-2004q1.zip",
+      "partitions": {
+        "year_quarter": "2004q1"
+      },
+      "layout": null
+    },
+    "sec10k-2004q2.zip": {
+      "local_path": "/tmp/tmpuhesbfbd/sec10k-2004q2.zip",
+      "partitions": {
+        "year_quarter": "2004q2"
+      },
+      "layout": null
+    },
+    "sec10k-2004q3.zip": {
+      "local_path": "/tmp/tmprbdke7of/sec10k-2004q3.zip",
+      "partitions": {
+        "year_quarter": "2004q3"
+      },
+      "layout": null
+    },
+    "sec10k-2004q4.zip": {
+      "local_path": "/tmp/tmpn79z8i4g/sec10k-2004q4.zip",
+      "partitions": {
+        "year_quarter": "2004q4"
+      },
+      "layout": null
+    }
+  },
+  "create_new": false
+}

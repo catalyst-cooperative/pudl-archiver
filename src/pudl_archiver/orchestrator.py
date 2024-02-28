@@ -11,6 +11,7 @@ import aiohttp
 import yaml
 from pydantic import BaseModel, ConfigDict
 
+from pudl_archiver import checkpoints
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver
 from pudl_archiver.archivers.validate import RunSummary
 from pudl_archiver.depositors import ZenodoDepositor
@@ -97,6 +98,7 @@ class DepositionOrchestrator:
         sandbox: bool = True,
         auto_publish: bool = False,
         refresh_metadata: bool = False,
+        resume_run: bool = False,
     ):
         """Prepare the ZenodoStorage interface.
 
@@ -114,10 +116,18 @@ class DepositionOrchestrator:
             sandbox: Whether or not we are in a sandbox environment
             auto_publish: Whether we automatically publish the draft when we're
                 done, vs. letting a human approve of it.
+            refresh_metadata: Regenerate metadata from PUDL data source rather than
+                existing archived metadata.
+            resume_run: Attempt to resume a run that was previously interrupted.
 
         Returns:
             DepositionOrchestrator
         """
+        if create_new and resume_run:
+            raise RuntimeError(
+                "create_new and resume_run should not both be set."
+                "create new will be deduced from checkpoint when resume_run is set."
+            )
         self.sandbox = sandbox
         self.data_source_id = data_source_id
 
@@ -129,6 +139,7 @@ class DepositionOrchestrator:
 
         self.auto_publish = auto_publish
         self.refresh_metadata = refresh_metadata
+        self.resume_run = resume_run
 
         self.depositor = ZenodoDepositor(upload_key, publish_key, session, self.sandbox)
         self.downloader = downloader
@@ -175,21 +186,34 @@ class DepositionOrchestrator:
             RunSummary object.
         """
         self.changes = []
-        if self.create_new:
-            original = await self._create_new_deposition()
+        if self.resume_run:
+            run_history = checkpoints.load_checkpoint(self.data_source_id)
+            original = run_history.deposition
             draft = original
+            self.create_new = run_history.create_new
+            existing_resources = run_history.resources
         else:
-            original = await self._get_existing_deposition(
-                self.dataset_settings, self.data_source_id
-            )
-            draft = await self.depositor.get_new_version(
-                original,
-                clobber=True,
-                data_source_id=self.data_source_id,
-                refresh_metadata=self.refresh_metadata,
-            )
+            existing_resources = {}
+            if self.create_new:
+                original = await self._create_new_deposition()
+                draft = original
+            else:
+                original = await self._get_existing_deposition(
+                    self.dataset_settings, self.data_source_id
+                )
+                draft = await self.depositor.get_new_version(
+                    original,
+                    clobber=True,
+                    data_source_id=self.data_source_id,
+                    refresh_metadata=self.refresh_metadata,
+                )
 
-        resources = await self._download_then_upload_resources(draft, self.downloader)
+        draft = await self.depositor.get_deposition_by_id(draft.id_)
+        resources = await self._download_then_upload_resources(
+            draft,
+            self.downloader,
+            existing_resources,
+        )
         for deletion in self._get_deletions(draft, resources):
             await self._apply_change(draft, deletion)
 
@@ -240,10 +264,15 @@ class DepositionOrchestrator:
         )
 
     async def _download_then_upload_resources(
-        self, draft: Deposition, downloader: AbstractDatasetArchiver
+        self,
+        draft: Deposition,
+        downloader: AbstractDatasetArchiver,
+        existing_resources: dict[str, ResourceInfo],
     ) -> dict[str, ResourceInfo]:
-        resources = {}
-        async for name, resource in downloader.download_all_resources():
+        resources = existing_resources
+        async for name, resource in downloader.download_all_resources(
+            list(resources.keys())
+        ):
             resources[name] = resource
             change = self._generate_change(name, resource, draft.files_map)
             # Leave immediately after generating changes if dry_run
@@ -251,6 +280,11 @@ class DepositionOrchestrator:
                 continue
             if change:
                 await self._apply_change(draft, change)
+            else:
+                logger.info(f"No changes detected for {resource.local_path}")
+            checkpoints.save_checkpoint(
+                self.data_source_id, draft, resources, self.create_new
+            )
         return resources
 
     def _generate_change(

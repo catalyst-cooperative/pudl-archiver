@@ -58,7 +58,7 @@ jobs:
           ZENODO_TOKEN_UPLOAD: ${{ secrets.ZENODO_TOKEN_UPLOAD }}
           ZENODO_TOKEN_PUBLISH: ${{ secrets.ZENODO_TOKEN_PUBLISH }}
         run: |
-          pudl_archiver --datasets ${{ matrix.dataset }} --summary-file ${{ matrix.dataset }}_run_summary.json
+          pudl_archiver --datasets ${{ matrix.dataset }} --summary-file ${{ matrix.dataset }}_run_summary.json --resume-run
 
       - name: Upload run summaries
         if: always()
@@ -119,6 +119,14 @@ jobs:
         with:
           name: run-summaries-${{ matrix.dataset }}
           path: ${{ matrix.dataset }}_run_summary.json
+
+      - name: Upload checkpoints
+        if: failure() || success()
+        id: upload_checkpoint
+        uses: actions/upload-artifact@v4
+        with:
+          name: run-checkpoint-${{ matrix.dataset }}
+          path: .checkpoints/${{ matrix.dataset }}.json
 
   archive-notify:
     runs-on: ubuntu-latest

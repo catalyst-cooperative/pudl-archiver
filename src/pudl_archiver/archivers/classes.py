@@ -69,9 +69,15 @@ async def _download_file(
 class AbstractDatasetArchiver(ABC):
     """An abstract base archiver class."""
 
+    #: Name of dataset
     name: str
+    #: Number of resources to download concurrently (if None there will be no limit)
     concurrency_limit: int | None = None
+    #: Create a temporary directory for each chunk of resources
     directory_per_resource_chunk: bool = False
+    #: Whether the dataset has implemented logic so that an interrupted run can be resumed
+    resumeable: bool = False
+    existing_files: list[str] = []
 
     # Configure which generic validation tests to run
     fail_on_missing_files: bool = True
@@ -174,8 +180,18 @@ class AbstractDatasetArchiver(ABC):
             url: URL to file to download.
             file: Local path to write file to disk or bytes object to save file in memory.
             kwargs: Key word args to pass to request.
+
+        Returns:
+            Tuple of url and file (path or bytes).
         """
-        await retry_async(_download_file, [self.session, url, file], kwargs)
+        response = await retry_async(self.session.get, args=[url], kwargs=kwargs)
+        response_bytes = await retry_async(response.read)
+        if isinstance(file, Path):
+            with Path.open(file, "wb") as f:
+                f.write(response_bytes)
+        elif isinstance(file, io.BytesIO):
+            file.write(response_bytes)
+        return url, file
 
     async def download_and_zip_file(
         self,
@@ -218,6 +234,8 @@ class AbstractDatasetArchiver(ABC):
             "a",
             compression=zipfile.ZIP_DEFLATED,
         ) as archive:
+            # Make sure BinaryIO is at start of file or read could return wrong data
+            blob.seek(0)
             add_to_archive_stable_hash(archive=archive, filename=name, data=blob.read())
 
     async def get_json(self, url: str, **kwargs) -> dict[str, str]:
@@ -516,12 +534,18 @@ class AbstractDatasetArchiver(ABC):
 
     async def download_all_resources(
         self,
+        existing_files: list[str],
     ) -> typing.Generator[tuple[str, ResourceInfo], None, None]:
         """Download all resources.
 
         This method uses the awaitables returned by `get_resources`. It
         coordinates downloading all resources concurrently.
         """
+        if len(existing_files) > 0 and (not self.resumeable):
+            raise RuntimeError(
+                f"Draft deposition is not empty, but dataset {self.name} is not resumeable"
+            )
+        self.existing_files = existing_files
         # Get all awaitables from get_resources
         resources = [resource async for resource in self.get_resources()]
 

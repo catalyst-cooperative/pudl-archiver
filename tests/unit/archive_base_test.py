@@ -161,7 +161,7 @@ async def test_resource_chunks(
 
     # Initialize MockArchiver class
     archiver = MockArchiver(concurrency_limit, directory_per_resource_chunk)
-    async for name, resource in archiver.download_all_resources():
+    async for name, resource in archiver.download_all_resources(existing_files=[]):
         assert download_paths[resource.partitions["idx"]] == name
 
 

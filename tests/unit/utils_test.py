@@ -1,10 +1,18 @@
+import asyncio
+import datetime
 import hashlib
+import math
 import time
 import zipfile
 from asyncio import to_thread
 
+import pandas as pd
 import pytest
-from pudl_archiver.utils import add_to_archive_stable_hash, retry_async
+from pudl_archiver.utils import (
+    add_to_archive_stable_hash,
+    rate_limit_tasks,
+    retry_async,
+)
 
 
 @pytest.mark.asyncio
@@ -56,3 +64,25 @@ def test_stable_zip_hash(tmp_path):
     b_digest = write_get_digest(b_archive, "file1", file_contents)
 
     assert a_digest == b_digest
+
+
+@pytest.mark.asyncio
+async def test_rate_limit_tasks():
+    """Test that rate_limit_tasks schedules tasks at correct rate."""
+
+    async def _test_task():
+        now = datetime.datetime.now()
+        await asyncio.sleep(0.5)
+        return now
+
+    rate_limit = 50
+    tasks = [_test_task() for _ in range(100)]
+    start_times = pd.Series(
+        [start async for start in rate_limit_tasks(tasks, rate_limit=rate_limit)]
+    )
+    deltas = start_times.diff()[1:]
+
+    # Check that no tasks start less than 1/rate_limit seconds of eachother
+    assert (deltas >= pd.Timedelta(1 / rate_limit)).all()
+    # Check that average delta between task starts is ~1/rate_limit
+    assert math.isclose(deltas.mean().total_seconds(), 1 / rate_limit, abs_tol=0.005)
