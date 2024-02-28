@@ -320,7 +320,10 @@ class DepositionOrchestrator:
         # Delete files not included in new deposition
         files_to_delete = []
         for filename in draft.files_map:
-            if filename not in resources and filename != "datapackage.json":
+            if (
+                filename not in resources
+                and filename not in self.downloader.files_not_to_delete
+            ):
                 logger.info(f"Deleting {filename} from deposition.")
                 files_to_delete.append(
                     _DepositionChange(_DepositionAction.DELETE, name=filename)

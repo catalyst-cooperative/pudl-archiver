@@ -15,9 +15,24 @@ class FercEQRArchiver(AbstractDatasetArchiver):
     """FERC EQR archiver."""
 
     name = "ferceqr"
-    concurrency_limit = 5
+    concurrency_limit = 1
     directory_per_resource_chunk = True
     max_wait_time = 36000
+    files_not_to_delete = [
+        "eqr_nontransaction.zip",
+        "ferceqr-2002.zip",
+        "ferceqr-2003.zip",
+        "ferceqr-2004.zip",
+        "ferceqr-2005.zip",
+        "ferceqr-2006.zip",
+        "ferceqr-2007.zip",
+        "ferceqr-2008.zip",
+        "ferceqr-2009.zip",
+        "ferceqr-2010.zip",
+        "ferceqr-2011.zip",
+        "ferceqr-2012.zip",
+        "ferceqr-2013.zip",
+    ]
 
     async def get_resources(self) -> ArchiveAwaitable:
         """Download FERC EQR resources."""

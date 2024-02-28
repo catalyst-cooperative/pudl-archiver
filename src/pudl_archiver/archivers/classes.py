@@ -79,6 +79,9 @@ class AbstractDatasetArchiver(ABC):
     resumeable: bool = False
     existing_files: list[str] = []
 
+    #: List of files that should not be deleted under any circumstance
+    files_not_to_delete: list[str] = []
+
     # Configure which generic validation tests to run
     fail_on_missing_files: bool = True
     fail_on_empty_invalid_files: bool = True
@@ -103,6 +106,9 @@ class AbstractDatasetArchiver(ABC):
             download_directory: where to save data to. Defaults to temp dir.
         """
         self.session = session
+
+        # Never delete datapackage
+        self.files_not_to_delete.append("datapackage.json")
 
         # Create a temporary directory for downloading data
 
