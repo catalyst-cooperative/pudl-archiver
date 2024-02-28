@@ -14,17 +14,7 @@ jobs:
     strategy:
       matrix:
         dataset:
-          - eia176
-          - eia191
-          - eia757a
-          - eia860
-          - eia861
-          - eia860m
-          - eia923
-          - eia_bulk_elec
-          - epacamd_eia
-          - mshamines
-          - phmsagas
+          - ferceqr
 
       fail-fast: false
     runs-on: ubuntu-latest

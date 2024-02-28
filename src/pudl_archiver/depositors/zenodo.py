@@ -193,6 +193,8 @@ class ZenodoDepositor:
             log_label=f"Get deposition for {rec_id}",
             headers=self.auth_write,
         )
+        if not response["metadata"].get("license"):
+            response["metadata"]["license"] = "other-pd"
         deposition = Deposition(**response)
         logger.debug(deposition)
         return deposition
@@ -259,7 +261,10 @@ class ZenodoDepositor:
             for key, val in (base_metadata | draft_metadata).items()
             if key not in {"doi", "prereserve_doi", "publication_date"}
         }
-        base_version = semantic_version.Version(base_metadata["version"])
+        if base_metadata["version"] is None:
+            base_version = semantic_version.Version("1.0.0")
+        else:
+            base_version = semantic_version.Version(base_metadata["version"])
         new_version = base_version.next_major()
         metadata["version"] = str(new_version)
         logging.info(f"{base_metadata=}\n{draft_metadata=}\n{metadata=}")
