@@ -127,7 +127,7 @@ class DepositionOrchestrator:
         for deletion in self._get_deletions(resources):
             await self._apply_change(deletion)
 
-        old_datapackage, new_datapackage = await self._update_datapackage(
+        new_datapackage, old_datapackage = await self._update_datapackage(
             resources=resources
         )
         run_summary = self._summarize_run(
@@ -235,7 +235,11 @@ class DepositionOrchestrator:
         self,
         resources: dict[str, ResourceInfo],
     ) -> tuple[DataPackage, DataPackage | None]:
-        """Get new datapackage and check if it's worth uploading."""
+        """Get new datapackage and check if it's worth uploading.
+
+        Returns:
+            new DataPackage, old DataPackage
+        """
         new_datapackage, old_datapackage = await self.depositor.update_datapackage(
             resources
         )
