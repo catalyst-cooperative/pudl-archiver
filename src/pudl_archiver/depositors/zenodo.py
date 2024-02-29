@@ -563,7 +563,7 @@ class ZenodoDepositor(AbstractDepositor):
         """
         logger.info(f"Creating new datapackage.json for {self.data_source_id}")
         # Get refreshed deposition after all modifications
-        draft = await self.get_deposition_by_id(self.deposition.id_)
+        self.deposition = await self.get_deposition_by_id(self.deposition.id_)
 
         old_datapackage = None
         if datapackage_bytes := await self.get_file("datapackage.json"):
@@ -572,9 +572,9 @@ class ZenodoDepositor(AbstractDepositor):
         # Create updated datapackage
         datapackage = DataPackage.from_filelist(
             self.data_source_id,
-            [f for f in draft.files if f.filename != "datapackage.json"],
+            [f for f in self.deposition.files if f.filename != "datapackage.json"],
             resources,
-            draft.metadata.version,
+            self.deposition.metadata.version,
         )
 
         return datapackage, old_datapackage
