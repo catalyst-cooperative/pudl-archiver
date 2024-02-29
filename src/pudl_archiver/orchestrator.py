@@ -236,7 +236,9 @@ class DepositionOrchestrator:
         resources: dict[str, ResourceInfo],
     ) -> tuple[DataPackage, DataPackage | None]:
         """Get new datapackage and check if it's worth uploading."""
-        new_datapackage, old_datapackage = self.depositor.update_datapackage(resources)
+        new_datapackage, old_datapackage = await self.depositor.update_datapackage(
+            resources
+        )
         if old_datapackage is None:
             action = DepositionAction.CREATE
         else:
