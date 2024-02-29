@@ -146,8 +146,7 @@ class ZenodoDepositor(AbstractDepositor):
                     refresh_metadata=refresh_metadata,
                 )
 
-        self.files = original.files_map
-        self.deposition = await self.get_deposition_by_id(draft.id_)
+        self.deposition = draft
         return existing_resources
 
     def generate_change(
@@ -160,13 +159,13 @@ class ZenodoDepositor(AbstractDepositor):
             resource: Info about downloaded file.
         """
         action = None
-        logger.info(f"EXISTING FILES: {self.files}")
-        if filename not in self.files:
+        logger.info(f"EXISTING FILES: {self.deposition.files_map}")
+        if filename not in self.deposition.files_map:
             logger.info(f"Adding {filename} to deposition.")
 
             action = DepositionAction.CREATE
         else:
-            file_info = self.files[filename]
+            file_info = self.deposition.files_map[filename]
 
             # If file is not exact match for existing file, update with new file
             if (local_md5 := _compute_md5(resource.local_path)) != file_info.checksum:
@@ -470,7 +469,7 @@ class ZenodoDepositor(AbstractDepositor):
         Returns:
             None if success.
         """
-        if not (file_to_delete := self.files.get(target)):
+        if not (file_to_delete := self.deposition.files_map.get(target)):
             logger.info(f"No files matched {target}.")
             return None
 
@@ -531,7 +530,7 @@ class ZenodoDepositor(AbstractDepositor):
             filename: Name of file to fetch.
         """
         file_bytes = None
-        if file_info := self.files.get(filename):
+        if file_info := self.deposition.files_map.get(filename):
             url = file_info.links.canonical
             response = await self.request(
                 "GET",
@@ -603,7 +602,7 @@ class ZenodoDepositor(AbstractDepositor):
 
     def get_existing_files(self) -> list[str]:
         """Return list of filenames from previous version of deposition."""
-        return list(self.files.keys())
+        return list(self.deposition.files_map.keys())
 
     def get_deposition_link(self) -> Url:
         """Get URL which points to deposition."""
