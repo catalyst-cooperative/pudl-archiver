@@ -57,9 +57,9 @@ class FercEQRArchiver(AbstractDatasetArchiver):
         """
 
         # Get quarterly EQR data
-        for year in range(2013, 2023):
+        for year in range(2013, 2024):
             for quarter in range(1, 5):
-                if quarter < 3:
+                if quarter < 3 and year == 2013:
                     continue
                 yield self.get_quarter_dbf(year, quarter)
 
