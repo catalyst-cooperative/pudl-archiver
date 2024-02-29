@@ -2,15 +2,43 @@
 import asyncio
 import json
 import logging
+import os
+from hashlib import md5
+from pathlib import Path
 from typing import BinaryIO, Literal
 
 import aiohttp
 import semantic_version  # type: ignore  # noqa: PGH003
+import yaml
+from pydantic import BaseModel
 
-from pudl_archiver.utils import retry_async
-from pudl_archiver.zenodo.entities import Deposition, DepositionMetadata, Record
+from pudl_archiver import checkpoints
+from pudl_archiver.depositors.depositor import (
+    AbstractDepositor,
+    DepositionAction,
+    DepositionChange,
+)
+from pudl_archiver.frictionless import DataPackage, ResourceInfo
+from pudl_archiver.utils import Url, retry_async
+from pudl_archiver.zenodo.entities import (
+    Deposition,
+    DepositionMetadata,
+    Doi,
+    Record,
+    SandboxDoi,
+)
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
+
+
+def _compute_md5(file_path: Path) -> str:
+    """Compute an md5 checksum to compare to files in zenodo deposition."""
+    hash_md5 = md5()  # noqa: S324
+    with Path.open(file_path, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_md5.update(chunk)
+
+    return hash_md5.hexdigest()
 
 
 class ZenodoClientError(Exception):
@@ -37,34 +65,139 @@ class ZenodoClientError(Exception):
         return f"ZenodoClientError(status={self.status}, message={self.message}, errors={self.errors})"
 
 
-class ZenodoDepositor:
+class DatasetSettings(BaseModel):
+    """Simple model to validate doi's in settings."""
+
+    production_doi: Doi | None = None
+    sandbox_doi: SandboxDoi | None = None
+
+
+class ZenodoDepositor(AbstractDepositor):
     """Act on depositions & deposition files within Zenodo."""
 
     def __init__(
         self,
-        upload_key: str,
-        publish_key: str,
+        dataset: str,
         session: aiohttp.ClientSession,
+        dataset_settings_path: Path,
         sandbox: bool = True,
     ):
         """Create a new ZenodoDepositor.
 
         Args:
-            upload_key: the Zenodo API key that gives you upload rights.
-            publish_key: the Zenodo API key that gives you publish rights.
+            dataset: Name of dataset to archive.
             session: HTTP handler - we don't use it directly, it's wrapped in self.request.
             sandbox: whether to hit the sandbox Zenodo instance or the real one. Default True.
         """
+        self.dataset_settings_path = dataset_settings_path
+        if sandbox:
+            upload_key = os.environ["ZENODO_SANDBOX_TOKEN_UPLOAD"]
+            publish_key = os.environ["ZENODO_SANDBOX_TOKEN_PUBLISH"]
+            self.api_root = "https://sandbox.zenodo.org/api"
+        else:
+            upload_key = os.environ["ZENODO_TOKEN_UPLOAD"]
+            publish_key = os.environ["ZENODO_TOKEN_PUBLISH"]
+            self.api_root = "https://zenodo.org/api"
+
         self.auth_write = {"Authorization": f"Bearer {upload_key}"}
         self.auth_actions = {"Authorization": f"Bearer {publish_key}"}
         self.request = self._make_requester(session)
 
         self.sandbox = sandbox
+        self.data_source_id = dataset
 
-        if sandbox:
-            self.api_root = "https://sandbox.zenodo.org/api"
+        with Path.open(self.dataset_settings_path) as f:
+            self.dataset_settings = {
+                name: DatasetSettings(**dois)
+                for name, dois in yaml.safe_load(f).items()
+            }
+
+    async def prepare_depositor(
+        self, create_new: bool, resume_run: bool, refresh_metadata: bool
+    ) -> dict[str, ResourceInfo]:
+        """Perform any async setup necessary for depositor.
+
+        Args:
+            create_new: whether or not we are initializing a new Zenodo Concept DOI.
+            resume_run: Attempt to resume a run that was previously interrupted.
+            refresh_metadata: Regenerate metadata from PUDL data source rather than
+                existing archived metadata.
+        """
+        self.create_new = create_new
+        if resume_run:
+            run_history = checkpoints.load_checkpoint(self.data_source_id)
+            draft = run_history.deposition
+            self.create_new = run_history.create_new
+            existing_resources = run_history.resources
         else:
-            self.api_root = "https://zenodo.org/api"
+            existing_resources = {}
+            if self.create_new:
+                original = await self._create_new_deposition()
+                draft = original
+            else:
+                original = await self._get_existing_deposition(
+                    self.dataset_settings, self.data_source_id
+                )
+                draft = await self.get_new_version(
+                    original,
+                    clobber=True,
+                    data_source_id=self.data_source_id,
+                    refresh_metadata=refresh_metadata,
+                )
+
+        self.deposition = await self.get_deposition_by_id(draft.id_)
+        return existing_resources
+
+    def generate_change(
+        self, filename: str, resource: ResourceInfo
+    ) -> DepositionChange | None:
+        """Check whether file should be changed.
+
+        Args:
+            filename: Name of file in question.
+            resource: Info about downloaded file.
+        """
+        action = None
+        files = self.deposition.files_map
+        if filename not in files:
+            logger.info(f"Adding {filename} to deposition.")
+
+            action = DepositionAction.CREATE
+        else:
+            file_info = files[filename]
+
+            # If file is not exact match for existing file, update with new file
+            if (local_md5 := _compute_md5(resource.local_path)) != file_info.checksum:
+                logger.info(
+                    f"Updating {filename}: local hash {local_md5} vs. remote {file_info.checksum}"
+                )
+                action = DepositionAction.UPDATE
+
+        if action is None:
+            return None
+
+        return DepositionChange(
+            action_type=action,
+            name=filename,
+            resource=resource.local_path,
+        )
+
+    async def _create_new_deposition(self) -> Deposition:
+        metadata = DepositionMetadata.from_data_source(self.data_source_id)
+        if not metadata.keywords:
+            raise AssertionError(
+                "New dataset is missing keywords and cannot be archived."
+            )
+        return await self.create_deposition(metadata)
+
+    async def _get_existing_deposition(
+        self, dataset_settings: dict[str, DatasetSettings], data_source_id: str
+    ) -> Deposition:
+        settings = dataset_settings[data_source_id]
+        doi = settings.sandbox_doi if self.sandbox else settings.production_doi
+        if not doi:
+            raise RuntimeError("Must pass a valid DOI if create_new is False")
+        return await self.get_deposition(doi)
 
     def _make_requester(self, session):
         """Wraps our session requests with some Zenodo-specific error handling."""
@@ -280,7 +413,7 @@ class ZenodoDepositor:
         )
         return Deposition(**response)
 
-    async def publish_deposition(self, deposition: Deposition) -> Deposition:
+    async def publish_deposition(self) -> Deposition:
         """Publish a deposition.
 
         Needs to have at least one file, and needs to not already be published.
@@ -288,14 +421,16 @@ class ZenodoDepositor:
         Args:
             deposition: the deposition you want to publish.
         """
-        url = deposition.links.publish
+        url = self.deposition.links.publish
         headers = {
             "Content-Type": "application/json",
         } | self.auth_actions
         response = await self.request(
             "POST", url, log_label="Publishing deposition", headers=headers
         )
-        return Deposition(**response)
+        published = Deposition(**response)
+        if self.create_new:
+            self._update_dataset_settings(published)
 
     async def delete_deposition(self, deposition) -> None:
         """Delete an un-submitted deposition.
@@ -324,17 +459,16 @@ class ZenodoDepositor:
                 "earlier delete succeeded."
             )
 
-    async def delete_file(self, deposition: Deposition, target: str) -> None:
+    async def delete_file(self, target: str) -> None:
         """Delete a file from a deposition.
 
         Args:
-            deposition: the deposition you are applying this change to.
             target: the filename of the file you want to delete.
 
         Returns:
             None if success.
         """
-        candidates = [f for f in deposition.files if f.filename == target]
+        candidates = [f for f in self.deposition.files if f.filename == target]
         if len(candidates) > 1:
             raise RuntimeError(
                 f"More than one file matches the name {target}: {candidates}"
@@ -347,14 +481,13 @@ class ZenodoDepositor:
             "DELETE",
             candidates[0].links.self,
             parse_json=False,
-            log_label=f"Deleting {target} from deposition {deposition.id_}",
+            log_label=f"Deleting {target} from deposition {self.deposition.id_}",
             headers=self.auth_write,
         )
         return response
 
     async def create_file(
         self,
-        deposition: Deposition,
         target: str,
         data: BinaryIO,
         force_api: Literal["bucket", "files"] | None = None,
@@ -365,8 +498,7 @@ class ZenodoDepositor:
         force it to use "files" if desired.
 
         Args:
-            deposition: the deposition you are applying this change to.
-            target: the filename of the file you want to delete.
+            target: the filename of the file you want to create.
             data: the actual data associated with the file.
             force_api: force using one files API over another. The options are
                 "bucket" and "files"
@@ -374,8 +506,8 @@ class ZenodoDepositor:
         Returns:
             None if success.
         """
-        if deposition.links.bucket and force_api != "files":
-            url = f"{deposition.links.bucket}/{target}"
+        if self.deposition.links.bucket and force_api != "files":
+            url = f"{self.deposition.links.bucket}/{target}"
             return await self.request(
                 "PUT",
                 url,
@@ -384,8 +516,8 @@ class ZenodoDepositor:
                 headers=self.auth_write,
                 timeout=3600,
             )
-        if deposition.links.files and force_api != "bucket":
-            url = f"{deposition.links.files}"
+        if self.deposition.links.files and force_api != "bucket":
+            url = f"{self.deposition.links.files}"
             return await self.request(
                 "POST",
                 url,
@@ -395,18 +527,87 @@ class ZenodoDepositor:
             )
         raise RuntimeError("No file or bucket link available for deposition.")
 
-    async def update_file(
-        self, deposition: Deposition, target: str, data: BinaryIO
-    ) -> None:
-        """Update a file in a deposition.
+    async def get_file(self, filename: str) -> bytes | None:
+        """Get file from deposition.
 
         Args:
-            deposition: the deposition you are applying this change to.
-            target: the filename of the file you want to delete.
-            data: the actual data associated with the file.
+            filename: Name of file to fetch.
+        """
+        file_bytes = None
+        if file_info := self.deposition.files_map.get(filename):
+            url = file_info.links.canonical
+            response = await self.request(
+                "GET",
+                url,
+                f"Download {filename}",
+                parse_json=False,
+                headers=self.auth_write,
+            )
+            file_bytes = await retry_async(response.read)
+        return file_bytes
+
+    async def update_datapackage(
+        self,
+        resources: dict[str, ResourceInfo],
+    ) -> tuple[DataPackage, DataPackage | None]:
+        """Create new frictionless datapackage for deposition.
+
+        Args:
+            draft: the draft we're trying to describe
+            resources: Dictionary mapping resources to ResourceInfo which is used to
+                generate new datapackage - we need this for the partition information.
 
         Returns:
-            None if success.
+            new DataPackage, old DataPackage
         """
-        await self.delete_file(deposition, target)
-        return await self.create_file(deposition, target, data)
+        logger.info(f"Creating new datapackage.json for {self.data_source_id}")
+        # Get refreshed deposition after all modifications
+        draft = await self.get_deposition_by_id(self.deposition.id_)
+
+        old_datapackage = None
+        if datapackage_bytes := await self.get_file("datapackage.json"):
+            old_datapackage = DataPackage.model_validate_json(datapackage_bytes)
+
+        # Create updated datapackage
+        datapackage = DataPackage.from_filelist(
+            self.data_source_id,
+            [f for f in draft.files if f.filename != "datapackage.json"],
+            resources,
+            draft.metadata.version,
+        )
+
+        return datapackage, old_datapackage
+
+    def _update_dataset_settings(self, published_deposition):
+        # Get new DOI and update settings
+        # TODO (daz): split this IO out too.
+        if self.sandbox:
+            sandbox_doi = published_deposition.conceptdoi
+            production_doi = self.dataset_settings.get(
+                self.data_source_id, DatasetSettings()
+            ).production_doi
+        else:
+            production_doi = published_deposition.conceptdoi
+            sandbox_doi = self.dataset_settings.get(
+                self.data_source_id, DatasetSettings()
+            ).sandbox_doi
+
+        self.dataset_settings[self.dataset] = DatasetSettings(
+            sandbox_doi=sandbox_doi, production_doi=production_doi
+        )
+
+        # Update doi settings YAML
+        with Path.open(self.dataset_settings_path, "w") as f:
+            raw_settings = {
+                name: settings.dict()
+                for name, settings in self.dataset_settings.items()
+            }
+            yaml.dump(raw_settings, f)
+
+    def get_existing_files(self) -> list[str]:
+        """Return list of filenames from previous version of deposition."""
+        return list(self.deposition.files_map.keys())
+
+    def get_deposition_link(self) -> Url:
+        """Get URL which points to deposition."""
+        return self.deposition.links.html
