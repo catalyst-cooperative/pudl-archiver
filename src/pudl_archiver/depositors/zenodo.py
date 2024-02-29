@@ -159,6 +159,7 @@ class ZenodoDepositor(AbstractDepositor):
         """
         action = None
         files = self.deposition.files_map
+        logger.info("EXISTING FILES: ", files)
         if filename not in files:
             logger.info(f"Adding {filename} to deposition.")
 
