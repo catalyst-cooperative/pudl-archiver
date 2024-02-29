@@ -2,12 +2,9 @@
 import asyncio
 import json
 import logging
-import os
-import zipfile
 from pathlib import Path
 
 import aiohttp
-import pandas as pd
 
 import pudl_archiver.orchestrator  # noqa: F401
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver
@@ -58,12 +55,6 @@ async def archive_datasets(
     refresh_metadata: bool = False,
 ):
     """A CLI for the PUDL Zenodo Storage system."""
-    if sandbox:
-        upload_key = os.environ["ZENODO_SANDBOX_TOKEN_UPLOAD"]
-        publish_key = os.environ["ZENODO_SANDBOX_TOKEN_PUBLISH"]
-    else:
-        upload_key = os.environ["ZENODO_TOKEN_UPLOAD"]
-        publish_key = os.environ["ZENODO_TOKEN_PUBLISH"]
 
     async def on_request_start(session, trace_config_ctx, params):
         logger.debug(f"Starting request {params.url}: headers {params.headers}")
@@ -98,8 +89,6 @@ async def archive_datasets(
                 dataset,
                 downloader,
                 session,
-                upload_key,
-                publish_key,
                 dataset_settings_path=Path("dataset_doi.yaml"),
                 create_new=initialize,
                 dry_run=dry_run,

@@ -177,8 +177,6 @@ async def test_zenodo_workflow(
     deposition_interface_args = {
         "data_source_id": "pudl_test",
         "session": session,
-        "upload_key": upload_key,
-        "publish_key": publish_key,
         "dataset_settings_path": test_settings,
         "dry_run": False,
         "sandbox": True,
@@ -203,7 +201,7 @@ async def test_zenodo_workflow(
     # Mock out creating deposition metadata with fake data source
     deposition_metadata_mock = mocker.MagicMock(return_value=deposition_metadata)
     mocker.patch(
-        "pudl_archiver.orchestrator.DepositionMetadata.from_data_source",
+        "pudl_archiver.depositors.zenodo.DepositionMetadata.from_data_source",
         new=deposition_metadata_mock,
     )
 
