@@ -470,18 +470,13 @@ class ZenodoDepositor(AbstractDepositor):
         Returns:
             None if success.
         """
-        candidates = [f for f in self.deposition.files if f.filename == target]
-        if len(candidates) > 1:
-            raise RuntimeError(
-                f"More than one file matches the name {target}: {candidates}"
-            )
-        if len(candidates) == 0:
+        if not (file_to_delete := self.files.get(target)):
             logger.info(f"No files matched {target}.")
             return None
 
         response = await self.request(
             "DELETE",
-            candidates[0].links.self,
+            file_to_delete.links.self,
             parse_json=False,
             log_label=f"Deleting {target} from deposition {self.deposition.id_}",
             headers=self.auth_write,
