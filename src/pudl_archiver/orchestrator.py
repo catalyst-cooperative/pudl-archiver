@@ -189,6 +189,9 @@ class DepositionOrchestrator:
                 refresh_metadata=self.refresh_metadata,
             )
 
+        logger.info(f"ORIGINAL FILES: {original.files_map}")
+        logger.info(f"DRAFT FILES: {draft.files_map}")
+
         resources = await self._download_then_upload_resources(draft, self.downloader)
         for deletion in self._get_deletions(draft, resources):
             await self._apply_change(draft, deletion)
