@@ -218,6 +218,7 @@ class DepositionOrchestrator:
                 "Archive validation failed. Not publishing new archive, kept "
                 f"draft at {draft.links.html} for inspection."
             )
+            logger.error(f"RUN SUMMARY: {run_summary}")
             return run_summary
 
         await self._publish(draft)
