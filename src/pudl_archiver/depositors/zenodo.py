@@ -147,7 +147,7 @@ class ZenodoDepositor(AbstractDepositor):
                 )
 
         logger.info(f"ORIGINAL FILES: {original.files_map}")
-        logger.info(f"DRAFT FILES: {original.files_map}")
+        logger.info(f"DRAFT FILES: {draft.files_map}")
         self.deposition = draft
         return existing_resources
 
