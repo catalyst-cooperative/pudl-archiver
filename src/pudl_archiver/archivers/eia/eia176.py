@@ -1,5 +1,7 @@
 """Download EIA 176 data."""
+import asyncio
 import logging
+import random
 import zipfile
 
 import pandas as pd
@@ -14,6 +16,12 @@ from pudl_archiver.utils import add_to_archive_stable_hash
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
+USER_AGENTS = [
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:77.0) Gecko/20100101 Firefox/77.0",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:107.0) Gecko/20100101 Firefox/107.0",
+    "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Mobile Safari/537.36",
+]
+
 
 class Eia176Archiver(AbstractDatasetArchiver):
     """EIA 176 archiver."""
@@ -24,6 +32,7 @@ class Eia176Archiver(AbstractDatasetArchiver):
 
     async def get_items(self, url: str = items_url) -> list[str]:
         """Get list of item codes from EIA NQGS portal."""
+        logger.info("Getting list of items in Form 176.")
         items_response = await self.get_json(url)
         items_list = [item["item"] for item in items_response]
         return items_list
@@ -51,6 +60,7 @@ class Eia176Archiver(AbstractDatasetArchiver):
         dataframes = []
 
         for i in range(0, len(items_list), 20):
+            rand = random.randint(0, 2)  # noqa: S311
             logger.debug(f"Getting items {i}-{i+20} of data for {year}")
             # Chunk items list into 20 to avoid error message
             download_url = self.base_url + f"{year}/{year}/ICA/Name/"
@@ -59,7 +69,9 @@ class Eia176Archiver(AbstractDatasetArchiver):
                 download_url += f"{item}/"
             download_url = download_url[:-1]  # Drop trailing slash
 
-            json_response = await self.get_json(download_url)
+            json_response = await self.get_json(
+                download_url, headers={"User-Agent": USER_AGENTS[rand]}
+            )  # Generate a random user agent
             # Get data into dataframes
             try:
                 dataframes.append(
@@ -69,6 +81,7 @@ class Eia176Archiver(AbstractDatasetArchiver):
                 raise AssertionError(
                     f"{ex}: Error processing dataframe for {year} - see {download_url}."
                 )
+            await asyncio.sleep(5)  # Add sleep to prevent user-agent blocks
 
         logger.info(f"Compiling data for {year}")
         dataframe = pd.concat(dataframes)

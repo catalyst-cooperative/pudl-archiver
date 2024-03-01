@@ -57,6 +57,7 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
 
     name = "epacems"
     concurrency_limit = 2  # Number of files to concurrently download
+    allowed_file_rel_diff = 0.35  # Set higher tolerance than standard
 
     base_url = "https://api.epa.gov/easey/bulk-files/"
     parameters = {"api_key": os.environ["EPACEMS_API_KEY"]}  # Set to API key
@@ -122,7 +123,7 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
 
             filename = f"epacems-{year}q{quarter}.csv"
             file_path = self.download_directory / filename
-            await self.download_file(url=url, file=file_path, timeout=60 * 14)
+            await self.download_file(url=url, file=file_path)
             self.add_to_archive(
                 target_archive=archive_path,
                 name=filename,

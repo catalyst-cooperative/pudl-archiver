@@ -74,7 +74,6 @@ def add_to_archive_stable_hash(archive: zipfile.ZipFile, filename, data: bytes):
     # default is ZIP_STORED, which means "uncompressed"
     # also this can't be set in the constructor as of 2024-02-09
     info.compress_type = zipfile.ZIP_DEFLATED
-
     archive.writestr(info, data)
 
 
