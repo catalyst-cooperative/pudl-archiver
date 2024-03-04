@@ -32,7 +32,7 @@ classifiers = [
 [project.optional-dependencies]
 dev = [
     "build>=1.0,<1.1",
-    "ruff>=0.1,<0.3",
+    "ruff>=0.1,<0.4",
     "tox>=4.0,<4.14",  # Python test environment manager
     "twine>=3.3,<5.1",  # Used to make releases to PyPI
     "types-requests",
@@ -56,7 +56,7 @@ tests = [
     "pytest-console-scripts>=1.1,<1.5",  # Allow automatic testing of scripts
     "pytest-cov>=2.10,<4.2",  # Pytest plugin for working with coverage
     "pytest-mock>=3.0,<3.13",  # Pytest plugin for mocking function calls and objects
-    "ruff>=0.1,<0.3",
+    "ruff>=0.1,<0.4",
 ]
 
 [project.scripts]
