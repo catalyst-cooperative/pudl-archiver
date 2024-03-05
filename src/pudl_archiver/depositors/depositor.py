@@ -222,7 +222,7 @@ class DraftDeposition(BaseModel):
 
     async def cleanup_after_error(self, e: Exception):
         """Cleanup draft after an error during an archive run."""
-        self.deposition.cleanup_after_error(e)
+        await self.deposition.cleanup_after_error(e)
 
     async def publish(self):
         """Cleanup draft after an error during an archive run."""
