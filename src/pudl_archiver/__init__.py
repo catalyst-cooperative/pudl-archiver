@@ -9,6 +9,8 @@ import aiohttp
 import pudl_archiver.orchestrator  # noqa: F401
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver
 from pudl_archiver.archivers.validate import RunSummary
+from pudl_archiver.depositors.depositor import Depositor
+from pudl_archiver.depositors.zenodo.depositor import ZenodoDepositorInterface
 from pudl_archiver.orchestrator import orchestrate_run
 from pudl_archiver.utils import RunSettings
 
@@ -83,12 +85,18 @@ async def archive_datasets(
                 run_settings.only_years,
                 download_directory=run_settings.download_dir,
             )
+            depositor = Depositor.get_latest_version(
+                interface=ZenodoDepositorInterface,
+                dataset=dataset,
+                session=session,
+                settings=run_settings,
+            )
             tasks.append(
                 orchestrate_run(
                     dataset,
                     downloader,
+                    depositor,
                     session,
-                    run_settings,
                 )
             )
 
