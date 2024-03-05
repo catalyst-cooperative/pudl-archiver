@@ -180,7 +180,7 @@ async def test_zenodo_workflow(
         refresh_metadata=False,
         initialize=True,
     )
-    depositor = Depositor(
+    depositor = Depositor.get_latest_version(
         interface=ZenodoDepositorInterface,
         dataset="pudl_test",
         session=session,
