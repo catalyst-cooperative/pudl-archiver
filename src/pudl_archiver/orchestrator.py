@@ -42,7 +42,7 @@ async def orchestrate_run(
     resources = {}
     original_datapackage = await depositor.get_file("datapackage.json")
     async with depositor.open_draft() as draft:
-        async for name, resource in downloader.downlad_all_resources([]):
+        async for name, resource in downloader.download_all_resources([]):
             resources[name] = resource
             await draft.add_resource(name, resource)
 

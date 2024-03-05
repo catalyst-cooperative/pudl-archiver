@@ -269,6 +269,10 @@ class ZenodoDepositorInterface(AbstractDepositorInterface):
 
         return datapackage
 
+    async def cleanup_after_error(self, e: Exception):
+        """Cleanup draft after an error during an archive run."""
+        logger.error(f"Failed while creating new deposition: {e}")
+
     async def _create_new_deposition(self) -> Deposition:
         metadata = DepositionMetadata.from_data_source(self.dataset_id)
         if not metadata.keywords:
