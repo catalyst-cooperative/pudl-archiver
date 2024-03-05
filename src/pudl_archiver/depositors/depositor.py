@@ -155,7 +155,7 @@ class AbstractDepositorInterface(ABC, BaseModel):
 
     @abstractmethod
     def generate_datapackage(self, resources: dict[str, ResourceInfo]) -> DataPackage:
-        """Generate new datapackage, attach to deposition, and return."""
+        """Generate new datapackage and return it."""
         ...
 
 
@@ -163,12 +163,10 @@ class DraftDeposition(BaseModel):
     """Wrapper for a draft deposition which can be modified."""
 
     deposition: AbstractDepositorInterface
-    _new_resources: dict[str, ResourceInfo] = PrivateAttr(default=[])
     _run_valid: bool = PrivateAttr(default=False)
 
     def add_resource(self, name: str, resource: ResourceInfo):
         """Apply correct change to deposition based on downloaded resource."""
-        self._new_resources[name] = resource
         change = self.deposition.generate_change(name, resource)
         self._apply_change(change)
 
@@ -205,9 +203,9 @@ class DraftDeposition(BaseModel):
 
         wrapped_file.actually_close()
 
-    async def generate_datapackage(self):
-        """Add datapckage to deposition."""
-        await self.deposition.generate_datapackage(self._new_resources)
+    def generate_datapackage(self, resources: dict[str, ResourceInfo]):
+        """Generate new datapackage describing draft deposition in current state."""
+        self.deposition.generate_datapackage(resources)
 
     def validate_run(self, run_summary: RunSummary):
         """Draft will only be published if passed a successful run summary while open."""
@@ -226,6 +224,18 @@ class DraftDeposition(BaseModel):
                 "Archive validation failed. Not publishing new archive, kept "
                 f"draft at {self.depositor.get_deposition_link()} for inspection."
             )
+
+    async def get_file(self, filename: str) -> bytes | None:
+        """Get file from deposition.
+
+        Args:
+            filename: Name of file to fetch.
+        """
+        await self.deposition.get_file(filename)
+
+    async def list_files(self) -> list[str]:
+        """Return list of filenames from previous version of deposition."""
+        await self.deposition.list_files()
 
 
 class Depositor(BaseModel):
@@ -257,13 +267,10 @@ class Depositor(BaseModel):
         interface = await interface.get_latest_version(
             dataset,
             session,
-            sandbox=settings.sandbox,
-            create_new=settings.initialize,
-            resume_run=settings.resume_run,
-            refresh_metadata=settings.refresh_metadata,
+            settings,
         )
         return cls(
-            interface=interface,
+            deposition=interface,
             settings=settings,
         )
 
@@ -279,3 +286,15 @@ class Depositor(BaseModel):
             await draft_deposition.cleanup_after_error(e)
         finally:
             await draft_deposition.publish()
+
+    async def get_file(self, filename: str) -> bytes | None:
+        """Get file from deposition.
+
+        Args:
+            filename: Name of file to fetch.
+        """
+        await self.deposition.get_file(filename)
+
+    async def list_files(self) -> list[str]:
+        """Return list of filenames from previous version of deposition."""
+        await self.deposition.list_files()

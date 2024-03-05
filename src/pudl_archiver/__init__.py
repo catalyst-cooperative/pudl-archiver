@@ -85,7 +85,7 @@ async def archive_datasets(
                 run_settings.only_years,
                 download_directory=run_settings.download_dir,
             )
-            depositor = Depositor.get_latest_version(
+            depositor = await Depositor.get_latest_version(
                 interface=ZenodoDepositorInterface,
                 dataset=dataset,
                 session=session,

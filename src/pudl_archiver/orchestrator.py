@@ -40,11 +40,11 @@ async def orchestrate_run(
 ) -> RunSummary:
     """Use downloader and depositor to archive a dataset."""
     resources = {}
-    original_datapackage = depositor.get_file("datapackage.json")
+    original_datapackage = await depositor.get_file("datapackage.json")
     async with depositor.open_draft() as draft:
         async for name, resource in downloader.downlad_all_resources([]):
             resources[name] = resource
-            draft.add_resource(name, resource)
+            await draft.add_resource(name, resource)
 
         # Delete files in draft that weren't downloaded by downloader
         for filename in draft.list_files():
@@ -53,7 +53,7 @@ async def orchestrate_run(
                 draft.delete_file(filename)
 
         # Create new datapackage
-        new_datapackage = draft.attach_datapackage(resources)
+        new_datapackage = draft.generate_datapackage(resources)
 
         # Add datapackage if it's changed
         if _datapackage_worth_changing(original_datapackage, new_datapackage):
