@@ -77,4 +77,4 @@ async def orchestrate_run(
             draft.get_deposition_link(),
         )
         draft.validate_run(summary)
-    return summary
+        return summary
