@@ -16,13 +16,13 @@ from pudl_archiver.archivers.classes import AbstractDatasetArchiver, ResourceInf
 from pudl_archiver.archivers.validate import RunSummary
 from pudl_archiver.depositors.depositor import Depositor
 from pudl_archiver.depositors.zenodo.depositor import ZenodoDepositorInterface
-from pudl_archiver.orchestrator import orchestrate_run
-from pudl_archiver.utils import RunSettings
-from pudl_archiver.zenodo.entities import (
+from pudl_archiver.depositors.zenodo.entities import (
     Deposition,
     DepositionCreator,
     DepositionMetadata,
 )
+from pudl_archiver.orchestrator import orchestrate_run
+from pudl_archiver.utils import RunSettings
 
 
 @pytest.fixture()
