@@ -1,7 +1,6 @@
 """Handle all deposition actions within Zenodo."""
 import asyncio
 import importlib
-import io
 import json
 import logging
 import os
@@ -95,7 +94,7 @@ class ZenodoDepositorInterface(AbstractDepositorInterface):
 
         Args:
             dataset: Name of dataset to archive.
-            session: HTTP handler - we don't use it directly, it's wrapped in self.request.
+            session: HTTP handler - we don't use it directly, it's wrapped in self._request.
             run_settings: Settings from CLI.
         """
         self = cls(dataset_id=dataset, settings=run_settings)
@@ -124,7 +123,7 @@ class ZenodoDepositorInterface(AbstractDepositorInterface):
         headers = {
             "Content-Type": "application/json",
         } | self.auth_actions
-        response = await self.request(
+        response = await self._request(
             "POST", url, log_label="Publishing deposition", headers=headers
         )
         published = Deposition(**response)
@@ -145,7 +144,7 @@ class ZenodoDepositorInterface(AbstractDepositorInterface):
         file_bytes = None
         if file_info := self.deposition.files_map.get(filename):
             url = file_info.links.canonical
-            response = await self.request(
+            response = await self._request(
                 "GET",
                 url,
                 f"Download {filename}",
@@ -180,7 +179,7 @@ class ZenodoDepositorInterface(AbstractDepositorInterface):
         """
         if self._deposition.links.bucket and force_api != "files":
             url = f"{self._deposition.links.bucket}/{filename}"
-            return await self.request(
+            await self._request(
                 "PUT",
                 url,
                 log_label=f"Uploading {filename} to bucket",
@@ -188,16 +187,18 @@ class ZenodoDepositorInterface(AbstractDepositorInterface):
                 headers=self.auth_write,
                 timeout=3600,
             )
-        if self._deposition.links.files and force_api != "bucket":
+        elif self._deposition.links.files and force_api != "bucket":
             url = f"{self._deposition.links.files}"
-            return await self.request(
+            await self._request(
                 "POST",
                 url,
                 log_label=f"Uploading {filename} to files API",
                 data={"file": data, "name": filename},
                 headers=self.auth_write,
             )
-        raise RuntimeError("No file or bucket link available for deposition.")
+        else:
+            raise RuntimeError("No file or bucket link available for deposition.")
+        self.deposition = self._get_deposition_by_id(self.deposition.id_)
 
     async def delete_file(
         self,
@@ -213,16 +214,16 @@ class ZenodoDepositorInterface(AbstractDepositorInterface):
         """
         if not (file_to_delete := self.deposition.files_map.get(filename)):
             logger.info(f"No files matched {filename}.")
-            return None
+            return
 
-        response = await self.request(
+        await self._request(
             "DELETE",
             file_to_delete.links.self,
             parse_json=False,
             log_label=f"Deleting {filename} from deposition {self.deposition.id_}",
             headers=self.auth_write,
         )
-        return response
+        self.deposition = self._get_deposition_by_id(self.deposition.id_)
 
     def generate_change(
         self, filename: str, resource: ResourceInfo
@@ -254,9 +255,7 @@ class ZenodoDepositorInterface(AbstractDepositorInterface):
             resource=resource.local_path,
         )
 
-    async def generate_datapackage(
-        self, resources: dict[str, ResourceInfo]
-    ) -> DataPackage:
+    def generate_datapackage(self, resources: dict[str, ResourceInfo]) -> DataPackage:
         """Generate new datapackage, attach to deposition, and return."""
         logger.info(f"Creating new datapackage.json for {self.data_source_id}")
 
@@ -267,18 +266,11 @@ class ZenodoDepositorInterface(AbstractDepositorInterface):
             resources,
             self._deposition.metadata.version,
         )
-        datapackage_json = io.BytesIO(
-            bytes(
-                datapackage.model_dump_json(by_alias=True, indent=4),
-                encoding="utf-8",
-            )
-        )
-        await self.create_file("datapackage.json", datapackage_json)
 
         return datapackage
 
     async def _create_new_deposition(self) -> Deposition:
-        metadata = DepositionMetadata.from_data_source(self.data_source_id)
+        metadata = DepositionMetadata.from_data_source(self.dataset_id)
         if not metadata.keywords:
             raise AssertionError(
                 "New dataset is missing keywords and cannot be archived."
@@ -296,7 +288,7 @@ class ZenodoDepositorInterface(AbstractDepositorInterface):
             )
         }
 
-        response = await self.request(
+        response = await self._request(
             "POST", url, "Create new deposition", json=payload, headers=headers
         )
         # Ignore content type
@@ -334,7 +326,7 @@ class ZenodoDepositorInterface(AbstractDepositorInterface):
         """
         # just get the new draft from new API.
         new_draft_record = Record(
-            **await self.request(
+            **await self._request(
                 "POST",
                 f"{self.api_root}/records/{self.deposition.id_}/versions",
                 log_label=f"Get existing draft deposition for {self.deposition.id_}",
@@ -370,7 +362,7 @@ class ZenodoDepositorInterface(AbstractDepositorInterface):
         headers = {
             "Content-Type": "application/json",
         } | self.auth_write
-        response = await self.request(
+        response = await self._request(
             "PUT",
             new_deposition_url,
             log_label=f"Updating version number from {base_version} "
@@ -417,6 +409,15 @@ class ZenodoDepositorInterface(AbstractDepositorInterface):
             publish_key = os.environ["ZENODO_TOKEN_PUBLISH"]
         return {"Authorization": f"Bearer {publish_key}"}
 
+    @property
+    def api_root(self):
+        """Return base URL for zenodo server (sandbox or production)."""
+        if self.settings.sandbox:
+            api_root = "https://sandbox.zenodo.org/api"
+        else:
+            api_root = "https://zenodo.org/api"
+        return api_root
+
     async def _get_deposition(self, concept_doi: str) -> Deposition:
         """Get the latest deposition associated with a concept DOI.
 
@@ -435,7 +436,7 @@ class ZenodoDepositorInterface(AbstractDepositorInterface):
         """
         concept_rec_id = concept_doi.split(".")[2]
         record = Record(
-            **await self.request(
+            **await self._request(
                 "GET",
                 f"{self.api_root}/records/{concept_rec_id}",
                 headers=self.auth_write,
@@ -450,7 +451,7 @@ class ZenodoDepositorInterface(AbstractDepositorInterface):
         Args:
             rec_id: The record ID of the deposition you would like to get.
         """
-        response = await self.request(
+        response = await self._request(
             "GET",
             f"{self.api_root}/deposit/depositions/{rec_id}",
             log_label=f"Get deposition for {rec_id}",
@@ -488,7 +489,7 @@ class ZenodoDepositorInterface(AbstractDepositorInterface):
 
             async def run_request():
                 # Convert all urls to str to in case they are pydantic Url types
-                response = await session.request(method, str(url), **kwargs)
+                response = await session._request(method, str(url), **kwargs)
                 if response.status >= 400:
                     if response.headers["Content-Type"] == "application/json":
                         json_resp = await response.json()

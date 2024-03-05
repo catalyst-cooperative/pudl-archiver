@@ -180,7 +180,7 @@ async def test_zenodo_workflow(
         refresh_metadata=False,
         initialize=True,
     )
-    depositor = Depositor.get_latest_version(
+    depositor = await Depositor.get_latest_version(
         interface=ZenodoDepositorInterface,
         dataset="pudl_test",
         session=session,
@@ -208,7 +208,7 @@ async def test_zenodo_workflow(
     # Mock out creating deposition metadata with fake data source
     deposition_metadata_mock = mocker.MagicMock(return_value=deposition_metadata)
     mocker.patch(
-        "pudl_archiver.depositors.zenodo.DepositionMetadata.from_data_source",
+        "pudl_archiver.depositors.zenodo.entities.DepositionMetadata.from_data_source",
         new=deposition_metadata_mock,
     )
 
