@@ -170,10 +170,10 @@ class DraftDeposition(BaseModel):
     deposition: AbstractDepositorInterface
     _run_valid: bool = PrivateAttr(default=False)
 
-    def add_resource(self, name: str, resource: ResourceInfo):
+    async def add_resource(self, name: str, resource: ResourceInfo):
         """Apply correct change to deposition based on downloaded resource."""
         change = self.deposition.generate_change(name, resource)
-        self._apply_change(change)
+        await self._apply_change(change)
 
     async def _apply_change(self, change: DepositionChange) -> None:
         """Actually upload and delete what we listed in self.uploads/deletes.
