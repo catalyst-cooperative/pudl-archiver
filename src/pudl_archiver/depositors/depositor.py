@@ -182,7 +182,6 @@ class DraftDeposition(BaseModel):
             draft: the draft to make these changes to
             change: the change to make
         """
-        self.changes.append(change)
         if self.dry_run:
             logger.info(f"Dry run, skipping {change}")
             return
