@@ -215,6 +215,10 @@ class DraftDeposition(BaseModel):
     def validate_run(self, run_summary: RunSummary):
         """Draft will only be published if passed a successful run summary while open."""
         self._run_valid = run_summary.success
+        if not self._run_valid:
+            logger.error(
+                f"Validation failed for reason: {run_summary.get_failed_tests()}"
+            )
 
     async def cleanup_after_error(self, e: Exception):
         """Cleanup draft after an error during an archive run."""

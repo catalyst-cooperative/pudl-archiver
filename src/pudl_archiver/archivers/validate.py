@@ -114,6 +114,10 @@ class RunSummary(BaseModel):
     previous_version_date: str
     record_url: Url
 
+    def get_failed_tests(self) -> list[ValidationTestResult]:
+        """Return any tests that failed."""
+        return [test for test in self.validation_tests if not test.success]
+
     @property
     def success(self) -> bool:
         """Return True if all tests marked as ``required_for_run_success`` passed."""
