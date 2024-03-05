@@ -4,10 +4,11 @@ import logging
 import typing
 import zipfile
 from collections.abc import Awaitable, Callable
+from pathlib import Path
 from typing import Annotated, Any
 
 import aiohttp
-from pydantic import AnyHttpUrl
+from pydantic import AnyHttpUrl, BaseModel
 from pydantic.functional_serializers import PlainSerializer
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
@@ -114,3 +115,17 @@ async def rate_limit_tasks(tasks: list[typing.Awaitable], rate_limit: int = 10):
 
     while (result := await result_queue.get()) != "tasks_complete":
         yield result
+
+
+class RunSettings(BaseModel):
+    """Settings for an archive run taken from CLI options."""
+
+    sandbox: bool = True
+    initialize: bool = False
+    only_years: list[int] = []
+    dry_run: bool = True
+    summary_file: Path | None = None
+    download_dir: str | None = None
+    auto_publish: bool = False
+    refresh_metadata: bool = False
+    resume_run: bool = False

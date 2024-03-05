@@ -9,6 +9,7 @@ import coloredlogs
 from dotenv import load_dotenv
 
 from pudl_archiver import ARCHIVERS, archive_datasets
+from pudl_archiver.utils import RunSettings
 
 logger = logging.getLogger("catalystcoop.pudl_archiver")
 
@@ -87,10 +88,13 @@ def main():
     log_format = "%(asctime)s [%(levelname)8s] %(name)s:%(lineno)s %(message)s"
     coloredlogs.install(fmt=log_format, level=logging.INFO, logger=logger)
     args = parse_main()
+    datasets = args.datasets
     if args.all:
-        args.datasets = ARCHIVERS.keys()
+        datasets = ARCHIVERS.keys()
     del args.all
-    asyncio.run(archive_datasets(**vars(args)))
+    asyncio.run(
+        archive_datasets(datasets=datasets, run_settings=RunSettings(**vars(args)))
+    )
 
 
 if __name__ == "__main__":

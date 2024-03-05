@@ -9,7 +9,8 @@ import aiohttp
 import pudl_archiver.orchestrator  # noqa: F401
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver
 from pudl_archiver.archivers.validate import RunSummary
-from pudl_archiver.orchestrator import DepositionOrchestrator
+from pudl_archiver.orchestrator import orchestrate_run
+from pudl_archiver.utils import RunSettings
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
@@ -45,15 +46,7 @@ ARCHIVERS = {archiver.name: archiver for archiver in all_archivers()}
 
 async def archive_datasets(
     datasets: list[str],
-    sandbox: bool = True,
-    initialize: bool = False,
-    only_years: list[int] | None = None,
-    dry_run: bool = True,
-    summary_file: Path | None = None,
-    download_dir: str | None = None,
-    auto_publish: bool = False,
-    refresh_metadata: bool = False,
-    resume_run: bool = False,
+    run_settings: RunSettings,
 ):
     """A CLI for the PUDL Zenodo Storage system."""
 
@@ -85,21 +78,19 @@ async def archive_datasets(
             cls = ARCHIVERS.get(dataset)
             if not cls:
                 raise RuntimeError(f"Dataset {dataset} not supported")
-            downloader = cls(session, only_years, download_directory=download_dir)
-            orchestrator = DepositionOrchestrator(
-                dataset,
-                downloader,
+            downloader = cls(
                 session,
-                dataset_settings_path=Path("dataset_doi.yaml"),
-                create_new=initialize,
-                dry_run=dry_run,
-                sandbox=sandbox,
-                auto_publish=auto_publish,
-                refresh_metadata=refresh_metadata,
-                resume_run=resume_run,
+                run_settings.only_years,
+                download_directory=run_settings.download_dir,
             )
-
-            tasks.append(orchestrator.run())
+            tasks.append(
+                orchestrate_run(
+                    dataset,
+                    downloader,
+                    session,
+                    run_settings,
+                )
+            )
 
         results = list(
             zip(datasets, await asyncio.gather(*tasks, return_exceptions=True))
@@ -115,14 +106,14 @@ async def archive_datasets(
             )
             raise exceptions[-1][1]
 
-    if summary_file is not None:
+    if run_settings.summary_file is not None:
         run_summaries = [
             result.dict()
             for _, result in results
             if not isinstance(result, BaseException)
         ]
 
-        with summary_file.open("w") as f:
+        with run_settings.summary_file.open("w") as f:
             f.write(json.dumps(run_summaries, indent=2))
 
     # Check validation results of all runs that aren't unchanged

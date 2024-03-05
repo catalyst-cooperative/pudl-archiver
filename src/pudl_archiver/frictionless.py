@@ -10,8 +10,8 @@ from pudl.metadata.classes import Contributor, DataSource, License
 from pudl.metadata.constants import CONTRIBUTORS
 from pydantic import BaseModel, Field, field_serializer
 
+from pudl_archiver.depositors.zenodo.entities import DepositionFile
 from pudl_archiver.utils import Url
-from pudl_archiver.zenodo.entities import DepositionFile
 
 MEDIA_TYPES: dict[str, str] = {
     "zip": "application/zip",
