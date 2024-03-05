@@ -254,7 +254,7 @@ class ZenodoDepositorInterface(AbstractDepositorInterface):
             resource=resource.local_path,
         )
 
-    async def attach_datapackage(
+    async def generate_datapackage(
         self, resources: dict[str, ResourceInfo]
     ) -> DataPackage:
         """Generate new datapackage, attach to deposition, and return."""

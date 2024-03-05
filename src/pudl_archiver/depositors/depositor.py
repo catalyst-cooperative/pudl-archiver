@@ -154,7 +154,7 @@ class AbstractDepositorInterface(ABC, BaseModel):
         ...
 
     @abstractmethod
-    def attach_datapackage(self, resources: dict[str, ResourceInfo]) -> DataPackage:
+    def generate_datapackage(self, resources: dict[str, ResourceInfo]) -> DataPackage:
         """Generate new datapackage, attach to deposition, and return."""
         ...
 
@@ -205,9 +205,9 @@ class DraftDeposition(BaseModel):
 
         wrapped_file.actually_close()
 
-    async def attach_datapackage(self):
+    async def generate_datapackage(self):
         """Add datapckage to deposition."""
-        await self.deposition.attach_datapackage(self._new_resources)
+        await self.deposition.generate_datapackage(self._new_resources)
 
     def validate_run(self, run_summary: RunSummary):
         """Draft will only be published if passed a successful run summary while open."""
