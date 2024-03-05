@@ -154,6 +154,11 @@ class AbstractDepositorInterface(ABC, BaseModel):
         ...
 
     @abstractmethod
+    async def cleanup_after_error(self, e: Exception):
+        """Cleanup draft after an error during an archive run."""
+        ...
+
+    @abstractmethod
     def generate_datapackage(self, resources: dict[str, ResourceInfo]) -> DataPackage:
         """Generate new datapackage and return it."""
         ...
