@@ -4,8 +4,8 @@ from pathlib import Path
 
 from frictionless.package import Package
 from pudl_archiver.archivers.classes import ResourceInfo
+from pudl_archiver.depositors.zenodo.entities import DepositionFile, FileLinks
 from pudl_archiver.frictionless import DataPackage
-from pudl_archiver.zenodo.entities import DepositionFile, FileLinks
 
 
 def test_datapackage():

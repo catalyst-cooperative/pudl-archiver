@@ -3,10 +3,11 @@ import asyncio
 import logging
 import zipfile
 from collections.abc import Awaitable, Callable
+from pathlib import Path
 from typing import Annotated, Any
 
 import aiohttp
-from pydantic import AnyHttpUrl
+from pydantic import AnyHttpUrl, BaseModel
 from pydantic.functional_serializers import PlainSerializer
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
@@ -74,3 +75,56 @@ def add_to_archive_stable_hash(archive: zipfile.ZipFile, filename, data: bytes):
     # also this can't be set in the constructor as of 2024-02-09
     info.compress_type = zipfile.ZIP_DEFLATED
     archive.writestr(info, data)
+
+
+async def _rate_limited_scheduler(
+    tasks: list[typing.Awaitable],
+    result_queue: asyncio.Queue,
+    rate_limit: int = 10,
+):
+    """Launch rate limited tasks."""
+
+    async def _run_task(task: typing.Awaitable, result_queue: asyncio.Queue):
+        await result_queue.put(await task)
+
+    scheduled_tasks = []
+    for task in tasks:
+        scheduled_tasks.append(asyncio.create_task(_run_task(task, result_queue)))
+        await asyncio.sleep(1 / rate_limit)
+
+    # Wait for all tasks to complete
+    await asyncio.gather(*scheduled_tasks)
+    await result_queue.put("tasks_complete")
+
+
+async def rate_limit_tasks(tasks: list[typing.Awaitable], rate_limit: int = 10):
+    """Utility function to rate limit asyncio tasks.
+
+    This function behaves as an async generator and will yield results from tasks
+    as they complete.
+
+    Args:
+        tasks: List of awaitables to be executed at rate limit.
+        rate_limit: Tasks will be executed every 1/rate_limit seconds.
+    """
+    result_queue = asyncio.Queue()
+    asyncio.create_task(
+        _rate_limited_scheduler(tasks, result_queue, rate_limit=rate_limit)
+    )
+
+    while (result := await result_queue.get()) != "tasks_complete":
+        yield result
+
+
+class RunSettings(BaseModel):
+    """Settings for an archive run taken from CLI options."""
+
+    sandbox: bool = True
+    initialize: bool = False
+    only_years: list[int] = []
+    dry_run: bool = True
+    summary_file: Path | None = None
+    download_dir: str | None = None
+    auto_publish: bool = False
+    refresh_metadata: bool = False
+    resume_run: bool = False

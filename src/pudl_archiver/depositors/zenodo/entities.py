@@ -3,6 +3,7 @@
 See https://developers.zenodo.org/#entities for more info.
 """
 import datetime
+import logging
 import re
 from typing import Annotated, Literal
 
@@ -10,6 +11,8 @@ from pudl.metadata.classes import Contributor, DataSource
 from pydantic import BaseModel, Field, StringConstraints, field_validator
 
 from pudl_archiver.utils import Url
+
+logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 Doi = Annotated[str, StringConstraints(pattern=r"10\.5281/zenodo\.\d+")]
 SandboxDoi = Annotated[str, StringConstraints(pattern=r"10\.5072/zenodo\.\d+")]
@@ -27,6 +30,37 @@ following resources:
 </ul>
 </p>
 """
+
+
+class DatasetSettings(BaseModel):
+    """Simple model to validate doi's in settings."""
+
+    production_doi: Doi | None = None
+    sandbox_doi: SandboxDoi | None = None
+
+
+class ZenodoClientError(Exception):
+    """Captures the JSON error information from Zenodo."""
+
+    def __init__(self, status, message, errors=None):
+        """Constructor.
+
+        Args:
+            status: status message of response
+            message: message of response
+            errors: if any, list of errors returned by response
+        """
+        self.status = status
+        self.message = message
+        self.errors = errors
+
+    def __str__(self):
+        """Cast to string."""
+        return repr(self)
+
+    def __repr__(self):
+        """But the kwargs are useful for recreating this object."""
+        return f"ZenodoClientError(status={self.status}, message={self.message}, errors={self.errors})"
 
 
 class DepositionCreator(BaseModel):
