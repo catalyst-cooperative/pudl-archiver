@@ -227,7 +227,7 @@ class DraftDeposition(BaseModel):
         else:
             logger.error(
                 "Archive validation failed. Not publishing new archive, kept "
-                f"draft at {self.depositor.get_deposition_link()} for inspection."
+                f"draft at {self.deposition.get_deposition_link()} for inspection."
             )
 
     async def get_file(self, filename: str) -> bytes | None:

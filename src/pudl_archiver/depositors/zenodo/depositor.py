@@ -234,6 +234,7 @@ class ZenodoDepositorInterface(AbstractDepositorInterface):
             filename: Name of file in question.
             resource: Info about downloaded file.
         """
+        action = None
         if file_info := self.deposition.files_map.get(filename):
             # If file is not exact match for existing file, update with new file
             if (local_md5 := _compute_md5(resource.local_path)) != file_info.checksum:
