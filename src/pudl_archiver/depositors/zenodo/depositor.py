@@ -83,10 +83,7 @@ class ZenodoDepositorInterface(AbstractDepositorInterface):
 
     # Private attributes
     _request = PrivateAttr()
-    _dataset_settings_path = PrivateAttr(
-        default=importlib.resources.files("pudl_archiver.package_data")
-        / "zenodo_doi.yaml"
-    )
+    _dataset_settings_path = PrivateAttr()
 
     @classmethod
     async def get_latest_version(
@@ -104,6 +101,9 @@ class ZenodoDepositorInterface(AbstractDepositorInterface):
         """
         self = cls(dataset_id=dataset, settings=run_settings)
         self._request = self._make_requester(session)
+        self._dataset_settings_path = (
+            importlib.resources.files("pudl_archiver.package_data") / "zenodo_doi.yaml"
+        )
 
         if not self.settings.initialize:
             self = self.model_copy(
