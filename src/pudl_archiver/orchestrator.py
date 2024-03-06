@@ -1,35 +1,13 @@
 """Core routines for archiving raw data packages."""
-import io
 import logging
-import re
 
 import aiohttp
 
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver
 from pudl_archiver.archivers.validate import RunSummary
 from pudl_archiver.depositors.depositor import Depositor
-from pudl_archiver.frictionless import DataPackage
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
-
-
-def _datapackage_worth_changing(
-    old_datapackage: DataPackage | None, new_datapackage: DataPackage
-) -> bool:
-    # ignore differences in created/version
-    # ignore differences resource paths if it's just some ID number changing...
-    if old_datapackage is None:
-        return True
-    for field in new_datapackage.model_dump():
-        if field in {"created", "version"}:
-            continue
-        if field == "resources":
-            for r in old_datapackage.resources + new_datapackage.resources:
-                r.path = re.sub(r"/\d+/", "/ID_NUMBER/", str(r.path))
-                r.remote_url = re.sub(r"/\d+/", "/ID_NUMBER/", str(r.remote_url))
-        if getattr(new_datapackage, field) != getattr(old_datapackage, field):
-            return True
-    return False
 
 
 async def orchestrate_run(
@@ -53,23 +31,15 @@ async def orchestrate_run(
                 draft.delete_file(filename)
 
         # Create new datapackage
-        new_datapackage = draft.generate_datapackage(resources)
-
-        # Add datapackage if it's changed
-        if _datapackage_worth_changing(original_datapackage, new_datapackage):
-            datapackage_json = io.BytesIO(
-                bytes(
-                    new_datapackage.model_dump_json(by_alias=True, indent=4),
-                    encoding="utf-8",
-                )
-            )
-            await draft.create_file("datapackage.json", datapackage_json)
+        new_datapackage = await draft.attach_datapackage(
+            resources, original_datapackage
+        )
 
         # Validate run
         validations = downloader.validate_dataset(
             original_datapackage, new_datapackage, resources
         )
-        summary = RunSummary(
+        summary = RunSummary.create_summary(
             dataset,
             original_datapackage,
             new_datapackage,

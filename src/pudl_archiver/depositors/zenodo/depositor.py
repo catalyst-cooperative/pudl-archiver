@@ -4,6 +4,7 @@ import importlib
 import json
 import logging
 import os
+import traceback
 from hashlib import md5
 from pathlib import Path
 from typing import BinaryIO, Literal
@@ -262,11 +263,11 @@ class ZenodoDepositorInterface(AbstractDepositorInterface):
 
     def generate_datapackage(self, resources: dict[str, ResourceInfo]) -> DataPackage:
         """Generate new datapackage, attach to deposition, and return."""
-        logger.info(f"Creating new datapackage.json for {self.data_source_id}")
+        logger.info(f"Creating new datapackage.json for {self.dataset_id}")
 
         # Create updated datapackage
         datapackage = DataPackage.from_filelist(
-            self.data_source_id,
+            self.dataset_id,
             [f for f in self.deposition.files if f.filename != "datapackage.json"],
             resources,
             self.deposition.metadata.version,
@@ -276,7 +277,9 @@ class ZenodoDepositorInterface(AbstractDepositorInterface):
 
     async def cleanup_after_error(self, e: Exception):
         """Cleanup draft after an error during an archive run."""
-        logger.error(f"Failed while creating new deposition: {e}")
+        logger.error(
+            f"Failed while creating new deposition: {traceback.print_exception(e)}"
+        )
 
     async def _create_new_deposition(self) -> Deposition:
         metadata = DepositionMetadata.from_data_source(self.dataset_id)
