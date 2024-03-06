@@ -198,7 +198,7 @@ class ZenodoDepositorInterface(AbstractDepositorInterface):
             )
         else:
             raise RuntimeError("No file or bucket link available for deposition.")
-        self.deposition = self._get_deposition_by_id(self.deposition.id_)
+        self.deposition = await self._get_deposition_by_id(self.deposition.id_)
 
     async def delete_file(
         self,
@@ -223,7 +223,7 @@ class ZenodoDepositorInterface(AbstractDepositorInterface):
             log_label=f"Deleting {filename} from deposition {self.deposition.id_}",
             headers=self.auth_write,
         )
-        self.deposition = self._get_deposition_by_id(self.deposition.id_)
+        self.deposition = await self._get_deposition_by_id(self.deposition.id_)
 
     def generate_change(
         self, filename: str, resource: ResourceInfo
