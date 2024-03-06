@@ -163,12 +163,6 @@ async def test_zenodo_workflow(
         refresh_metadata=False,
         initialize=True,
     )
-    depositor = await Depositor.get_latest_version(
-        interface=ZenodoDepositorInterface,
-        dataset="pudl_test",
-        session=session,
-        settings=settings,
-    )
 
     def verify_files(expected, deposition: Deposition):
         deposition_files = {f.filename: f for f in deposition.files}
@@ -193,7 +187,7 @@ async def test_zenodo_workflow(
             # Verify that contents of file are correct
             assert res.text.encode() == file_data["contents"]
 
-    async def refresh_record_info(run_summary: RunSummary) -> Deposition:
+    async def refresh_record_info(depositor, run_summary: RunSummary) -> Deposition:
         record_id = run_summary.record_url.path.rsplit("/", maxsplit=1)[1]
         return await depositor.deposition._get_deposition_by_id(record_id)
 
@@ -226,6 +220,12 @@ async def test_zenodo_workflow(
     )
 
     # Create new deposition and add files
+    depositor = await Depositor.get_latest_version(
+        interface=ZenodoDepositorInterface,
+        dataset="pudl_test",
+        session=session,
+        settings=settings,
+    )
 
     v1_resources = {
         file_data["path"].name: ResourceInfo(
@@ -241,7 +241,7 @@ async def test_zenodo_workflow(
     )
     assert v1_summary.success
 
-    v1_refreshed = await refresh_record_info(v1_summary)
+    v1_refreshed = await refresh_record_info(depositor, v1_summary)
     verify_files(test_files["original"], v1_refreshed)
 
     # the /records/ URL doesn't work until the record is published, but
@@ -258,6 +258,12 @@ async def test_zenodo_workflow(
         for file_data in test_files["updated"]
     }
     settings.initialize = False
+    depositor = await Depositor.get_latest_version(
+        interface=ZenodoDepositorInterface,
+        dataset="pudl_test",
+        session=session,
+        settings=settings,
+    )
 
     # Should fail due to deleted file
     downloader = TestDownloader(v2_resources, session=session)
@@ -282,10 +288,16 @@ async def test_zenodo_workflow(
     )
     assert v2_summary.success
 
-    v2_refreshed = await refresh_record_info(v2_summary)
+    v2_refreshed = await refresh_record_info(depositor, v2_summary)
     verify_files(test_files["updated"], v2_refreshed)
 
     # force a datapackage.json update
+    depositor = await Depositor.get_latest_version(
+        interface=ZenodoDepositorInterface,
+        dataset="pudl_test",
+        session=session,
+        settings=settings,
+    )
     with unittest.mock.patch(
         "pudl_archiver.orchestrator._datapackage_worth_changing",
         lambda *_args: True,
@@ -298,8 +310,14 @@ async def test_zenodo_workflow(
         )
     assert len(v3_summary.file_changes) == 0
 
-    v3_refreshed = await refresh_record_info(v3_summary)
+    v3_refreshed = await refresh_record_info(depositor, v3_summary)
     # no updates to make, should not leave the conceptdoi pointing at a draft
+    depositor = await Depositor.get_latest_version(
+        interface=ZenodoDepositorInterface,
+        dataset="pudl_test",
+        session=session,
+        settings=settings,
+    )
     v4_summary = await orchestrate_run(
         dataset="pudl_test",
         downloader=downloader,
