@@ -195,7 +195,7 @@ async def test_zenodo_workflow(
 
     async def refresh_record_info(run_summary: RunSummary) -> Deposition:
         record_id = run_summary.record_url.path.rsplit("/", maxsplit=1)[1]
-        return await depositor._get_deposition_by_id(record_id)
+        return await depositor.deposition._get_deposition_by_id(record_id)
 
     class TestDownloader(AbstractDatasetArchiver):
         name = "Test Downloader"
