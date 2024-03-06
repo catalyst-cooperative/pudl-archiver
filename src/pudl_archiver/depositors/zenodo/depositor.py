@@ -246,6 +246,10 @@ class ZenodoDepositorInterface(AbstractDepositorInterface):
                 logger.info(f"Adding {filename} to deposition.")
 
                 action = DepositionAction.CREATE
+        else:
+            logger.info(f"Adding {filename} to deposition.")
+
+            action = DepositionAction.CREATE
 
         if action is None:
             return None
