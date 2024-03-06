@@ -134,7 +134,7 @@ def test_settings():
         with Path.open(settings_file, "w") as f:
             f.writelines(["fake_dataset:\n", "    sandbox_doi: null"])
 
-        yield tmp_dir
+        yield Path(tmp_dir)
 
 
 @pytest.mark.asyncio
@@ -149,6 +149,26 @@ async def test_zenodo_workflow(
     mocker,
 ):
     """Test the entire zenodo client workflow."""
+    # Mock settings path
+    settings_mock = mocker.MagicMock(return_value=test_settings)
+    mocker.patch(
+        "pudl_archiver.depositors.zenodo.depositor.importlib.resources.files",
+        new=settings_mock,
+    )
+
+    settings = RunSettings(
+        dry_run=False,
+        sandbox=True,
+        auto_publish=True,
+        refresh_metadata=False,
+        initialize=True,
+    )
+    depositor = await Depositor.get_latest_version(
+        interface=ZenodoDepositorInterface,
+        dataset="pudl_test",
+        session=session,
+        settings=settings,
+    )
 
     def verify_files(expected, deposition: Deposition):
         deposition_files = {f.filename: f for f in deposition.files}
@@ -172,20 +192,6 @@ async def test_zenodo_workflow(
 
             # Verify that contents of file are correct
             assert res.text.encode() == file_data["contents"]
-
-    settings = RunSettings(
-        dry_run=False,
-        sandbox=True,
-        auto_publish=True,
-        refresh_metadata=False,
-        initialize=True,
-    )
-    depositor = await Depositor.get_latest_version(
-        interface=ZenodoDepositorInterface,
-        dataset="pudl_test",
-        session=session,
-        settings=settings,
-    )
 
     async def refresh_record_info(run_summary: RunSummary) -> Deposition:
         record_id = run_summary.record_url.path.rsplit("/", maxsplit=1)[1]
@@ -217,12 +223,6 @@ async def test_zenodo_workflow(
     mocker.patch(
         "pudl_archiver.frictionless.DataSource.from_id",
         new=datasource_mock,
-    )
-
-    # Mock settings path
-    mocker.patch(
-        "pudl_archiver.depositors.zenodo.depositor.importlib.resources.files",
-        new=test_settings,
     )
 
     # Create new deposition and add files
