@@ -107,7 +107,7 @@ class ZenodoDepositorInterface(AbstractDepositorInterface):
             )
         return self
 
-    async def open_draft(self, create_new: bool) -> "AbstractDepositorInterface":
+    async def open_draft(self) -> "AbstractDepositorInterface":
         """Open a new draft deposition to make edits."""
         if self.settings.initialize:
             deposition = await self._create_new_deposition()
@@ -128,7 +128,7 @@ class ZenodoDepositorInterface(AbstractDepositorInterface):
             "POST", url, log_label="Publishing deposition", headers=headers
         )
         published = Deposition(**response)
-        if self.create_new:
+        if self.settings.initialize:
             self._update_dataset_settings(published)
 
         return self.model_copy(update={"deposition": published})
