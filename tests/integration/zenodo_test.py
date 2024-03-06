@@ -299,7 +299,7 @@ async def test_zenodo_workflow(
         settings=settings,
     )
     with unittest.mock.patch(
-        "pudl_archiver.orchestrator._datapackage_worth_changing",
+        "pudl_archiver.depositors.depositor._datapackage_worth_changing",
         lambda *_args: True,
     ):
         v3_summary = await orchestrate_run(
