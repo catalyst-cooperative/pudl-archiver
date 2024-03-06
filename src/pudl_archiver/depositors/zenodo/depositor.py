@@ -83,6 +83,10 @@ class ZenodoDepositorInterface(AbstractDepositorInterface):
 
     # Private attributes
     _request = PrivateAttr()
+    _dataset_settings_path = PrivateAttr(
+        default=importlib.resources.files("pudl_archiver.package_data")
+        / "zenodo_doi.yaml"
+    )
 
     @classmethod
     async def get_latest_version(
@@ -306,6 +310,32 @@ class ZenodoDepositorInterface(AbstractDepositorInterface):
         # Ignore content type
         return Deposition(**response)
 
+    def _update_dataset_settings(self, published_deposition):
+        # Get new DOI and update settings
+        # TODO (daz): split this IO out too.
+        dataset_settings = self.dataset_settings
+        if self.settings.sandbox:
+            sandbox_doi = published_deposition.conceptdoi
+            production_doi = dataset_settings.get(
+                self.dataset_id, DatasetSettings()
+            ).production_doi
+        else:
+            production_doi = published_deposition.conceptdoi
+            sandbox_doi = dataset_settings.get(
+                self.dataset_id, DatasetSettings()
+            ).sandbox_doi
+
+        dataset_settings[self.data_source_id] = DatasetSettings(
+            sandbox_doi=sandbox_doi, production_doi=production_doi
+        )
+
+        # Update doi settings YAML
+        with Path.open(self._dataset_settings_path, "w") as f:
+            raw_settings = {
+                name: settings.dict() for name, settings in dataset_settings.items()
+            }
+            yaml.dump(raw_settings, f)
+
     async def _get_new_version(
         self,
         clobber: bool = False,
@@ -386,21 +416,22 @@ class ZenodoDepositorInterface(AbstractDepositorInterface):
         return Deposition(**response)
 
     @property
-    def doi(self):
-        """Return DOI from settings."""
-        dataset_settings_path = (
-            importlib.resources.files("pudl_archiver.package_data") / "zenodo_doi.yaml"
-        )
-        with Path.open(dataset_settings_path) as f:
+    def dataset_settings(self):
+        """Load doi settings from yaml file and return."""
+        with Path.open(self._dataset_settings_path) as f:
             dataset_settings = {
                 name: DatasetSettings(**dois)
                 for name, dois in yaml.safe_load(f).items()
             }
-        doi_settings = dataset_settings[self.dataset_id]
+        return dataset_settings[self.dataset_id]
+
+    @property
+    def doi(self):
+        """Return DOI from settings."""
         if self.settings.sandbox:
-            doi = doi_settings.sandbox_doi
+            doi = self.dataset_settings.sandbox_doi
         else:
-            doi = doi_settings.production_doi
+            doi = self.dataset_settings.production_doi
         return doi
 
     @property
