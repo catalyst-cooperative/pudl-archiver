@@ -168,6 +168,7 @@ class DraftDeposition(BaseModel):
     """Wrapper for a draft deposition which can be modified."""
 
     deposition: AbstractDepositorInterface
+    settings: RunSettings
     _run_valid: bool = PrivateAttr(default=False)
 
     async def add_resource(self, name: str, resource: ResourceInfo):
@@ -182,7 +183,7 @@ class DraftDeposition(BaseModel):
             draft: the draft to make these changes to
             change: the change to make
         """
-        if self.dry_run:
+        if self.settings.dry_run:
             logger.info(f"Dry run, skipping {change}")
             return
 
@@ -265,12 +266,7 @@ class Depositor(BaseModel):
         Args:
             dataset: Name of dataset to archive.
             session: HTTP handler - we don't use it directly, it's wrapped in self.request.
-            dataset_settings_path: Path to settings file for each dataset.
-            sandbox: whether to hit the sandbox Zenodo instance or the real one. Default True.
-            create_new: whether or not we are adding a new dataset.
-            resume_run: Attempt to resume a run that was previously interrupted.
-            refresh_metadata: Regenerate metadata from PUDL data source rather than
-                existing archived metadata.
+            settings: RunSettings taken from CLI.
         """
         interface = await interface.get_latest_version(
             dataset,
@@ -286,7 +282,8 @@ class Depositor(BaseModel):
     async def open_draft(self):
         """Context manager to open a draft deposition and cleanly handle closing draft."""
         draft_deposition = DraftDeposition(
-            deposition=await self.deposition.open_draft(self.settings.initialize)
+            deposition=await self.deposition.open_draft(self.settings.initialize),
+            settings=self.settings,
         )
         try:
             yield draft_deposition
