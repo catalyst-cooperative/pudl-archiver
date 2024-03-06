@@ -423,15 +423,16 @@ class ZenodoDepositorInterface(AbstractDepositorInterface):
                 name: DatasetSettings(**dois)
                 for name, dois in yaml.safe_load(f).items()
             }
-        return dataset_settings.get(self.dataset_id, DatasetSettings())
+        return dataset_settings
 
     @property
     def doi(self):
         """Return DOI from settings."""
+        dataset_settings = self.dataset_settings.get(self.dataset_id, DatasetSettings())
         if self.settings.sandbox:
-            doi = self.dataset_settings.sandbox_doi
+            doi = dataset_settings.sandbox_doi
         else:
-            doi = self.dataset_settings.production_doi
+            doi = dataset_settings.production_doi
         return doi
 
     @property
