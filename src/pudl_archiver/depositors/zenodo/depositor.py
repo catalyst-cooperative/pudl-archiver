@@ -177,8 +177,8 @@ class ZenodoDepositorInterface(AbstractDepositorInterface):
         Returns:
             None if success.
         """
-        if self._deposition.links.bucket and force_api != "files":
-            url = f"{self._deposition.links.bucket}/{filename}"
+        if self.deposition.links.bucket and force_api != "files":
+            url = f"{self.deposition.links.bucket}/{filename}"
             await self._request(
                 "PUT",
                 url,
@@ -187,8 +187,8 @@ class ZenodoDepositorInterface(AbstractDepositorInterface):
                 headers=self.auth_write,
                 timeout=3600,
             )
-        elif self._deposition.links.files and force_api != "bucket":
-            url = f"{self._deposition.links.files}"
+        elif self.deposition.links.files and force_api != "bucket":
+            url = f"{self.deposition.links.files}"
             await self._request(
                 "POST",
                 url,
@@ -267,9 +267,9 @@ class ZenodoDepositorInterface(AbstractDepositorInterface):
         # Create updated datapackage
         datapackage = DataPackage.from_filelist(
             self.data_source_id,
-            [f for f in self._deposition.files if f.filename != "datapackage.json"],
+            [f for f in self.deposition.files if f.filename != "datapackage.json"],
             resources,
-            self._deposition.metadata.version,
+            self.deposition.metadata.version,
         )
 
         return datapackage
