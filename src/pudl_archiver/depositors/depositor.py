@@ -2,6 +2,7 @@
 
 import io
 import logging
+import re
 from abc import ABC, abstractmethod
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
@@ -208,9 +209,42 @@ class DraftDeposition(BaseModel):
 
         wrapped_file.actually_close()
 
-    def generate_datapackage(self, resources: dict[str, ResourceInfo]):
+    def _datapackage_worth_changing(
+        self, old_datapackage: DataPackage | None, new_datapackage: DataPackage
+    ) -> bool:
+        # ignore differences in created/version
+        # ignore differences resource paths if it's just some ID number changing...
+        if old_datapackage is None:
+            return True
+        for field in new_datapackage.model_dump():
+            if field in {"created", "version"}:
+                continue
+            if field == "resources":
+                for r in old_datapackage.resources + new_datapackage.resources:
+                    r.path = re.sub(r"/\d+/", "/ID_NUMBER/", str(r.path))
+                    r.remote_url = re.sub(r"/\d+/", "/ID_NUMBER/", str(r.remote_url))
+            if getattr(new_datapackage, field) != getattr(old_datapackage, field):
+                return True
+        return False
+
+    async def attach_datapackage(
+        self,
+        resources: dict[str, ResourceInfo],
+        old_datapackage: DataPackage,
+    ) -> DataPackage:
         """Generate new datapackage describing draft deposition in current state."""
-        self.deposition.generate_datapackage(resources)
+        new_datapackage = self.deposition.generate_datapackage(resources)
+
+        # Add datapackage if it's changed
+        if self._datapackage_worth_changing(old_datapackage, new_datapackage):
+            datapackage_json = io.BytesIO(
+                bytes(
+                    new_datapackage.model_dump_json(by_alias=True, indent=4),
+                    encoding="utf-8",
+                )
+            )
+            await self.deposition.create_file("datapackage.json", datapackage_json)
+        return new_datapackage
 
     def validate_run(self, run_summary: RunSummary):
         """Draft will only be published if passed a successful run summary while open."""
@@ -240,11 +274,15 @@ class DraftDeposition(BaseModel):
         Args:
             filename: Name of file to fetch.
         """
-        await self.deposition.get_file(filename)
+        return await self.deposition.get_file(filename)
 
     async def list_files(self) -> list[str]:
         """Return list of filenames from previous version of deposition."""
-        await self.deposition.list_files()
+        return await self.deposition.list_files()
+
+    def get_deposition_link(self) -> Url:
+        """Get URL which points to deposition."""
+        return self.deposition.get_deposition_link()
 
 
 class Depositor(BaseModel):
@@ -289,7 +327,7 @@ class Depositor(BaseModel):
             yield draft_deposition
         except Exception as e:
             await draft_deposition.cleanup_after_error(e)
-        finally:
+        else:
             await draft_deposition.publish()
 
     async def get_file(self, filename: str) -> bytes | None:
@@ -298,8 +336,8 @@ class Depositor(BaseModel):
         Args:
             filename: Name of file to fetch.
         """
-        await self.deposition.get_file(filename)
+        return await self.deposition.get_file(filename)
 
     async def list_files(self) -> list[str]:
         """Return list of filenames from previous version of deposition."""
-        await self.deposition.list_files()
+        return await self.deposition.list_files()
