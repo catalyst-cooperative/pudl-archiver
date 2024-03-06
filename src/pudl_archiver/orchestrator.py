@@ -47,7 +47,7 @@ async def orchestrate_run(
             await draft.add_resource(name, resource)
 
         # Delete files in draft that weren't downloaded by downloader
-        async for filename in draft.list_files():
+        for filename in await draft.list_files():
             if filename not in resources and filename != "datapackage.json":
                 logger.info(f"Deleting {filename} from deposition.")
                 draft.delete_file(filename)
