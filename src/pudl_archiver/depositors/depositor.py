@@ -320,7 +320,7 @@ class Depositor(BaseModel):
     async def open_draft(self):
         """Context manager to open a draft deposition and cleanly handle closing draft."""
         draft_deposition = DraftDeposition(
-            deposition=await self.deposition.open_draft(self.settings.initialize),
+            deposition=await self.deposition.open_draft(),
             settings=self.settings,
         )
         try:
