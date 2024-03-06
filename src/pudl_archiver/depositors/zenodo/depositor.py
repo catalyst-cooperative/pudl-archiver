@@ -325,7 +325,7 @@ class ZenodoDepositorInterface(AbstractDepositorInterface):
                 self.dataset_id, DatasetSettings()
             ).sandbox_doi
 
-        dataset_settings[self.data_source_id] = DatasetSettings(
+        dataset_settings[self.dataset_id] = DatasetSettings(
             sandbox_doi=sandbox_doi, production_doi=production_doi
         )
 
