@@ -188,7 +188,7 @@ class DraftDeposition(BaseModel):
             return
 
         if change.action_type in [DepositionAction.DELETE, DepositionAction.UPDATE]:
-            self.deposition = await self.deposition.delete_file(change.name)
+            await self.deposition.delete_file(change.name)
         if change.action_type in [DepositionAction.CREATE, DepositionAction.UPDATE]:
             if change.resource is None:
                 raise RuntimeError("Must pass a resource to be uploaded.")
@@ -204,7 +204,7 @@ class DraftDeposition(BaseModel):
             with upload.source.open("rb") as f:
                 wrapped_file = FileWrapper(f.read())
 
-        self.deposition = await self.deposition.create_file(upload.dest, wrapped_file)
+        await self.deposition.create_file(upload.dest, wrapped_file)
 
         wrapped_file.actually_close()
 
