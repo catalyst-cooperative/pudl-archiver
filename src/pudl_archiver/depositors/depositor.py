@@ -231,12 +231,14 @@ class DraftDeposition(BaseModel):
         self,
         resources: dict[str, ResourceInfo],
         old_datapackage: DataPackage,
-    ) -> DataPackage:
+    ) -> tuple[DataPackage, bool]:
         """Generate new datapackage describing draft deposition in current state."""
         new_datapackage = self.deposition.generate_datapackage(resources)
 
         # Add datapackage if it's changed
-        if self._datapackage_worth_changing(old_datapackage, new_datapackage):
+        if updated := self._datapackage_worth_changing(
+            old_datapackage, new_datapackage
+        ):
             datapackage_json = io.BytesIO(
                 bytes(
                     new_datapackage.model_dump_json(by_alias=True, indent=4),
@@ -244,16 +246,16 @@ class DraftDeposition(BaseModel):
                 )
             )
             await self.deposition.create_file("datapackage.json", datapackage_json)
-        return new_datapackage
+        return new_datapackage, updated
 
     async def cleanup_after_error(self, e: Exception):
         """Cleanup draft after an error during an archive run."""
         await self.deposition.cleanup_after_error(e)
 
-    async def publish(self, run_summary: RunSummary):
+    async def publish(self, run_summary: RunSummary, datapackage_updated: bool):
         """Cleanup draft after an error during an archive run."""
         logger.info("Attempting to publish deposition.")
-        if len(run_summary.file_changes) == 0:
+        if len(run_summary.file_changes) == 0 and not datapackage_updated:
             logger.info(
                 "No changes detected, kept draft at"
                 f"{self.deposition.get_deposition_link()} for inspection."
