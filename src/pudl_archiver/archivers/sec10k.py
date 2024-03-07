@@ -36,7 +36,7 @@ class Sec10KArchiver(AbstractDatasetArchiver):
         self,
     ) -> ArchiveAwaitable:
         """Download SEC 10-K resources."""
-        for year in range(2021, 2024):
+        for year in range(1993, 2024):
             for quarter in range(1, 5):
                 if any([f"{year}q{quarter}" in fname for fname in self.existing_files]):  # noqa: C419
                     logger.info(
