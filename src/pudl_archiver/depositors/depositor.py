@@ -252,6 +252,7 @@ class DraftDeposition(BaseModel):
 
     async def publish(self, run_summary: RunSummary):
         """Cleanup draft after an error during an archive run."""
+        logger.info("Attempting to publish deposition.")
         if len(run_summary.file_changes) == 0:
             logger.info(
                 "No changes detected, kept draft at"
