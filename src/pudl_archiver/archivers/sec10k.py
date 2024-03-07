@@ -4,6 +4,7 @@ import asyncio
 import gzip
 import io
 import logging
+import re
 
 import pandas as pd
 
@@ -29,12 +30,13 @@ class Sec10KArchiver(AbstractDatasetArchiver):
     fail_on_file_size_change = False
     fail_on_dataset_size_change = False
     directory_per_resource_chunk = True
+    ex_21_pattern = re.compile(r"<DOCUMENT>\s?<TYPE>EX-(21(\.\d)?)")
 
     async def get_resources(
         self,
     ) -> ArchiveAwaitable:
         """Download SEC 10-K resources."""
-        for year in range(1993, 2024):
+        for year in range(2021, 2024):
             for quarter in range(1, 5):
                 if any([f"{year}q{quarter}" in fname for fname in self.existing_files]):  # noqa: C419
                     logger.info(
@@ -53,7 +55,10 @@ class Sec10KArchiver(AbstractDatasetArchiver):
         await asyncio.sleep(1)
 
         quarter_index = await self.get_quarter_index(year, quarter)
-        form_index = quarter_index[quarter_index["Form Type"].str.startswith("10-K")]
+        form_index = quarter_index[
+            quarter_index["Form Type"].str.startswith("10-K")
+        ].copy()
+        form_index["exhibit_21_version"] = None
 
         # Wait one second before starting next year to clear rate limit
         await asyncio.sleep(1)
@@ -71,12 +76,19 @@ class Sec10KArchiver(AbstractDatasetArchiver):
         async for url, buffer in rate_limit_tasks(download_tasks, rate_limit=8):
             logger.info(f"Downloaded: {url}")
             fname = url.replace(f"{BASE_URL}/", "")
+            # Check for exhibit 21
+            has_ex_21 = self.ex_21_pattern.search(buffer.getvalue().decode())
+            if has_ex_21:
+                form_index.loc[
+                    form_index["Filename"] == fname, ["exhibit_21_version"]
+                ] = has_ex_21.group(1)
+
             self.add_to_archive(year_archive, fname, buffer)
             zip_files.add(fname)
 
         # Add index containing filing metadata to archive
         index_buffer = io.BytesIO()
-        form_index.to_csv(index_buffer)
+        form_index.to_csv(index_buffer, index=False)
         self.add_to_archive(year_archive, "index.csv", index_buffer)
 
         logger.info(f"Finished downloading filings from {year}q{quarter}.")
