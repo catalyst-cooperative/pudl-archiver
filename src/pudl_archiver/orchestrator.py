@@ -54,5 +54,5 @@ async def orchestrate_run(
             validations,
             draft.get_deposition_link(),
         )
-        draft.publish(summary)
+        await draft.publish(summary)
         return summary
