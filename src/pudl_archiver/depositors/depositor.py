@@ -246,27 +246,19 @@ class DraftDeposition(BaseModel):
             await self.deposition.create_file("datapackage.json", datapackage_json)
         return new_datapackage
 
-    def validate_run(self, run_summary: RunSummary):
-        """Draft will only be published if passed a successful run summary while open."""
-        self._run_valid = run_summary.success
-        if not self._run_valid:
-            logger.error(
-                f"Validation failed for reason: {run_summary.get_failed_tests()}"
-            )
-
     async def cleanup_after_error(self, e: Exception):
         """Cleanup draft after an error during an archive run."""
         await self.deposition.cleanup_after_error(e)
 
-    async def publish(self):
+    async def publish(self, run_summary: RunSummary):
         """Cleanup draft after an error during an archive run."""
-        if self._run_valid:
-            await self.deposition.publish()
-        else:
-            logger.error(
-                "Archive validation failed. Not publishing new archive, kept "
-                f"draft at {self.deposition.get_deposition_link()} for inspection."
+        if len(run_summary.file_changes) == 0:
+            logger.info(
+                "No changes detected, kept draft at"
+                f"{self.deposition.get_deposition_link()} for inspection."
             )
+            return
+        await self.deposition.publish()
 
     async def get_file(self, filename: str) -> bytes | None:
         """Get file from deposition.
@@ -327,8 +319,6 @@ class Depositor(BaseModel):
             yield draft_deposition
         except Exception as e:
             await draft_deposition.cleanup_after_error(e)
-        else:
-            await draft_deposition.publish()
 
     async def get_file(self, filename: str) -> bytes | None:
         """Get file from deposition.
