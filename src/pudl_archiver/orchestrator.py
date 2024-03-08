@@ -28,7 +28,7 @@ async def orchestrate_run(
         )
 
     async with depositor.open_draft() as draft:
-        async for name, resource in downloader.download_all_resources([]):
+        async for name, resource in downloader.download_all_resources():
             resources[name] = resource
             await draft.add_resource(name, resource)
 
