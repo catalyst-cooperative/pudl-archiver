@@ -21,6 +21,7 @@ jobs:
           - eia861
           - eia860m
           - eia923
+          - eiawater
           - eia_bulk_elec
           - epacamd_eia
           - mshamines
