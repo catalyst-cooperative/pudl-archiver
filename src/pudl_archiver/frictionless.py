@@ -1,4 +1,5 @@
 """Core routines for frictionless data package construction."""
+
 import zipfile
 from collections.abc import Iterable
 from datetime import datetime

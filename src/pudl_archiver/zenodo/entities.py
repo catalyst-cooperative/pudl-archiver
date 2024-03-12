@@ -2,6 +2,7 @@
 
 See https://developers.zenodo.org/#entities for more info.
 """
+
 import datetime
 import re
 from typing import Annotated, Literal

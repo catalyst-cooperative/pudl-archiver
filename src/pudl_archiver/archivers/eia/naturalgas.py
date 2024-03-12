@@ -1,4 +1,5 @@
 """Shared methods for data from EIA Natural Gas Quarterly Viewer (NGQV)."""
+
 import logging
 import zipfile
 from collections.abc import Iterable

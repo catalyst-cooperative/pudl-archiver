@@ -1,4 +1,5 @@
 """Defines models used for validating/summarizing an archiver run."""
+
 import logging
 import xml.etree.ElementTree as Et  # nosec: B405
 import zipfile
@@ -21,9 +22,9 @@ class ValidationTestResult(BaseModel):
     description: str
     required_for_run_success: bool = True
     success: bool
-    notes: list[
-        str
-    ] | None = None  # Optional note to provide details like why test failed
+    notes: list[str] | None = (
+        None  # Optional note to provide details like why test failed
+    )
 
     # Flag to allow ignoring tests that pass to avoid cluttering the summary
     always_serialize_in_summary: bool = True

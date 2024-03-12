@@ -1,4 +1,5 @@
 """Download EIA 176 data."""
+
 import asyncio
 import logging
 import random

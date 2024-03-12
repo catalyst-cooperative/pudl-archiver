@@ -1,4 +1,5 @@
 """Download EPA CAMD data."""
+
 from pathlib import Path
 
 from pudl_archiver.archivers.classes import (
