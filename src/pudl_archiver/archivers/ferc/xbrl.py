@@ -1,4 +1,5 @@
 """A command line interface (CLI) to archive data from an RSS feed."""
+
 import asyncio
 import datetime
 import json

@@ -1,4 +1,5 @@
 """Download EIA electricity data in bulk."""
+
 from pathlib import Path
 
 from pudl_archiver.archivers.classes import (

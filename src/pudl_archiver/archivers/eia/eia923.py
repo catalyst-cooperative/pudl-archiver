@@ -1,4 +1,5 @@
 """Download EIA-923 data."""
+
 import re
 from pathlib import Path
 

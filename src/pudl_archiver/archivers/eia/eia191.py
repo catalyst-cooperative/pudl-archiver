@@ -1,4 +1,5 @@
 """Download EIA 191 data."""
+
 import logging
 
 from pudl_archiver.archivers.classes import (

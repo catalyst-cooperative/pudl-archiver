@@ -1,4 +1,5 @@
 """Test zenodo entities."""
+
 import pytest
 from pudl_archiver.zenodo.entities import DepositionMetadata, FileLinks
 

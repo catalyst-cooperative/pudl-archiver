@@ -1,4 +1,5 @@
 """Defines base class for archiver."""
+
 import asyncio
 import io
 import json

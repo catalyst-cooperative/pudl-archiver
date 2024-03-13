@@ -1,4 +1,5 @@
 """Download PHMSHA data."""
+
 import logging
 import re
 import typing
