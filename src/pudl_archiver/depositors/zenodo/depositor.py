@@ -5,7 +5,6 @@ import json
 import logging
 import os
 import traceback
-from hashlib import md5
 from pathlib import Path
 from typing import BinaryIO, Literal
 
@@ -19,11 +18,12 @@ from pudl_archiver.depositors.depositor import (
     DepositionAction,
     DepositionChange,
 )
-from pudl_archiver.frictionless import DataPackage, ResourceInfo
-from pudl_archiver.utils import RunSettings, Url, retry_async
+from pudl_archiver.frictionless import MEDIA_TYPES, DataPackage, Resource, ResourceInfo
+from pudl_archiver.utils import RunSettings, Url, compute_md5, retry_async
 
 from .entities import (
     Deposition,
+    DepositionFile,
     DepositionMetadata,
     Doi,
     Record,
@@ -31,16 +31,6 @@ from .entities import (
 )
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
-
-
-def _compute_md5(file_path: Path) -> str:
-    """Compute an md5 checksum to compare to files in zenodo deposition."""
-    hash_md5 = md5()  # noqa: S324
-    with Path.open(file_path, "rb") as f:
-        for chunk in iter(lambda: f.read(4096), b""):
-            hash_md5.update(chunk)
-
-    return hash_md5.hexdigest()
 
 
 class ZenodoClientError(Exception):
@@ -72,6 +62,29 @@ class DatasetSettings(BaseModel):
 
     production_doi: Doi | None = None
     sandbox_doi: SandboxDoi | None = None
+
+
+def _resource_from_file(file: DepositionFile, parts: dict[str, str]) -> Resource:
+    """Create a resource from a single file with partitions.
+
+    Args:
+        file: Deposition file metadata returned by Zenodo api.
+        parts: Working partitions of current resource.
+    """
+    filename = Path(file.filename)
+    mt = MEDIA_TYPES[filename.suffix[1:]]
+
+    return Resource(
+        name=file.filename,
+        path=file.links.canonical,
+        remote_url=file.links.canonical,
+        title=filename.name,
+        mediatype=mt,
+        parts=parts,
+        bytes=file.filesize,
+        hash=file.checksum,
+        format=filename.suffix,
+    )
 
 
 class ZenodoDepositorInterface(AbstractDepositorInterface):
@@ -242,7 +255,7 @@ class ZenodoDepositorInterface(AbstractDepositorInterface):
         action = None
         if file_info := self.deposition.files_map.get(filename):
             # If file is not exact match for existing file, update with new file
-            if (local_md5 := _compute_md5(resource.local_path)) != file_info.checksum:
+            if (local_md5 := compute_md5(resource.local_path)) != file_info.checksum:
                 logger.info(
                     f"Updating {filename}: local hash {local_md5} vs. remote {file_info.checksum}"
                 )
@@ -265,14 +278,20 @@ class ZenodoDepositorInterface(AbstractDepositorInterface):
             resource=resource.local_path,
         )
 
-    def generate_datapackage(self, resources: dict[str, ResourceInfo]) -> DataPackage:
+    def generate_datapackage(
+        self, resource_info: dict[str, ResourceInfo]
+    ) -> DataPackage:
         """Generate new datapackage, attach to deposition, and return."""
         logger.info(f"Creating new datapackage.json for {self.dataset_id}")
 
         # Create updated datapackage
-        datapackage = DataPackage.from_filelist(
+        resources = [
+            _resource_from_file(f, resource_info[f.filename].partitions)
+            for f in self.deposition.files
+            if f.filename != "datapackage.json"
+        ]
+        datapackage = DataPackage.new_datapackage(
             self.dataset_id,
-            [f for f in self.deposition.files if f.filename != "datapackage.json"],
             resources,
             self.deposition.metadata.version,
         )

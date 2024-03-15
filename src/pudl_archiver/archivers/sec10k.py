@@ -13,6 +13,7 @@ from pudl_archiver.archivers.classes import (
     ArchiveAwaitable,
     ResourceInfo,
 )
+from pudl_archiver.depositors.gcs import GCSDepositor
 from pudl_archiver.frictionless import ZipLayout
 from pudl_archiver.utils import rate_limit_tasks
 
@@ -31,6 +32,7 @@ class Sec10KArchiver(AbstractDatasetArchiver):
     fail_on_dataset_size_change = False
     directory_per_resource_chunk = True
     ex_21_pattern = re.compile(r"<DOCUMENT>\s?<TYPE>EX-(21(\.\d)?)")
+    depositor = GCSDepositor
 
     async def get_resources(
         self,
@@ -38,12 +40,6 @@ class Sec10KArchiver(AbstractDatasetArchiver):
         """Download SEC 10-K resources."""
         for year in range(1993, 2024):
             for quarter in range(1, 5):
-                if any([f"{year}q{quarter}" in fname for fname in self.existing_files]):  # noqa: C419
-                    logger.info(
-                        f"Skipping {year}, archive already exists in deposition."
-                    )
-                    continue
-
                 if year > 1993 or quarter > 3:
                     yield self.get_year_quarter(year, quarter)
 
@@ -55,6 +51,7 @@ class Sec10KArchiver(AbstractDatasetArchiver):
         await asyncio.sleep(1)
 
         quarter_index = await self.get_quarter_index(year, quarter)
+        quarter_index["year_quarter"] = f"{year}q{quarter}"
         form_index = quarter_index[
             quarter_index["Form Type"].str.startswith("10-K")
         ].copy()
@@ -77,7 +74,13 @@ class Sec10KArchiver(AbstractDatasetArchiver):
             logger.info(f"Downloaded: {url}")
             fname = url.replace(f"{BASE_URL}/", "")
             # Check for exhibit 21
-            has_ex_21 = self.ex_21_pattern.search(buffer.getvalue().decode())
+            try:
+                has_ex_21 = self.ex_21_pattern.search(buffer.getvalue().decode())
+            except UnicodeDecodeError:
+                # Some files have inconsistent encoding. Change to utf-8 before archiving
+                file_text = buffer.getvalue().decode(encoding="latin-1")
+                buffer = io.BytesIO(initial_bytes=file_text.encode())
+                has_ex_21 = self.ex_21_pattern.search(file_text)
             if has_ex_21:
                 form_index.loc[
                     form_index["Filename"] == fname, ["exhibit_21_version"]
@@ -87,15 +90,16 @@ class Sec10KArchiver(AbstractDatasetArchiver):
             zip_files.add(fname)
 
         # Add index containing filing metadata to archive
-        index_buffer = io.BytesIO()
-        form_index.to_csv(index_buffer, index=False)
-        self.add_to_archive(year_archive, "index.csv", index_buffer)
+        # index_buffer = io.BytesIO()
+        # form_index.to_csv(index_buffer, index=False)
+        # self.add_to_archive(year_archive, "index.csv", index_buffer)
 
         logger.info(f"Finished downloading filings from {year}q{quarter}.")
         return ResourceInfo(
             local_path=year_archive,
             partitions={"year_quarter": f"{year}q{quarter}"},
             layout=ZipLayout(file_paths=zip_files),
+            metadata=form_index,
         )
 
     async def get_quarter_index(self, year: int, quarter: int) -> pd.DataFrame:

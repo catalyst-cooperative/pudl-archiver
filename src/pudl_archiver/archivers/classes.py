@@ -16,6 +16,8 @@ import aiohttp
 import pandas as pd
 
 from pudl_archiver.archivers import validate
+from pudl_archiver.depositors.depositor import AbstractDepositorInterface
+from pudl_archiver.depositors.zenodo.depositor import ZenodoDepositorInterface
 from pudl_archiver.frictionless import DataPackage, ResourceInfo
 from pudl_archiver.utils import (
     add_to_archive_stable_hash,
@@ -77,7 +79,8 @@ class AbstractDatasetArchiver(ABC):
     directory_per_resource_chunk: bool = False
     #: Whether the dataset has implemented logic so that an interrupted run can be resumed
     resumeable: bool = False
-    existing_files: list[str] = []
+    # Specify which depositor to use
+    depositor: type[AbstractDepositorInterface] = ZenodoDepositorInterface
 
     # Configure which generic validation tests to run
     fail_on_missing_files: bool = True

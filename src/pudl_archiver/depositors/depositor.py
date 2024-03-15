@@ -12,6 +12,7 @@ from typing import BinaryIO
 
 import aiohttp
 from pydantic import BaseModel, ConfigDict, PrivateAttr
+from pydantic_settings import BaseSettings
 
 from pudl_archiver.archivers.validate import RunSummary
 from pudl_archiver.frictionless import DataPackage, ResourceInfo
@@ -61,7 +62,7 @@ class DepositionChange:
     resource: io.IOBase | Path | None = None
 
 
-class AbstractDepositorInterface(ABC, BaseModel):
+class AbstractDepositorInterface(ABC, BaseSettings):
     """Abstract class defines read interface for depositor."""
 
     @classmethod
@@ -82,7 +83,7 @@ class AbstractDepositorInterface(ABC, BaseModel):
         ...
 
     @abstractmethod
-    async def open_draft(self, create_new: bool) -> "AbstractDepositorInterface":
+    async def open_draft(self) -> "AbstractDepositorInterface":
         """Open a new draft deposition to make edits."""
         ...
 
@@ -175,9 +176,9 @@ class DraftDeposition(BaseModel):
     async def add_resource(self, name: str, resource: ResourceInfo):
         """Apply correct change to deposition based on downloaded resource."""
         change = self.deposition.generate_change(name, resource)
-        await self._apply_change(change)
+        await self._apply_change(change, metadata=resource.metadata)
 
-    async def _apply_change(self, change: DepositionChange) -> None:
+    async def _apply_change(self, change: DepositionChange, metadata=None) -> None:
         """Actually upload and delete what we listed in self.uploads/deletes.
 
         Args:
@@ -195,17 +196,17 @@ class DraftDeposition(BaseModel):
                 raise RuntimeError("Must pass a resource to be uploaded.")
 
             await self._upload_file(
-                _UploadSpec(source=change.resource, dest=change.name)
+                _UploadSpec(source=change.resource, dest=change.name), metadata=metadata
             )
 
-    async def _upload_file(self, upload: _UploadSpec):
+    async def _upload_file(self, upload: _UploadSpec, metadata=None):
         if isinstance(upload.source, io.IOBase):
             wrapped_file = FileWrapper(upload.source.read())
         else:
             with upload.source.open("rb") as f:
                 wrapped_file = FileWrapper(f.read())
 
-        await self.deposition.create_file(upload.dest, wrapped_file)
+        await self.deposition.create_file(upload.dest, wrapped_file, metadata=metadata)
 
         wrapped_file.actually_close()
 

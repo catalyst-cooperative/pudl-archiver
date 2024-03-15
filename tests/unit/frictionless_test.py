@@ -4,6 +4,7 @@ from pathlib import Path
 
 from frictionless.package import Package
 from pudl_archiver.archivers.classes import ResourceInfo
+from pudl_archiver.depositors.zenodo.depositor import _resource_from_file
 from pudl_archiver.depositors.zenodo.entities import DepositionFile, FileLinks
 from pudl_archiver.frictionless import DataPackage
 
@@ -25,13 +26,16 @@ def test_datapackage():
         )
         for name in files
     ]
-    resources = {
+    resource_info = {
         name: ResourceInfo(local_path=Path(f"/fake/directory/{name}"), partitions={})
         for name in files
     }
+    resources = [
+        _resource_from_file(f, resource_info[f.filename].partitions)
+        for f in deposition_files
+        if f.filename != "datapackage.json"
+    ]
 
-    dp = DataPackage.from_filelist(
-        "ferc1", deposition_files, resources, version="1.0.0"
-    )
+    dp = DataPackage.new_datapackage("ferc1", resources, version="1.0.0")
 
     assert Package(descriptor=dp.model_dump(by_alias=True)).metadata_valid

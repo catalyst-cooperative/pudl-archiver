@@ -6,11 +6,11 @@ from io import BytesIO
 from pathlib import Path
 from typing import Any
 
+import pandas as pd
 from pudl.metadata.classes import Contributor, DataSource, License
 from pudl.metadata.constants import CONTRIBUTORS
-from pydantic import BaseModel, Field, field_serializer
+from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
-from pudl_archiver.depositors.zenodo.entities import DepositionFile
 from pudl_archiver.utils import Url
 
 MEDIA_TYPES: dict[str, str] = {
@@ -65,9 +65,12 @@ class ZipLayout(BaseModel):
 class ResourceInfo(BaseModel):
     """Class providing information about downloaded resource."""
 
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     local_path: Path
     partitions: dict[str, Any]
     layout: ZipLayout | None = None
+    metadata: pd.DataFrame | None = None
 
 
 class Resource(BaseModel):
@@ -87,29 +90,6 @@ class Resource(BaseModel):
     format_: str = Field(alias="format")
     bytes_: int = Field(alias="bytes")
     hash_: str = Field(alias="hash")
-
-    @classmethod
-    def from_file(cls, file: DepositionFile, parts: dict[str, str]) -> "Resource":
-        """Create a resource from a single file with partitions.
-
-        Args:
-            file: Deposition file metadata returned by Zenodo api.
-            parts: Working partitions of current resource.
-        """
-        filename = Path(file.filename)
-        mt = MEDIA_TYPES[filename.suffix[1:]]
-
-        return cls(
-            name=file.filename,
-            path=file.links.canonical,
-            remote_url=file.links.canonical,
-            title=filename.name,
-            mediatype=mt,
-            parts=parts,
-            bytes=file.filesize,
-            hash=file.checksum,
-            format=filename.suffix,
-        )
 
 
 class DataPackage(BaseModel):
@@ -152,11 +132,10 @@ class DataPackage(BaseModel):
         return serialized_contributors
 
     @classmethod
-    def from_filelist(
+    def new_datapackage(
         cls,
         name: str,
-        files: Iterable[DepositionFile],
-        resources: dict[str, ResourceInfo],
+        resources: Iterable[Resource],
         version: str | None,
     ) -> "DataPackage":
         """Create a frictionless datapackage from a list of files and partitions.
@@ -175,13 +154,7 @@ class DataPackage(BaseModel):
             title=f"PUDL Raw {data_source.title}",
             sources=[{"title": data_source.title, "path": str(data_source.path)}],
             licenses=[data_source.license_raw],
-            resources=sorted(
-                [
-                    Resource.from_file(file, resources[file.filename].partitions)
-                    for file in files
-                ],
-                key=lambda x: x.name,
-            ),  # Sort by filename
+            resources=sorted(resources, key=lambda x: x.name),  # Sort by filename
             contributors=[CONTRIBUTORS["catalyst-cooperative"]],
             created=str(datetime.utcnow()),
             keywords=data_source.keywords,

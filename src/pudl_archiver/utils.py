@@ -4,6 +4,7 @@ import logging
 import typing
 import zipfile
 from collections.abc import Awaitable, Callable
+from hashlib import md5
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -115,6 +116,16 @@ async def rate_limit_tasks(tasks: list[typing.Awaitable], rate_limit: int = 10):
 
     while (result := await result_queue.get()) != "tasks_complete":
         yield result
+
+
+def compute_md5(file_path: Path) -> str:
+    """Compute an md5 checksum to compare to files in zenodo deposition."""
+    hash_md5 = md5()  # noqa: S324
+    with Path.open(file_path, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_md5.update(chunk)
+
+    return hash_md5.hexdigest()
 
 
 class RunSettings(BaseModel):
