@@ -1,5 +1,6 @@
 """Defines models used for validating/summarizing an archiver run."""
 
+import csv
 import logging
 import xml.etree.ElementTree as Et  # nosec: B405
 import zipfile
@@ -289,6 +290,9 @@ def _validate_file_type(path: Path, buffer: BytesIO) -> bool:
         except (pa.lib.ArrowInvalid, pa.lib.ArrowException):
             return False
 
+    if extension == ".csv":
+        return _validate_csv(buffer)
+
     logger.warning(f"No validations defined for files of type: {extension} - {path}")
     return True
 
@@ -300,3 +304,16 @@ def _validate_xml(buffer: BytesIO) -> bool:
         return False
 
     return True
+
+
+def _validate_csv(buffer: BytesIO) -> bool:
+    try:
+        # pd.read_csv(buffer, nrows=100) # Alternate option and maybe preferable?
+        start = buffer.read(4096)
+        dialect = csv.Sniffer().sniff(str(start))
+        if dialect.delimiter == ",":
+            return True
+        return False
+    except csv.Error:
+        # Could not get a csv dialect -> probably not a csv.
+        return False

@@ -3,6 +3,7 @@
 import itertools
 import logging
 import zipfile
+from io import BytesIO
 from pathlib import Path
 
 import pytest
@@ -303,3 +304,28 @@ def test_run_summary_success(specs, expected_success):
         record_url=Url("https://www.catalyst.coop/bogus-record-url"),
     )
     assert summary.success == expected_success
+
+
+@pytest.mark.parametrize(
+    "file_bytes,expected_success",
+    [
+        (
+            BytesIO(
+                b"PK\00\00\00\00\00!\00\\A1\\B7\\FCFr\00\00R\00\00\00[Content_Types].xml"
+            ),
+            False,
+        ),
+        (
+            BytesIO(b"'name','address','telephone'/njohn,123 street,1234567890"),
+            True,
+        ),
+        (
+            BytesIO(b"hello world"),
+            False,
+        ),
+    ],
+    ids=["Excel header", "CSV file", "Text file"],
+)
+def test_validate_csv(file_bytes, expected_success):
+    success = validate._validate_csv(file_bytes)
+    assert success == expected_success
