@@ -283,11 +283,7 @@ def _validate_file_type(path: Path, buffer: BytesIO) -> bool:
         return _validate_xml(buffer)
 
     if extension == ".parquet":
-        try:
-            pa.parquet.ParquetFile(buffer)
-            return True
-        except (pa.lib.ArrowInvalid, pa.lib.ArrowException):
-            return False
+        return _validate_parquet(buffer)
 
     logger.warning(f"No validations defined for files of type: {extension} - {path}")
     return True
@@ -300,3 +296,11 @@ def _validate_xml(buffer: BytesIO) -> bool:
         return False
 
     return True
+
+
+def _validate_parquet(buffer: BytesIO) -> bool:
+    try:
+        pa.parquet.ParquetFile(buffer)
+        return True
+    except (pa.lib.ArrowInvalid, pa.lib.ArrowException):
+        return False
