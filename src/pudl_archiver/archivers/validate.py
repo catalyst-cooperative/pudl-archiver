@@ -7,6 +7,7 @@ from io import BytesIO
 from pathlib import Path
 from typing import Any, Literal
 
+import pandas as pd
 import pyarrow as pa
 from pydantic import BaseModel
 
@@ -285,6 +286,9 @@ def _validate_file_type(path: Path, buffer: BytesIO) -> bool:
     if extension == ".parquet":
         return _validate_parquet(buffer)
 
+    if extension == ".csv":
+        return _validate_csv(buffer)
+
     logger.warning(f"No validations defined for files of type: {extension} - {path}")
     return True
 
@@ -294,7 +298,15 @@ def _validate_xml(buffer: BytesIO) -> bool:
         Et.parse(buffer)  # noqa: S314
     except Et.ParseError:
         return False
+    return True
 
+
+def _validate_csv(buffer: BytesIO) -> bool:
+    try:
+        sliver = pd.read_csv(buffer, nrows=100)  # Try reading in a data slice
+        return not sliver.empty
+    except (pd.errors.EmptyDataError, pd.errors.ParserError):
+        return False
     return True
 
 

@@ -26,8 +26,8 @@ def parse_main():
         "--only-years",
         nargs="*",
         help="Years to download data for. Supported datasets: censusdp1tract, eia176, "
-        "eia191, eia757a, eia860, eia860m, eia861, eia923, eia_bulk_elec, eiaaeo, "
-        "eiawater, epacamd_eia, epacems, ferc1, ferc2, ferc6, ferc60, ferc714, "
+        "eia191, eia757a, eia860, eia860m, eia861, eia923, eia930, eia_bulk_elec, "
+        "eiaaeo, eiawater, epacamd_eia, epacems, ferc1, ferc2, ferc6, ferc60, ferc714, "
         "mshamines, nrelatb, phmsagas",
         type=int,
     )
