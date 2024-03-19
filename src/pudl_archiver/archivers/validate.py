@@ -1,6 +1,5 @@
 """Defines models used for validating/summarizing an archiver run."""
 
-import csv
 import logging
 import xml.etree.ElementTree as Et  # nosec: B405
 import zipfile
@@ -8,6 +7,7 @@ from io import BytesIO
 from pathlib import Path
 from typing import Any, Literal
 
+import pandas as pd
 import pyarrow as pa
 from pydantic import BaseModel
 
@@ -302,18 +302,13 @@ def _validate_xml(buffer: BytesIO) -> bool:
         Et.parse(buffer)  # noqa: S314
     except Et.ParseError:
         return False
-
     return True
 
 
 def _validate_csv(buffer: BytesIO) -> bool:
     try:
-        # pd.read_csv(buffer, nrows=100) # Alternate option and maybe preferable?
-        start = buffer.read(4096)
-        dialect = csv.Sniffer().sniff(str(start))
-        if dialect.delimiter == ",":
-            return True
+        sliver = pd.read_csv(buffer, nrows=100)  # Try reading in a data slice
+        return not sliver.empty
+    except (pd.errors.EmptyDataError, pd.errors.ParserError):
         return False
-    except csv.Error:
-        # Could not get a csv dialect -> probably not a csv.
-        return False
+    return True

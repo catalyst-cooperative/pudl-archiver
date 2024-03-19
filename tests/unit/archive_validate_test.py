@@ -311,12 +311,12 @@ def test_run_summary_success(specs, expected_success):
     [
         (
             BytesIO(
-                b"PK\00\00\00\00\00!\00\\A1\\B7\\FCFr\00\00R\00\00\00[Content_Types].xml"
+                b'"PK\00\00\00\00\00!\00\\A1\\B7\\FCFr\00\00R\00\00\00[Content_Types].xml'
             ),
             False,
         ),
         (
-            BytesIO(b"'name','address','telephone'/njohn,123 street,1234567890"),
+            BytesIO(b"'name','address','telephone'\njohn,123 street,1234567890"),
             True,
         ),
         (
@@ -324,7 +324,7 @@ def test_run_summary_success(specs, expected_success):
             False,
         ),
     ],
-    ids=["Excel header", "CSV file", "Text file"],
+    ids=["Parser error", "CSV file", "Text file"],
 )
 def test_validate_csv(file_bytes, expected_success):
     success = validate._validate_csv(file_bytes)
