@@ -24,7 +24,6 @@ class EiaAeoArchiver(AbstractDatasetArchiver):
 
     async def get_year_resource(self, year: int) -> tuple[Path, dict]:
         """Download zip file."""
-        # Use archive link if year is not most recent year
         filename = f"AEO{year}.zip"
         url = f"{BASE_URL}/{filename}"
         download_path = self.download_directory / f"eiaaeo-{year}.zip"
