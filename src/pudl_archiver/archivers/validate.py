@@ -284,11 +284,7 @@ def _validate_file_type(path: Path, buffer: BytesIO) -> bool:
         return _validate_xml(buffer)
 
     if extension == ".parquet":
-        try:
-            pa.parquet.ParquetFile(buffer)
-            return True
-        except (pa.lib.ArrowInvalid, pa.lib.ArrowException):
-            return False
+        return _validate_parquet(buffer)
 
     if extension == ".csv":
         return _validate_csv(buffer)
@@ -312,3 +308,11 @@ def _validate_csv(buffer: BytesIO) -> bool:
     except (pd.errors.EmptyDataError, pd.errors.ParserError):
         return False
     return True
+
+
+def _validate_parquet(buffer: BytesIO) -> bool:
+    try:
+        pa.parquet.ParquetFile(buffer)
+        return True
+    except (pa.lib.ArrowInvalid, pa.lib.ArrowException):
+        return False
