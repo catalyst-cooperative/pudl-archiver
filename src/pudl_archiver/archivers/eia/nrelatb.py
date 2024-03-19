@@ -10,7 +10,7 @@ from pudl_archiver.archivers.classes import (
 
 # Note: Using non s3:// link here as compatibility between asyncio and botocore is
 # complex.
-BASE_URL = "https://oedi-data-lake.s3.amazonaws.com/ATB/electricity/parquet/"
+BASE_URL = "https://oedi-data-lake.s3.amazonaws.com/ATB/electricity/parquet"
 
 
 class NrelAtbArchiver(AbstractDatasetArchiver):

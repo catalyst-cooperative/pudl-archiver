@@ -7,6 +7,7 @@ from io import BytesIO
 from pathlib import Path
 from typing import Any, Literal
 
+import pyarrow as pa
 from pydantic import BaseModel
 
 from pudl_archiver.frictionless import DataPackage, Resource, ZipLayout
@@ -280,6 +281,13 @@ def _validate_file_type(path: Path, buffer: BytesIO) -> bool:
 
     if extension == ".xml" or extension == ".xbrl" or extension == ".xsd":
         return _validate_xml(buffer)
+
+    if extension == ".parquet":
+        try:
+            pa.parquet.ParquetFile(buffer)
+            return True
+        except (pa.lib.ArrowInvalid, pa.lib.ArrowException):
+            return False
 
     logger.warning(f"No validations defined for files of type: {extension} - {path}")
     return True
