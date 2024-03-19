@@ -69,7 +69,7 @@ This command will download the latest available data and create archives for eac
 requested datasource requested. The supported datasources include `censusdp1tract`,
 `eia_bulk_elec`, `eia176`, `eia191`, `eia757a`,`eia860`, `eia860m`, `eia861`, `eia923`,
 `eiaaeo`, `eiawater`, `epacems`, `epacamd_eia`, `ferc1`, `ferc2`, `ferc6`, `ferc60`,
-`ferc714`, `phmsagas`, `mshamines`.
+`ferc714`, `nrelatb`, `phmsagas`, `mshamines`.
 
 There are also four optional flags available:
 

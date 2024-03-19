@@ -19,6 +19,7 @@ MEDIA_TYPES: dict[str, str] = {
     "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     "csv": "text/csv",
     "txt": "text/csv",
+    "parquet": "application/vnd.apache.parquet",
 }
 
 

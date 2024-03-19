@@ -26,6 +26,7 @@ jobs:
           - eia_bulk_elec
           - epacamd_eia
           - mshamines
+          - nrelatb
           - phmsagas
 
       fail-fast: false
