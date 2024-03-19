@@ -25,9 +25,10 @@ def parse_main():
     parser.add_argument(
         "--only-years",
         nargs="*",
-        help="Years to download data for. Supported datasets: eia860, "
-        "eia860m, eia861, eia923, eiawater, epacems, ferc1, ferc2, ferc6, "
-        "ferc60, ferc714",
+        help="Years to download data for. Supported datasets: censusdp1tract, eia176, "
+        "eia191, eia757a, eia860, eia860m, eia861, eia923, eia_bulk_elec, eiaaeo, "
+        "eiawater, epacamd_eia, epacems, ferc1, ferc2, ferc6, ferc60, ferc714, "
+        "mshamines, phmsagas",
         type=int,
     )
     parser.add_argument(
