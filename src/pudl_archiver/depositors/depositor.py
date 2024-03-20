@@ -102,6 +102,11 @@ class PublishedDeposition(BaseModel, ABC):
         """Return list of filenames from previous version of deposition."""
         ...
 
+    @abstractmethod
+    def get_deposition_link(self) -> Url:
+        """Get URL which points to deposition."""
+        ...
+
 
 class DraftDeposition(BaseModel, ABC):
     """Wrapper for a draft deposition which can be modified."""
@@ -199,7 +204,7 @@ class DraftDeposition(BaseModel, ABC):
         if len(run_summary.file_changes) == 0:
             logger.info(
                 "No changes detected, kept draft at"
-                f"{self.deposition.get_deposition_link()} for inspection."
+                f"{self.get_deposition_link()} for inspection."
             )
             return None
         return await self.deposition.publish()
