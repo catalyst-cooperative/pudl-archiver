@@ -81,7 +81,6 @@ class Resource(BaseModel):
     profile: str = "data-resource"
     name: str
     path: Url
-    remote_url: Url
     title: str
     parts: dict[str, Any]
     encoding: str = "utf-8"
@@ -104,7 +103,6 @@ class Resource(BaseModel):
         return cls(
             name=file.filename,
             path=file.links.canonical,
-            remote_url=file.links.canonical,
             title=filename.name,
             mediatype=mt,
             parts=parts,
