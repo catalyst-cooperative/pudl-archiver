@@ -209,7 +209,7 @@ class DraftDeposition(BaseModel, ABC):
                 f"{self.get_deposition_link()} for inspection."
             )
             return None
-        return await self.deposition.publish()
+        return await self.publish()
 
     async def _apply_change(self, change: DepositionChange) -> "DraftDeposition":
         """Actually upload and delete what we listed in self.uploads/deletes.
