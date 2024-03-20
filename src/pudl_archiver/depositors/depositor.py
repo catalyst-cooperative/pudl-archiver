@@ -142,7 +142,7 @@ class DraftDeposition(BaseModel, ABC):
         self,
         filename: str,
         data: BinaryIO,
-    ):
+    ) -> "DraftDeposition":
         """Create a file in a deposition.
 
         Args:
@@ -158,7 +158,7 @@ class DraftDeposition(BaseModel, ABC):
     async def delete_file(
         self,
         filename: str,
-    ):
+    ) -> "DraftDeposition":
         """Delete a file from a deposition.
 
         Args:
@@ -191,10 +191,12 @@ class DraftDeposition(BaseModel, ABC):
         """Generate new datapackage and return it."""
         ...
 
-    async def add_resource(self, name: str, resource: ResourceInfo):
+    async def add_resource(
+        self, name: str, resource: ResourceInfo
+    ) -> "DraftDeposition":
         """Apply correct change to deposition based on downloaded resource."""
         change = self.generate_change(name, resource)
-        await self._apply_change(change)
+        return await self._apply_change(change)
 
     async def publish_if_valid(
         self, run_summary: RunSummary
@@ -203,13 +205,13 @@ class DraftDeposition(BaseModel, ABC):
         logger.info("Attempting to publish deposition.")
         if len(run_summary.file_changes) == 0:
             logger.info(
-                "No changes detected, kept draft at"
+                "No changes detected, kept draft at "
                 f"{self.get_deposition_link()} for inspection."
             )
             return None
         return await self.deposition.publish()
 
-    async def _apply_change(self, change: DepositionChange) -> None:
+    async def _apply_change(self, change: DepositionChange) -> "DraftDeposition":
         """Actually upload and delete what we listed in self.uploads/deletes.
 
         Args:
@@ -218,17 +220,19 @@ class DraftDeposition(BaseModel, ABC):
         """
         if self.settings.dry_run:
             logger.info(f"Dry run, skipping {change}")
-            return
+            return None
 
+        draft = self
         if change.action_type in [DepositionAction.DELETE, DepositionAction.UPDATE]:
-            await self.delete_file(change.name)
+            draft = await self.delete_file(change.name)
         if change.action_type in [DepositionAction.CREATE, DepositionAction.UPDATE]:
             if change.resource is None:
                 raise RuntimeError("Must pass a resource to be uploaded.")
 
-            await self._upload_file(
+            draft = await self._upload_file(
                 _UploadSpec(source=change.resource, dest=change.name)
             )
+        return draft
 
     async def _upload_file(self, upload: _UploadSpec):
         if isinstance(upload.source, io.IOBase):
@@ -237,9 +241,10 @@ class DraftDeposition(BaseModel, ABC):
             with upload.source.open("rb") as f:
                 wrapped_file = FileWrapper(f.read())
 
-        await self.create_file(upload.dest, wrapped_file)
+        draft = await self.create_file(upload.dest, wrapped_file)
 
         wrapped_file.actually_close()
+        return draft
 
     def _datapackage_worth_changing(
         self, old_datapackage: DataPackage | None, new_datapackage: DataPackage
