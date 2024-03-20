@@ -115,7 +115,7 @@ async def archive_datasets(
     if run_settings.summary_file is not None:
         run_summaries = [
             result.dict()
-            for _, result in results
+            for _, [result, published] in results
             if not isinstance(result, BaseException)
         ]
 
@@ -124,7 +124,9 @@ async def archive_datasets(
 
     # Check validation results of all runs that aren't unchanged
     validation_results = [
-        result.success for _, result in results if isinstance(result, RunSummary)
+        result.success
+        for _, [result, published] in results
+        if isinstance(result, RunSummary)
     ]
     if not all(validation_results):
         raise RuntimeError("Error: archive validation tests failed.")

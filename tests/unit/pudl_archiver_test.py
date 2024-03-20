@@ -65,7 +65,9 @@ async def test_archive_datasets(
     settings = RunSettings(summary_file=summary_file)
 
     # Set run() return value to success summary and test
-    mocked_orchestrator_success = mocker.AsyncMock(return_value=successful_run)
+    mocked_orchestrator_success = mocker.AsyncMock(
+        return_value=(successful_run, "published")
+    )
     mocker.patch("pudl_archiver.orchestrate_run", new=mocked_orchestrator_success)
     mocker.patch("pudl_archiver.ZenodoPublishedDeposition.get_latest_version")
     await archive_datasets(["eia860"], run_settings=settings)
@@ -73,7 +75,7 @@ async def test_archive_datasets(
 
     # Set run() return value to failure summary and test
     mocked_json_dump.reset_mock()
-    mocked_orchestrator_fail = mocker.AsyncMock(return_value=failed_run)
+    mocked_orchestrator_fail = mocker.AsyncMock(return_value=(failed_run, "published"))
     mocker.patch("pudl_archiver.orchestrate_run", new=mocked_orchestrator_fail)
     with pytest.raises(RuntimeError):
         await archive_datasets(["eia860"], run_settings=settings)

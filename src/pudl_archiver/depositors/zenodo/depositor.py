@@ -90,6 +90,7 @@ class ZenodoBaseDepositionInterface(BaseModel):
     # Private attributes
     _request = PrivateAttr()
     _dataset_settings_path = PrivateAttr()
+    _session = PrivateAttr()
 
     async def get_file(self, filename: str) -> bytes | None:
         """Get file from deposition.
@@ -289,6 +290,7 @@ class ZenodoPublishedDeposition(ZenodoBaseDepositionInterface, PublishedDepositi
             run_settings: Settings from CLI.
         """
         self = cls(dataset_id=dataset, settings=run_settings)
+        self._session = session
         self._request = self._make_requester(session)
         self._dataset_settings_path = (
             importlib.resources.files("pudl_archiver.package_data") / "zenodo_doi.yaml"
@@ -321,7 +323,11 @@ class ZenodoDraftDeposition(ZenodoBaseDepositionInterface, DraftDeposition):
         if self.settings.initialize:
             self._update_dataset_settings(published)
 
-        return self.model_copy(update={"deposition": published})
+        return ZenodoPublishedDeposition.get_latest_version(
+            dataset=self.dataset_id,
+            session=self._session,
+            run_settings=self.settings,
+        )
 
     async def create_file(
         self,
@@ -452,6 +458,7 @@ class ZenodoDraftDeposition(ZenodoBaseDepositionInterface, DraftDeposition):
         self = cls(dataset_id=published.dataset_id, settings=published.settings)
 
         # Copy private variables
+        self._session = published._session
         self._request = published._request
         self._dataset_settings_path = published._dataset_settings_path
 
