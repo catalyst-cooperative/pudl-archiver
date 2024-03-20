@@ -234,7 +234,7 @@ async def test_zenodo_workflow(
     )
     assert v1_summary.success
 
-    verify_files(test_files["original"], v1_refreshed)
+    verify_files(test_files["original"], v1_refreshed.deposition)
 
     # the /records/ URL doesn't work until the record is published, but
     # deposit/ works from draft through publication
@@ -279,7 +279,7 @@ async def test_zenodo_workflow(
     )
     assert v2_summary.success
 
-    verify_files(test_files["updated"], v2_refreshed)
+    verify_files(test_files["updated"], v2_refreshed.deposition)
 
     # force a datapackage.json update
     depositor = await ZenodoPublishedDeposition.get_latest_version(
