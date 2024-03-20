@@ -61,13 +61,55 @@ class DepositionChange:
     resource: io.IOBase | Path | None = None
 
 
+class PublishedDeposition(BaseModel, ABC):
+    """Wrapper class to manage state of deposition and calling interface."""
+
+    settings: RunSettings
+
+    @classmethod
+    @abstractmethod
+    async def get_latest_version(
+        cls,
+        dataset: str,
+        session: aiohttp.ClientSession,
+        run_settings: RunSettings,
+    ) -> "PublishedDeposition":
+        """Create a new ZenodoDepositor.
+
+        Args:
+            dataset: Name of dataset to archive.
+            session: HTTP handler - we don't use it directly, it's wrapped in self.request.
+            run_settings: Settings from CLI.
+        """
+        ...
+
+    @abstractmethod
+    async def open_draft(self) -> "DraftDeposition":
+        """Open a new draft deposition to make edits."""
+        ...
+
+    @abstractmethod
+    async def get_file(self, filename: str) -> bytes | None:
+        """Get file from deposition.
+
+        Args:
+            filename: Name of file to fetch.
+        """
+        ...
+
+    @abstractmethod
+    async def list_files(self) -> list[str]:
+        """Return list of filenames from previous version of deposition."""
+        ...
+
+
 class DraftDeposition(BaseModel, ABC):
     """Wrapper for a draft deposition which can be modified."""
 
     settings: RunSettings
 
     @abstractmethod
-    async def publish(self, run_summary: RunSummary) -> "PublishedDeposition":
+    async def publish(self) -> PublishedDeposition:
         """Publish draft deposition and return new depositor with updated deposition."""
         ...
 
@@ -149,6 +191,19 @@ class DraftDeposition(BaseModel, ABC):
         change = self.generate_change(name, resource)
         await self._apply_change(change)
 
+    async def publish_if_valid(
+        self, run_summary: RunSummary
+    ) -> PublishedDeposition | None:
+        """Check that deposition is valid and worth changing, then publish if so."""
+        logger.info("Attempting to publish deposition.")
+        if len(run_summary.file_changes) == 0:
+            logger.info(
+                "No changes detected, kept draft at"
+                f"{self.deposition.get_deposition_link()} for inspection."
+            )
+            return None
+        return await self.deposition.publish()
+
     async def _apply_change(self, change: DepositionChange) -> None:
         """Actually upload and delete what we listed in self.uploads/deletes.
 
@@ -203,14 +258,12 @@ class DraftDeposition(BaseModel, ABC):
         self,
         resources: dict[str, ResourceInfo],
         old_datapackage: DataPackage,
-    ) -> tuple[DataPackage, bool]:
+    ) -> DataPackage:
         """Generate new datapackage describing draft deposition in current state."""
         new_datapackage = self.generate_datapackage(resources)
 
         # Add datapackage if it's changed
-        if updated := self._datapackage_worth_changing(
-            old_datapackage, new_datapackage
-        ):
+        if self._datapackage_worth_changing(old_datapackage, new_datapackage):
             datapackage_json = io.BytesIO(
                 bytes(
                     new_datapackage.model_dump_json(by_alias=True, indent=4),
@@ -218,46 +271,4 @@ class DraftDeposition(BaseModel, ABC):
                 )
             )
             await self.create_file("datapackage.json", datapackage_json)
-        return new_datapackage, updated
-
-
-class PublishedDeposition(BaseModel, ABC):
-    """Wrapper class to manage state of deposition and calling interface."""
-
-    settings: RunSettings
-
-    @classmethod
-    @abstractmethod
-    async def get_latest_version(
-        cls,
-        dataset: str,
-        session: aiohttp.ClientSession,
-        run_settings: RunSettings,
-    ) -> "PublishedDeposition":
-        """Create a new ZenodoDepositor.
-
-        Args:
-            dataset: Name of dataset to archive.
-            session: HTTP handler - we don't use it directly, it's wrapped in self.request.
-            run_settings: Settings from CLI.
-        """
-        ...
-
-    @abstractmethod
-    async def open_draft(self) -> "DraftDeposition":
-        """Open a new draft deposition to make edits."""
-        ...
-
-    @abstractmethod
-    async def get_file(self, filename: str) -> bytes | None:
-        """Get file from deposition.
-
-        Args:
-            filename: Name of file to fetch.
-        """
-        ...
-
-    @abstractmethod
-    async def list_files(self) -> list[str]:
-        """Return list of filenames from previous version of deposition."""
-        ...
+        return new_datapackage

@@ -39,9 +39,7 @@ async def orchestrate_run(
             draft.delete_file(filename)
 
     # Create new datapackage
-    new_datapackage, datapackage_updated = await draft.attach_datapackage(
-        resources, original_datapackage
-    )
+    new_datapackage = await draft.attach_datapackage(resources, original_datapackage)
 
     # Validate run
     validations = downloader.validate_dataset(
@@ -54,5 +52,5 @@ async def orchestrate_run(
         validations,
         draft.get_deposition_link(),
     )
-    await draft.publish(summary, datapackage_updated)
+    await draft.publish(summary)
     return summary
