@@ -323,7 +323,7 @@ class ZenodoDraftDeposition(ZenodoBaseDepositionInterface, DraftDeposition):
         if self.settings.initialize:
             self._update_dataset_settings(published)
 
-        return ZenodoPublishedDeposition.get_latest_version(
+        return await ZenodoPublishedDeposition.get_latest_version(
             dataset=self.dataset_id,
             session=self._session,
             run_settings=self.settings,
