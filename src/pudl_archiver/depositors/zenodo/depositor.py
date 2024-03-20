@@ -15,9 +15,10 @@ import yaml
 from pydantic import BaseModel, PrivateAttr
 
 from pudl_archiver.depositors.depositor import (
-    AbstractDepositorInterface,
     DepositionAction,
     DepositionChange,
+    DraftDeposition,
+    PublishedDeposition,
 )
 from pudl_archiver.frictionless import DataPackage, ResourceInfo
 from pudl_archiver.utils import RunSettings, Url, retry_async
@@ -74,8 +75,13 @@ class DatasetSettings(BaseModel):
     sandbox_doi: SandboxDoi | None = None
 
 
-class ZenodoDepositorInterface(AbstractDepositorInterface):
-    """Implement AbstractDepositorInterface for zenodo depositions."""
+class ZenodoBaseDepositionInterface(BaseModel):
+    """Implements the base interface to zenodo depositions.
+
+    This class will be inherited by both the Draft and Published Zenodo deposition
+    classes to avoid duplicated code between the two. Only the Draft version is
+    writeable, so this interface will be read only.
+    """
 
     deposition: Deposition | None = None
     dataset_id: str
@@ -84,58 +90,6 @@ class ZenodoDepositorInterface(AbstractDepositorInterface):
     # Private attributes
     _request = PrivateAttr()
     _dataset_settings_path = PrivateAttr()
-
-    @classmethod
-    async def get_latest_version(
-        cls,
-        dataset: str,
-        session: aiohttp.ClientSession,
-        run_settings: RunSettings,
-    ) -> "AbstractDepositorInterface":
-        """Create a new ZenodoDepositor.
-
-        Args:
-            dataset: Name of dataset to archive.
-            session: HTTP handler - we don't use it directly, it's wrapped in self._request.
-            run_settings: Settings from CLI.
-        """
-        self = cls(dataset_id=dataset, settings=run_settings)
-        self._request = self._make_requester(session)
-        self._dataset_settings_path = (
-            importlib.resources.files("pudl_archiver.package_data") / "zenodo_doi.yaml"
-        )
-
-        if not self.settings.initialize:
-            self = self.model_copy(
-                update={"deposition": await self._get_deposition(self.doi)}
-            )
-        return self
-
-    async def open_draft(self) -> "AbstractDepositorInterface":
-        """Open a new draft deposition to make edits."""
-        if self.settings.initialize:
-            deposition = await self._create_new_deposition()
-        else:
-            deposition = await self._get_new_version(
-                clobber=True, refresh_metadata=self.settings.refresh_metadata
-            )
-
-        return self.model_copy(update={"deposition": deposition})
-
-    async def publish(self) -> "AbstractDepositorInterface":
-        """Publish draft deposition and return new depositor with updated deposition."""
-        url = self.deposition.links.publish
-        headers = {
-            "Content-Type": "application/json",
-        } | self.auth_actions
-        response = await self._request(
-            "POST", url, log_label="Publishing deposition", headers=headers
-        )
-        published = Deposition(**response)
-        if self.settings.initialize:
-            self._update_dataset_settings(published)
-
-        return self.model_copy(update={"deposition": published})
 
     async def get_file(self, filename: str) -> bytes | None:
         """Get file from deposition.
@@ -166,254 +120,6 @@ class ZenodoDepositorInterface(AbstractDepositorInterface):
     def get_deposition_link(self) -> Url:
         """Get URL which points to deposition."""
         return self.deposition.links.html
-
-    async def create_file(
-        self,
-        filename: str,
-        data: BinaryIO,
-        force_api: Literal["bucket", "files"] | None = None,
-    ):
-        """Create a file in a deposition.
-
-        Args:
-            filename: the filename of the file you want to create.
-            data: the actual data associated with the file.
-
-        Returns:
-            None if success.
-        """
-        if self.deposition.links.bucket and force_api != "files":
-            url = f"{self.deposition.links.bucket}/{filename}"
-            await self._request(
-                "PUT",
-                url,
-                log_label=f"Uploading {filename} to bucket",
-                data=data,
-                headers=self.auth_write,
-                timeout=3600,
-            )
-        elif self.deposition.links.files and force_api != "bucket":
-            url = f"{self.deposition.links.files}"
-            await self._request(
-                "POST",
-                url,
-                log_label=f"Uploading {filename} to files API",
-                data={"file": data, "name": filename},
-                headers=self.auth_write,
-            )
-        else:
-            raise RuntimeError("No file or bucket link available for deposition.")
-        self.deposition = await self._get_deposition_by_id(self.deposition.id_)
-
-    async def delete_file(
-        self,
-        filename: str,
-    ):
-        """Delete a file from a deposition.
-
-        Args:
-            filename: the filename of the file you want to delete.
-
-        Returns:
-            None if success.
-        """
-        if not (file_to_delete := self.deposition.files_map.get(filename)):
-            logger.info(f"No files matched {filename}.")
-            return
-
-        await self._request(
-            "DELETE",
-            file_to_delete.links.self,
-            parse_json=False,
-            log_label=f"Deleting {filename} from deposition {self.deposition.id_}",
-            headers=self.auth_write,
-        )
-        self.deposition = await self._get_deposition_by_id(self.deposition.id_)
-
-    def generate_change(
-        self, filename: str, resource: ResourceInfo
-    ) -> DepositionChange | None:
-        """Check whether file should be changed.
-
-        Args:
-            filename: Name of file in question.
-            resource: Info about downloaded file.
-        """
-        action = None
-        if file_info := self.deposition.files_map.get(filename):
-            # If file is not exact match for existing file, update with new file
-            if (local_md5 := _compute_md5(resource.local_path)) != file_info.checksum:
-                logger.info(
-                    f"Updating {filename}: local hash {local_md5} vs. remote {file_info.checksum}"
-                )
-                action = DepositionAction.UPDATE
-            else:
-                logger.info(f"Adding {filename} to deposition.")
-
-                action = DepositionAction.CREATE
-        else:
-            logger.info(f"Adding {filename} to deposition.")
-
-            action = DepositionAction.CREATE
-
-        if action is None:
-            return None
-
-        return DepositionChange(
-            action_type=action,
-            name=filename,
-            resource=resource.local_path,
-        )
-
-    def generate_datapackage(self, resources: dict[str, ResourceInfo]) -> DataPackage:
-        """Generate new datapackage, attach to deposition, and return."""
-        logger.info(f"Creating new datapackage.json for {self.dataset_id}")
-
-        # Create updated datapackage
-        datapackage = DataPackage.from_filelist(
-            self.dataset_id,
-            [f for f in self.deposition.files if f.filename != "datapackage.json"],
-            resources,
-            self.deposition.metadata.version,
-        )
-
-        return datapackage
-
-    async def cleanup_after_error(self, e: Exception):
-        """Cleanup draft after an error during an archive run."""
-        logger.error(
-            f"Failed while creating new deposition: {traceback.print_exception(e)}"
-        )
-
-    async def _create_new_deposition(self) -> Deposition:
-        metadata = DepositionMetadata.from_data_source(self.dataset_id)
-        if not metadata.keywords:
-            raise AssertionError(
-                "New dataset is missing keywords and cannot be archived."
-            )
-
-        url = f"{self.api_root}/deposit/depositions"
-        headers = {
-            "Content-Type": "application/json",
-        } | self.auth_write
-
-        payload = {
-            "metadata": metadata.dict(
-                by_alias=True,
-                exclude={"publication_date", "doi", "prereserve_doi"},
-            )
-        }
-
-        response = await self._request(
-            "POST", url, "Create new deposition", json=payload, headers=headers
-        )
-        # Ignore content type
-        return Deposition(**response)
-
-    def _update_dataset_settings(self, published_deposition):
-        # Get new DOI and update settings
-        # TODO (daz): split this IO out too.
-        dataset_settings = self.dataset_settings
-        if self.settings.sandbox:
-            sandbox_doi = published_deposition.conceptdoi
-            production_doi = dataset_settings.get(
-                self.dataset_id, DatasetSettings()
-            ).production_doi
-        else:
-            production_doi = published_deposition.conceptdoi
-            sandbox_doi = dataset_settings.get(
-                self.dataset_id, DatasetSettings()
-            ).sandbox_doi
-
-        dataset_settings[self.dataset_id] = DatasetSettings(
-            sandbox_doi=sandbox_doi, production_doi=production_doi
-        )
-
-        # Update doi settings YAML
-        with Path.open(self._dataset_settings_path, "w") as f:
-            raw_settings = {
-                name: settings.dict() for name, settings in dataset_settings.items()
-            }
-            yaml.dump(raw_settings, f)
-
-    async def _get_new_version(
-        self,
-        clobber: bool = False,
-        refresh_metadata: bool = False,
-    ) -> Deposition:
-        """Get a new version of a deposition.
-
-        1. Get a fresh new draft based on the deposition.
-        2. Increment its major version number.
-
-        Guaranteeing a fresh new draft that looks like the existing record is
-        surprisingly difficult, due to instability in Zenodo's deposition
-        querying functionality.
-
-        1. Try to create a new version of the deposition.
-        2. If that fails, that is because there is already a draft.
-        3. Since the existing draft may have been changed from its initial state, delete it.
-           a. The only way to find the existing draft is to use the undocumented `POST /records/:id:/versions` API endpoint, which will either create a new draft or return an existing one.
-           b. We need to extract the deposition ID from the above output in order to delete it.
-        4.
-
-        Args:
-            clobber: if there is an existing draft, delete it and get a new one.
-            refresh_metadata: regenerate metadata from data source rather than existing
-                archives' metadata.
-
-        Returns:
-            A new Deposition that is a snapshot of the old one you passed in,
-            with a new major version number.
-        """
-        # just get the new draft from new API.
-        new_draft_record = Record(
-            **await self._request(
-                "POST",
-                f"{self.api_root}/records/{self.deposition.id_}/versions",
-                log_label=f"Get existing draft deposition for {self.deposition.id_}",
-                headers=self.auth_write,
-            )
-        )
-        # then, get the deposition based on that ID.
-        new_draft_deposition = await self._get_deposition_by_id(new_draft_record.id_)
-
-        # Update metadata of new deposition with new version info
-        base_metadata = self.deposition.metadata.model_dump(by_alias=True)
-
-        if refresh_metadata:
-            logger.info("Re-creating deposition metadata from PUDL source data.")
-            draft_metadata = DepositionMetadata.from_data_source(self.dataset_id).dict(
-                by_alias=True
-            )
-        else:
-            draft_metadata = new_draft_deposition.metadata.model_dump(by_alias=True)
-
-        metadata = {
-            key: val
-            for key, val in (base_metadata | draft_metadata).items()
-            if key not in {"doi", "prereserve_doi", "publication_date"}
-        }
-        base_version = semantic_version.Version(base_metadata["version"])
-        new_version = base_version.next_major()
-        metadata["version"] = str(new_version)
-        logging.info(f"{base_metadata=}\n{draft_metadata=}\n{metadata=}")
-        data = json.dumps({"metadata": metadata})
-        # Get url to newest deposition
-        new_deposition_url = new_draft_deposition.links.latest_draft
-        headers = {
-            "Content-Type": "application/json",
-        } | self.auth_write
-        response = await self._request(
-            "PUT",
-            new_deposition_url,
-            log_label=f"Updating version number from {base_version} "
-            f"(from {self.deposition.id_}) to {new_version} "
-            f"(on {new_draft_deposition.id_})",
-            data=data,
-            headers=headers,
-        )
-        return Deposition(**response)
 
     @property
     def dataset_settings(self):
@@ -563,3 +269,328 @@ class ZenodoDepositorInterface(AbstractDepositorInterface):
             return response
 
         return requester
+
+
+class ZenodoPublishedDeposition(ZenodoBaseDepositionInterface, PublishedDeposition):
+    """Interface to Published Zenodo deposition."""
+
+    @classmethod
+    async def get_latest_version(
+        cls,
+        dataset: str,
+        session: aiohttp.ClientSession,
+        run_settings: RunSettings,
+    ) -> "ZenodoPublishedDeposition":
+        """Create a new ZenodoDepositor.
+
+        Args:
+            dataset: Name of dataset to archive.
+            session: HTTP handler - we don't use it directly, it's wrapped in self._request.
+            run_settings: Settings from CLI.
+        """
+        self = cls(dataset_id=dataset, settings=run_settings)
+        self._request = self._make_requester(session)
+        self._dataset_settings_path = (
+            importlib.resources.files("pudl_archiver.package_data") / "zenodo_doi.yaml"
+        )
+
+        if not self.settings.initialize:
+            self = self.model_copy(
+                update={"deposition": await self._get_deposition(self.doi)}
+            )
+        return self
+
+    async def open_draft(self) -> "ZenodoDraftDeposition":
+        """Open a new draft deposition to make edits."""
+        return await ZenodoDraftDeposition.new_draft(self)
+
+
+class ZenodoDraftDeposition(ZenodoBaseDepositionInterface, DraftDeposition):
+    """Implement AbstractDepositorInterface for zenodo depositions."""
+
+    async def publish(self) -> ZenodoPublishedDeposition:
+        """Publish draft deposition and return new depositor with updated deposition."""
+        url = self.deposition.links.publish
+        headers = {
+            "Content-Type": "application/json",
+        } | self.auth_actions
+        response = await self._request(
+            "POST", url, log_label="Publishing deposition", headers=headers
+        )
+        published = Deposition(**response)
+        if self.settings.initialize:
+            self._update_dataset_settings(published)
+
+        return self.model_copy(update={"deposition": published})
+
+    async def create_file(
+        self,
+        filename: str,
+        data: BinaryIO,
+        force_api: Literal["bucket", "files"] | None = None,
+    ) -> "ZenodoDraftDeposition":
+        """Create a file in a deposition.
+
+        Args:
+            filename: the filename of the file you want to create.
+            data: the actual data associated with the file.
+
+        Returns:
+            None if success.
+        """
+        if self.deposition.links.bucket and force_api != "files":
+            url = f"{self.deposition.links.bucket}/{filename}"
+            await self._request(
+                "PUT",
+                url,
+                log_label=f"Uploading {filename} to bucket",
+                data=data,
+                headers=self.auth_write,
+                timeout=3600,
+            )
+        elif self.deposition.links.files and force_api != "bucket":
+            url = f"{self.deposition.links.files}"
+            await self._request(
+                "POST",
+                url,
+                log_label=f"Uploading {filename} to files API",
+                data={"file": data, "name": filename},
+                headers=self.auth_write,
+            )
+        else:
+            raise RuntimeError("No file or bucket link available for deposition.")
+
+        return self.model_copy(
+            update={"deposition": await self._get_deposition_by_id(self.deposition.id_)}
+        )
+
+    async def delete_file(
+        self,
+        filename: str,
+    ) -> "ZenodoDraftDeposition":
+        """Delete a file from a deposition.
+
+        Args:
+            filename: the filename of the file you want to delete.
+
+        Returns:
+            None if success.
+        """
+        if not (file_to_delete := self.deposition.files_map.get(filename)):
+            logger.info(f"No files matched {filename}.")
+            return None
+
+        await self._request(
+            "DELETE",
+            file_to_delete.links.self,
+            parse_json=False,
+            log_label=f"Deleting {filename} from deposition {self.deposition.id_}",
+            headers=self.auth_write,
+        )
+
+        return self.model_copy(
+            update={"deposition": await self._get_deposition_by_id(self.deposition.id_)}
+        )
+
+    def generate_change(
+        self, filename: str, resource: ResourceInfo
+    ) -> DepositionChange:
+        """Check whether file should be changed.
+
+        Args:
+            filename: Name of file in question.
+            resource: Info about downloaded file.
+        """
+        action = DepositionAction.NO_OP
+        if file_info := self.deposition.files_map.get(filename):
+            # If file is not exact match for existing file, update with new file
+            if (local_md5 := _compute_md5(resource.local_path)) != file_info.checksum:
+                logger.info(
+                    f"Updating {filename}: local hash {local_md5} vs. remote {file_info.checksum}"
+                )
+                action = DepositionAction.UPDATE
+            else:
+                logger.info(f"Adding {filename} to deposition.")
+
+                action = DepositionAction.CREATE
+        else:
+            logger.info(f"Adding {filename} to deposition.")
+
+            action = DepositionAction.CREATE
+
+        return DepositionChange(
+            action_type=action,
+            name=filename,
+            resource=resource.local_path,
+        )
+
+    def generate_datapackage(self, resources: dict[str, ResourceInfo]) -> DataPackage:
+        """Generate new datapackage, attach to deposition, and return."""
+        logger.info(f"Creating new datapackage.json for {self.dataset_id}")
+
+        # Create updated datapackage
+        datapackage = DataPackage.from_filelist(
+            self.dataset_id,
+            [f for f in self.deposition.files if f.filename != "datapackage.json"],
+            resources,
+            self.deposition.metadata.version,
+        )
+
+        return datapackage
+
+    async def cleanup_after_error(self, e: Exception):
+        """Cleanup draft after an error during an archive run."""
+        logger.error(
+            f"Failed while creating new deposition: {traceback.print_exception(e)}"
+        )
+
+    @classmethod
+    async def new_draft(
+        cls, published: ZenodoPublishedDeposition
+    ) -> "ZenodoDraftDeposition":
+        """Open a new draft deposition to make edits."""
+        self = cls(dataset_id=published.dataset_id, settings=published.settings)
+
+        # Copy private variables
+        self._request = published._request
+        self._dataset_settings_path = published._dataset_settings_path
+
+        # Get draft deposition
+        if published.settings.initialize:
+            deposition = await self._create_new_deposition()
+        else:
+            deposition = await self._get_new_version(
+                clobber=True, refresh_metadata=published.settings.refresh_metadata
+            )
+
+        return self.model_copy(update={"deposition": deposition})
+
+    async def _create_new_deposition(self) -> Deposition:
+        metadata = DepositionMetadata.from_data_source(self.dataset_id)
+        if not metadata.keywords:
+            raise AssertionError(
+                "New dataset is missing keywords and cannot be archived."
+            )
+
+        url = f"{self.api_root}/deposit/depositions"
+        headers = {
+            "Content-Type": "application/json",
+        } | self.auth_write
+
+        payload = {
+            "metadata": metadata.dict(
+                by_alias=True,
+                exclude={"publication_date", "doi", "prereserve_doi"},
+            )
+        }
+
+        response = await self._request(
+            "POST", url, "Create new deposition", json=payload, headers=headers
+        )
+        # Ignore content type
+        return Deposition(**response)
+
+    def _update_dataset_settings(self, published_deposition):
+        # Get new DOI and update settings
+        # TODO (daz): split this IO out too.
+        dataset_settings = self.dataset_settings
+        if self.settings.sandbox:
+            sandbox_doi = published_deposition.conceptdoi
+            production_doi = dataset_settings.get(
+                self.dataset_id, DatasetSettings()
+            ).production_doi
+        else:
+            production_doi = published_deposition.conceptdoi
+            sandbox_doi = dataset_settings.get(
+                self.dataset_id, DatasetSettings()
+            ).sandbox_doi
+
+        dataset_settings[self.dataset_id] = DatasetSettings(
+            sandbox_doi=sandbox_doi, production_doi=production_doi
+        )
+
+        # Update doi settings YAML
+        with Path.open(self._dataset_settings_path, "w") as f:
+            raw_settings = {
+                name: settings.dict() for name, settings in dataset_settings.items()
+            }
+            yaml.dump(raw_settings, f)
+
+    async def _get_new_version(
+        self,
+        clobber: bool = False,
+        refresh_metadata: bool = False,
+    ) -> Deposition:
+        """Get a new version of a deposition.
+
+        1. Get a fresh new draft based on the deposition.
+        2. Increment its major version number.
+
+        Guaranteeing a fresh new draft that looks like the existing record is
+        surprisingly difficult, due to instability in Zenodo's deposition
+        querying functionality.
+
+        1. Try to create a new version of the deposition.
+        2. If that fails, that is because there is already a draft.
+        3. Since the existing draft may have been changed from its initial state, delete it.
+           a. The only way to find the existing draft is to use the undocumented `POST /records/:id:/versions` API endpoint, which will either create a new draft or return an existing one.
+           b. We need to extract the deposition ID from the above output in order to delete it.
+        4.
+
+        Args:
+            clobber: if there is an existing draft, delete it and get a new one.
+            refresh_metadata: regenerate metadata from data source rather than existing
+                archives' metadata.
+
+        Returns:
+            A new Deposition that is a snapshot of the old one you passed in,
+            with a new major version number.
+        """
+        # just get the new draft from new API.
+        new_draft_record = Record(
+            **await self._request(
+                "POST",
+                f"{self.api_root}/records/{self.deposition.id_}/versions",
+                log_label=f"Get existing draft deposition for {self.deposition.id_}",
+                headers=self.auth_write,
+            )
+        )
+        # then, get the deposition based on that ID.
+        new_draft_deposition = await self._get_deposition_by_id(new_draft_record.id_)
+
+        # Update metadata of new deposition with new version info
+        base_metadata = self.deposition.metadata.model_dump(by_alias=True)
+
+        if refresh_metadata:
+            logger.info("Re-creating deposition metadata from PUDL source data.")
+            draft_metadata = DepositionMetadata.from_data_source(self.dataset_id).dict(
+                by_alias=True
+            )
+        else:
+            draft_metadata = new_draft_deposition.metadata.model_dump(by_alias=True)
+
+        metadata = {
+            key: val
+            for key, val in (base_metadata | draft_metadata).items()
+            if key not in {"doi", "prereserve_doi", "publication_date"}
+        }
+        base_version = semantic_version.Version(base_metadata["version"])
+        new_version = base_version.next_major()
+        metadata["version"] = str(new_version)
+        logging.info(f"{base_metadata=}\n{draft_metadata=}\n{metadata=}")
+        data = json.dumps({"metadata": metadata})
+        # Get url to newest deposition
+        new_deposition_url = new_draft_deposition.links.latest_draft
+        headers = {
+            "Content-Type": "application/json",
+        } | self.auth_write
+        response = await self._request(
+            "PUT",
+            new_deposition_url,
+            log_label=f"Updating version number from {base_version} "
+            f"(from {self.deposition.id_}) to {new_version} "
+            f"(on {new_draft_deposition.id_})",
+            data=data,
+            headers=headers,
+        )
+        return Deposition(**response)

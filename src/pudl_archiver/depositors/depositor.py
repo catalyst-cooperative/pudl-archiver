@@ -4,14 +4,13 @@ import io
 import logging
 import re
 from abc import ABC, abstractmethod
-from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from enum import Enum, auto
 from pathlib import Path
 from typing import BinaryIO
 
 import aiohttp
-from pydantic import BaseModel, ConfigDict, PrivateAttr
+from pydantic import BaseModel
 
 from pudl_archiver.archivers.validate import RunSummary
 from pudl_archiver.frictionless import DataPackage, ResourceInfo
@@ -20,12 +19,12 @@ from pudl_archiver.utils import RunSettings, Url
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 
-class _UploadSpec(BaseModel):
+@dataclass
+class _UploadSpec:
     """Defines an upload that will be done by ZenodoDepositionInterface."""
 
     source: io.IOBase | Path
     dest: str
-    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class FileWrapper(io.BytesIO):
@@ -50,6 +49,7 @@ class DepositionAction(Enum):
     CREATE = (auto(),)
     UPDATE = (auto(),)
     DELETE = (auto(),)
+    NO_OP = (auto(),)
 
 
 @dataclass
@@ -61,33 +61,13 @@ class DepositionChange:
     resource: io.IOBase | Path | None = None
 
 
-class AbstractDepositorInterface(ABC, BaseModel):
-    """Abstract class defines read interface for depositor."""
+class DraftDeposition(BaseModel, ABC):
+    """Wrapper for a draft deposition which can be modified."""
 
-    @classmethod
-    @abstractmethod
-    async def get_latest_version(
-        cls,
-        dataset: str,
-        session: aiohttp.ClientSession,
-        run_settings: RunSettings,
-    ) -> "AbstractDepositorInterface":
-        """Create a new ZenodoDepositor.
-
-        Args:
-            dataset: Name of dataset to archive.
-            session: HTTP handler - we don't use it directly, it's wrapped in self.request.
-            run_settings: Settings from CLI.
-        """
-        ...
+    settings: RunSettings
 
     @abstractmethod
-    async def open_draft(self, create_new: bool) -> "AbstractDepositorInterface":
-        """Open a new draft deposition to make edits."""
-        ...
-
-    @abstractmethod
-    async def publish(self) -> "AbstractDepositorInterface":
+    async def publish(self, run_summary: RunSummary) -> "PublishedDeposition":
         """Publish draft deposition and return new depositor with updated deposition."""
         ...
 
@@ -164,17 +144,9 @@ class AbstractDepositorInterface(ABC, BaseModel):
         """Generate new datapackage and return it."""
         ...
 
-
-class DraftDeposition(BaseModel):
-    """Wrapper for a draft deposition which can be modified."""
-
-    deposition: AbstractDepositorInterface
-    settings: RunSettings
-    _run_valid: bool = PrivateAttr(default=False)
-
     async def add_resource(self, name: str, resource: ResourceInfo):
         """Apply correct change to deposition based on downloaded resource."""
-        change = self.deposition.generate_change(name, resource)
+        change = self.generate_change(name, resource)
         await self._apply_change(change)
 
     async def _apply_change(self, change: DepositionChange) -> None:
@@ -189,7 +161,7 @@ class DraftDeposition(BaseModel):
             return
 
         if change.action_type in [DepositionAction.DELETE, DepositionAction.UPDATE]:
-            await self.deposition.delete_file(change.name)
+            await self.delete_file(change.name)
         if change.action_type in [DepositionAction.CREATE, DepositionAction.UPDATE]:
             if change.resource is None:
                 raise RuntimeError("Must pass a resource to be uploaded.")
@@ -205,7 +177,7 @@ class DraftDeposition(BaseModel):
             with upload.source.open("rb") as f:
                 wrapped_file = FileWrapper(f.read())
 
-        await self.deposition.create_file(upload.dest, wrapped_file)
+        await self.create_file(upload.dest, wrapped_file)
 
         wrapped_file.actually_close()
 
@@ -233,7 +205,7 @@ class DraftDeposition(BaseModel):
         old_datapackage: DataPackage,
     ) -> tuple[DataPackage, bool]:
         """Generate new datapackage describing draft deposition in current state."""
-        new_datapackage = self.deposition.generate_datapackage(resources)
+        new_datapackage = self.generate_datapackage(resources)
 
         # Add datapackage if it's changed
         if updated := self._datapackage_worth_changing(
@@ -245,92 +217,47 @@ class DraftDeposition(BaseModel):
                     encoding="utf-8",
                 )
             )
-            await self.deposition.create_file("datapackage.json", datapackage_json)
+            await self.create_file("datapackage.json", datapackage_json)
         return new_datapackage, updated
 
-    async def cleanup_after_error(self, e: Exception):
-        """Cleanup draft after an error during an archive run."""
-        await self.deposition.cleanup_after_error(e)
 
-    async def publish(self, run_summary: RunSummary, datapackage_updated: bool):
-        """Cleanup draft after an error during an archive run."""
-        logger.info("Attempting to publish deposition.")
-        if len(run_summary.file_changes) == 0 and not datapackage_updated:
-            logger.info(
-                "No changes detected, kept draft at"
-                f"{self.deposition.get_deposition_link()} for inspection."
-            )
-            return
-        await self.deposition.publish()
-
-    async def get_file(self, filename: str) -> bytes | None:
-        """Get file from deposition.
-
-        Args:
-            filename: Name of file to fetch.
-        """
-        return await self.deposition.get_file(filename)
-
-    async def list_files(self) -> list[str]:
-        """Return list of filenames from previous version of deposition."""
-        return await self.deposition.list_files()
-
-    def get_deposition_link(self) -> Url:
-        """Get URL which points to deposition."""
-        return self.deposition.get_deposition_link()
-
-
-class Depositor(BaseModel):
+class PublishedDeposition(BaseModel, ABC):
     """Wrapper class to manage state of deposition and calling interface."""
 
-    deposition: AbstractDepositorInterface
     settings: RunSettings
 
     @classmethod
+    @abstractmethod
     async def get_latest_version(
         cls,
-        interface: type[AbstractDepositorInterface],
         dataset: str,
         session: aiohttp.ClientSession,
-        settings: RunSettings,
-    ) -> "Depositor":
+        run_settings: RunSettings,
+    ) -> "PublishedDeposition":
         """Create a new ZenodoDepositor.
 
         Args:
             dataset: Name of dataset to archive.
             session: HTTP handler - we don't use it directly, it's wrapped in self.request.
-            settings: RunSettings taken from CLI.
+            run_settings: Settings from CLI.
         """
-        interface = await interface.get_latest_version(
-            dataset,
-            session,
-            settings,
-        )
-        return cls(
-            deposition=interface,
-            settings=settings,
-        )
+        ...
 
-    @asynccontextmanager
-    async def open_draft(self):
-        """Context manager to open a draft deposition and cleanly handle closing draft."""
-        draft_deposition = DraftDeposition(
-            deposition=await self.deposition.open_draft(),
-            settings=self.settings,
-        )
-        try:
-            yield draft_deposition
-        except Exception as e:
-            await draft_deposition.cleanup_after_error(e)
+    @abstractmethod
+    async def open_draft(self) -> "DraftDeposition":
+        """Open a new draft deposition to make edits."""
+        ...
 
+    @abstractmethod
     async def get_file(self, filename: str) -> bytes | None:
         """Get file from deposition.
 
         Args:
             filename: Name of file to fetch.
         """
-        return await self.deposition.get_file(filename)
+        ...
 
+    @abstractmethod
     async def list_files(self) -> list[str]:
         """Return list of filenames from previous version of deposition."""
-        return await self.deposition.list_files()
+        ...
