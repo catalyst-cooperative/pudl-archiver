@@ -468,7 +468,9 @@ class ZenodoDraftDeposition(ZenodoBaseDepositionInterface, DraftDeposition):
             deposition = await self._create_new_deposition()
         else:
             deposition = await self._get_new_version(
-                clobber=True, refresh_metadata=published.settings.refresh_metadata
+                published.deposition.id_,
+                clobber=True,
+                refresh_metadata=published.settings.refresh_metadata,
             )
 
         return self.model_copy(update={"deposition": deposition})
@@ -526,6 +528,7 @@ class ZenodoDraftDeposition(ZenodoBaseDepositionInterface, DraftDeposition):
 
     async def _get_new_version(
         self,
+        published_id: str,
         clobber: bool = False,
         refresh_metadata: bool = False,
     ) -> Deposition:
@@ -546,6 +549,7 @@ class ZenodoDraftDeposition(ZenodoBaseDepositionInterface, DraftDeposition):
         4.
 
         Args:
+            published_id: ID of the previous published version of the deposition.
             clobber: if there is an existing draft, delete it and get a new one.
             refresh_metadata: regenerate metadata from data source rather than existing
                 archives' metadata.
