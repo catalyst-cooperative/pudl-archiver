@@ -323,10 +323,11 @@ class ZenodoDraftDeposition(ZenodoBaseDepositionInterface, DraftDeposition):
         if self.settings.initialize:
             self._update_dataset_settings(published)
 
+        # Get Published deposition
         return await ZenodoPublishedDeposition.get_latest_version(
             dataset=self.dataset_id,
             session=self._session,
-            run_settings=self.settings,
+            run_settings=self.settings.model_copy(update={"initialize": False}),
         )
 
     async def create_file(
