@@ -528,7 +528,7 @@ class ZenodoDraftDeposition(ZenodoBaseDepositionInterface, DraftDeposition):
 
     async def _get_new_version(
         self,
-        published_id: str,
+        published_deposition: Deposition,
         clobber: bool = False,
         refresh_metadata: bool = False,
     ) -> Deposition:
@@ -549,7 +549,7 @@ class ZenodoDraftDeposition(ZenodoBaseDepositionInterface, DraftDeposition):
         4.
 
         Args:
-            published_id: ID of the previous published version of the deposition.
+            published_deposition: Deposition object from previous published version.
             clobber: if there is an existing draft, delete it and get a new one.
             refresh_metadata: regenerate metadata from data source rather than existing
                 archives' metadata.
@@ -562,8 +562,8 @@ class ZenodoDraftDeposition(ZenodoBaseDepositionInterface, DraftDeposition):
         new_draft_record = Record(
             **await self._request(
                 "POST",
-                f"{self.api_root}/records/{self.deposition.id_}/versions",
-                log_label=f"Get existing draft deposition for {self.deposition.id_}",
+                f"{self.api_root}/records/{published_deposition.id_}/versions",
+                log_label=f"Get existing draft deposition for {published_deposition.id_}",
                 headers=self.auth_write,
             )
         )
@@ -571,7 +571,7 @@ class ZenodoDraftDeposition(ZenodoBaseDepositionInterface, DraftDeposition):
         new_draft_deposition = await self._get_deposition_by_id(new_draft_record.id_)
 
         # Update metadata of new deposition with new version info
-        base_metadata = self.deposition.metadata.model_dump(by_alias=True)
+        base_metadata = published_deposition.metadata.model_dump(by_alias=True)
 
         if refresh_metadata:
             logger.info("Re-creating deposition metadata from PUDL source data.")
@@ -600,7 +600,7 @@ class ZenodoDraftDeposition(ZenodoBaseDepositionInterface, DraftDeposition):
             "PUT",
             new_deposition_url,
             log_label=f"Updating version number from {base_version} "
-            f"(from {self.deposition.id_}) to {new_version} "
+            f"(from {published_deposition.id_}) to {new_version} "
             f"(on {new_draft_deposition.id_})",
             data=data,
             headers=headers,
