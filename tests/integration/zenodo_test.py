@@ -239,7 +239,7 @@ async def test_zenodo_workflow(
     # the /records/ URL doesn't work until the record is published, but
     # deposit/ works from draft through publication
     assert str(v1_summary.record_url).replace("deposit", "records") == str(
-        v1_refreshed.links.html
+        v1_refreshed.get_deposition_link()
     )
 
     # Update files
@@ -316,7 +316,7 @@ async def test_zenodo_workflow(
     # legacy Zenodo API "get latest for concept DOI" endpoint is very slow to update,
     # but requesting the DOI directly updates quickly.
     res = requests.get(
-        f"https://sandbox.zenodo.org/doi/{v3_refreshed.conceptdoi}",
+        f"https://sandbox.zenodo.org/doi/{v3_refreshed.deposition.conceptdoi}",
         timeout=10.0,
     )
-    assert str(v3_refreshed.id_) in res.text
+    assert str(v3_refreshed.deposition.id_) in res.text
