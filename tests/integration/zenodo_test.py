@@ -305,7 +305,7 @@ async def test_zenodo_workflow(
         session=session,
         run_settings=settings,
     )
-    v4_summary = await orchestrate_run(
+    v4_summary, _ = await orchestrate_run(
         dataset="pudl_test",
         downloader=downloader,
         published=depositor,
