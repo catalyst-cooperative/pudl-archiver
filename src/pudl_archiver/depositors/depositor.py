@@ -62,7 +62,16 @@ class DepositionChange:
 
 
 class PublishedDeposition(BaseModel, ABC):
-    """Wrapper class to manage state of deposition and calling interface."""
+    """Abstract base class defining the interface for a published deposition.
+
+    Published depositions should be read only, and provide the method `open_draft`
+    to create an editable draft deposition. There are several read methods defined
+    for this class that are also required for the `DraftDeposition`. The
+    implementation of these methods may be different for the draft/published versions,
+    or they may be identical, in which case you should create a base class to implement
+    these shared methods, which can be inherited by both the draft and published versions.
+    For an example of this, see `src/pudl_archiver/depositors/zenodo/depositor.py`.
+    """
 
     settings: RunSettings
 
@@ -109,7 +118,16 @@ class PublishedDeposition(BaseModel, ABC):
 
 
 class DraftDeposition(BaseModel, ABC):
-    """Wrapper for a draft deposition which can be modified."""
+    """Abstract base class defining the interface for a draft deposition.
+
+    Draft depositions contain both read/write functionality. All write methods
+    should return a new `DraftDeposition` class that reflects any changed state
+    due to the edit. The `publish` method should return a `PublishedDeposition`
+    class reflecting the new version of the archive. This base class also defines
+    several high level methods that make use of the abstract interface that each
+    subclass should define. These methods are used by `src/pudl_archiver/orchestrator.py`
+    and should not be overriden except in exceptional circumstances.
+    """
 
     settings: RunSettings
 
