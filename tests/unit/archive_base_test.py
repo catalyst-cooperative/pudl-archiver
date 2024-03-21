@@ -52,7 +52,6 @@ def _resource_w_size(name: str, size: int):
     return Resource(
         name=name,
         path=f"https://www.example.com/{name}",
-        remote_url="https://www.example.com",
         title="",
         parts={},
         mediatype="",
@@ -67,7 +66,6 @@ def _resource_w_parts(name: str, parts: dict):
     return Resource(
         name=name,
         path=f"https://www.example.com/{name}",
-        remote_url="https://www.example.com",
         title="",
         parts=parts,
         mediatype="",

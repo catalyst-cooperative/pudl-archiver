@@ -68,7 +68,6 @@ def _fake_resource(num=0, **kwargs):
     params = {
         "name": f"resource{num}",
         "path": "https://www.fake.link",
-        "remote_url": "https://www.fake.link",
         "title": f"Resource {num}",
         "parts": {},
         "mediatype": "zip",
