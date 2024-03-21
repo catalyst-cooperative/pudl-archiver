@@ -277,7 +277,6 @@ class DraftDeposition(BaseModel, ABC):
             if field == "resources":
                 for r in old_datapackage.resources + new_datapackage.resources:
                     r.path = re.sub(r"/\d+/", "/ID_NUMBER/", str(r.path))
-                    r.remote_url = re.sub(r"/\d+/", "/ID_NUMBER/", str(r.remote_url))
             if getattr(new_datapackage, field) != getattr(old_datapackage, field):
                 return True
         return False
