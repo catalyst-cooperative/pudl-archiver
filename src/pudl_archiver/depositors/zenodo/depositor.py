@@ -468,7 +468,7 @@ class ZenodoDraftDeposition(ZenodoBaseDepositionInterface, DraftDeposition):
             deposition = await self._create_new_deposition()
         else:
             deposition = await self._get_new_version(
-                published,
+                published.deposition,
                 clobber=True,
                 refresh_metadata=published.settings.refresh_metadata,
             )
