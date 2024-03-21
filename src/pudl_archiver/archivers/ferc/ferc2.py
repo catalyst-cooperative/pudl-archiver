@@ -1,4 +1,5 @@
 """Defines base class for archiver."""
+
 from pathlib import Path
 
 from pudl_archiver.archivers.classes import (

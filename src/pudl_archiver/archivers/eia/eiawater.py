@@ -1,4 +1,5 @@
 """Download EIA Thermal Cooling Water data."""
+
 import logging
 import re
 from pathlib import Path

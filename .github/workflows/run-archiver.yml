@@ -21,9 +21,13 @@ jobs:
           - eia861
           - eia860m
           - eia923
+          - eia930
+          - eiaaeo
+          - eiawater
           - eia_bulk_elec
           - epacamd_eia
           - mshamines
+          - nrelatb
           - phmsagas
 
       fail-fast: false

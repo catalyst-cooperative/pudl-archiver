@@ -1,4 +1,5 @@
 """Download FERC EQR data."""
+
 import ftplib  # nosec: B402
 from pathlib import Path
 

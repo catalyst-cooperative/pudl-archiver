@@ -1,4 +1,5 @@
 """Core routines for frictionless data package construction."""
+
 import zipfile
 from collections.abc import Iterable
 from datetime import datetime
@@ -18,6 +19,7 @@ MEDIA_TYPES: dict[str, str] = {
     "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     "csv": "text/csv",
     "txt": "text/csv",
+    "parquet": "application/vnd.apache.parquet",
 }
 
 
@@ -79,7 +81,6 @@ class Resource(BaseModel):
     profile: str = "data-resource"
     name: str
     path: Url
-    remote_url: Url
     title: str
     parts: dict[str, Any]
     encoding: str = "utf-8"
@@ -102,7 +103,6 @@ class Resource(BaseModel):
         return cls(
             name=file.filename,
             path=file.links.canonical,
-            remote_url=file.links.canonical,
             title=filename.name,
             mediatype=mt,
             parts=parts,

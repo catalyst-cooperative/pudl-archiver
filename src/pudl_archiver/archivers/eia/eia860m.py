@@ -1,4 +1,5 @@
 """Download EIA-860M data."""
+
 import calendar
 import re
 from collections import defaultdict

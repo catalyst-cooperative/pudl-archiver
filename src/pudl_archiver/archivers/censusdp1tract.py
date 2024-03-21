@@ -1,4 +1,5 @@
 """Download US Census DP1 GeoDatabase."""
+
 from pathlib import Path
 
 from pudl_archiver.archivers.classes import (

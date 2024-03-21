@@ -1,4 +1,5 @@
 """Test frictionless structures."""
+
 import random
 from pathlib import Path
 

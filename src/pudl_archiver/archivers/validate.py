@@ -1,4 +1,5 @@
 """Defines models used for validating/summarizing an archiver run."""
+
 import logging
 import xml.etree.ElementTree as Et  # nosec: B405
 import zipfile
@@ -6,6 +7,8 @@ from io import BytesIO
 from pathlib import Path
 from typing import Any, Literal
 
+import pandas as pd
+import pyarrow as pa
 from pydantic import BaseModel
 
 from pudl_archiver.frictionless import DataPackage, Resource, ZipLayout
@@ -21,9 +24,9 @@ class ValidationTestResult(BaseModel):
     description: str
     required_for_run_success: bool = True
     success: bool
-    notes: list[
-        str
-    ] | None = None  # Optional note to provide details like why test failed
+    notes: list[str] | None = (
+        None  # Optional note to provide details like why test failed
+    )
 
     # Flag to allow ignoring tests that pass to avoid cluttering the summary
     always_serialize_in_summary: bool = True
@@ -284,6 +287,12 @@ def _validate_file_type(path: Path, buffer: BytesIO) -> bool:
     if extension == ".xml" or extension == ".xbrl" or extension == ".xsd":
         return _validate_xml(buffer)
 
+    if extension == ".parquet":
+        return _validate_parquet(buffer)
+
+    if extension == ".csv":
+        return _validate_csv(buffer)
+
     logger.warning(f"No validations defined for files of type: {extension} - {path}")
     return True
 
@@ -293,5 +302,21 @@ def _validate_xml(buffer: BytesIO) -> bool:
         Et.parse(buffer)  # noqa: S314
     except Et.ParseError:
         return False
-
     return True
+
+
+def _validate_csv(buffer: BytesIO) -> bool:
+    try:
+        sliver = pd.read_csv(buffer, nrows=100)  # Try reading in a data slice
+        return not sliver.empty
+    except (pd.errors.EmptyDataError, pd.errors.ParserError):
+        return False
+    return True
+
+
+def _validate_parquet(buffer: BytesIO) -> bool:
+    try:
+        pa.parquet.ParquetFile(buffer)
+        return True
+    except (pa.lib.ArrowInvalid, pa.lib.ArrowException):
+        return False

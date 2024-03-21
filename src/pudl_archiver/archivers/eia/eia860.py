@@ -1,4 +1,5 @@
 """Download EIA-860 data."""
+
 import re
 
 from pudl_archiver.archivers.classes import (

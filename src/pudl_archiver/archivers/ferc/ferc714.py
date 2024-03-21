@@ -1,4 +1,5 @@
 """Download FERC Form 714 data."""
+
 from pathlib import Path
 
 from pudl_archiver.archivers.classes import (

@@ -1,4 +1,5 @@
 """Test archiver pudl_archiver."""
+
 import pytest
 from pudl_archiver import archive_datasets
 from pudl_archiver.archivers.validate import RunSummary, ValidationTestResult

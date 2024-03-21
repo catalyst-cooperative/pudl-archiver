@@ -1,4 +1,5 @@
 """Utility functions used in multiple places within PUDL archiver."""
+
 import asyncio
 import logging
 import typing
