@@ -199,11 +199,11 @@ class DraftDeposition(BaseModel, ABC):
         return await self._apply_change(change)
 
     async def publish_if_valid(
-        self, run_summary: RunSummary
+        self, run_summary: RunSummary, datapackage_updated: bool
     ) -> PublishedDeposition | None:
         """Check that deposition is valid and worth changing, then publish if so."""
         logger.info("Attempting to publish deposition.")
-        if len(run_summary.file_changes) == 0:
+        if len(run_summary.file_changes) == 0 and not datapackage_updated:
             logger.info(
                 "No changes detected, kept draft at "
                 f"{self.get_deposition_link()} for inspection."
@@ -268,12 +268,12 @@ class DraftDeposition(BaseModel, ABC):
         self,
         resources: dict[str, ResourceInfo],
         old_datapackage: DataPackage,
-    ) -> DataPackage:
+    ) -> tuple[DataPackage, bool]:
         """Generate new datapackage describing draft deposition in current state."""
         new_datapackage = self.generate_datapackage(resources)
 
         # Add datapackage if it's changed
-        if self._datapackage_worth_changing(old_datapackage, new_datapackage):
+        if update := self._datapackage_worth_changing(old_datapackage, new_datapackage):
             datapackage_json = io.BytesIO(
                 bytes(
                     new_datapackage.model_dump_json(by_alias=True, indent=4),
@@ -281,4 +281,4 @@ class DraftDeposition(BaseModel, ABC):
                 )
             )
             await self.create_file("datapackage.json", datapackage_json)
-        return new_datapackage
+        return new_datapackage, update

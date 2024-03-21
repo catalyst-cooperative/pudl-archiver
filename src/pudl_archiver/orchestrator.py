@@ -16,7 +16,7 @@ async def orchestrate_run(
     downloader: AbstractDatasetArchiver,
     published: PublishedDeposition,
     session: aiohttp.ClientSession,
-) -> tuple[RunSummary, PublishedDeposition]:
+) -> tuple[RunSummary, PublishedDeposition | None]:
     """Use downloader and depositor to archive a dataset."""
     resources = {}
     # Get datapackage from previous version if there is one
@@ -39,7 +39,9 @@ async def orchestrate_run(
             draft = draft.delete_file(filename)
 
     # Create new datapackage
-    new_datapackage = await draft.attach_datapackage(resources, original_datapackage)
+    new_datapackage, datapackage_updated = await draft.attach_datapackage(
+        resources, original_datapackage
+    )
 
     # Validate run
     validations = downloader.validate_dataset(
@@ -52,5 +54,5 @@ async def orchestrate_run(
         validations,
         draft.get_deposition_link(),
     )
-    published = await draft.publish_if_valid(summary)
+    published = await draft.publish_if_valid(summary, datapackage_updated)
     return summary, published
