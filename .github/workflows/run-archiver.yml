@@ -26,6 +26,11 @@ jobs:
           - eiawater
           - eia_bulk_elec
           - epacamd_eia
+          - ferc1
+          - ferc2
+          - ferc6
+          - ferc60
+          - ferc714
           - mshamines
           - nrelatb
           - phmsagas

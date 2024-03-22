@@ -228,7 +228,7 @@ async def archive_taxonomy(
     taxonomy = await retry_async(
         asyncio.to_thread,
         args=[ModelXbrl.load, model_manager, taxonomy_entry_point],
-        retry_on=(FileNotFoundError,),
+        retry_on=(FileNotFoundError, FileExistsError),
     )
 
     archive_path = output_dir / f"ferc{form_number}-xbrl-taxonomy-{year}.zip"
@@ -294,7 +294,7 @@ async def archive_year(
             try:
                 response = await retry_async(
                     session.get,
-                    args=[filing.download_url],
+                    args=[str(filing.download_url)],
                     kwargs={"raise_for_status": True},
                 )
                 response_bytes = await retry_async(response.content.read)
