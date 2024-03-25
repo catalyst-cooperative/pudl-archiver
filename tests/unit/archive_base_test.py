@@ -207,7 +207,7 @@ async def test_download_file(mocker, tmp_path):
     def _ground_truth_download(url):
         return requests.get(url, timeout=1000).content
 
-    url = "https://github.com/catalyst-cooperative/pudl-archiver/blob/main/README.md"
+    url = "https://raw.githubusercontent.com/catalyst-cooperative/pudl-archiver/main/README.md"
     file_content = _ground_truth_download(url)
 
     # Initialize MockArchiver class
