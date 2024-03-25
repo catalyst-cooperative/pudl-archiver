@@ -56,7 +56,7 @@ tests = [
     "pytest-asyncio>=0.20,<0.24",  # Test async functions
     "pytest-console-scripts>=1.1,<1.5",  # Allow automatic testing of scripts
     "pytest-cov>=2.10,<5.1",  # Pytest plugin for working with coverage
-    "pytest-mock>=3.0,<3.13",  # Pytest plugin for mocking function calls and objects
+    "pytest-mock>=3.0,<3.15",  # Pytest plugin for mocking function calls and objects
     "ruff>=0.3,<0.4",
 ]
 
