@@ -2,7 +2,7 @@
 name = "pudl_archiver"
 version = "0.2.0"
 authors = [{name = "PUDL", email = "pudl@catalyst.coop"}]
-requires-python = ">=3.11,<3.12"
+requires-python = ">=3.12,<3.13"
 
 dependencies = [
     "arelle-release>=2.3,<2.25",
@@ -26,7 +26,7 @@ classifiers = [
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
 ]
 
 
@@ -91,8 +91,8 @@ doctest_optionflags = [
 ]
 
 [tool.ruff]
-# Assume Python 3.11
-target-version = "py311"
+# Assume Python 3.12
+target-version = "py312"
 line-length = 88
 indent-width = 4
 
