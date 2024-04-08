@@ -578,6 +578,22 @@ class ZenodoPublishedDeposition(PublishedDeposition):
             dataset_id=self.dataset_id,
         )
 
+    def get_deposition_link(self) -> Url:
+        """Get URL which points to deposition."""
+        return self.api_client.get_deposition_link(self.deposition)
+
+    async def get_file(self, filename: str) -> bytes | None:
+        """Get file from deposition.
+
+        Args:
+            filename: Name of file to fetch.
+        """
+        return await self.api_client.get_file(self.deposition, filename)
+
+    async def list_files(self) -> list[str]:
+        """Return list of filenames from published version of deposition."""
+        return await self.api_client.list_files(self.deposition)
+
 
 class ZenodoDraftDeposition(DraftDeposition):
     """Implement AbstractDepositorInterface for zenodo depositions."""
@@ -639,6 +655,22 @@ class ZenodoDraftDeposition(DraftDeposition):
                 "deposition": self.api_client.delete_file(self.deposition, filename)
             }
         )
+
+    def get_deposition_link(self) -> Url:
+        """Get URL which points to deposition."""
+        return self.api_client.get_deposition_link(self.deposition)
+
+    async def get_file(self, filename: str) -> bytes | None:
+        """Get file from deposition.
+
+        Args:
+            filename: Name of file to fetch.
+        """
+        return await self.api_client.get_file(self.deposition, filename)
+
+    async def list_files(self) -> list[str]:
+        """Return list of filenames from published version of deposition."""
+        return await self.api_client.list_files(self.deposition)
 
     def generate_change(
         self, filename: str, resource: ResourceInfo
