@@ -556,7 +556,7 @@ class ZenodoPublishedDeposition(PublishedDeposition):
         api_client = await ZenodoAPIClient.initialize_client(
             dataset, session, run_settings.sandbox
         )
-        deposition = api_client.get_deposition(api_client.doi)
+        deposition = await api_client.get_deposition(api_client.doi)
 
         return cls(
             dataset_id=dataset,
