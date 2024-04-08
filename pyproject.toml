@@ -11,6 +11,7 @@ dependencies = [
     "dask<2024.4",  # Temporary pin -- conda packaging problem upstream
     "feedparser>=6.0",
     "frictionless>=4.40,<5",
+    "gdal>=3.8.5",  # Fix problems with PUDL dependency
     "pydantic>=2.0,<3",
     "python-dotenv~=1.0.0",
     "semantic_version>=2.8,<3",
