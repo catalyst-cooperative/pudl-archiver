@@ -108,7 +108,7 @@ class PublishedDeposition(BaseModel, ABC):
 
     @abstractmethod
     async def list_files(self) -> list[str]:
-        """Return list of filenames from previous version of deposition."""
+        """Return list of filenames from published version of deposition."""
         ...
 
     @abstractmethod
