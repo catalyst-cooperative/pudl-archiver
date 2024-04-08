@@ -614,7 +614,7 @@ class ZenodoDraftDeposition(DraftDeposition):
             deposition=published,
             dataset_id=self.dataset_id,
             api_client=self.api_client,
-            run_settings=self.settings.model_copy(update={"initialize": False}),
+            settings=self.settings.model_copy(update={"initialize": False}),
         )
 
     async def create_file(
