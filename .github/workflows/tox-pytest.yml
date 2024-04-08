@@ -22,6 +22,7 @@ jobs:
         with:
           environment-file: environment.yml
           cache-environment: true
+          cache-environment-key: environment-${{ hashFiles('pyproject.toml') }}
           condarc: |
             channels:
             - conda-forge
