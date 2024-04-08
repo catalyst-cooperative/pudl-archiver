@@ -605,7 +605,7 @@ class ZenodoDraftDeposition(DraftDeposition):
 
     async def publish(self) -> ZenodoPublishedDeposition:
         """Publish draft deposition and return new depositor with updated deposition."""
-        published = self.api_client.publish(self.deposition)
+        published = await self.api_client.publish(self.deposition)
         if self.settings.initialize:
             self.api_client.update_dataset_settings(published)
 
