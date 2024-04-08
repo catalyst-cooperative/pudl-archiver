@@ -122,7 +122,7 @@ class ZenodoAPIClient(BaseModel):
         cls,
         dataset: str,
         session: aiohttp.ClientSession,
-        run_settings: RunSettings,
+        sandbox: bool,
     ) -> "ZenodoAPIClient":
         """Initialize API client connection.
 
@@ -131,7 +131,7 @@ class ZenodoAPIClient(BaseModel):
             session: HTTP handler - we don't use it directly, it's wrapped in self._request.
             run_settings: Settings from CLI.
         """
-        self = cls(dataset_id=dataset, sandbox=run_settings.sandbox)
+        self = cls(dataset_id=dataset, sandbox=sandbox)
         self._session = session
         self._request = self._make_requester(session)
         self._dataset_settings_path = (
