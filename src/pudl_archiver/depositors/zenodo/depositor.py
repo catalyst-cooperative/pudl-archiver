@@ -576,6 +576,7 @@ class ZenodoPublishedDeposition(PublishedDeposition):
             deposition=draft_deposition,
             settings=self.settings,
             dataset_id=self.dataset_id,
+            api_client=self.api_client,
         )
 
     def get_deposition_link(self) -> Url:
