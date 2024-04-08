@@ -231,6 +231,12 @@ class DraftDeposition(BaseModel, ABC):
     ) -> PublishedDeposition | None:
         """Check that deposition is valid and worth changing, then publish if so."""
         logger.info("Attempting to publish deposition.")
+        if not run_summary.success:
+            logger.error(
+                "Archive validation failed. Not publishing new archive, kept "
+                f"draft at {self.get_deposition_link()} for inspection."
+            )
+            return run_summary
         if len(run_summary.file_changes) == 0 and not datapackage_updated:
             logger.info(
                 "No changes detected, kept draft at "
