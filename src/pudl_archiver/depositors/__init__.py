@@ -40,7 +40,7 @@ def register_depositor(
     )
 
 
-async def get_depositor(
+async def get_deposition(
     dataset: str, session: aiohttp.ClientSession, run_settings: RunSettings
 ) -> tuple[DraftDeposition, DataPackage | None]:
     """Create draft deposition from scratch or previous version."""
