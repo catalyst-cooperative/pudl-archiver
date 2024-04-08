@@ -634,7 +634,7 @@ class ZenodoDraftDeposition(DraftDeposition):
         """
         return self.model_copy(
             update={
-                "deposition": self.api_client.create_file(
+                "deposition": await self.api_client.create_file(
                     self.deposition, filename, data
                 )
             }
@@ -654,7 +654,9 @@ class ZenodoDraftDeposition(DraftDeposition):
         """
         return self.model_copy(
             update={
-                "deposition": self.api_client.delete_file(self.deposition, filename)
+                "deposition": await self.api_client.delete_file(
+                    self.deposition, filename
+                )
             }
         )
 
