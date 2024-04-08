@@ -15,17 +15,19 @@ import semantic_version  # type: ignore  # noqa: PGH003
 import yaml
 from pydantic import BaseModel, PrivateAttr
 
-from pudl_archiver.depositors.depositor import (
+from pudl_archiver.depositors import (
     DepositionAction,
     DepositionChange,
     DraftDeposition,
     PublishedDeposition,
+    register_depositor,
 )
-from pudl_archiver.frictionless import DataPackage, ResourceInfo
+from pudl_archiver.frictionless import MEDIA_TYPES, DataPackage, Resource, ResourceInfo
 from pudl_archiver.utils import RunSettings, Url, retry_async
 
 from .entities import (
     Deposition,
+    DepositionFile,
     DepositionMetadata,
     Doi,
     Record,
@@ -76,7 +78,30 @@ class DatasetSettings(BaseModel):
     sandbox_doi: SandboxDoi | None = None
 
 
-class ZenodoBaseDepositionInterface(BaseModel):
+def _resource_from_file(file: DepositionFile, parts: dict[str, str]) -> Resource:
+    """Create a resource from a single file with partitions.
+
+    Args:
+        file: Deposition file metadata returned by Zenodo api.
+        parts: Working partitions of current resource.
+    """
+    filename = Path(file.filename)
+    mt = MEDIA_TYPES[filename.suffix[1:]]
+
+    return Resource(
+        name=file.filename,
+        path=file.links.canonical,
+        remote_url=file.links.canonical,
+        title=filename.name,
+        mediatype=mt,
+        parts=parts,
+        bytes=file.filesize,
+        hash=file.checksum,
+        format=filename.suffix,
+    )
+
+
+class ZenodoAPIClient(BaseModel):
     """Implements the base interface to zenodo depositions.
 
     This class will be inherited by both the Draft and Published Zenodo deposition
@@ -84,206 +109,22 @@ class ZenodoBaseDepositionInterface(BaseModel):
     writeable, so this interface will be read only.
     """
 
-    deposition: Deposition | None = None
     dataset_id: str
-    settings: RunSettings
+    sandbox: bool
 
     # Private attributes
     _request = PrivateAttr()
     _dataset_settings_path = PrivateAttr()
     _session = PrivateAttr()
 
-    async def get_file(self, filename: str) -> bytes | None:
-        """Get file from deposition.
-
-        Args:
-            filename: Name of file to fetch.
-        """
-        # Return None if deposition is not initialized
-        if not self.deposition:
-            return None
-        file_bytes = None
-        if file_info := self.deposition.files_map.get(filename):
-            url = file_info.links.canonical
-            response = await self._request(
-                "GET",
-                url,
-                f"Download {filename}",
-                parse_json=False,
-                headers=self.auth_write,
-            )
-            file_bytes = await retry_async(response.read)
-        return file_bytes
-
-    async def list_files(self) -> list[str]:
-        """Return list of filenames from previous version of deposition."""
-        return list(self.deposition.files_map.keys())
-
-    def get_deposition_link(self) -> Url:
-        """Get URL which points to deposition."""
-        return self.deposition.links.html
-
-    @property
-    def dataset_settings(self):
-        """Load doi settings from yaml file and return."""
-        with Path.open(self._dataset_settings_path) as f:
-            dataset_settings = {
-                name: DatasetSettings(**dois)
-                for name, dois in yaml.safe_load(f).items()
-            }
-        return dataset_settings
-
-    @property
-    def doi(self):
-        """Return DOI from settings."""
-        dataset_settings = self.dataset_settings.get(self.dataset_id, DatasetSettings())
-        if self.settings.sandbox:
-            doi = dataset_settings.sandbox_doi
-        else:
-            doi = dataset_settings.production_doi
-        return doi
-
-    @property
-    def auth_write(self):
-        """Format auth header with upload_key."""
-        if self.settings.sandbox:
-            upload_key = os.environ["ZENODO_SANDBOX_TOKEN_UPLOAD"]
-        else:
-            upload_key = os.environ["ZENODO_TOKEN_UPLOAD"]
-        return {"Authorization": f"Bearer {upload_key}"}
-
-    @property
-    def auth_actions(self):
-        """Format auth header with publish_key."""
-        if self.settings.sandbox:
-            publish_key = os.environ["ZENODO_SANDBOX_TOKEN_PUBLISH"]
-        else:
-            publish_key = os.environ["ZENODO_TOKEN_PUBLISH"]
-        return {"Authorization": f"Bearer {publish_key}"}
-
-    @property
-    def api_root(self):
-        """Return base URL for zenodo server (sandbox or production)."""
-        if self.settings.sandbox:
-            api_root = "https://sandbox.zenodo.org/api"
-        else:
-            api_root = "https://zenodo.org/api"
-        return api_root
-
-    async def _get_deposition(self, concept_doi: str) -> Deposition:
-        """Get the latest deposition associated with a concept DOI.
-
-        Sometimes the deposition information that comes back from the concept
-        DOI query is incomplete, so we use the record ID that is returned from
-        that to make another request for the "full" data.
-
-        Args:
-            concept_doi: the DOI for the concept - gets the latest associated
-                DOI.
-            published_only: if True, only returns depositions that have been
-                published.
-
-        Returns:
-            The latest deposition associated with the concept DOI.
-        """
-        concept_rec_id = concept_doi.split(".")[2]
-        record = Record(
-            **await self._request(
-                "GET",
-                f"{self.api_root}/records/{concept_rec_id}",
-                headers=self.auth_write,
-                log_label=f"Get latest record for {concept_doi}",
-            )
-        )
-        return await self._get_deposition_by_id(record.id_)
-
-    async def _get_deposition_by_id(self, rec_id: int) -> Deposition:
-        """Get a deposition by its record ID directly instead of through concept.
-
-        Args:
-            rec_id: The record ID of the deposition you would like to get.
-        """
-        response = await self._request(
-            "GET",
-            f"{self.api_root}/deposit/depositions/{rec_id}",
-            log_label=f"Get deposition for {rec_id}",
-            headers=self.auth_write,
-        )
-        deposition = Deposition(**response)
-        logger.debug(deposition)
-        return deposition
-
-    def _make_requester(self, session):
-        """Wraps our session requests with some Zenodo-specific error handling."""
-
-        async def requester(
-            method: Literal["GET", "POST", "PUT", "DELETE"],
-            url: str,
-            log_label: str,
-            parse_json: bool = True,
-            retry_count: int = 7,
-            **kwargs,
-        ) -> dict | aiohttp.ClientResponse:
-            """Make requests to Zenodo.
-
-            Args:
-                method: HTTP method - "GET", "POST", etc.
-                url: the URL you are going to hit.
-                log_label: a string describing what this request does, for
-                    logging purposes.
-                parse_json: whether or not to always parse the response as a
-                    JSON object. Default to True.
-
-            Returns:
-                Either the parsed JSON or the raw aiohttp.ClientResponse object.
-            """
-            logger.info(f"{method} {url} - {log_label}")
-
-            async def run_request():
-                # Convert all urls to str to in case they are pydantic Url types
-                response = await session._request(method, str(url), **kwargs)
-                if response.status >= 400:
-                    if response.headers["Content-Type"] == "application/json":
-                        json_resp = await response.json()
-                        raise ZenodoClientError(
-                            status=response.status,
-                            message=json_resp.get("message"),
-                            errors=json_resp.get("errors"),
-                        )
-                    message = await response.text()
-                    raise ZenodoClientError(
-                        status=response.status,
-                        message=message,
-                    )
-                if parse_json:
-                    return await response.json()
-                return response
-
-            response = await retry_async(
-                run_request,
-                retry_on=(
-                    aiohttp.ClientError,
-                    asyncio.TimeoutError,
-                    ZenodoClientError,
-                ),
-                retry_count=retry_count,
-            )
-            return response
-
-        return requester
-
-
-class ZenodoPublishedDeposition(ZenodoBaseDepositionInterface, PublishedDeposition):
-    """Interface to Published Zenodo deposition."""
-
     @classmethod
-    async def get_latest_version(
+    async def initialize_client(
         cls,
         dataset: str,
         session: aiohttp.ClientSession,
         run_settings: RunSettings,
-    ) -> "ZenodoPublishedDeposition":
-        """Create a new ZenodoDepositor.
+    ) -> "ZenodoAPIClient":
+        """Initialize API client connection.
 
         Args:
             dataset: Name of dataset to archive.
@@ -296,47 +137,45 @@ class ZenodoPublishedDeposition(ZenodoBaseDepositionInterface, PublishedDepositi
         self._dataset_settings_path = (
             importlib.resources.files("pudl_archiver.package_data") / "zenodo_doi.yaml"
         )
-
-        if not self.settings.initialize:
-            self = self.model_copy(
-                update={"deposition": await self._get_deposition(self.doi)}
-            )
         return self
 
-    async def open_draft(self) -> "ZenodoDraftDeposition":
-        """Open a new draft deposition to make edits."""
-        return await ZenodoDraftDeposition.new_draft(self)
+    async def get_file(self, deposition: Deposition, filename: str) -> bytes | None:
+        """Get file from deposition.
 
+        Args:
+            filename: Name of file to fetch.
+        """
+        # Return None if deposition is not initialized
+        if not deposition:
+            return None
+        file_bytes = None
+        if file_info := deposition.files_map.get(filename):
+            url = file_info.links.canonical
+            response = await self._request(
+                "GET",
+                url,
+                f"Download {filename}",
+                parse_json=False,
+                headers=self.auth_write,
+            )
+            file_bytes = await retry_async(response.read)
+        return file_bytes
 
-class ZenodoDraftDeposition(ZenodoBaseDepositionInterface, DraftDeposition):
-    """Implement AbstractDepositorInterface for zenodo depositions."""
+    async def list_files(self, deposition: Deposition) -> list[str]:
+        """Return list of filenames from previous version of deposition."""
+        return list(deposition.files_map.keys())
 
-    async def publish(self) -> ZenodoPublishedDeposition:
-        """Publish draft deposition and return new depositor with updated deposition."""
-        url = self.deposition.links.publish
-        headers = {
-            "Content-Type": "application/json",
-        } | self.auth_actions
-        response = await self._request(
-            "POST", url, log_label="Publishing deposition", headers=headers
-        )
-        published = Deposition(**response)
-        if self.settings.initialize:
-            self._update_dataset_settings(published)
-
-        # Get Published deposition
-        return await ZenodoPublishedDeposition.get_latest_version(
-            dataset=self.dataset_id,
-            session=self._session,
-            run_settings=self.settings.model_copy(update={"initialize": False}),
-        )
+    def get_deposition_link(self, deposition: Deposition) -> Url:
+        """Get URL which points to deposition."""
+        return deposition.links.html
 
     async def create_file(
         self,
+        deposition: Deposition,
         filename: str,
         data: BinaryIO,
         force_api: Literal["bucket", "files"] | None = None,
-    ) -> "ZenodoDraftDeposition":
+    ) -> Deposition:
         """Create a file in a deposition.
 
         Args:
@@ -346,8 +185,8 @@ class ZenodoDraftDeposition(ZenodoBaseDepositionInterface, DraftDeposition):
         Returns:
             None if success.
         """
-        if self.deposition.links.bucket and force_api != "files":
-            url = f"{self.deposition.links.bucket}/{filename}"
+        if deposition.links.bucket and force_api != "files":
+            url = f"{deposition.links.bucket}/{filename}"
             await self._request(
                 "PUT",
                 url,
@@ -356,8 +195,8 @@ class ZenodoDraftDeposition(ZenodoBaseDepositionInterface, DraftDeposition):
                 headers=self.auth_write,
                 timeout=3600,
             )
-        elif self.deposition.links.files and force_api != "bucket":
-            url = f"{self.deposition.links.files}"
+        elif deposition.links.files and force_api != "bucket":
+            url = f"{deposition.links.files}"
             await self._request(
                 "POST",
                 url,
@@ -368,12 +207,11 @@ class ZenodoDraftDeposition(ZenodoBaseDepositionInterface, DraftDeposition):
         else:
             raise RuntimeError("No file or bucket link available for deposition.")
 
-        return self.model_copy(
-            update={"deposition": await self._get_deposition_by_id(self.deposition.id_)}
-        )
+        return await self._get_deposition_by_id(deposition.id_)
 
     async def delete_file(
         self,
+        deposition: Deposition,
         filename: str,
     ) -> "ZenodoDraftDeposition":
         """Delete a file from a deposition.
@@ -384,7 +222,7 @@ class ZenodoDraftDeposition(ZenodoBaseDepositionInterface, DraftDeposition):
         Returns:
             None if success.
         """
-        if not (file_to_delete := self.deposition.files_map.get(filename)):
+        if not (file_to_delete := deposition.files_map.get(filename)):
             logger.info(f"No files matched {filename}.")
             return None
 
@@ -392,91 +230,25 @@ class ZenodoDraftDeposition(ZenodoBaseDepositionInterface, DraftDeposition):
             "DELETE",
             file_to_delete.links.self,
             parse_json=False,
-            log_label=f"Deleting {filename} from deposition {self.deposition.id_}",
+            log_label=f"Deleting {filename} from deposition {deposition.id_}",
             headers=self.auth_write,
         )
 
-        return self.model_copy(
-            update={"deposition": await self._get_deposition_by_id(self.deposition.id_)}
+        return await self.get_deposition_by_id(deposition.id_)
+
+    async def publish(self, deposition: Deposition) -> Deposition:
+        """Publish draft deposition and return new depositor with updated deposition."""
+        url = deposition.links.publish
+        headers = {
+            "Content-Type": "application/json",
+        } | self.auth_actions
+        response = await self._request(
+            "POST", url, log_label="Publishing deposition", headers=headers
         )
+        return Deposition(**response)
 
-    def generate_change(
-        self, filename: str, resource: ResourceInfo
-    ) -> DepositionChange:
-        """Check whether file should be changed.
-
-        Args:
-            filename: Name of file in question.
-            resource: Info about downloaded file.
-        """
-        action = DepositionAction.NO_OP
-        if file_info := self.deposition.files_map.get(filename):
-            # If file is not exact match for existing file, update with new file
-            if (local_md5 := _compute_md5(resource.local_path)) != file_info.checksum:
-                logger.info(
-                    f"Updating {filename}: local hash {local_md5} vs. remote {file_info.checksum}"
-                )
-                action = DepositionAction.UPDATE
-            else:
-                logger.info(f"Adding {filename} to deposition.")
-
-                action = DepositionAction.CREATE
-        else:
-            logger.info(f"Adding {filename} to deposition.")
-
-            action = DepositionAction.CREATE
-
-        return DepositionChange(
-            action_type=action,
-            name=filename,
-            resource=resource.local_path,
-        )
-
-    def generate_datapackage(self, resources: dict[str, ResourceInfo]) -> DataPackage:
-        """Generate new datapackage, attach to deposition, and return."""
-        logger.info(f"Creating new datapackage.json for {self.dataset_id}")
-
-        # Create updated datapackage
-        datapackage = DataPackage.from_filelist(
-            self.dataset_id,
-            [f for f in self.deposition.files if f.filename != "datapackage.json"],
-            resources,
-            self.deposition.metadata.version,
-        )
-
-        return datapackage
-
-    async def cleanup_after_error(self, e: Exception):
-        """Cleanup draft after an error during an archive run."""
-        logger.error(
-            f"Failed while creating new deposition: {traceback.print_exception(e)}"
-        )
-
-    @classmethod
-    async def new_draft(
-        cls, published: ZenodoPublishedDeposition
-    ) -> "ZenodoDraftDeposition":
-        """Open a new draft deposition to make edits."""
-        self = cls(dataset_id=published.dataset_id, settings=published.settings)
-
-        # Copy private variables
-        self._session = published._session
-        self._request = published._request
-        self._dataset_settings_path = published._dataset_settings_path
-
-        # Get draft deposition
-        if published.settings.initialize:
-            deposition = await self._create_new_deposition()
-        else:
-            deposition = await self._get_new_version(
-                published.deposition,
-                clobber=True,
-                refresh_metadata=published.settings.refresh_metadata,
-            )
-
-        return self.model_copy(update={"deposition": deposition})
-
-    async def _create_new_deposition(self) -> Deposition:
+    async def create_new_deposition(self) -> Deposition:
+        """Create a brand new empty draft deposition from dataset_id."""
         metadata = DepositionMetadata.from_data_source(self.dataset_id)
         if not metadata.keywords:
             raise AssertionError(
@@ -501,11 +273,12 @@ class ZenodoDraftDeposition(ZenodoBaseDepositionInterface, DraftDeposition):
         # Ignore content type
         return Deposition(**response)
 
-    def _update_dataset_settings(self, published_deposition):
+    def update_dataset_settings(self, published_deposition):
+        """Update settings with new DOI."""
         # Get new DOI and update settings
         # TODO (daz): split this IO out too.
         dataset_settings = self.dataset_settings
-        if self.settings.sandbox:
+        if self.sandbox:
             sandbox_doi = published_deposition.conceptdoi
             production_doi = dataset_settings.get(
                 self.dataset_id, DatasetSettings()
@@ -527,7 +300,7 @@ class ZenodoDraftDeposition(ZenodoBaseDepositionInterface, DraftDeposition):
             }
             yaml.dump(raw_settings, f)
 
-    async def _get_new_version(
+    async def get_new_version(
         self,
         published_deposition: Deposition,
         clobber: bool = False,
@@ -607,3 +380,340 @@ class ZenodoDraftDeposition(ZenodoBaseDepositionInterface, DraftDeposition):
             headers=headers,
         )
         return Deposition(**response)
+
+    @property
+    def dataset_settings(self):
+        """Load doi settings from yaml file and return."""
+        with Path.open(self._dataset_settings_path) as f:
+            dataset_settings = {
+                name: DatasetSettings(**dois)
+                for name, dois in yaml.safe_load(f).items()
+            }
+        return dataset_settings
+
+    @property
+    def doi(self):
+        """Return DOI from settings."""
+        dataset_settings = self.dataset_settings.get(self.dataset_id, DatasetSettings())
+        if self.sandbox:
+            doi = dataset_settings.sandbox_doi
+        else:
+            doi = dataset_settings.production_doi
+        return doi
+
+    @property
+    def auth_write(self):
+        """Format auth header with upload_key."""
+        if self.sandbox:
+            upload_key = os.environ["ZENODO_SANDBOX_TOKEN_UPLOAD"]
+        else:
+            upload_key = os.environ["ZENODO_TOKEN_UPLOAD"]
+        return {"Authorization": f"Bearer {upload_key}"}
+
+    @property
+    def auth_actions(self):
+        """Format auth header with publish_key."""
+        if self.sandbox:
+            publish_key = os.environ["ZENODO_SANDBOX_TOKEN_PUBLISH"]
+        else:
+            publish_key = os.environ["ZENODO_TOKEN_PUBLISH"]
+        return {"Authorization": f"Bearer {publish_key}"}
+
+    @property
+    def api_root(self):
+        """Return base URL for zenodo server (sandbox or production)."""
+        if self.sandbox:
+            api_root = "https://sandbox.zenodo.org/api"
+        else:
+            api_root = "https://zenodo.org/api"
+        return api_root
+
+    async def get_deposition(self, concept_doi: str) -> Deposition:
+        """Get the latest deposition associated with a concept DOI.
+
+        Sometimes the deposition information that comes back from the concept
+        DOI query is incomplete, so we use the record ID that is returned from
+        that to make another request for the "full" data.
+
+        Args:
+            concept_doi: the DOI for the concept - gets the latest associated
+                DOI.
+            published_only: if True, only returns depositions that have been
+                published.
+
+        Returns:
+            The latest deposition associated with the concept DOI.
+        """
+        concept_rec_id = concept_doi.split(".")[2]
+        record = Record(
+            **await self._request(
+                "GET",
+                f"{self.api_root}/records/{concept_rec_id}",
+                headers=self.auth_write,
+                log_label=f"Get latest record for {concept_doi}",
+            )
+        )
+        return await self._get_deposition_by_id(record.id_)
+
+    async def get_deposition_by_id(self, rec_id: int) -> Deposition:
+        """Get a deposition by its record ID directly instead of through concept.
+
+        Args:
+            rec_id: The record ID of the deposition you would like to get.
+        """
+        response = await self._request(
+            "GET",
+            f"{self.api_root}/deposit/depositions/{rec_id}",
+            log_label=f"Get deposition for {rec_id}",
+            headers=self.auth_write,
+        )
+        deposition = Deposition(**response)
+        logger.debug(deposition)
+        return deposition
+
+    def _make_requester(self, session):
+        """Wraps our session requests with some Zenodo-specific error handling."""
+
+        async def requester(
+            method: Literal["GET", "POST", "PUT", "DELETE"],
+            url: str,
+            log_label: str,
+            parse_json: bool = True,
+            retry_count: int = 7,
+            **kwargs,
+        ) -> dict | aiohttp.ClientResponse:
+            """Make requests to Zenodo.
+
+            Args:
+                method: HTTP method - "GET", "POST", etc.
+                url: the URL you are going to hit.
+                log_label: a string describing what this request does, for
+                    logging purposes.
+                parse_json: whether or not to always parse the response as a
+                    JSON object. Default to True.
+
+            Returns:
+                Either the parsed JSON or the raw aiohttp.ClientResponse object.
+            """
+            logger.info(f"{method} {url} - {log_label}")
+
+            async def run_request():
+                # Convert all urls to str to in case they are pydantic Url types
+                response = await session._request(method, str(url), **kwargs)
+                if response.status >= 400:
+                    if response.headers["Content-Type"] == "application/json":
+                        json_resp = await response.json()
+                        raise ZenodoClientError(
+                            status=response.status,
+                            message=json_resp.get("message"),
+                            errors=json_resp.get("errors"),
+                        )
+                    message = await response.text()
+                    raise ZenodoClientError(
+                        status=response.status,
+                        message=message,
+                    )
+                if parse_json:
+                    return await response.json()
+                return response
+
+            response = await retry_async(
+                run_request,
+                retry_on=(
+                    aiohttp.ClientError,
+                    asyncio.TimeoutError,
+                    ZenodoClientError,
+                ),
+                retry_count=retry_count,
+            )
+            return response
+
+        return requester
+
+
+class ZenodoPublishedDeposition(PublishedDeposition):
+    """Interface to Published Zenodo deposition."""
+
+    deposition: Deposition
+    settings: RunSettings
+    api_client: ZenodoAPIClient
+    dataset_id: str
+
+    @classmethod
+    async def get_latest_version(
+        cls,
+        dataset: str,
+        session: aiohttp.ClientSession,
+        run_settings: RunSettings,
+    ) -> "ZenodoPublishedDeposition":
+        """Create a new ZenodoDepositor.
+
+        Args:
+            dataset: Name of dataset to archive.
+            session: HTTP handler - we don't use it directly, it's wrapped in self.api_client._request.
+            run_settings: Settings from CLI.
+        """
+        api_client = await ZenodoAPIClient.initialize_client(
+            dataset, session, run_settings.sandbox
+        )
+        deposition = api_client.get_deposition(api_client.doi)
+
+        return cls(
+            dataset_id=dataset,
+            settings=run_settings,
+            api_client=api_client,
+            deposition=deposition,
+        )
+
+    async def open_draft(self) -> "ZenodoDraftDeposition":
+        """Open a new draft deposition to make edits."""
+        draft_deposition = await self.api_client.get_new_version(
+            self.deposition,
+            clobber=True,
+            refresh_metadata=self.settings.refresh_metadata,
+        )
+        return ZenodoDraftDeposition(
+            deposition=draft_deposition,
+            settings=self.settings,
+            dataset_id=self.dataset_id,
+        )
+
+
+class ZenodoDraftDeposition(DraftDeposition):
+    """Implement AbstractDepositorInterface for zenodo depositions."""
+
+    deposition: Deposition
+    settings: RunSettings
+    dataset_id: str
+    api_client: ZenodoAPIClient
+
+    async def publish(self) -> ZenodoPublishedDeposition:
+        """Publish draft deposition and return new depositor with updated deposition."""
+        published = self.api_client.publish(self.deposition)
+        if self.settings.initialize:
+            self.api_client.update_dataset_settings(published)
+
+        # Get Published deposition
+        return ZenodoPublishedDeposition(
+            deposition=published,
+            dataset_id=self.dataset_id,
+            api_client=self.api_client,
+            run_settings=self.settings.model_copy(update={"initialize": False}),
+        )
+
+    async def create_file(
+        self,
+        filename: str,
+        data: BinaryIO,
+        force_api: Literal["bucket", "files"] | None = None,
+    ) -> "ZenodoDraftDeposition":
+        """Create a file in a deposition.
+
+        Args:
+            filename: the filename of the file you want to create.
+            data: the actual data associated with the file.
+
+        Returns:
+            None if success.
+        """
+        return self.model_copy(
+            update={
+                "deposition": self.api_client.create_file(self.deposition, filename)
+            }
+        )
+
+    async def delete_file(
+        self,
+        filename: str,
+    ) -> "ZenodoDraftDeposition":
+        """Delete a file from a deposition.
+
+        Args:
+            filename: the filename of the file you want to delete.
+
+        Returns:
+            None if success.
+        """
+        return self.model_copy(
+            update={
+                "deposition": self.api_client.delete_file(self.deposition, filename)
+            }
+        )
+
+    def generate_change(
+        self, filename: str, resource: ResourceInfo
+    ) -> DepositionChange:
+        """Check whether file should be changed.
+
+        Args:
+            filename: Name of file in question.
+            resource: Info about downloaded file.
+        """
+        action = DepositionAction.NO_OP
+        if file_info := self.deposition.files_map.get(filename):
+            # If file is not exact match for existing file, update with new file
+            if (local_md5 := _compute_md5(resource.local_path)) != file_info.checksum:
+                logger.info(
+                    f"Updating {filename}: local hash {local_md5} vs. remote {file_info.checksum}"
+                )
+                action = DepositionAction.UPDATE
+            else:
+                logger.info(f"Adding {filename} to deposition.")
+
+                action = DepositionAction.CREATE
+        else:
+            logger.info(f"Adding {filename} to deposition.")
+
+            action = DepositionAction.CREATE
+
+        return DepositionChange(
+            action_type=action,
+            name=filename,
+            resource=resource.local_path,
+        )
+
+    def generate_datapackage(
+        self, resource_info: dict[str, ResourceInfo]
+    ) -> DataPackage:
+        """Generate new datapackage, attach to deposition, and return."""
+        logger.info(f"Creating new datapackage.json for {self.dataset_id}")
+
+        # Create updated datapackage
+        resources = [
+            _resource_from_file(f, resource_info[f.filename].partitions)
+            for f in self.deposition.files
+            if f.filename != "datapackage.json"
+        ]
+        datapackage = DataPackage.new_datapackage(
+            self.dataset_id,
+            resources,
+            self.deposition.metadata.version,
+        )
+
+        return datapackage
+
+    async def cleanup_after_error(self, e: Exception):
+        """Cleanup draft after an error during an archive run."""
+        logger.error(
+            f"Failed while creating new deposition: {traceback.print_exception(e)}"
+        )
+
+    @classmethod
+    async def initialize_from_scratch(
+        cls, dataset: str, session: aiohttp.ClientSession, run_settings: RunSettings
+    ) -> "ZenodoDraftDeposition":
+        """Create a brand new draft deposition."""
+        api_client = await ZenodoAPIClient.initialize_client(
+            dataset, session, run_settings.sandbox
+        )
+        deposition = await api_client.create_new_deposition()
+
+        return cls(
+            dataset_id=dataset,
+            settings=run_settings,
+            api_client=api_client,
+            deposition=deposition,
+        )
+
+
+register_depositor("zenodo", ZenodoPublishedDeposition, ZenodoDraftDeposition)

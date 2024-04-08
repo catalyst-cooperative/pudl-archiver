@@ -6,8 +6,8 @@ import aiohttp
 
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver
 from pudl_archiver.archivers.validate import RunSummary
-from pudl_archiver.depositors.depositor import PublishedDeposition
-from pudl_archiver.frictionless import DataPackage
+from pudl_archiver.depositors import PublishedDeposition, get_depositor
+from pudl_archiver.utils import RunSettings
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
@@ -15,20 +15,13 @@ logger = logging.getLogger(f"catalystcoop.{__name__}")
 async def orchestrate_run(
     dataset: str,
     downloader: AbstractDatasetArchiver,
-    published: PublishedDeposition,
+    run_settings: RunSettings,
     session: aiohttp.ClientSession,
 ) -> tuple[RunSummary, PublishedDeposition | None]:
     """Use downloader and depositor to archive a dataset."""
     resources = {}
     # Get datapackage from previous version if there is one
-    original_datapackage = None
-    original_datapackage_bytes = await published.get_file("datapackage.json")
-    if original_datapackage_bytes is not None:
-        original_datapackage = DataPackage.model_validate_json(
-            original_datapackage_bytes
-        )
-
-    draft = await published.open_draft()
+    draft, original_datapackage = get_depositor(dataset, session, run_settings)
     async for name, resource in downloader.download_all_resources():
         resources[name] = resource
         draft = await draft.add_resource(name, resource)

@@ -74,6 +74,11 @@ def parse_main():
         action="store_true",
         help="Regenerate metadata from PUDL data source rather than existing archived metadata.",
     )
+    parser.add_argument(
+        "--depositor",
+        type=str,
+        default="zenodo",
+    )
     return parser.parse_args()
 
 

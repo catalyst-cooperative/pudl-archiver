@@ -131,6 +131,14 @@ class DraftDeposition(BaseModel, ABC):
 
     settings: RunSettings
 
+    @classmethod
+    @abstractmethod
+    async def initialize_from_scratch(
+        cls, dataset: str, session: aiohttp.ClientSession, run_settings: RunSettings
+    ) -> "DraftDeposition":
+        """Create a new draft completely from scratch when no published version exists."""
+        ...
+
     @abstractmethod
     async def publish(self) -> PublishedDeposition:
         """Publish draft deposition and return new depositor with updated deposition."""
@@ -205,7 +213,9 @@ class DraftDeposition(BaseModel, ABC):
         ...
 
     @abstractmethod
-    def generate_datapackage(self, resources: dict[str, ResourceInfo]) -> DataPackage:
+    def generate_datapackage(
+        self, resource_info: dict[str, ResourceInfo]
+    ) -> DataPackage:
         """Generate new datapackage and return it."""
         ...
 

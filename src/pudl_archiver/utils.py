@@ -131,3 +131,4 @@ class RunSettings(BaseModel):
     auto_publish: bool = False
     refresh_metadata: bool = False
     resume_run: bool = False
+    depositor: str = "zenodo"
