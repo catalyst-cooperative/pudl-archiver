@@ -207,7 +207,7 @@ class ZenodoAPIClient(BaseModel):
         else:
             raise RuntimeError("No file or bucket link available for deposition.")
 
-        return await self._get_deposition_by_id(deposition.id_)
+        return await self.get_deposition_by_id(deposition.id_)
 
     async def delete_file(
         self,
@@ -342,7 +342,7 @@ class ZenodoAPIClient(BaseModel):
             )
         )
         # then, get the deposition based on that ID.
-        new_draft_deposition = await self._get_deposition_by_id(new_draft_record.id_)
+        new_draft_deposition = await self.get_deposition_by_id(new_draft_record.id_)
 
         # Update metadata of new deposition with new version info
         base_metadata = published_deposition.metadata.model_dump(by_alias=True)
@@ -453,7 +453,7 @@ class ZenodoAPIClient(BaseModel):
                 log_label=f"Get latest record for {concept_doi}",
             )
         )
-        return await self._get_deposition_by_id(record.id_)
+        return await self.get_deposition_by_id(record.id_)
 
     async def get_deposition_by_id(self, rec_id: int) -> Deposition:
         """Get a deposition by its record ID directly instead of through concept.
