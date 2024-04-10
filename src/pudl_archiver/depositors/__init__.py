@@ -13,30 +13,35 @@ from pudl_archiver.utils import RunSettings
 from .depositor import (
     DepositionAction,
     DepositionChange,
+    DepositorAPIClient,
     DraftDeposition,
     PublishedDeposition,
 )
 
 
 @dataclass
-class DepositionInterface:
+class DepositionBackend:
     """Wrap Published and Draft Deposition classes for a single depositor."""
 
+    api_client: type[DepositorAPIClient]
     published_interface: type[PublishedDeposition]
     draft_interface: type[DraftDeposition]
 
 
-DEPOSITION_INTERFACES: dict[str, DepositionInterface] = {}
+DEPOSITION_BACKENDS: dict[str, DepositionBackend] = {}
 
 
 def register_depositor(
     depositor_name: str,
+    api_client: type[DepositorAPIClient],
     published_interface: type[PublishedDeposition],
     draft_interface: type[DraftDeposition],
 ):
     """Function to register an implementation of the depositor interface."""
-    DEPOSITION_INTERFACES[depositor_name] = DepositionInterface(
-        published_interface=published_interface, draft_interface=draft_interface
+    DEPOSITION_BACKENDS[depositor_name] = DepositionBackend(
+        api_client=api_client,
+        published_interface=published_interface,
+        draft_interface=draft_interface,
     )
 
 
@@ -44,16 +49,25 @@ async def get_deposition(
     dataset: str, session: aiohttp.ClientSession, run_settings: RunSettings
 ) -> tuple[DraftDeposition, DataPackage | None]:
     """Create draft deposition from scratch or previous version."""
-    deposition_interface = DEPOSITION_INTERFACES[run_settings.depositor]
+    deposition_backend = DEPOSITION_BACKENDS[run_settings.depositor]
+    api_client = await deposition_backend.api_client.initialize_client(
+        session, run_settings.sandbox
+    )
     if run_settings.initialize:
-        return await deposition_interface.draft_interface.initialize_from_scratch(
-            dataset, session, run_settings
+        deposition = await api_client.create_new_deposition(dataset)
+        return await deposition_backend.draft_interface(
+            dataset_id=dataset,
+            settings=run_settings,
+            api_client=api_client,
+            deposition=deposition,
         ), None
+    deposition = await api_client.get_deposition(dataset)
 
-    published_deposition = (
-        await deposition_interface.published_interface.get_latest_version(
-            dataset, session, run_settings
-        )
+    published_deposition = deposition_backend.published_interface(
+        dataset_id=dataset,
+        settings=run_settings,
+        api_client=api_client,
+        deposition=deposition,
     )
 
     original_datapackage_bytes = await published_deposition.get_file("datapackage.json")

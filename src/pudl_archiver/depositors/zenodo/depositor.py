@@ -18,6 +18,7 @@ from pydantic import BaseModel, PrivateAttr
 from pudl_archiver.depositors import (
     DepositionAction,
     DepositionChange,
+    DepositorAPIClient,
     DraftDeposition,
     PublishedDeposition,
     register_depositor,
@@ -101,7 +102,7 @@ def _resource_from_file(file: DepositionFile, parts: dict[str, str]) -> Resource
     )
 
 
-class ZenodoAPIClient(BaseModel):
+class ZenodoAPIClient(BaseModel, DepositorAPIClient):
     """Implements the base interface to zenodo depositions.
 
     This class will be inherited by both the Draft and Published Zenodo deposition
@@ -109,7 +110,6 @@ class ZenodoAPIClient(BaseModel):
     writeable, so this interface will be read only.
     """
 
-    dataset_id: str
     sandbox: bool
 
     # Private attributes
@@ -120,18 +120,16 @@ class ZenodoAPIClient(BaseModel):
     @classmethod
     async def initialize_client(
         cls,
-        dataset: str,
         session: aiohttp.ClientSession,
         sandbox: bool,
     ) -> "ZenodoAPIClient":
         """Initialize API client connection.
 
         Args:
-            dataset: Name of dataset to archive.
             session: HTTP handler - we don't use it directly, it's wrapped in self._request.
             run_settings: Settings from CLI.
         """
-        self = cls(dataset_id=dataset, sandbox=sandbox)
+        self = cls(sandbox=sandbox)
         self._session = session
         self._request = self._make_requester(session)
         self._dataset_settings_path = (
@@ -247,9 +245,9 @@ class ZenodoAPIClient(BaseModel):
         )
         return Deposition(**response)
 
-    async def create_new_deposition(self) -> Deposition:
+    async def create_new_deposition(self, dataset_id: str) -> Deposition:
         """Create a brand new empty draft deposition from dataset_id."""
-        metadata = DepositionMetadata.from_data_source(self.dataset_id)
+        metadata = DepositionMetadata.from_data_source(dataset_id)
         if not metadata.keywords:
             raise AssertionError(
                 "New dataset is missing keywords and cannot be archived."
@@ -273,7 +271,7 @@ class ZenodoAPIClient(BaseModel):
         # Ignore content type
         return Deposition(**response)
 
-    def update_dataset_settings(self, published_deposition):
+    def update_dataset_settings(self, dataset_id: str, published_deposition):
         """Update settings with new DOI."""
         # Get new DOI and update settings
         # TODO (daz): split this IO out too.
@@ -281,15 +279,15 @@ class ZenodoAPIClient(BaseModel):
         if self.sandbox:
             sandbox_doi = published_deposition.conceptdoi
             production_doi = dataset_settings.get(
-                self.dataset_id, DatasetSettings()
+                dataset_id, DatasetSettings()
             ).production_doi
         else:
             production_doi = published_deposition.conceptdoi
             sandbox_doi = dataset_settings.get(
-                self.dataset_id, DatasetSettings()
+                dataset_id, DatasetSettings()
             ).sandbox_doi
 
-        dataset_settings[self.dataset_id] = DatasetSettings(
+        dataset_settings[dataset_id] = DatasetSettings(
             sandbox_doi=sandbox_doi, production_doi=production_doi
         )
 
@@ -302,6 +300,7 @@ class ZenodoAPIClient(BaseModel):
 
     async def get_new_version(
         self,
+        dataset_id: str,
         published_deposition: Deposition,
         clobber: bool = False,
         refresh_metadata: bool = False,
@@ -349,7 +348,7 @@ class ZenodoAPIClient(BaseModel):
 
         if refresh_metadata:
             logger.info("Re-creating deposition metadata from PUDL source data.")
-            draft_metadata = DepositionMetadata.from_data_source(self.dataset_id).dict(
+            draft_metadata = DepositionMetadata.from_data_source(dataset_id).dict(
                 by_alias=True
             )
         else:
@@ -391,10 +390,9 @@ class ZenodoAPIClient(BaseModel):
             }
         return dataset_settings
 
-    @property
-    def doi(self):
+    def doi(self, dataset_id: str):
         """Return DOI from settings."""
-        dataset_settings = self.dataset_settings.get(self.dataset_id, DatasetSettings())
+        dataset_settings = self.dataset_settings.get(dataset_id, DatasetSettings())
         if self.sandbox:
             doi = dataset_settings.sandbox_doi
         else:
@@ -428,7 +426,7 @@ class ZenodoAPIClient(BaseModel):
             api_root = "https://zenodo.org/api"
         return api_root
 
-    async def get_deposition(self, concept_doi: str) -> Deposition:
+    async def get_deposition(self, dataset_id: str) -> Deposition:
         """Get the latest deposition associated with a concept DOI.
 
         Sometimes the deposition information that comes back from the concept
@@ -444,6 +442,7 @@ class ZenodoAPIClient(BaseModel):
         Returns:
             The latest deposition associated with the concept DOI.
         """
+        concept_doi = self.doi(dataset_id)
         concept_rec_id = concept_doi.split(".")[2]
         record = Record(
             **await self._request(
@@ -539,35 +538,10 @@ class ZenodoPublishedDeposition(PublishedDeposition):
     api_client: ZenodoAPIClient
     dataset_id: str
 
-    @classmethod
-    async def get_latest_version(
-        cls,
-        dataset: str,
-        session: aiohttp.ClientSession,
-        run_settings: RunSettings,
-    ) -> "ZenodoPublishedDeposition":
-        """Create a new ZenodoDepositor.
-
-        Args:
-            dataset: Name of dataset to archive.
-            session: HTTP handler - we don't use it directly, it's wrapped in self.api_client._request.
-            run_settings: Settings from CLI.
-        """
-        api_client = await ZenodoAPIClient.initialize_client(
-            dataset, session, run_settings.sandbox
-        )
-        deposition = await api_client.get_deposition(api_client.doi)
-
-        return cls(
-            dataset_id=dataset,
-            settings=run_settings,
-            api_client=api_client,
-            deposition=deposition,
-        )
-
     async def open_draft(self) -> "ZenodoDraftDeposition":
         """Open a new draft deposition to make edits."""
         draft_deposition = await self.api_client.get_new_version(
+            self.dataset_id,
             self.deposition,
             clobber=True,
             refresh_metadata=self.settings.refresh_metadata,
@@ -608,7 +582,7 @@ class ZenodoDraftDeposition(DraftDeposition):
         """Publish draft deposition and return new depositor with updated deposition."""
         published = await self.api_client.publish(self.deposition)
         if self.settings.initialize:
-            self.api_client.update_dataset_settings(published)
+            self.api_client.update_dataset_settings(self.dataset_id, published)
 
         # Get Published deposition
         return ZenodoPublishedDeposition(
@@ -735,22 +709,7 @@ class ZenodoDraftDeposition(DraftDeposition):
             f"Failed while creating new deposition: {traceback.print_exception(e)}"
         )
 
-    @classmethod
-    async def initialize_from_scratch(
-        cls, dataset: str, session: aiohttp.ClientSession, run_settings: RunSettings
-    ) -> "ZenodoDraftDeposition":
-        """Create a brand new draft deposition."""
-        api_client = await ZenodoAPIClient.initialize_client(
-            dataset, session, run_settings.sandbox
-        )
-        deposition = await api_client.create_new_deposition()
 
-        return cls(
-            dataset_id=dataset,
-            settings=run_settings,
-            api_client=api_client,
-            deposition=deposition,
-        )
-
-
-register_depositor("zenodo", ZenodoPublishedDeposition, ZenodoDraftDeposition)
+register_depositor(
+    "zenodo", ZenodoAPIClient, ZenodoPublishedDeposition, ZenodoDraftDeposition
+)

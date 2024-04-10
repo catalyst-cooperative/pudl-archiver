@@ -3,6 +3,7 @@
 import io
 import logging
 import re
+import typing
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum, auto
@@ -61,6 +62,49 @@ class DepositionChange:
     resource: io.IOBase | Path | None = None
 
 
+class DepositorAPIClient(ABC):
+    """This class is used to implement an interface for a depositor.
+
+    DepositorAPIClient's only have 2 required methods, which are used to retrieve
+    state needed to initialize a PublishedDeposition or DraftDeposition. This class
+    may take configuration for the API, but should not maintain any state about a
+    deposition.
+    """
+
+    @classmethod
+    @abstractmethod
+    async def initialize_client(
+        cls,
+        session: aiohttp.ClientSession,
+        sandbox: bool,
+    ) -> "DepositorAPIClient":
+        """Initialize API client connection.
+
+        Args:
+            session: HTTP handler - we don't use it directly, it's wrapped in self._request.
+            run_settings: Settings from CLI.
+        """
+        ...
+
+    @abstractmethod
+    async def get_deposition(self, dataset_id: str) -> typing.Any:
+        """Get latest version of deposition associated with dataset_id.
+
+        Should return object representing depositon that will be used to initialize a
+        PublishedDeposition.
+        """
+        ...
+
+    @abstractmethod
+    async def create_new_deposition(self, dataset_id: str) -> typing.Any:
+        """Create new deposition from scratch associated with dataset_id.
+
+        Should return object representing depositon that will be used to initialize a
+        DraftDeposition.
+        """
+        ...
+
+
 class PublishedDeposition(BaseModel, ABC):
     """Abstract base class defining the interface for a published deposition.
 
@@ -74,23 +118,6 @@ class PublishedDeposition(BaseModel, ABC):
     """
 
     settings: RunSettings
-
-    @classmethod
-    @abstractmethod
-    async def get_latest_version(
-        cls,
-        dataset: str,
-        session: aiohttp.ClientSession,
-        run_settings: RunSettings,
-    ) -> "PublishedDeposition":
-        """Create a new ZenodoDepositor.
-
-        Args:
-            dataset: Name of dataset to archive.
-            session: HTTP handler - we don't use it directly, it's wrapped in self.request.
-            run_settings: Settings from CLI.
-        """
-        ...
 
     @abstractmethod
     async def open_draft(self) -> "DraftDeposition":
@@ -130,14 +157,6 @@ class DraftDeposition(BaseModel, ABC):
     """
 
     settings: RunSettings
-
-    @classmethod
-    @abstractmethod
-    async def initialize_from_scratch(
-        cls, dataset: str, session: aiohttp.ClientSession, run_settings: RunSettings
-    ) -> "DraftDeposition":
-        """Create a new draft completely from scratch when no published version exists."""
-        ...
 
     @abstractmethod
     async def publish(self) -> PublishedDeposition:

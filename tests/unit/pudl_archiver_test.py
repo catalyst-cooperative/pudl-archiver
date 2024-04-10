@@ -70,7 +70,6 @@ async def test_archive_datasets(
         return_value=(successful_run, "published")
     )
     mocker.patch("pudl_archiver.orchestrate_run", new=mocked_orchestrator_success)
-    mocker.patch("pudl_archiver.ZenodoPublishedDeposition.get_latest_version")
     await archive_datasets(["eia860"], run_settings=settings)
     mocked_json_dump.assert_called_once_with([successful_run.model_dump()], indent=2)
 
