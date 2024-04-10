@@ -2,11 +2,10 @@
 name: pudl-cataloger
 channels:
   - conda-forge
-  - defaults
 dependencies:
   # Used to set up the environment
-  - pip>=21,<24
-  - python>=3.11,<3.12
+  - pip>=21,<25
+  - python>=3.12,<3.13
   - setuptools>=66
   # fiona is a transitive dependency which needs GDAL. so we install with conda
   # TODO: we shouldn't have to install all this geo stuff, so once we break the
