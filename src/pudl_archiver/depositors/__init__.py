@@ -55,7 +55,7 @@ async def get_deposition(
     )
     if run_settings.initialize:
         deposition = await api_client.create_new_deposition(dataset)
-        return await deposition_backend.draft_interface(
+        return deposition_backend.draft_interface(
             dataset_id=dataset,
             settings=run_settings,
             api_client=api_client,
