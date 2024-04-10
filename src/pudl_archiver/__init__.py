@@ -85,16 +85,11 @@ async def archive_datasets(
                 run_settings.only_years,
                 download_directory=run_settings.download_dir,
             )
-            depositor = await ZenodoPublishedDeposition.get_latest_version(
-                dataset=dataset,
-                session=session,
-                settings=run_settings,
-            )
             tasks.append(
                 orchestrate_run(
                     dataset,
                     downloader,
-                    depositor,
+                    run_settings,
                     session,
                 )
             )
