@@ -7,7 +7,7 @@ import pytest
 from pudl_archiver.archivers.eia.eia860 import Eia860Archiver
 from pudl_archiver.archivers.ferc.ferc1 import Ferc1Archiver
 from pudl_archiver.archivers.validate import RunSummary, ValidationTestResult
-from pudl_archiver.cli import main
+from pudl_archiver.cli import archiver_entry
 from pudl_archiver.utils import RunSettings
 
 
@@ -56,9 +56,9 @@ async def test_cli(args, dataset_success_map, downloaders, mocker):
         with pytest.raises(
             RuntimeError, match="Error: archive validation tests failed."
         ):
-            await main(args=args)
+            await archiver_entry(args=args)
     else:
-        await main(args=args)
+        await archiver_entry(args=args)
 
     for (dataset, downloader, run_settings, session), _ in mock.await_args_list:
         assert dataset in dataset_success_map

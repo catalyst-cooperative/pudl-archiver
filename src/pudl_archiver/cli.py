@@ -82,7 +82,7 @@ def parse_main(args=None):
     return parser.parse_args(args)
 
 
-async def main(args=None):
+async def archiver_entry(args=None):
     """Run desired archivers."""
     load_dotenv()
     logger.setLevel(logging.INFO)
@@ -97,5 +97,6 @@ async def main(args=None):
     await archive_datasets(datasets=datasets, run_settings=RunSettings(**vars(args)))
 
 
-if __name__ == "__main__":
-    asyncio.run(main())
+def main():
+    """Kick off async script."""
+    asyncio.run(archiver_entry())
