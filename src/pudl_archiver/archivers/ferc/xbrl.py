@@ -312,6 +312,7 @@ async def archive_year(
             # Check if file is in zipfile already
             if filename in archive.namelist():
                 if zlib.crc32(response_bytes) != archive.getinfo(filename).CRC:
+                    logger.info(f"{filings}")
                     raise RuntimeError(
                         f"{year}: {filing} is duplicate with different content."
                     )
