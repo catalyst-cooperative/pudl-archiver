@@ -7,6 +7,7 @@ import logging
 import re
 import time
 import zipfile
+import zlib
 from enum import Enum
 from functools import cache
 from pathlib import Path
@@ -307,6 +308,14 @@ async def archive_year(
             filename = f"{filing.title}_form{filing.ferc_formname.as_int()}_{filing.ferc_period}_{round(filing.published_parsed.timestamp())}.xbrl".replace(
                 " ", "_"
             )
+
+            # Check if file is in zipfile already
+            if filename in archive.namelist():
+                if zlib.crc32(response_bytes) != archive.getinfo(filename).CRC:
+                    raise RuntimeError(f"{filing} is duplicate with different content.")
+                logger.info("True duplicate files")
+                continue
+
             with archive.open(filename, "w") as f:
                 f.write(response_bytes)
 
