@@ -175,7 +175,7 @@ def index_available_entries() -> dict[FercForm, FormFilings]:
             if "Test" in entry["title"]:
                 continue
 
-            parsed_entry = FeedEntry(**entry, feed_link=feed)
+            parsed_entry = FeedEntry(**entry)
 
             # Get filings specific to FERC form and append new filing
             indexed_form = indexed_filings[parsed_entry.ferc_formname]
