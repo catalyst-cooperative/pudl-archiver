@@ -8,9 +8,8 @@ import pandas as pd
 from pudl_archiver.archivers.classes import (
     AbstractDatasetArchiver,
     ArchiveAwaitable,
-    ResourceInfo,
 )
-from pudl_archiver.frictionless import ZipLayout
+from pudl_archiver.frictionless import ResourceInfo, ZipLayout
 
 BASE_URL = "https://www.eia.gov/electricity/gridmonitor/sixMonthFiles/"
 FILE_LIST_URL = "https://www.eia.gov/electricity/gridmonitor/sixMonthFiles/EIA930_File_List_Meta.csv"
@@ -37,27 +36,23 @@ class Eia930Archiver(AbstractDatasetArchiver):
             .drop(columns=["count"])
             .sort_values("YEAR")
         )
-        for index, period in year_period.iterrows():
+        for _, period in year_period.iterrows():
             if self.valid_year(period.YEAR):
                 yield self.get_year_resource(
-                    file_list=file_list, year=period.YEAR, half_year=period.PERIOD
+                    file_list=file_list, year=period.YEAR, half=period.PERIOD
                 )
 
     async def get_year_resource(
-        self, file_list: pd.DataFrame, year=int, half_year=int
+        self, file_list: pd.DataFrame, year=int, half=int
     ) -> tuple[Path, dict]:
         """Download zip file of all files in year."""
-        logger.debug(f"Downloading data for {year}half{half_year}.")
-        archive_path = self.download_directory / f"eia930-{year}half{half_year}.zip"
+        logger.debug(f"Downloading data for {year}h{half}.")
+        archive_path = self.download_directory / f"eia930-{year}h{half}.zip"
         data_paths_in_archive = set()
-        period_files = file_list[
-            (year == file_list.YEAR) & (half_year == file_list.PERIOD)
-        ]
-        for index, file in period_files.iterrows():
+        period_files = file_list[(year == file_list.YEAR) & (half == file_list.PERIOD)]
+        for _, file in period_files.iterrows():
             url = BASE_URL + file.FILENAME
-            download_name = (
-                f"eia930-{year}half{half_year}-{file.DESCRIPTION.lower()}.csv"
-            )
+            download_name = f"eia930-{year}h{half}-{file.DESCRIPTION.lower()}.csv"
             download_path = self.download_directory / download_name
             await self.download_file(url, download_path)
             self.add_to_archive(
@@ -72,6 +67,6 @@ class Eia930Archiver(AbstractDatasetArchiver):
 
         return ResourceInfo(
             local_path=archive_path,
-            partitions={"half_year": f"{year}half{half_year}"},
+            partitions={"year_half": f"{year}h{half}"},
             layout=ZipLayout(file_paths=data_paths_in_archive),
         )
