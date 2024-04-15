@@ -7,7 +7,6 @@ import logging
 import re
 import time
 import zipfile
-import zlib
 from enum import Enum
 from functools import cache
 from pathlib import Path
@@ -189,7 +188,7 @@ def index_available_entries() -> dict[FercForm, FormFilings]:
 
 
 async def archive_taxonomy(
-    year: Year,
+    years: list[Year],
     form: FercForm,
     output_dir: Path,
     session: aiohttp.ClientSession,
@@ -206,58 +205,63 @@ async def archive_taxonomy(
     taxonomy.
 
     Args:
-        year: Year of taxonomy version.
-        form: Ferc form.
+        years: Years of taxonomy versions to archive.
+        form: Ferc form number.
         output_dir: Directory to save archived filings in.
         session: Async http client session.
     """
-    # Get date used in entry point URL (first day of year)
-    date = datetime.date(year, 1, 1)
+    resources = []
+    for year in years:
+        # Get date used in entry point URL (first day of year)
+        date = datetime.date(year, 1, 1)
 
-    # Get integer form number
-    form_number = form.as_int()
+        # Get integer form number
+        form_number = form.as_int()
 
-    logger.info(f"Archiving ferc{form_number}-{year} taxonomy")
+        logger.info(f"Archiving ferc{form_number}-{year} taxonomy")
 
-    # Construct entry point URL
-    taxonomy_entry_point = f"https://ecollection.ferc.gov/taxonomy/form{form_number}/{date.isoformat()}/form/form{form_number}/form-{form_number}_{date.isoformat()}.xsd"
+        # Construct entry point URL
+        taxonomy_entry_point = f"https://ecollection.ferc.gov/taxonomy/form{form_number}/{date.isoformat()}/form/form{form_number}/form-{form_number}_{date.isoformat()}.xsd"
 
-    # Use Arelle to parse taxonomy
-    cntlr = Cntlr.Cntlr()
-    cntlr.startLogging(logFileName="logToPrint")
-    model_manager = ModelManager.initialize(cntlr)
-    taxonomy = await retry_async(
-        asyncio.to_thread,
-        args=[ModelXbrl.load, model_manager, taxonomy_entry_point],
-        retry_on=(FileNotFoundError, FileExistsError),
-    )
+        # Use Arelle to parse taxonomy
+        cntlr = Cntlr.Cntlr()
+        cntlr.startLogging(logFileName="logToPrint")
+        model_manager = ModelManager.initialize(cntlr)
+        taxonomy = await retry_async(
+            asyncio.to_thread,
+            args=[ModelXbrl.load, model_manager, taxonomy_entry_point],
+            retry_on=(FileNotFoundError, FileExistsError),
+        )
 
-    archive_path = output_dir / f"ferc{form_number}-xbrl-taxonomy-{year}.zip"
+        archive_path = output_dir / f"ferc{form_number}-xbrl-taxonomy-{year}.zip"
 
-    # Loop through all files and save to appropriate location in archive
-    archive_files = set()
-    with zipfile.ZipFile(archive_path, "w", compression=ZIP_DEFLATED) as archive:
-        for url in taxonomy.urlDocs:
-            url_parsed = urlparse(url)
+        # Loop through all files and save to appropriate location in archive
+        archive_files = set()
+        with zipfile.ZipFile(archive_path, "w", compression=ZIP_DEFLATED) as archive:
+            for url in taxonomy.urlDocs:
+                url_parsed = urlparse(url)
 
-            # There are some generic XML/XBRL files in the taxonomy that should be skipped
-            if not url_parsed.netloc.endswith("ferc.gov"):
-                continue
+                # There are some generic XML/XBRL files in the taxonomy that should be skipped
+                if not url_parsed.netloc.endswith("ferc.gov"):
+                    continue
 
-            # Download file
-            response = await retry_async(session.get, args=[url])
-            response_bytes = await retry_async(response.content.read)
-            path = Path(url_parsed.path).relative_to("/")
-            archive_files.add(path)
+                # Download file
+                response = await retry_async(session.get, args=[url])
+                response_bytes = await retry_async(response.content.read)
+                path = Path(url_parsed.path).relative_to("/")
+                archive_files.add(path)
 
-            with archive.open(str(path), "w") as f:
-                f.write(response_bytes)
+                with archive.open(str(path), "w") as f:
+                    f.write(response_bytes)
 
-    return ResourceInfo(
-        local_path=archive_path,
-        partitions={"year": year, "data_format": "XBRL_TAXONOMY"},
-        layout=ZipLayout(file_paths=archive_files),
-    )
+        resources.append(
+            ResourceInfo(
+                local_path=archive_path,
+                partitions={"year": year, "data_format": "XBRL_TAXONOMY"},
+                layout=ZipLayout(file_paths=archive_files),
+            )
+        )
+    return resources
 
 
 async def archive_year(
@@ -308,16 +312,6 @@ async def archive_year(
             filename = f"{filing.title}_form{filing.ferc_formname.as_int()}_{filing.ferc_period}_{round(filing.published_parsed.timestamp())}.xbrl".replace(
                 " ", "_"
             )
-
-            # Check if file is in zipfile already
-            if filename in archive.namelist():
-                if zlib.crc32(response_bytes) != archive.getinfo(filename).CRC:
-                    logger.info(f"{filings}")
-                    raise RuntimeError(
-                        f"{year}: {filing} is duplicate with different content."
-                    )
-                logger.info("True duplicate files")
-                continue
 
             with archive.open(filename, "w") as f:
                 f.write(response_bytes)
