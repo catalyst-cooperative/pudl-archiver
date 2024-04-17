@@ -68,7 +68,7 @@ class PhmsaGasArchiver(AbstractDatasetArchiver):
         Filenames generally look like: annual_{form}_{start_year}_{end_year}.zip
         For example: annual_underground_natural_gas_storage_2017_present.zip
         """
-        url = f"https://www.phmsa.dot.gov/{link}"
+        url = f"https://www.phmsa.dot.gov{link}"
         filename = str(match.group(1)).replace("-", "_")  # Get file name
 
         # Set form partition
@@ -77,7 +77,7 @@ class PhmsaGasArchiver(AbstractDatasetArchiver):
         if form not in PHMSA_FORMS:
             logger.warning(f"New form type found: {form}.")
 
-        download_path = self.download_directory / f"{self.name}-{filename}.zip"
+        download_path = self.download_directory / f"{self.name}_{filename}.zip"
         await self.download_zipfile(url, download_path)
 
         # From start and end year, get partitions
@@ -86,12 +86,15 @@ class PhmsaGasArchiver(AbstractDatasetArchiver):
 
         # If end year is present, open zipfile and get last year of excel data in it.
         if end_year == "present":
+            # Apr 10, 2024: Transmission and gathering includes a 2023_DELAYED warning
+            # note.
+            file_names = [
+                file
+                for file in ZipFile(download_path).namelist()
+                if file.endswith(".xlsx")
+            ]
             file_years = sorted(
-                [
-                    int(file.split("_")[-1].replace(".xlsx", ""))
-                    for file in ZipFile(download_path).namelist()
-                    if file.endswith(".xlsx")
-                ]
+                [int(re.findall(r"(\d{4})", file)[-1]) for file in file_names]
             )
             end_year = max(file_years)
         else:

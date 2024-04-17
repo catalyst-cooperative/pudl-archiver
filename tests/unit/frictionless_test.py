@@ -39,4 +39,4 @@ def test_zenodo_datapackage():
 
     dp = DataPackage.new_datapackage("ferc1", resources, version="1.0.0")
 
-    assert Package(descriptor=dp.model_dump(by_alias=True)).metadata_valid
+    assert Package.validate_descriptor(dp.model_dump(by_alias=True)).valid
