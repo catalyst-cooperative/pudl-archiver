@@ -249,7 +249,6 @@ class DraftDeposition(BaseModel, ABC):
         self, run_summary: RunSummary, datapackage_updated: bool, auto_publish: bool
     ) -> PublishedDeposition | None:
         """Check that deposition is valid and worth changing, then publish if so."""
-        logger.info("Attempting to publish deposition.")
         if not run_summary.success:
             logger.error(
                 "Archive validation failed. Not publishing new archive, kept "
