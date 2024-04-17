@@ -9,11 +9,12 @@ import coloredlogs
 from dotenv import load_dotenv
 
 from pudl_archiver import ARCHIVERS, archive_datasets
+from pudl_archiver.utils import RunSettings
 
 logger = logging.getLogger("catalystcoop.pudl_archiver")
 
 
-def parse_main():
+def parse_main(args=None):
     """Process base commands from the CLI."""
     parser = argparse.ArgumentParser(description="Upload PUDL data archives to Zenodo")
     parser.add_argument(
@@ -73,21 +74,29 @@ def parse_main():
         action="store_true",
         help="Regenerate metadata from PUDL data source rather than existing archived metadata.",
     )
-    return parser.parse_args()
+    parser.add_argument(
+        "--depositor",
+        type=str,
+        default="zenodo",
+    )
+    return parser.parse_args(args)
 
 
-def main():
+async def archiver_entry(args=None):
     """Run desired archivers."""
     load_dotenv()
     logger.setLevel(logging.INFO)
     log_format = "%(asctime)s [%(levelname)8s] %(name)s:%(lineno)s %(message)s"
     coloredlogs.install(fmt=log_format, level=logging.INFO, logger=logger)
-    args = parse_main()
+    args = parse_main(args)
+    datasets = args.datasets
     if args.all:
-        args.datasets = ARCHIVERS.keys()
+        datasets = ARCHIVERS.keys()
     del args.all
-    asyncio.run(archive_datasets(**vars(args)))
+
+    await archive_datasets(datasets=datasets, run_settings=RunSettings(**vars(args)))
 
 
-if __name__ == "__main__":
-    main()
+def main():
+    """Kick off async script."""
+    asyncio.run(archiver_entry())

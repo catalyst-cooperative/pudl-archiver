@@ -3,17 +3,16 @@
 import asyncio
 import json
 import logging
-import os
-import zipfile
 from pathlib import Path
 
 import aiohttp
-import pandas as pd
 
 import pudl_archiver.orchestrator  # noqa: F401
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver
 from pudl_archiver.archivers.validate import RunSummary
-from pudl_archiver.orchestrator import DepositionOrchestrator
+from pudl_archiver.depositors.zenodo.depositor import ZenodoPublishedDeposition
+from pudl_archiver.orchestrator import orchestrate_run
+from pudl_archiver.utils import RunSettings
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
@@ -49,22 +48,9 @@ ARCHIVERS = {archiver.name: archiver for archiver in all_archivers()}
 
 async def archive_datasets(
     datasets: list[str],
-    sandbox: bool = True,
-    initialize: bool = False,
-    only_years: list[int] | None = None,
-    dry_run: bool = True,
-    summary_file: Path | None = None,
-    download_dir: str | None = None,
-    auto_publish: bool = False,
-    refresh_metadata: bool = False,
+    run_settings: RunSettings,
 ):
     """A CLI for the PUDL Zenodo Storage system."""
-    if sandbox:
-        upload_key = os.environ["ZENODO_SANDBOX_TOKEN_UPLOAD"]
-        publish_key = os.environ["ZENODO_SANDBOX_TOKEN_PUBLISH"]
-    else:
-        upload_key = os.environ["ZENODO_TOKEN_UPLOAD"]
-        publish_key = os.environ["ZENODO_TOKEN_PUBLISH"]
 
     async def on_request_start(session, trace_config_ctx, params):
         logger.debug(f"Starting request {params.url}: headers {params.headers}")
@@ -94,22 +80,19 @@ async def archive_datasets(
             cls = ARCHIVERS.get(dataset)
             if not cls:
                 raise RuntimeError(f"Dataset {dataset} not supported")
-            downloader = cls(session, only_years, download_directory=download_dir)
-            orchestrator = DepositionOrchestrator(
-                dataset,
-                downloader,
+            downloader = cls(
                 session,
-                upload_key,
-                publish_key,
-                dataset_settings_path=Path("dataset_doi.yaml"),
-                create_new=initialize,
-                dry_run=dry_run,
-                sandbox=sandbox,
-                auto_publish=auto_publish,
-                refresh_metadata=refresh_metadata,
+                run_settings.only_years,
+                download_directory=run_settings.download_dir,
             )
-
-            tasks.append(orchestrator.run())
+            tasks.append(
+                orchestrate_run(
+                    dataset,
+                    downloader,
+                    run_settings,
+                    session,
+                )
+            )
 
         results = list(
             zip(datasets, await asyncio.gather(*tasks, return_exceptions=True))
@@ -125,19 +108,21 @@ async def archive_datasets(
             )
             raise exceptions[-1][1]
 
-    if summary_file is not None:
+    if run_settings.summary_file is not None:
         run_summaries = [
             result.dict()
-            for _, result in results
+            for _, [result, published] in results
             if not isinstance(result, BaseException)
         ]
 
-        with summary_file.open("w") as f:
+        with run_settings.summary_file.open("w") as f:
             f.write(json.dumps(run_summaries, indent=2))
 
     # Check validation results of all runs that aren't unchanged
     validation_results = [
-        result.success for _, result in results if isinstance(result, RunSummary)
+        result.success
+        for _, [result, published] in results
+        if isinstance(result, RunSummary)
     ]
     if not all(validation_results):
         raise RuntimeError("Error: archive validation tests failed.")
