@@ -32,10 +32,12 @@ MEDIA_TYPES: dict[str, str] = {
 }
 VALID_PARTITION_RANGES: dict[str, str] = {"year_quarter": "QS", "year_month": "MS"}
 
-ArchiveAwaitable = typing.AsyncGenerator[typing.Awaitable[ResourceInfo], None]
+ArchiveAwaitable = typing.AsyncGenerator[
+    typing.Awaitable[ResourceInfo | list[ResourceInfo]], None
+]
 """Return type of method get_resources.
 
-The method get_resources should yield an awaitable that returns a ResourceInfo named tuple.
+The method get_resources should yield an awaitable that returns a ResourceInfo class.
 The awaitable should be an `async` function that will download a resource, then return the
 ResourceInfo. This contains a path to the downloaded resource, and the working partitions
 pertaining to the resource.
@@ -541,28 +543,35 @@ class AbstractDatasetArchiver(ABC):
         # Download resources concurrently and prepare metadata
         for resource_chunk in resource_chunks:
             for resource_coroutine in asyncio.as_completed(resource_chunk):
-                resource_info = await resource_coroutine
-                self.logger.info(f"Downloaded {resource_info.local_path}.")
+                # resource_coroutine can return list or individual resource
+                # If individual resource, create list of 1 to make iterable
+                if not isinstance(resources := await resource_coroutine, list):
+                    resources = [resources]
 
-                # Perform various file validations
-                self.file_validations.extend(
-                    [
-                        validate.validate_filetype(
-                            resource_info.local_path, self.fail_on_empty_invalid_files
-                        ),
-                        validate.validate_file_not_empty(
-                            resource_info.local_path, self.fail_on_empty_invalid_files
-                        ),
-                        validate.validate_zip_layout(
-                            resource_info.local_path,
-                            resource_info.layout,
-                            self.fail_on_empty_invalid_files,
-                        ),
-                    ]
-                )
+                for resource_info in resources:
+                    self.logger.info(f"Downloaded {resource_info.local_path}.")
 
-                # Return downloaded
-                yield str(resource_info.local_path.name), resource_info
+                    # Perform various file validations
+                    self.file_validations.extend(
+                        [
+                            validate.validate_filetype(
+                                resource_info.local_path,
+                                self.fail_on_empty_invalid_files,
+                            ),
+                            validate.validate_file_not_empty(
+                                resource_info.local_path,
+                                self.fail_on_empty_invalid_files,
+                            ),
+                            validate.validate_zip_layout(
+                                resource_info.local_path,
+                                resource_info.layout,
+                                self.fail_on_empty_invalid_files,
+                            ),
+                        ]
+                    )
+
+                    # Return downloaded
+                    yield str(resource_info.local_path.name), resource_info
 
             # If requested, create a new temporary directory per resource chunk
             if self.directory_per_resource_chunk:
