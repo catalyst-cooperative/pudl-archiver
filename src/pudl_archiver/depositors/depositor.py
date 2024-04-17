@@ -269,6 +269,7 @@ class DraftDeposition(BaseModel, ABC):
             )
             return None
 
+        logger.info("Attempting to publish deposition.")
         return await self.publish()
 
     async def _apply_change(self, change: DepositionChange) -> "DraftDeposition":
