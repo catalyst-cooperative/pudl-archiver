@@ -246,7 +246,7 @@ class DraftDeposition(BaseModel, ABC):
         return await self._apply_change(change)
 
     async def publish_if_valid(
-        self, run_summary: RunSummary, datapackage_updated: bool
+        self, run_summary: RunSummary, datapackage_updated: bool, auto_publish: bool
     ) -> PublishedDeposition | None:
         """Check that deposition is valid and worth changing, then publish if so."""
         logger.info("Attempting to publish deposition.")
@@ -262,6 +262,13 @@ class DraftDeposition(BaseModel, ABC):
                 f"{self.get_deposition_link()} for inspection."
             )
             return None
+        if not auto_publish:
+            logger.info(
+                "Skipping publishing because auto-publish is disabled, kept draft at "
+                f"{self.get_deposition_link()} for inspection."
+            )
+            return None
+
         return await self.publish()
 
     async def _apply_change(self, change: DepositionChange) -> "DraftDeposition":
