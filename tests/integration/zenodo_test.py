@@ -157,7 +157,7 @@ async def test_zenodo_workflow(
     settings = RunSettings(
         dry_run=False,
         sandbox=True,
-        auto_publish=True,
+        auto_publish=False,
         refresh_metadata=False,
         initialize=True,
         depositor="zenodo",
@@ -221,6 +221,8 @@ async def test_zenodo_workflow(
         )
         for file_data in test_files["original"]
     }
+
+    # Test with auto publish off (should succeed, but not publish)
     v1_summary, v1_refreshed = await orchestrate_run(
         dataset="pudl_test",
         downloader=TestDownloader(v1_resources, session=session),
@@ -228,7 +230,17 @@ async def test_zenodo_workflow(
         session=session,
     )
     assert v1_summary.success
+    assert v1_refreshed is None
 
+    # Turn auto publish on for rest of run
+    settings = settings.model_copy(update={"auto_publish": True})
+    v1_summary, v1_refreshed = await orchestrate_run(
+        dataset="pudl_test",
+        downloader=TestDownloader(v1_resources, session=session),
+        run_settings=settings,
+        session=session,
+    )
+    assert v1_summary.success
     verify_files(test_files["original"], v1_refreshed.deposition)
 
     # the /records/ URL doesn't work until the record is published, but

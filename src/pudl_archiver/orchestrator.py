@@ -48,5 +48,7 @@ async def orchestrate_run(
         validations,
         draft.get_deposition_link(),
     )
-    published = await draft.publish_if_valid(summary, datapackage_updated)
+    published = await draft.publish_if_valid(
+        summary, datapackage_updated, run_settings.auto_publish
+    )
     return summary, published

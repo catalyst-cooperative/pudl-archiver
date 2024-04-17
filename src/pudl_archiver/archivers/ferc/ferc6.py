@@ -33,7 +33,10 @@ class Ferc6Archiver(AbstractDatasetArchiver):
 
         if len(taxonomy_years) > 0:
             yield xbrl.archive_taxonomy(
-                year, xbrl.FercForm.FORM_6, self.download_directory, self.session
+                taxonomy_years,
+                xbrl.FercForm.FORM_6,
+                self.download_directory,
+                self.session,
             )
 
     async def get_year_xbrl(
