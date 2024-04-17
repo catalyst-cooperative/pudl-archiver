@@ -1,7 +1,7 @@
 """Test zenodo entities."""
 
 import pytest
-from pudl_archiver.zenodo.entities import DepositionMetadata, FileLinks
+from pudl_archiver.depositors.zenodo.entities import DepositionMetadata, FileLinks
 
 
 def test_depo_metadata_from_data_source():

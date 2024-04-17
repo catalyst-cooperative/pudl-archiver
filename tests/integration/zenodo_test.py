@@ -14,13 +14,13 @@ from dotenv import load_dotenv
 from pudl.metadata.classes import DataSource
 from pudl.metadata.constants import LICENSES
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver, ResourceInfo
-from pudl_archiver.archivers.validate import RunSummary
-from pudl_archiver.orchestrator import DepositionOrchestrator
-from pudl_archiver.zenodo.entities import (
+from pudl_archiver.depositors.zenodo.entities import (
     Deposition,
     DepositionCreator,
     DepositionMetadata,
 )
+from pudl_archiver.orchestrator import orchestrate_run
+from pudl_archiver.utils import RunSettings
 
 
 @pytest.fixture()
@@ -128,11 +128,11 @@ def datasource():
 def test_settings():
     """Create temporary DOI settings file."""
     with tempfile.TemporaryDirectory() as tmp_dir:
-        settings_file = Path(tmp_dir) / "settings.yaml"
+        settings_file = Path(tmp_dir) / "zenodo_doi.yaml"
         with Path.open(settings_file, "w") as f:
             f.writelines(["fake_dataset:\n", "    sandbox_doi: null"])
 
-        yield settings_file
+        yield Path(tmp_dir)
 
 
 @pytest.mark.asyncio
@@ -147,6 +147,21 @@ async def test_zenodo_workflow(
     mocker,
 ):
     """Test the entire zenodo client workflow."""
+    # Mock settings path
+    settings_mock = mocker.MagicMock(return_value=test_settings)
+    mocker.patch(
+        "pudl_archiver.depositors.zenodo.depositor.importlib.resources.files",
+        new=settings_mock,
+    )
+
+    settings = RunSettings(
+        dry_run=False,
+        sandbox=True,
+        auto_publish=True,
+        refresh_metadata=False,
+        initialize=True,
+        depositor="zenodo",
+    )
 
     def verify_files(expected, deposition: Deposition):
         deposition_files = {f.filename: f for f in deposition.files}
@@ -171,22 +186,6 @@ async def test_zenodo_workflow(
             # Verify that contents of file are correct
             assert res.text.encode() == file_data["contents"]
 
-    async def refresh_record_info(run_summary: RunSummary) -> Deposition:
-        record_id = run_summary.record_url.path.rsplit("/", maxsplit=1)[1]
-        return await orchestrator.depositor.get_deposition_by_id(record_id)
-
-    deposition_interface_args = {
-        "data_source_id": "pudl_test",
-        "session": session,
-        "upload_key": upload_key,
-        "publish_key": publish_key,
-        "dataset_settings_path": test_settings,
-        "dry_run": False,
-        "sandbox": True,
-        "auto_publish": True,
-        "refresh_metadata": False,
-    }
-
     class TestDownloader(AbstractDatasetArchiver):
         name = "Test Downloader"
 
@@ -204,7 +203,7 @@ async def test_zenodo_workflow(
     # Mock out creating deposition metadata with fake data source
     deposition_metadata_mock = mocker.MagicMock(return_value=deposition_metadata)
     mocker.patch(
-        "pudl_archiver.orchestrator.DepositionMetadata.from_data_source",
+        "pudl_archiver.depositors.zenodo.entities.DepositionMetadata.from_data_source",
         new=deposition_metadata_mock,
     )
 
@@ -216,32 +215,26 @@ async def test_zenodo_workflow(
     )
 
     # Create new deposition and add files
-
     v1_resources = {
         file_data["path"].name: ResourceInfo(
             local_path=file_data["path"], partitions={}
         )
         for file_data in test_files["original"]
     }
-    orchestrator = DepositionOrchestrator(
-        **(
-            deposition_interface_args
-            | {
-                "create_new": True,
-                "downloader": TestDownloader(v1_resources, session=session),
-            }
-        )
+    v1_summary, v1_refreshed = await orchestrate_run(
+        dataset="pudl_test",
+        downloader=TestDownloader(v1_resources, session=session),
+        run_settings=settings,
+        session=session,
     )
-    v1_summary = await orchestrator.run()
     assert v1_summary.success
 
-    v1_refreshed = await refresh_record_info(v1_summary)
-    verify_files(test_files["original"], v1_refreshed)
+    verify_files(test_files["original"], v1_refreshed.deposition)
 
     # the /records/ URL doesn't work until the record is published, but
     # deposit/ works from draft through publication
     assert str(v1_summary.record_url).replace("deposit", "records") == str(
-        v1_refreshed.links.html
+        v1_refreshed.get_deposition_link()
     )
 
     # Update files
@@ -251,48 +244,59 @@ async def test_zenodo_workflow(
         )
         for file_data in test_files["updated"]
     }
-    orchestrator = DepositionOrchestrator(
-        **(
-            deposition_interface_args
-            | {
-                "downloader": TestDownloader(v2_resources, session=session),
-            }
-        )
-    )
+    settings.initialize = False
 
     # Should fail due to deleted file
-    v2_summary = await orchestrator.run()
+    downloader = TestDownloader(v2_resources, session=session)
+    v2_summary, v2_refreshed = await orchestrate_run(
+        dataset="pudl_test",
+        downloader=downloader,
+        run_settings=settings,
+        session=session,
+    )
     assert not v2_summary.success
 
     # Wait for deleted deposition to propogate through
     time.sleep(1)
 
     # Disable test and re-run
-    orchestrator.downloader.fail_on_missing_files = False
-    v2_summary = await orchestrator.run()
+    downloader.fail_on_missing_files = False
+    v2_summary, v2_refreshed = await orchestrate_run(
+        dataset="pudl_test",
+        downloader=downloader,
+        run_settings=settings,
+        session=session,
+    )
     assert v2_summary.success
 
-    v2_refreshed = await refresh_record_info(v2_summary)
-    verify_files(test_files["updated"], v2_refreshed)
+    verify_files(test_files["updated"], v2_refreshed.deposition)
 
     # force a datapackage.json update
     with unittest.mock.patch(
-        "pudl_archiver.orchestrator.DepositionOrchestrator._datapackage_worth_changing",
+        "pudl_archiver.depositors.depositor.DraftDeposition._datapackage_worth_changing",
         lambda *_args: True,
     ):
-        v3_summary = await orchestrator.run()
+        v3_summary, v3_refreshed = await orchestrate_run(
+            dataset="pudl_test",
+            downloader=downloader,
+            run_settings=settings,
+            session=session,
+        )
     assert len(v3_summary.file_changes) == 0
-    assert len(orchestrator.changes) == 4
 
-    v3_refreshed = await refresh_record_info(v3_summary)
     # no updates to make, should not leave the conceptdoi pointing at a draft
-    v4_summary = await orchestrator.run()
+    v4_summary, _ = await orchestrate_run(
+        dataset="pudl_test",
+        downloader=downloader,
+        run_settings=settings,
+        session=session,
+    )
     assert len(v4_summary.file_changes) == 0
 
     # legacy Zenodo API "get latest for concept DOI" endpoint is very slow to update,
     # but requesting the DOI directly updates quickly.
     res = requests.get(
-        f"https://sandbox.zenodo.org/doi/{v3_refreshed.conceptdoi}",
+        f"https://sandbox.zenodo.org/doi/{v3_refreshed.deposition.conceptdoi}",
         timeout=10.0,
     )
-    assert str(v3_refreshed.id_) in res.text
+    assert str(v3_refreshed.deposition.id_) in res.text
