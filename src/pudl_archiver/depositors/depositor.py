@@ -278,10 +278,6 @@ class DraftDeposition(BaseModel, ABC):
             draft: the draft to make these changes to
             change: the change to make
         """
-        if self.settings.dry_run:
-            logger.info(f"Dry run, skipping {change}")
-            return None
-
         draft = self
         if change.action_type in [DepositionAction.DELETE, DepositionAction.UPDATE]:
             draft = await self.delete_file(change.name)
