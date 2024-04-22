@@ -5,7 +5,7 @@ authors = [{name = "PUDL", email = "pudl@catalyst.coop"}]
 requires-python = ">=3.12,<3.13"
 
 dependencies = [
-    "arelle-release>=2.25,<2.26",
+    "arelle-release>=2.25,<2.27",
     "catalystcoop.pudl @ git+https://github.com/catalyst-cooperative/pudl.git",
     "coloredlogs>=14",
     "dask<2024.5",  # Temporary pin -- conda packaging problem upstream
