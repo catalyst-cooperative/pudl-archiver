@@ -42,7 +42,7 @@ dev = [
 docs = [
     "doc8>=0.9,<1.2",  # Ensures clean documentation formatting
     "furo>=2022.4.7",
-    "sphinx>=4,!=5.1.0,<7.2.7",  # The default Python documentation engine
+    "sphinx>=4,!=5.1.0,<7.3.8",  # The default Python documentation engine
     "sphinx-autoapi>=1.8,<3.1",  # Generates documentation from docstrings
     "sphinx-issues>=1.2,<4.2",  # Allows references to GitHub issues
 ]
