@@ -309,6 +309,10 @@ class DraftDeposition(BaseModel, ABC):
     def _datapackage_worth_changing(
         self, old_datapackage: DataPackage | None, new_datapackage: DataPackage
     ) -> bool:
+        # Copy datapackages so we can modify without causing problems down the line
+        new_datapackage = new_datapackage.model_copy(deep=True)
+        if old_datapackage is not None:
+            old_datapackage = old_datapackage.model_copy(deep=True)
         # ignore differences in created/version
         # ignore differences resource paths if it's just some ID number changing...
         if old_datapackage is None:
@@ -336,9 +340,7 @@ class DraftDeposition(BaseModel, ABC):
 
         # Add datapackage if it's changed
         # copy new datapackage so temporary modifications aren't saved
-        if update := self._datapackage_worth_changing(
-            old_datapackage.model_copy(deep=True), new_datapackage.model_copy(deep=True)
-        ):
+        if update := self._datapackage_worth_changing(old_datapackage, new_datapackage):
             datapackage_json = io.BytesIO(
                 bytes(
                     new_datapackage.model_dump_json(by_alias=True, indent=4),
