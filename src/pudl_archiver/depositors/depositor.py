@@ -310,20 +310,24 @@ class DraftDeposition(BaseModel, ABC):
         self, old_datapackage: DataPackage | None, new_datapackage: DataPackage
     ) -> bool:
         # Copy datapackages so we can modify without causing problems down the line
-        new_datapackage = new_datapackage.model_copy(deep=True)
+        new_datapackage_copy = new_datapackage.model_copy(deep=True)
         if old_datapackage is not None:
-            old_datapackage = old_datapackage.model_copy(deep=True)
+            old_datapackage_copy = old_datapackage.model_copy(deep=True)
         # ignore differences in created/version
         # ignore differences resource paths if it's just some ID number changing...
         if old_datapackage is None:
             return True
-        for field in new_datapackage.model_dump():
+        for field in new_datapackage_copy.model_dump():
             if field in {"created", "version"}:
                 continue
             if field == "resources":
-                for r in old_datapackage.resources + new_datapackage.resources:
+                for r in (
+                    old_datapackage_copy.resources + new_datapackage_copy.resources
+                ):
                     r.path = re.sub(r"/\d+/", "/ID_NUMBER/", str(r.path))
-            if getattr(new_datapackage, field) != getattr(old_datapackage, field):
+            if getattr(new_datapackage_copy, field) != getattr(
+                old_datapackage_copy, field
+            ):
                 return True
 
         # Due to a bug in an earlier version some resources ended up with ID_NUMBER in path.
