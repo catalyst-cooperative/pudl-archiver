@@ -332,7 +332,7 @@ class DraftDeposition(BaseModel, ABC):
 
         # Due to a bug in an earlier version some resources ended up with ID_NUMBER in path.
         # These should be replaced
-        return any("ID_NUMBER" in r.path for r in old_datapackage.resources)
+        return any("ID_NUMBER" in str(r.path) for r in old_datapackage.resources)
 
     async def attach_datapackage(
         self,
