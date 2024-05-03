@@ -260,6 +260,8 @@ async def test_zenodo_workflow(
 
     # Should fail due to deleted file
     downloader = TestDownloader(v2_resources, session=session)
+    downloader.fail_on_file_size_change = False
+    downloader.fail_on_dataset_size_change = False
     v2_summary, v2_refreshed = await orchestrate_run(
         dataset="pudl_test",
         downloader=downloader,
