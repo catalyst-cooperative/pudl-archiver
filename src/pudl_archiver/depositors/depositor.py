@@ -324,10 +324,7 @@ class DraftDeposition(BaseModel, ABC):
 
         # Due to a bug in an earlier version some resources ended up with ID_NUMBER in path.
         # These should be replaced
-        for r in old_datapackage.resources:
-            if "ID_NUMBER" in r.path:
-                return True
-        return False
+        return any("ID_NUMBER" in r.path for r in old_datapackage.resources)
 
     async def attach_datapackage(
         self,
@@ -339,7 +336,9 @@ class DraftDeposition(BaseModel, ABC):
 
         # Add datapackage if it's changed
         # copy new datapackage so temporary modifications aren't saved
-        if update := self._datapackage_worth_changing(old_datapackage, new_datapackage.model_copy(deep=True)):
+        if update := self._datapackage_worth_changing(
+            old_datapackage, new_datapackage.model_copy(deep=True)
+        ):
             datapackage_json = io.BytesIO(
                 bytes(
                     new_datapackage.model_dump_json(by_alias=True, indent=4),
