@@ -8,7 +8,7 @@ dependencies = [
     "arelle-release>=2.25,<2.27",
     "catalystcoop.pudl @ git+https://github.com/catalyst-cooperative/pudl.git",
     "coloredlogs>=14",
-    "dask<2024.5",  # Temporary pin -- conda packaging problem upstream
+    "dask<2024.6",  # Temporary pin -- conda packaging problem upstream
     "feedparser>=6.0",
     "frictionless>=5,<6",
     "pydantic>=2.7,<3",
