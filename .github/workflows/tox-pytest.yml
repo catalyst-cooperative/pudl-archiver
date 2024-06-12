@@ -21,12 +21,11 @@ jobs:
         uses: mamba-org/setup-micromamba@v1
         with:
           environment-file: environment.yml
-          cache-environment: true
+          cache-environment: false
           cache-environment-key: environment-${{ hashFiles('pyproject.toml') }}
           condarc: |
             channels:
             - conda-forge
-            - defaults
             channel_priority: strict
 
       - name: Log conda environnment information
