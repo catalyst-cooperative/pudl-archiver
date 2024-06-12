@@ -125,7 +125,6 @@ class RunSettings(BaseModel):
     sandbox: bool = True
     initialize: bool = False
     only_years: list[int] | None = []
-    dry_run: bool = True
     summary_file: Path | None = None
     download_dir: str | None = None
     auto_publish: bool = False

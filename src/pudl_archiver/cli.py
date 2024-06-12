@@ -48,11 +48,6 @@ def parse_main(args=None):
         help="Initialize new deposition by preserving a DOI",
     )
     parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Skip actually uploading to Zenodo",
-    )
-    parser.add_argument(
         "--summary-file",
         type=Path,
         help="Generate a JSON archive run summary",

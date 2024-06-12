@@ -155,7 +155,6 @@ async def test_zenodo_workflow(
     )
 
     settings = RunSettings(
-        dry_run=False,
         sandbox=True,
         auto_publish=False,
         refresh_metadata=False,
