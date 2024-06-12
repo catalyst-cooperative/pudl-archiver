@@ -6,7 +6,7 @@ requires-python = ">=3.12,<3.13"
 
 dependencies = [
     "arelle-release>=2.25,<2.28",
-    "catalystcoop.pudl @ git+https://github.com/catalyst-cooperative/pudl.git",
+    "catalystcoop.pudl @ git+https://github.com/catalyst-cooperative/pudl.git@gdal-3.9.0",
     "coloredlogs>=14",
     "dask<2024.6",  # Temporary pin -- conda packaging problem upstream
     "feedparser>=6.0",
