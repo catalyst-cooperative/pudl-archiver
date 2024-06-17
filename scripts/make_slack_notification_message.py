@@ -29,6 +29,18 @@ def _parse_args():
     return parser.parse_args()
 
 
+def _format_message(
+    url: str, name: str, content: str, max_len: int = 3000
+) -> list[dict]:
+    text = f"<{url}|*{name}*>\n{content}"[:max_len]
+    return [
+        {
+            "type": "section",
+            "text": {"type": "mrkdwn", "text": text},
+        },
+    ]
+
+
 def _format_failures(summary: dict) -> list[dict]:
     name = summary["dataset_name"]
     url = summary["record_url"]
@@ -45,14 +57,7 @@ def _format_failures(summary: dict) -> list[dict]:
     else:
         return None
 
-    max_len = 3000
-    text = f"<{url}|*{name}*>\n{failures}"[:max_len]
-    return [
-        {
-            "type": "section",
-            "text": {"type": "mrkdwn", "text": text},
-        },
-    ]
+    return _format_message(url=url, name=name, content=failures)
 
 
 def _format_summary(summary: dict) -> list[dict]:
@@ -69,14 +74,7 @@ def _format_summary(summary: dict) -> list[dict]:
     else:
         changes = "No changes."
 
-    max_len = 3000
-    text = f"<{url}|*{name}*>\n{changes}"[:max_len]
-    return [
-        {
-            "type": "section",
-            "text": {"type": "mrkdwn", "text": text},
-        },
-    ]
+    return _format_message(url=url, name=name, content=changes)
 
 
 def main(summary_files: list[Path]) -> None:
