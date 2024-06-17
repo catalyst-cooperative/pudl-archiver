@@ -14,25 +14,11 @@ jobs:
     strategy:
       matrix:
         dataset:
-          - eia176
-          - eia191
-          - eia757a
-          - eia860
-          - eia861
-          - eia860m
-          - eia923
-          - eia930
-          - eiaaeo
-          - eiawater
-          - eia_bulk_elec
-          - epacamd_eia
-          - ferc1
           - ferc2
           - ferc6
           - ferc60
           - ferc714
           - mshamines
-          - nrelatb
           - phmsagas
 
       fail-fast: false
@@ -71,58 +57,6 @@ jobs:
 
       - name: Upload run summaries
         if: always()
-        id: upload_summaries
-        uses: actions/upload-artifact@v4
-        with:
-          name: run-summaries-${{ matrix.dataset }}
-          path: ${{ matrix.dataset }}_run_summary.json
-
-  archive-run-large:
-    defaults:
-      run:
-        shell: bash -l {0}
-    strategy:
-      matrix:
-        dataset:
-          - epacems
-      fail-fast: false
-    runs-on:
-      group: large-runner-group
-      labels: ubuntu-22.04-4core
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Conda environment using mamba
-        uses: mamba-org/setup-micromamba@v1
-        with:
-          environment-file: environment.yml
-          cache-environment: true
-          condarc: |
-            channels:
-            - conda-forge
-            - defaults
-            channel_priority: strict
-
-      - name: Log the conda environment
-        run: |
-          conda info
-          conda list
-          conda config --show-sources
-          conda config --show
-          printenv | sort
-
-      - name: Run archiver for ${{ matrix.dataset }}
-        env:
-          ZENODO_SANDBOX_TOKEN_UPLOAD: ${{ secrets.ZENODO_SANDBOX_TOKEN_UPLOAD }}
-          ZENODO_SANDBOX_TOKEN_PUBLISH: ${{ secrets.ZENODO_SANDBOX_TOKEN_PUBLISH }}
-          EPACEMS_API_KEY: ${{ secrets.EPACEMS_API_KEY }}
-          ZENODO_TOKEN_UPLOAD: ${{ secrets.ZENODO_TOKEN_UPLOAD }}
-          ZENODO_TOKEN_PUBLISH: ${{ secrets.ZENODO_TOKEN_PUBLISH }}
-        run: |
-          pudl_archiver --datasets ${{ matrix.dataset }} --summary-file ${{ matrix.dataset }}_run_summary.json
-
-      - name: Upload run summaries
-        if: failure() || success()
         id: upload_summaries
         uses: actions/upload-artifact@v4
         with:
