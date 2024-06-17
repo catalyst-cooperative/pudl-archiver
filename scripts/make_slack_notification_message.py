@@ -58,7 +58,7 @@ def _format_failures(summary: dict) -> list[dict]:
 def _format_summary(summary: dict) -> list[dict]:
     name = summary["dataset_name"]
     url = summary["record_url"]
-    if any(test["success"] for test in summary["validation_tests"]):
+    if any(not test["success"] for test in summary["validation_tests"]):
         return None  # Don't report on file changes if any test failed.
 
     if file_changes := summary["file_changes"]:
