@@ -15,10 +15,6 @@ jobs:
       matrix:
         dataset:
           - ferc2
-          - ferc6
-          - ferc60
-          - ferc714
-          - mshamines
           - phmsagas
 
       fail-fast: false
