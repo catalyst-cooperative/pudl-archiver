@@ -161,7 +161,7 @@ jobs:
     needs:
       - archive-run-small
       - archive-run-large
-    if: ${{ inputs.create_github_issue }}
+    if: inputs.create_github_issue
     steps:
       - uses: actions/checkout@v3
       - name: Create an issue
