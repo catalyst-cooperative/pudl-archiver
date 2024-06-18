@@ -50,8 +50,8 @@ def _format_failures(summary: dict) -> list[dict]:
         if (not validation_test["success"]) and (
             validation_test["required_for_run_success"]
         ):
-            test_failures[validation_test["name"]].append(
-                ". ".join(validation_test["notes"])
+            test_failures = ". ".join(
+                [validation_test["name"], ". ".join(validation_test["notes"])]
             )  # Flatten list of lists
 
     if test_failures:
