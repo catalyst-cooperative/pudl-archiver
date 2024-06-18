@@ -24,7 +24,7 @@ jobs:
         shell: bash -l {0}
     strategy:
       matrix:
-        dataset: ${{ fromJSON(github.event.inputs.dataset)) }}
+        dataset: ${{ fromJSON(github.event.inputs.dataset) }}
 
       fail-fast: false
     runs-on: ubuntu-latest
