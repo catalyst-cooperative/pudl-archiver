@@ -157,7 +157,7 @@ jobs:
           SLACK_BOT_TOKEN: ${{ secrets.PUDL_DEPLOY_SLACK_TOKEN }}
 
   make-github-issue:
-    if: inputs.create_github_issue != 'false'
+    if: inputs.create_github_issue != false
     runs-on: ubuntu-latest
     needs:
       - archive-run-small
