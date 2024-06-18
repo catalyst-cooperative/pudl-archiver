@@ -6,8 +6,8 @@ on:
     inputs:
       dataset:
         description: "Comma-separated list of datasets to archive (e.g., ferc2,ferc6)."
-        default: "eia176,eia191,eia757a,eia860,eia860m,eia861,eia923,eia930,eiaaeo,eiawater,eia_bulk_elec,epacamd_eia,ferc1,ferc2,ferc6,ferc60,ferc714,mshamines,nrelatb,phmsagas,epacems"
-        required: false
+        default: '"eia176","eia191","eia757a","eia860","eia860m","eia861","eia923","eia930","eiaaeo","eiawater","eia_bulk_elec","epacamd_eia","ferc1","ferc2","ferc6","ferc60","ferc714","mshamines","nrelatb","phmsagas","epacems"'
+        required: true
         type: string
       create_github_issue:
         description: "Create a Github issue from this run?"
@@ -24,7 +24,7 @@ jobs:
         shell: bash -l {0}
     strategy:
       matrix:
-        dataset: ${{ fromJSON(github.event.inputs.dataset) }}
+        dataset: ${{ fromJSON(format('[{0}]', github.events.inputs.dataset || '"eia176","eia191","eia757a","eia860","eia860m","eia861","eia923","eia930","eiaaeo","eiawater","eia_bulk_elec","epacamd_eia","ferc1","ferc2","ferc6","ferc60","ferc714","mshamines","nrelatb","phmsagas","epacems"')) }}
 
       fail-fast: false
     runs-on: ubuntu-latest
