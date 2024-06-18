@@ -96,9 +96,9 @@ jobs:
       - archive-run-small
     if: ${{ always() }}
     steps:
-      - name: Create an issue
       - uses: actions/checkout@v3
-      - uses: JasonEtco/create-an-issue@v2.9.2
+      - name: Create an issue
+        uses: JasonEtco/create-an-issue@v2.9.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
