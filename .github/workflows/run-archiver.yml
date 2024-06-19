@@ -1,12 +1,16 @@
 ---
 name: run-archiver
 
+env:
+  SMALL_DATASETS: '"eia176","eia191","eia757a","eia860","eia860m","eia861","eia923","eia930","eiaaeo","eiawater","eia_bulk_elec","epacamd_eia","ferc1","ferc2","ferc6","ferc60","ferc714","mshamines","nrelatb","phmsagas"'
+  LARGE_DATASETS: '"epacems"' # Datasets requiring a large (paid) runner
+
 on:
   workflow_dispatch:
     inputs:
       small_runner:
         description: 'Small runner: Comma-separated list of datasets to archive (e.g., "ferc2","ferc6").'
-        default: '"eia176","eia191","eia757a","eia860","eia860m","eia861","eia923","eia930","eiaaeo","eiawater","eia_bulk_elec","epacamd_eia","ferc1","ferc2","ferc6","ferc60","ferc714","mshamines","nrelatb","phmsagas"'
+        default: ${{ env.SMALL_DATASETS }}
         required: true
         type: string
       large_runner:
@@ -29,7 +33,7 @@ jobs:
         shell: bash -l {0}
     strategy:
       matrix:
-        dataset: ${{ fromJSON(format('[{0}]', inputs.small_runner || '"eia176","eia191","eia757a","eia860","eia860m","eia861","eia923","eia930","eiaaeo","eiawater","eia_bulk_elec","epacamd_eia","ferc1","ferc2","ferc6","ferc60","ferc714","mshamines","nrelatb","phmsagas"')) }}
+        dataset: ${{ fromJSON(format('[{0}]', inputs.small_runner || env.SMALL_DATASETS )) }}
       fail-fast: false
     runs-on: ubuntu-latest
     steps:
@@ -73,14 +77,13 @@ jobs:
           path: ${{ matrix.dataset }}_run_summary.json
 
   archive-run-large:
-    if: inputs.large_runner
+    if: ${{ github.event_name == 'schedule' || inputs.large_runner }}
     defaults:
       run:
         shell: bash -l {0}
     strategy:
       matrix:
-        dataset:
-          - epacems
+        dataset: ${{ fromJSON(format('[{0}]', env.LARGE_DATASETS )) }}
       fail-fast: false
     runs-on:
       group: large-runner-group
@@ -157,7 +160,7 @@ jobs:
           SLACK_BOT_TOKEN: ${{ secrets.PUDL_DEPLOY_SLACK_TOKEN }}
 
   make-github-issue:
-    if: always() && inputs.create_github_issue != false
+    if: ${{ always() && (github.event_name == 'schedule' || inputs.create_github_issue == true) }}
     runs-on: ubuntu-latest
     needs:
       - archive-run-small

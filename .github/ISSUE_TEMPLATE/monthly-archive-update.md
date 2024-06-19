@@ -8,7 +8,7 @@ assignees: e-belfer
 ---
 
 # Summary of results:
-See the job run results [here]({{ env.RUN_URL }}).
+See the job run logs and results [here]({{ env.RUN_URL }}).
 
 # Review and publish archives
 
@@ -55,6 +55,3 @@ For each run that failed because of another reason (e.g., underlying data change
 ```[tasklist]
 - [ ] dataset
 ```
-
-# Relevant logs
-[Link to logs from GHA run]({{ env.RUN_URL }})
