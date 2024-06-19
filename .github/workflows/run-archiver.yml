@@ -1,15 +1,12 @@
 ---
 name: run-archiver
 
-env:
-  SMALL_DATASETS: '"eia176","eia191","eia757a","eia860","eia860m","eia861","eia923","eia930","eiaaeo","eiawater","eia_bulk_elec","epacamd_eia","ferc1","ferc2","ferc6","ferc60","ferc714","mshamines","nrelatb","phmsagas"'
-  LARGE_DATASETS: '"epacems"' # Datasets requiring a large (paid) runner
-
 on:
   workflow_dispatch:
     inputs:
       small_runner:
         description: 'Small runner: Comma-separated list of datasets to archive (e.g., "ferc2","ferc6").'
+        # We can't pass env variables to the workflow_dispatch, so we manually list all small datasets here.
         default: '"eia176","eia191","eia757a","eia860","eia860m","eia861","eia923","eia930","eiaaeo","eiawater","eia_bulk_elec","epacamd_eia","ferc1","ferc2","ferc6","ferc60","ferc714","mshamines","nrelatb","phmsagas"'
         required: true
         type: string
@@ -33,7 +30,8 @@ jobs:
         shell: bash -l {0}
     strategy:
       matrix:
-        dataset: ${{ fromJSON(format('[{0}]', inputs.small_runner || env.SMALL_DATASETS )) }}
+        # Note that we can't pass global env variables to the matrix, so we manually reproduce the list of datasets here.
+        dataset: ${{ fromJSON(format('[{0}]', inputs.small_runner || '"eia176","eia191","eia757a","eia860","eia860m","eia861","eia923","eia930","eiaaeo","eiawater","eia_bulk_elec","epacamd_eia","ferc1","ferc2","ferc6","ferc60","ferc714","mshamines","nrelatb","phmsagas"' )) }}
       fail-fast: false
     runs-on: ubuntu-latest
     steps:
@@ -83,7 +81,8 @@ jobs:
         shell: bash -l {0}
     strategy:
       matrix:
-        dataset: ${{ fromJSON(format('[{0}]', env.LARGE_DATASETS )) }}
+        # Note that we can't pass global env variables to the matrix, so we manually list the datasets here.
+        dataset: ${{ fromJSON(format('[{0}]', '"epacems"' )) }}
       fail-fast: false
     runs-on:
       group: large-runner-group
