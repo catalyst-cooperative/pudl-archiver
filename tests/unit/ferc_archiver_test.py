@@ -24,53 +24,43 @@ def make_testdata(module_test_spec_dict):
 
 valid_years_test_spec_dict = {
     "ferc1": [
-        {"years": [1848, 2349], "num_dbf": 0, "num_xbrl": 0, "num_taxonomy": 0},
-        {"years": [2021, 2022, 2023], "num_dbf": 1, "num_xbrl": 1, "num_taxonomy": 1},
+        {"years": [1848, 2349], "num_dbf": 0},
+        {"years": [2021, 2022, 2023], "num_dbf": 1},
         {
             "years": [2003, 2004, 2005, 2021],
             "num_dbf": 4,
-            "num_xbrl": 2,
-            "num_taxonomy": 1,
         },
     ],
     "ferc2": [
-        {"years": [1848, 2349], "num_dbf": 0, "num_xbrl": 0, "num_taxonomy": 0},
-        {"years": [2021, 2022, 2023], "num_dbf": 1, "num_xbrl": 1, "num_taxonomy": 1},
+        {"years": [1848, 2349], "num_dbf": 0},
+        {"years": [2021, 2022, 2023], "num_dbf": 1},
         {
             "years": [2003, 2004, 2005, 2021],
             "num_dbf": 4,
-            "num_xbrl": 2,
-            "num_taxonomy": 1,
         },
     ],
     "ferc6": [
-        {"years": [1848, 2349], "num_dbf": 0, "num_xbrl": 0, "num_taxonomy": 0},
-        {"years": [2021, 2022, 2023], "num_dbf": 1, "num_xbrl": 1, "num_taxonomy": 1},
+        {"years": [1848, 2349], "num_dbf": 0},
+        {"years": [2021, 2022, 2023], "num_dbf": 1},
         {
             "years": [2003, 2004, 2005, 2021],
             "num_dbf": 4,
-            "num_xbrl": 2,
-            "num_taxonomy": 1,
         },
     ],
     "ferc60": [
-        {"years": [1848, 2349], "num_dbf": 0, "num_xbrl": 0, "num_taxonomy": 0},
-        {"years": [2021, 2022, 2023], "num_dbf": 0, "num_xbrl": 1, "num_taxonomy": 1},
+        {"years": [1848, 2349], "num_dbf": 0},
+        {"years": [2021, 2022, 2023], "num_dbf": 0},
         {
             "years": [2004, 2005, 2006, 2007, 2021],
             "num_dbf": 2,
-            "num_xbrl": 2,
-            "num_taxonomy": 1,
         },
     ],
     "ferc714": [
-        {"years": [1848, 2349], "num_dbf": 0, "num_xbrl": 0, "num_taxonomy": 0},
-        {"years": [2021, 2022, 2023], "num_dbf": 0, "num_xbrl": 1, "num_taxonomy": 1},
+        {"years": [1848, 2349], "num_dbf": 0},
+        {"years": [2021, 2022, 2023], "num_dbf": 0},
         {
             "years": [2004, 2005, 2006, 2007, 2021],
             "num_dbf": 0,
-            "num_xbrl": 2,
-            "num_taxonomy": 1,
         },
     ],
 }
@@ -84,8 +74,6 @@ async def test_valid_years(module_name, test_spec, mocker):
     form_name, form_class = FERC_FORM_CLASS_LOOKUP[module_name]
     only_years = test_spec["years"]
     num_dbf = test_spec["num_dbf"]
-    num_xbrl = test_spec["num_xbrl"]
-    num_taxonomy = test_spec["num_taxonomy"]
 
     mocker.patch(
         f"pudl_archiver.archivers.ferc.{module_name}.xbrl.index_available_entries",
@@ -96,8 +84,4 @@ async def test_valid_years(module_name, test_spec, mocker):
     resources = [res async for res in archiver.get_resources()]
     # don't await these, just check to make sure they have right intention
     dbfs = [r for r in resources if r.__name__ == "get_year_dbf"]
-    xbrls = [r for r in resources if r.__name__ == "get_year_xbrl"]
-    taxonomies = [r for r in resources if r.__name__ == "archive_taxonomy"]
     assert len(dbfs) == num_dbf
-    assert len(xbrls) == num_xbrl
-    assert len(taxonomies) == num_taxonomy

@@ -22,32 +22,8 @@ class Ferc1Archiver(AbstractDatasetArchiver):
             if self.valid_year(year):
                 yield self.get_year_dbf(year)
 
-        filings = xbrl.index_available_entries()[xbrl.FercForm.FORM_1]
-        taxonomy_years = []
-        for year, year_filings in filings.items():
-            if self.valid_year(year):
-                if year > 2019:
-                    taxonomy_years.append(year)
-                yield self.get_year_xbrl(year, year_filings)
-
-        if len(taxonomy_years) > 0:
-            yield xbrl.archive_taxonomy(
-                taxonomy_years,
-                xbrl.FercForm.FORM_1,
-                self.download_directory,
-                self.session,
-            )
-
-    async def get_year_xbrl(
-        self, year: int, filings: xbrl.FormFilings
-    ) -> tuple[Path, dict]:
-        """Download all XBRL filings from a single year."""
-        download_path = await xbrl.archive_year(
-            year, filings, xbrl.FercForm.FORM_1, self.download_directory, self.session
-        )
-
-        return ResourceInfo(
-            local_path=download_path, partitions={"year": year, "data_format": "XBRL"}
+        yield xbrl.archive_xbrl_for_form(
+            xbrl.FercForm.FORM_1, self.download_directory, self.valid_year, self.session
         )
 
     async def get_year_dbf(self, year: int) -> tuple[Path, dict]:
