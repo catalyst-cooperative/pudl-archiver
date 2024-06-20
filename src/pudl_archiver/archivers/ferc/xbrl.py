@@ -267,7 +267,9 @@ async def archive_taxonomies(
             "taxonomy_versions": taxonomy_versions,
             "data_format": "XBRL_TAXONOMY",
         },
-        layout=ZipLayout(file_paths=archive_files),
+        layout=ZipLayout(
+            file_paths=[f"{version}.zip" for version in taxonomy_versions]
+        ),
     )
 
 
