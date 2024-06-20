@@ -30,7 +30,7 @@ async def orchestrate_run(
     for filename in await draft.list_files():
         if filename not in resources and filename != "datapackage.json":
             logger.info(f"Deleting {filename} from deposition.")
-            draft = draft.delete_file(filename)
+            draft = await draft.delete_file(filename)
 
     # Create new datapackage
     new_datapackage, datapackage_updated = await draft.attach_datapackage(
