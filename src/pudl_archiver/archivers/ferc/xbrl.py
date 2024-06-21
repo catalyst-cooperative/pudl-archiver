@@ -301,11 +301,6 @@ async def archive_year(
     with zipfile.ZipFile(archive_path, "w", compression=ZIP_DEFLATED) as archive:
         for filing in tqdm(filings, desc=f"FERC {form.value} {year} XBRL"):
             # Add filing metadata
-            filing_name = f"{filing.title}{filing.ferc_period}"
-            if filing_name in metadata:
-                metadata[filing_name].update({filing.entry_id: filing.dict()})
-            else:
-                metadata[filing_name] = {filing.entry_id: filing.dict()}
 
             # Download filing
             try:
@@ -324,6 +319,11 @@ async def archive_year(
             filename = f"{filing.title}_form{filing.ferc_formname.as_int()}_{filing.ferc_period}_{round(filing.published_parsed.timestamp())}.xbrl".replace(
                 " ", "_"
             )
+            filing_name = f"{filing.title}{filing.ferc_period}"
+            if filing_name in metadata:
+                metadata[filing_name].update({filename: filing.dict()})
+            else:
+                metadata[filing_name] = {filename: filing.dict()}
 
             match = TAXONOMY_URL_PATTERN.search(response_bytes.decode().lower())
             if not match:
