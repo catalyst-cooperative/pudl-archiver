@@ -29,6 +29,56 @@ def _parse_args():
     return parser.parse_args()
 
 
+def _format_message(
+    url: str, name: str, content: str, max_len: int = 3000
+) -> list[dict]:
+    text = f"<{url}|*{name}*>\n{content}"[:max_len]
+    return [
+        {
+            "type": "section",
+            "text": {"type": "mrkdwn", "text": text},
+        },
+    ]
+
+
+def _format_failures(summary: dict) -> list[dict]:
+    name = summary["dataset_name"]
+    url = summary["record_url"]
+
+    test_failures = defaultdict(list)
+    for validation_test in summary["validation_tests"]:
+        if (not validation_test["success"]) and (
+            validation_test["required_for_run_success"]
+        ):
+            test_failures = ". ".join(
+                [validation_test["name"], ". ".join(validation_test["notes"])]
+            )  # Flatten list of lists
+
+    if test_failures:
+        failures = f"```\n{json.dumps(test_failures, indent=2)}\n```"
+    else:
+        return None
+
+    return _format_message(url=url, name=name, content=failures)
+
+
+def _format_summary(summary: dict) -> list[dict]:
+    name = summary["dataset_name"]
+    url = summary["record_url"]
+    if any(not test["success"] for test in summary["validation_tests"]):
+        return None  # Don't report on file changes if any test failed.
+
+    if file_changes := summary["file_changes"]:
+        abridged_changes = defaultdict(list)
+        for change in file_changes:
+            abridged_changes[change["diff_type"]].append(change["name"])
+        changes = f"```\n{json.dumps(abridged_changes, indent=2)}\n```"
+    else:
+        changes = "No changes."
+
+    return _format_message(url=url, name=name, content=changes)
+
+
 def main(summary_files: list[Path]) -> None:
     """Format summary files for Slack perusal."""
     summaries = []
@@ -36,34 +86,24 @@ def main(summary_files: list[Path]) -> None:
         with summary_file.open() as f:
             summaries.extend(json.loads(f.read()))
 
-    def format_summary(summary: dict) -> list[dict]:
-        name = summary["dataset_name"]
-        url = summary["record_url"]
-        if file_changes := summary["file_changes"]:
-            abridged_changes = defaultdict(list)
-            for change in file_changes:
-                abridged_changes[change["diff_type"]].append(change["name"])
-            changes = f"```\n{json.dumps(abridged_changes, indent=2)}\n```"
-        else:
-            changes = "No changes."
-
-        max_len = 3000
-        text = f"<{url}|*{name}*>\n{changes}"[:max_len]
-        return [
-            {
-                "type": "section",
-                "text": {"type": "mrkdwn", "text": text},
-            },
-        ]
+    failed_blocks = list(
+        itertools.chain.from_iterable(
+            _format_failures(s) for s in summaries if _format_failures(s) is not None
+        )
+    )
 
     unchanged_blocks = list(
         itertools.chain.from_iterable(
-            format_summary(s) for s in summaries if not s["file_changes"]
+            _format_summary(s)
+            for s in summaries
+            if (not s["file_changes"]) and (_format_summary(s) is not None)
         )
     )
     changed_blocks = list(
         itertools.chain.from_iterable(
-            format_summary(s) for s in summaries if s["file_changes"]
+            _format_summary(s)
+            for s in summaries
+            if (s["file_changes"]) and (_format_summary(s) is not None)
         )
     )
 
@@ -73,6 +113,8 @@ def main(summary_files: list[Path]) -> None:
     def section_block(text: str) -> dict:
         return {"type": "section", "text": {"type": "mrkdwn", "text": text}}
 
+    if failed_blocks:
+        failed_blocks = [section_block("*Validation Failures*")] + failed_blocks
     if changed_blocks:
         changed_blocks = [section_block("*Changed*")] + changed_blocks
     if unchanged_blocks:
@@ -84,6 +126,7 @@ def main(summary_files: list[Path]) -> None:
                 "attachments": [
                     {
                         "blocks": [header_block("Archiver Run Outcomes")]
+                        + failed_blocks
                         + changed_blocks
                         + unchanged_blocks,
                     }

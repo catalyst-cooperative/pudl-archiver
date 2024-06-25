@@ -3,6 +3,23 @@ name: run-archiver
 
 on:
   workflow_dispatch:
+    inputs:
+      small_runner:
+        description: 'Small runner: Comma-separated list of datasets to archive (e.g., "ferc2","ferc6").'
+        # We can't pass env variables to the workflow_dispatch, so we manually list all small datasets here.
+        default: '"eia176","eia191","eia757a","eia860","eia860m","eia861","eia923","eia930","eiaaeo","eiawater","eia_bulk_elec","epacamd_eia","ferc1","ferc2","ferc6","ferc60","ferc714","mshamines","nrelatb","phmsagas"'
+        required: true
+        type: string
+      large_runner:
+        description: "Kick off large runners (for epacems)?"
+        required: true
+        default: false
+        type: boolean
+      create_github_issue:
+        description: "Create a Github issue from this run?"
+        default: false
+        required: true
+        type: boolean
   schedule:
     - cron: "21 8 1 * *" # 8:21 AM UTC, first of every month
 
@@ -13,28 +30,8 @@ jobs:
         shell: bash -l {0}
     strategy:
       matrix:
-        dataset:
-          - eia176
-          - eia191
-          - eia757a
-          - eia860
-          - eia861
-          - eia860m
-          - eia923
-          - eia930
-          - eiaaeo
-          - eiawater
-          - eia_bulk_elec
-          - epacamd_eia
-          - ferc1
-          - ferc2
-          - ferc6
-          - ferc60
-          - ferc714
-          - mshamines
-          - nrelatb
-          - phmsagas
-
+        # Note that we can't pass global env variables to the matrix, so we manually reproduce the list of datasets here.
+        dataset: ${{ fromJSON(format('[{0}]', inputs.small_runner || '"eia176","eia191","eia757a","eia860","eia860m","eia861","eia923","eia930","eiaaeo","eiawater","eia_bulk_elec","epacamd_eia","ferc1","ferc2","ferc6","ferc60","ferc714","mshamines","nrelatb","phmsagas"' )) }}
       fail-fast: false
     runs-on: ubuntu-latest
     steps:
@@ -78,20 +75,20 @@ jobs:
           path: ${{ matrix.dataset }}_run_summary.json
 
   archive-run-large:
+    if: ${{ github.event_name == 'schedule' || inputs.large_runner }}
     defaults:
       run:
         shell: bash -l {0}
     strategy:
       matrix:
-        dataset:
-          - epacems
+        # Note that we can't pass global env variables to the matrix, so we manually list the datasets here.
+        dataset: ${{ fromJSON(format('[{0}]', '"epacems"' )) }}
       fail-fast: false
     runs-on:
       group: large-runner-group
       labels: ubuntu-22.04-4core
     steps:
       - uses: actions/checkout@v4
-
       - name: Install Conda environment using mamba
         uses: mamba-org/setup-micromamba@v1
         with:
@@ -160,3 +157,19 @@ jobs:
           payload: ${{ steps.all_summaries.outputs.SLACK_PAYLOAD }}
         env:
           SLACK_BOT_TOKEN: ${{ secrets.PUDL_DEPLOY_SLACK_TOKEN }}
+
+  make-github-issue:
+    if: ${{ always() && (github.event_name == 'schedule' || inputs.create_github_issue == true) }}
+    runs-on: ubuntu-latest
+    needs:
+      - archive-run-small
+      - archive-run-large
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create an issue
+        uses: JasonEtco/create-an-issue@v2.9.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        with:
+          filename: .github/ISSUE_TEMPLATE/monthly-archive-update.md
