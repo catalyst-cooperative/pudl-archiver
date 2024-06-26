@@ -1,11 +1,14 @@
 ---
 name: Monthly archive update
 about: Template for publishing monthly archives.
-title: Publish archives for the month of MONTH
+title: Publish {{ date | date('MMMM Do YYYY') }} archives
 labels: automation, zenodo
-assignees: ''
+assignees: e-belfer
 
 ---
+
+# Summary of results:
+See the job run logs and results [here]({{ env.RUN_URL }}).
 
 # Review and publish archives
 
@@ -50,8 +53,5 @@ If the validation failure is blocking (e.g., file format incorrect, whole datase
 For each run that failed because of another reason (e.g., underlying data changes, code failures), create an issue describing the failure and take necessary steps to resolve it.
 
 ```[tasklist]
-- [ ]
+- [ ] dataset
 ```
-
-# Relevant logs
-[Link to logs from GHA run]( PLEASE FIND THE ACTUAL LINK AND FILL IN HERE )
