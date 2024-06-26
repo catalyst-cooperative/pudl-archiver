@@ -361,7 +361,7 @@ async def archive_year(
             filing_metadata = FilingMetadata.from_rss_metadata(
                 filing, filename, response_bytes
             )
-            metadata[filing_name].append(filing_metadata)
+            metadata[filing_name].append(filing_metadata.model_dump())
             taxonomies_referenced.add(filing_metadata.taxonomy_url)
 
             with archive.open(filename, "w") as f:
