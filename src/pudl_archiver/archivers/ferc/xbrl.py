@@ -123,6 +123,41 @@ class FeedEntry(BaseModel):
         return self.download_url == other.download_url
 
 
+def _taxonomy_zip_name_from_url(url: str) -> str:
+    if not (match := TAXONOMY_URL_PATTERN.match(url)):
+        raise RuntimeError(f"{url} does not appear to be a taxonomy url.")
+    return f"{match.group(1).replace('_', '-')}.zip"
+
+
+class FilingMetadata(BaseModel):
+    """Combines RSS feed metadata with taxonomy referenced in filing."""
+
+    filename: str
+    rss_metadata: FeedEntry
+    taxonomy_url: str
+    taxonomy_zip_name: str
+
+    @classmethod
+    def from_rss_metadata(
+        cls, rss_metadata: FeedEntry, filename: str, filing_data: bytes
+    ) -> "FilingMetadata":
+        """Construct metadata from RSS feed and filing data to extract taxonomy URL."""
+        if not (match := TAXONOMY_URL_PATTERN.search(filing_data.decode().lower())):
+            raise RuntimeError(
+                f"Couldn't find taxonomy for filing {rss_metadata.download_url}"
+            )
+
+        taxonomy_url = match.group(0)
+        return cls(
+            filename=f"{rss_metadata.title}_form{rss_metadata.ferc_formname.as_int()}_{rss_metadata.ferc_period}_{round(rss_metadata.published_parsed.timestamp())}.xbrl".replace(
+                " ", "_"
+            ),
+            rss_metadata=rss_metadata,
+            taxonomy_url=taxonomy_url,
+            taxonomy_zip_name=_taxonomy_zip_name_from_url(taxonomy_url),
+        )
+
+
 FormFilings = dict[Year, set[FeedEntry]]
 """Type alias for a dictionary containing indexed filings for a single FERC form."""
 
@@ -256,9 +291,9 @@ async def archive_taxonomies(
                     with taxonomy_archive.open(str(path), "w") as f:
                         f.write(response_bytes)
 
-            taxonomy_version = TAXONOMY_URL_PATTERN.match(taxonomy_entry_point).group(1)
-            taxonomy_versions.append(taxonomy_version)
-            with archive.open(f"{taxonomy_version}.zip", mode="w") as taxonomy_zip:
+            taxonomy_zip_name = _taxonomy_zip_name_from_url(taxonomy_entry_point)
+            taxonomy_versions.append(taxonomy_zip_name)
+            with archive.open(taxonomy_zip_name, mode="w") as taxonomy_zip:
                 taxonomy_zip.write(taxonomy_buffer.getvalue())
 
     return ResourceInfo(
@@ -320,18 +355,14 @@ async def archive_year(
                 " ", "_"
             )
             filing_name = f"{filing.title}{filing.ferc_period}"
-            if filing_name in metadata:
-                metadata[filing_name].update({filename: filing.dict()})
-            else:
-                metadata[filing_name] = {filename: filing.dict()}
+            if filing_name not in metadata:
+                metadata[filing_name] = []
 
-            match = TAXONOMY_URL_PATTERN.search(response_bytes.decode().lower())
-            if not match:
-                logger.warning(
-                    f"Couldn't find taxonomy for filing {filing.download_url}"
-                )
-            else:
-                taxonomies_referenced.add(match.group(0))
+            filing_metadata = FilingMetadata.from_rss_metadata(
+                filing, filename, response_bytes
+            )
+            metadata[filing_name].append(filing_metadata)
+            taxonomies_referenced.add(filing_metadata.taxonomy_url)
 
             with archive.open(filename, "w") as f:
                 f.write(response_bytes)
