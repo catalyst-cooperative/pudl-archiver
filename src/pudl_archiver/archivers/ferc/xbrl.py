@@ -100,7 +100,7 @@ class FeedEntry(BaseModel):
     def extract_url(cls, entry: dict):  # noqa: N805
         """Get download URL for inline html in feed entry."""
         link = XBRL_LINK_PATTERN.search(entry["summary_detail"]["value"])
-        entry["download_url"] = link.group(1).replace(" ", "%")
+        entry["download_url"] = link.group(1)
         return entry
 
     @field_validator("published_parsed", mode="before")
