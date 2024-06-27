@@ -302,9 +302,7 @@ async def archive_taxonomies(
             "taxonomy_versions": taxonomy_versions,
             "data_format": "XBRL_TAXONOMY",
         },
-        layout=ZipLayout(
-            file_paths=[f"{version}.zip" for version in taxonomy_versions]
-        ),
+        layout=ZipLayout(file_paths=taxonomy_versions),
     )
 
 
@@ -333,6 +331,7 @@ async def archive_year(
     # Track taxonomies referenced by all filings for archival
     taxonomies_referenced = set()
 
+    files_in_zip = ["rssfeed"]
     with zipfile.ZipFile(archive_path, "w", compression=ZIP_DEFLATED) as archive:
         for filing in tqdm(filings, desc=f"FERC {form.value} {year} XBRL"):
             # Add filing metadata
@@ -365,6 +364,7 @@ async def archive_year(
             taxonomies_referenced.add(filing_metadata.taxonomy_url)
 
             with archive.open(filename, "w") as f:
+                files_in_zip.append(filename)
                 f.write(response_bytes)
 
         # Save snapshot of RSS feed
@@ -381,6 +381,7 @@ async def archive_year(
             "data_format": "XBRL",
             "taxonomies_referenced": taxonomies_referenced,
         },
+        layout=ZipLayout(file_paths=files_in_zip),
     )
 
 
