@@ -33,7 +33,7 @@ XBRL_LINK_PATTERN = re.compile(r'href="(.+\.(xml|xbrl))">(.+(xml|xbrl))<')  # no
 """Regex pattern to extrac link to XBRL filing from inline html contained in RSS feed."""
 
 TAXONOMY_URL_PATTERN = re.compile(
-    r"https://ecollection\.ferc\.gov/taxonomy/form\d/\d{4}-\d{2}-\d{2}/form/form\d/(form-\d_\d{4}-\d{2}-\d{2}).xsd"
+    r"https://ecollection\.ferc\.gov/taxonomy/form\d{1,3}/\d{4}-\d{2}-\d{2}/form/form\d{1,3}/(form-\d{1,3}_\d{4}-\d{2}-\d{2}).xsd"
 )
 """Regex pattern to extract taxonomies from XBRL filings."""
 
