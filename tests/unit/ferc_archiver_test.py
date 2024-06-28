@@ -95,7 +95,10 @@ async def test_valid_years(module_name, test_spec, mocker):
     resources = [res async for res in archiver.get_resources()]
     # don't await these, just check to make sure they have right intention
     dbfs = [r for r in resources if r.__name__ == "get_year_dbf"]
+    xbrls = [r for r in resources if r.__name__ == "archive_xbrl_for_form"]
     assert len(dbfs) == num_dbf
+    # Always just one method that archives all xbrl resources
+    assert len(xbrls) == 1
 
 
 @pytest.mark.asyncio
