@@ -1,10 +1,21 @@
+import json
+import time
+import zipfile
+from collections import defaultdict
+from pathlib import Path
+
 import pytest
 from pudl_archiver.archivers.ferc.ferc1 import Ferc1Archiver
 from pudl_archiver.archivers.ferc.ferc2 import Ferc2Archiver
 from pudl_archiver.archivers.ferc.ferc6 import Ferc6Archiver
 from pudl_archiver.archivers.ferc.ferc60 import Ferc60Archiver
 from pudl_archiver.archivers.ferc.ferc714 import Ferc714Archiver
-from pudl_archiver.archivers.ferc.xbrl import FercForm
+from pudl_archiver.archivers.ferc.xbrl import (
+    TAXONOMY_URL_PATTERN,
+    FeedEntry,
+    FercForm,
+    archive_year,
+)
 
 FERC_FORM_CLASS_LOOKUP = {
     "ferc1": (FercForm.FORM_1, Ferc1Archiver),
@@ -85,3 +96,111 @@ async def test_valid_years(module_name, test_spec, mocker):
     # don't await these, just check to make sure they have right intention
     dbfs = [r for r in resources if r.__name__ == "get_year_dbf"]
     assert len(dbfs) == num_dbf
+
+
+@pytest.mark.asyncio
+async def test_archive_year_metadata(tmpdir):
+    """Test format of XBRL archiver metadata."""
+    filings = {
+        FeedEntry(
+            **{
+                "id": "id1",
+                "title": "Filer 1",
+                "summary_detail": {
+                    "value": 'href="https://ecollection.ferc.gov/download/filer1.xbrl">www.filer1.xbrl<'
+                },
+                "ferc_formname": FercForm.FORM_1,
+                "published_parsed": time.localtime(),
+                "ferc_year": 2021,
+                "ferc_period": "Q4",
+            }
+        ),
+        FeedEntry(
+            **{
+                "id": "id2",
+                "title": "Filer 2",
+                "summary_detail": {
+                    "value": 'href="https://ecollection.ferc.gov/download/filer2.xbrl">www.filer2.xbrl<'
+                },
+                "published_parsed": time.localtime(),
+                "ferc_formname": FercForm.FORM_1,
+                "ferc_year": 2021,
+                "ferc_period": "Q4",
+            }
+        ),
+        FeedEntry(
+            **{
+                "id": "id3",
+                "title": "Filer 1",
+                "summary_detail": {
+                    "value": 'href="https://ecollection.ferc.gov/download/filer1_v2.xbrl">www.filer1_v2.xbrl<'
+                },
+                "published_parsed": time.localtime(),
+                "ferc_formname": FercForm.FORM_1,
+                "ferc_year": 2021,
+                "ferc_period": "Q4",
+            }
+        ),
+        # Duplicated should be removed by set
+        FeedEntry(
+            **{
+                "id": "id3",
+                "title": "Filer 1",
+                "summary_detail": {
+                    "value": 'href="https://ecollection.ferc.gov/download/filer1_v2.xbrl">www.filer1_v2.xbrl<'
+                },
+                "published_parsed": time.localtime(),
+                "ferc_formname": FercForm.FORM_1,
+                "ferc_year": 2021,
+                "ferc_period": "Q4",
+            }
+        ),
+    }
+
+    taxonomy_map = {
+        str(
+            filing.download_url
+        ): f"https://ecollection.ferc.gov/taxonomy/form1/2021-01-0{i}/form/form1/form-1_2021-01-0{i}.xsd"
+        for i, filing in enumerate(filings)
+    }
+
+    expected_metadata = defaultdict(list)
+    for filing in filings:
+        expected_metadata[f"{filing.title}{filing.ferc_period}"].append(
+            {
+                "filename": f"{filing.title}_form{filing.ferc_formname.as_int()}_{filing.ferc_period}_{round(filing.published_parsed.timestamp())}.xbrl".replace(
+                    " ", "_"
+                ),
+                "rss_metadata": filing.model_dump(),
+                "taxonomy_url": taxonomy_map[str(filing.download_url)],
+                "taxonomy_zip_name": f"{TAXONOMY_URL_PATTERN.match(taxonomy_map[str(filing.download_url)]).group(1)}.zip".replace(
+                    "_", "-"
+                ),
+            }
+        )
+
+    class FakeResponse:
+        def __init__(self, taxonomy_url: str):
+            self.taxonomy_url = taxonomy_url
+
+        @property
+        def content(self):
+            taxonomy_url = self.taxonomy_url
+
+            class Reader:
+                async def read(self):
+                    return taxonomy_url.encode()
+
+            return Reader()
+
+    class FakeSession:
+        async def get(self, url: str, **kwargs):
+            return FakeResponse(taxonomy_url=taxonomy_map[url])
+
+    await archive_year(2021, filings, FercForm.FORM_1, Path(tmpdir), FakeSession())
+
+    with (
+        zipfile.ZipFile(tmpdir / "ferc1-xbrl-2021.zip", mode="r") as archive,
+        archive.open("rssfeed") as f,
+    ):
+        assert json.dumps(expected_metadata, default=str).encode() == f.read()

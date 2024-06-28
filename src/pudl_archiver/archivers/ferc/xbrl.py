@@ -8,6 +8,7 @@ import logging
 import re
 import time
 import zipfile
+from collections import defaultdict
 from collections.abc import Callable
 from enum import Enum
 from functools import cache
@@ -149,9 +150,7 @@ class FilingMetadata(BaseModel):
 
         taxonomy_url = match.group(0)
         return cls(
-            filename=f"{rss_metadata.title}_form{rss_metadata.ferc_formname.as_int()}_{rss_metadata.ferc_period}_{round(rss_metadata.published_parsed.timestamp())}.xbrl".replace(
-                " ", "_"
-            ),
+            filename=filename,
             rss_metadata=rss_metadata,
             taxonomy_url=taxonomy_url,
             taxonomy_zip_name=_taxonomy_zip_name_from_url(taxonomy_url),
@@ -325,7 +324,7 @@ async def archive_year(
     # Get form number as integer
     form_number = form.as_int()
 
-    metadata = {}
+    metadata = defaultdict(list)
     archive_path = output_dir / f"ferc{form_number}-xbrl-{year}.zip"
 
     # Track taxonomies referenced by all filings for archival
@@ -354,9 +353,6 @@ async def archive_year(
                 " ", "_"
             )
             filing_name = f"{filing.title}{filing.ferc_period}"
-            if filing_name not in metadata:
-                metadata[filing_name] = []
-
             filing_metadata = FilingMetadata.from_rss_metadata(
                 filing, filename, response_bytes
             )
