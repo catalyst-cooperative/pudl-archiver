@@ -2,11 +2,13 @@
 
 import asyncio
 import datetime
+import io
 import json
 import logging
 import re
-import time
 import zipfile
+from collections import defaultdict
+from collections.abc import Callable
 from enum import Enum
 from functools import cache
 from pathlib import Path
@@ -18,7 +20,7 @@ import aiohttp
 import feedparser
 from arelle import Cntlr, ModelManager, ModelXbrl
 from dateutil import rrule
-from pydantic import BaseModel, Field, HttpUrl, field_validator, model_validator
+from pydantic import BaseModel, Field, HttpUrl, model_validator
 from tqdm import tqdm
 
 from pudl_archiver.archivers.classes import ResourceInfo
@@ -29,6 +31,11 @@ logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 XBRL_LINK_PATTERN = re.compile(r'href="(.+\.(xml|xbrl))">(.+(xml|xbrl))<')  # noqa: W605
 """Regex pattern to extrac link to XBRL filing from inline html contained in RSS feed."""
+
+TAXONOMY_URL_PATTERN = re.compile(
+    r"https://ecollection\.ferc\.gov/taxonomy/form\d{1,3}/\d{4}-\d{2}-\d{2}/form/form\d{1,3}/(form-\d{1,3}_\d{4}-\d{2}-\d{2}).xsd"
+)
+"""Regex pattern to extract taxonomies from XBRL filings."""
 
 BASE_RSS_URL = "https://ecollection.ferc.gov/api/rssfeed"
 """URL to latest RSS feed.
@@ -90,29 +97,58 @@ class FeedEntry(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def extract_url(cls, entry: dict):  # noqa: N805
-        """Get download URL for inline html in feed entry."""
+    def extract_url_timestamp(cls, entry: dict):  # noqa: N805
+        """Get download URL from inline html in feed entry and parse timestamp."""
+        # Get download URL
         link = XBRL_LINK_PATTERN.search(entry["summary_detail"]["value"])
-        entry["download_url"] = link.group(1).replace(" ", "%")
+        entry["download_url"] = link.group(1)
+
+        # Get published datetime
+        entry["published_parsed"] = datetime.datetime.strptime(
+            entry["published"], "%a, %d %b %Y %X %z"
+        ).astimezone(datetime.UTC)
         return entry
 
-    @field_validator("published_parsed", mode="before")
-    @classmethod
-    def parse_timestamp(cls, timestamp: time.struct_time):  # noqa: N805
-        """Parse timestamp to a standard datetime object.
-
-        The published timestamp is only available as a time.struct_time object in the
-        feed. Converting to a datetime object makes it much more usable within the
-        python ecosystem.
-        """
-        return datetime.datetime.fromtimestamp(time.mktime(tuple(timestamp)))
-
     def __hash__(self):
-        """Implement hash so FeedEntry can be used in a set.
+        """Implement hash so FeedEntry can be used in a set."""
+        return hash(f"{self.download_url}")
 
-        Entry ID's are unique, so that's all that is needed for the hash.
-        """
-        return hash(f"{self.entry_id}")
+    def __eq__(self, other: "FeedEntry"):
+        """Implement eq so FeedEntry can be used in a set."""
+        return self.download_url == other.download_url
+
+
+def _taxonomy_zip_name_from_url(url: str) -> str:
+    if not (match := TAXONOMY_URL_PATTERN.match(url)):
+        raise RuntimeError(f"{url} does not appear to be a taxonomy url.")
+    return f"{match.group(1).replace('_', '-')}.zip"
+
+
+class FilingMetadata(BaseModel):
+    """Combines RSS feed metadata with taxonomy referenced in filing."""
+
+    filename: str
+    rss_metadata: FeedEntry
+    taxonomy_url: str
+    taxonomy_zip_name: str
+
+    @classmethod
+    def from_rss_metadata(
+        cls, rss_metadata: FeedEntry, filename: str, filing_data: bytes
+    ) -> "FilingMetadata":
+        """Construct metadata from RSS feed and filing data to extract taxonomy URL."""
+        if not (match := TAXONOMY_URL_PATTERN.search(filing_data.decode().lower())):
+            raise RuntimeError(
+                f"Couldn't find taxonomy for filing {rss_metadata.download_url}"
+            )
+
+        taxonomy_url = match.group(0)
+        return cls(
+            filename=filename,
+            rss_metadata=rss_metadata,
+            taxonomy_url=taxonomy_url,
+            taxonomy_zip_name=_taxonomy_zip_name_from_url(taxonomy_url),
+        )
 
 
 FormFilings = dict[Year, set[FeedEntry]]
@@ -187,8 +223,8 @@ def index_available_entries() -> dict[FercForm, FormFilings]:
     return indexed_filings
 
 
-async def archive_taxonomy(
-    years: list[Year],
+async def archive_taxonomies(
+    taxonomies_referenced: set[str],
     form: FercForm,
     output_dir: Path,
     session: aiohttp.ClientSession,
@@ -205,63 +241,62 @@ async def archive_taxonomy(
     taxonomy.
 
     Args:
-        years: Years of taxonomy versions to archive.
+        taxonomies_referenced: List of all taxonomies referenced by filings for year.
         form: Ferc form number.
         output_dir: Directory to save archived filings in.
         session: Async http client session.
     """
-    resources = []
-    for year in years:
-        # Get date used in entry point URL (first day of year)
-        date = datetime.date(year, 1, 1)
+    taxonomy_versions = []
+    archive_path = output_dir / f"ferc{form.as_int()}-xbrl-taxonomies.zip"
+    with zipfile.ZipFile(archive_path, "w", compression=ZIP_DEFLATED) as archive:
+        for taxonomy_entry_point in taxonomies_referenced:
+            logger.info(f"Archiving {taxonomy_entry_point}.")
 
-        # Get integer form number
-        form_number = form.as_int()
-
-        logger.info(f"Archiving ferc{form_number}-{year} taxonomy")
-
-        # Construct entry point URL
-        taxonomy_entry_point = f"https://ecollection.ferc.gov/taxonomy/form{form_number}/{date.isoformat()}/form/form{form_number}/form-{form_number}_{date.isoformat()}.xsd"
-
-        # Use Arelle to parse taxonomy
-        cntlr = Cntlr.Cntlr()
-        cntlr.startLogging(logFileName="logToPrint")
-        model_manager = ModelManager.initialize(cntlr)
-        taxonomy = await retry_async(
-            asyncio.to_thread,
-            args=[ModelXbrl.load, model_manager, taxonomy_entry_point],
-            retry_on=(FileNotFoundError, FileExistsError),
-        )
-
-        archive_path = output_dir / f"ferc{form_number}-xbrl-taxonomy-{year}.zip"
-
-        # Loop through all files and save to appropriate location in archive
-        archive_files = set()
-        with zipfile.ZipFile(archive_path, "w", compression=ZIP_DEFLATED) as archive:
-            for url in taxonomy.urlDocs:
-                url_parsed = urlparse(url)
-
-                # There are some generic XML/XBRL files in the taxonomy that should be skipped
-                if not url_parsed.netloc.endswith("ferc.gov"):
-                    continue
-
-                # Download file
-                response = await retry_async(session.get, args=[url])
-                response_bytes = await retry_async(response.content.read)
-                path = Path(url_parsed.path).relative_to("/")
-                archive_files.add(path)
-
-                with archive.open(str(path), "w") as f:
-                    f.write(response_bytes)
-
-        resources.append(
-            ResourceInfo(
-                local_path=archive_path,
-                partitions={"year": year, "data_format": "XBRL_TAXONOMY"},
-                layout=ZipLayout(file_paths=archive_files),
+            # Use Arelle to parse taxonomy
+            cntlr = Cntlr.Cntlr()
+            cntlr.startLogging(logFileName="logToPrint")
+            model_manager = ModelManager.initialize(cntlr)
+            taxonomy = await retry_async(
+                asyncio.to_thread,
+                args=[ModelXbrl.load, model_manager, taxonomy_entry_point],
+                retry_on=(FileNotFoundError, FileExistsError),
             )
-        )
-    return resources
+
+            # Loop through all files and save to appropriate location in archive
+            archive_files = set()
+            taxonomy_buffer = io.BytesIO()
+            with zipfile.ZipFile(
+                taxonomy_buffer, "w", compression=ZIP_DEFLATED
+            ) as taxonomy_archive:
+                for url in taxonomy.urlDocs:
+                    url_parsed = urlparse(url)
+
+                    # There are some generic XML/XBRL files in the taxonomy that should be skipped
+                    if not url_parsed.netloc.endswith("ferc.gov"):
+                        continue
+
+                    # Download file
+                    response = await retry_async(session.get, args=[url])
+                    response_bytes = await retry_async(response.content.read)
+                    path = Path(url_parsed.path).relative_to("/")
+                    archive_files.add(path)
+
+                    with taxonomy_archive.open(str(path), "w") as f:
+                        f.write(response_bytes)
+
+            taxonomy_zip_name = _taxonomy_zip_name_from_url(taxonomy_entry_point)
+            taxonomy_versions.append(taxonomy_zip_name)
+            with archive.open(taxonomy_zip_name, mode="w") as taxonomy_zip:
+                taxonomy_zip.write(taxonomy_buffer.getvalue())
+
+    return ResourceInfo(
+        local_path=archive_path,
+        partitions={
+            "taxonomy_versions": taxonomy_versions,
+            "data_format": "XBRL_TAXONOMY",
+        },
+        layout=ZipLayout(file_paths=taxonomy_versions),
+    )
 
 
 async def archive_year(
@@ -270,7 +305,7 @@ async def archive_year(
     form: FercForm,
     output_dir: Path,
     session: aiohttp.ClientSession,
-):
+) -> tuple[Path, set[str]]:
     """Archive a single year of data for a desired form.
 
     Args:
@@ -283,17 +318,16 @@ async def archive_year(
     # Get form number as integer
     form_number = form.as_int()
 
-    metadata = {}
+    metadata = defaultdict(list)
     archive_path = output_dir / f"ferc{form_number}-xbrl-{year}.zip"
 
+    # Track taxonomies referenced by all filings for archival
+    taxonomies_referenced = set()
+
+    files_in_zip = ["rssfeed"]
     with zipfile.ZipFile(archive_path, "w", compression=ZIP_DEFLATED) as archive:
         for filing in tqdm(filings, desc=f"FERC {form.value} {year} XBRL"):
             # Add filing metadata
-            filing_name = f"{filing.title}{filing.ferc_period}"
-            if filing_name in metadata:
-                metadata[filing_name].update({filing.entry_id: filing.dict()})
-            else:
-                metadata[filing_name] = {filing.entry_id: filing.dict()}
 
             # Download filing
             try:
@@ -312,8 +346,15 @@ async def archive_year(
             filename = f"{filing.title}_form{filing.ferc_formname.as_int()}_{filing.ferc_period}_{round(filing.published_parsed.timestamp())}.xbrl".replace(
                 " ", "_"
             )
+            filing_name = f"{filing.title}{filing.ferc_period}"
+            filing_metadata = FilingMetadata.from_rss_metadata(
+                filing, filename, response_bytes
+            )
+            metadata[filing_name].append(filing_metadata.model_dump())
+            taxonomies_referenced.add(filing_metadata.taxonomy_url)
 
             with archive.open(filename, "w") as f:
+                files_in_zip.append(filename)
                 f.write(response_bytes)
 
         # Save snapshot of RSS feed
@@ -323,4 +364,41 @@ async def archive_year(
 
     logger.info(f"Finished scraping ferc{form_number}-{year}.")
 
-    return archive_path
+    return ResourceInfo(
+        local_path=archive_path,
+        partitions={
+            "year": year,
+            "data_format": "XBRL",
+            "taxonomies_referenced": taxonomies_referenced,
+        },
+        layout=ZipLayout(file_paths=files_in_zip),
+    )
+
+
+async def archive_xbrl_for_form(
+    form: FercForm,
+    output_dir: Path,
+    valid_year: Callable[[int], bool],
+    session: aiohttp.ClientSession,
+) -> list[ResourceInfo]:
+    """Archive all XBRL filings and taxonomies for specified FERC form."""
+    indexed_filings = index_available_entries()[form]
+    filing_resources = []
+    for year, filings in indexed_filings.items():
+        if not valid_year(year):
+            continue
+
+        filing_resources.append(
+            await archive_year(year, filings, form, output_dir, session)
+        )
+
+    taxonomies_referenced = {
+        taxonomy
+        for resource in filing_resources
+        for taxonomy in resource.partitions["taxonomies_referenced"]
+    }
+    taxonomy_resource = await archive_taxonomies(
+        taxonomies_referenced, form, output_dir, session
+    )
+
+    return [*filing_resources, taxonomy_resource]
