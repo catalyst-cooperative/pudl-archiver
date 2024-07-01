@@ -6,7 +6,6 @@ import io
 import json
 import logging
 import re
-import time
 import zipfile
 from collections import defaultdict
 from collections.abc import Callable
@@ -21,7 +20,7 @@ import aiohttp
 import feedparser
 from arelle import Cntlr, ModelManager, ModelXbrl
 from dateutil import rrule
-from pydantic import BaseModel, Field, HttpUrl, field_validator, model_validator
+from pydantic import BaseModel, Field, HttpUrl, model_validator
 from tqdm import tqdm
 
 from pudl_archiver.archivers.classes import ResourceInfo
@@ -98,22 +97,17 @@ class FeedEntry(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def extract_url(cls, entry: dict):  # noqa: N805
-        """Get download URL for inline html in feed entry."""
+    def extract_url_timestamp(cls, entry: dict):  # noqa: N805
+        """Get download URL from inline html in feed entry and parse timestamp."""
+        # Get download URL
         link = XBRL_LINK_PATTERN.search(entry["summary_detail"]["value"])
         entry["download_url"] = link.group(1)
+
+        # Get published datetime
+        entry["published_parsed"] = datetime.datetime.strptime(
+            entry["published"], "%a, %d %b %Y %X %z"
+        ).astimezone(datetime.UTC)
         return entry
-
-    @field_validator("published_parsed", mode="before")
-    @classmethod
-    def parse_timestamp(cls, timestamp: time.struct_time):  # noqa: N805
-        """Parse timestamp to a standard datetime object.
-
-        The published timestamp is only available as a time.struct_time object in the
-        feed. Converting to a datetime object makes it much more usable within the
-        python ecosystem.
-        """
-        return datetime.datetime.fromtimestamp(time.mktime(tuple(timestamp)))
 
     def __hash__(self):
         """Implement hash so FeedEntry can be used in a set."""
