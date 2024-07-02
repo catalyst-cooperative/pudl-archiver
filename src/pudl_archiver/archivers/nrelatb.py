@@ -20,7 +20,7 @@ class NrelAtbArchiver(AbstractDatasetArchiver):
 
     async def get_resources(self) -> ArchiveAwaitable:
         """Download NREL ATB resources."""
-        for year in range(2019, 2024):
+        for year in range(2019, 2025):
             if self.valid_year(year):
                 yield self.get_year_resource(year)
 
