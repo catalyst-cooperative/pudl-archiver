@@ -1,0 +1,122 @@
+---
+name: early-final-release-checker
+
+on:
+  workflow_dispatch:
+    inputs:
+      small_runner:
+        description: 'Small runner: Comma-separated list of datasets to archive (e.g., "ferc2","ferc6").'
+        # We can't pass env variables to the workflow_dispatch, so we manually list all small datasets here.
+        default: '"eia860m","eia861","eia923"'
+        required: true
+        type: string
+      create_github_issue:
+        description: "Create a Github issue from this run?"
+        default: false
+        required: true
+        type: boolean
+  schedule:
+    - cron: "21 8 2-31 6-7,9-10 *" # 8:21 AM UTC, every day in June, July, Sept, Oct except the 1st
+
+jobs:
+  archive-run-small:
+    defaults:
+      run:
+        shell: bash -l {0}
+    strategy:
+      matrix:
+        # Note that we can't pass global env variables to the matrix, so we manually reproduce the list of datasets here.
+        dataset: ${{ fromJSON(format('[{0}]', inputs.small_runner || "eia860","eia861","eia923" )) }}
+      fail-fast: false
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Conda environment using mamba
+        uses: mamba-org/setup-micromamba@v1
+        with:
+          environment-file: environment.yml
+          cache-environment: true
+          condarc: |
+            channels:
+            - conda-forge
+            - defaults
+            channel_priority: strict
+
+      - name: Log the conda environment
+        run: |
+          conda info
+          conda list
+          conda config --show-sources
+          conda config --show
+          printenv | sort
+
+      - name: Run archiver for ${{ matrix.dataset }}
+        env:
+          ZENODO_SANDBOX_TOKEN_UPLOAD: ${{ secrets.ZENODO_SANDBOX_TOKEN_UPLOAD }}
+          ZENODO_SANDBOX_TOKEN_PUBLISH: ${{ secrets.ZENODO_SANDBOX_TOKEN_PUBLISH }}
+          EPACEMS_API_KEY: ${{ secrets.EPACEMS_API_KEY }}
+          ZENODO_TOKEN_UPLOAD: ${{ secrets.ZENODO_TOKEN_UPLOAD }}
+          ZENODO_TOKEN_PUBLISH: ${{ secrets.ZENODO_TOKEN_PUBLISH }}
+        run: |
+          pudl_archiver --datasets ${{ matrix.dataset }} --summary-file ${{ matrix.dataset }}_run_summary.json
+
+      - name: Upload run summaries
+        if: always()
+        id: upload_summaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: run-summaries-${{ matrix.dataset }}
+          path: ${{ matrix.dataset }}_run_summary.json
+
+  archive-notify:
+    runs-on: ubuntu-latest
+    needs:
+      - archive-run-small
+    if: ${{ always() }}
+    outputs:
+      output1: ${{ steps.all_summaries.outputs }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download summaries
+        id: download
+        uses: actions/download-artifact@v4
+        with:
+          pattern: run-summaries-*
+          merge-multiple: true
+      - name: show summaries
+        run: ls -R
+      - name: Munge summaries together
+        id: all_summaries
+        run: |
+          {
+            echo "SLACK_PAYLOAD<<EOF"
+            ./scripts/make_slack_notification_message.py --summary-files *_run_summary.json | tee slack-payload.json
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+      - name: Post update to pudl-deployment
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          channel-id: "C03FHB9N0PQ"
+          payload: ${{ steps.all_summaries.outputs.SLACK_PAYLOAD }}
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.PUDL_DEPLOY_SLACK_TOKEN }}
+
+  make-github-issue:
+    runs-on: ubuntu-latest
+    needs:
+      - archive-run-small
+      - archive-notify
+    env:
+      OUTPUT1: ${{needs.archive-notify.outputs.output1}}
+      # If Slack message includes new data, create a Github issue
+    if: ${{ always() && (contains(OUTPUT1, "CREATE") || contains(OUTPUT1, "UPDATE") || inputs.create_github_issue == true) }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create an issue
+        uses: JasonEtco/create-an-issue@v2.9.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        with:
+          filename: .github/ISSUE_TEMPLATE/early-final-release-template.md
