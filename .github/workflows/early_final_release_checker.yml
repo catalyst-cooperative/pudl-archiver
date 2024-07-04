@@ -26,7 +26,7 @@ jobs:
     strategy:
       matrix:
         # Note that we can't pass global env variables to the matrix, so we manually reproduce the list of datasets here.
-        dataset: ${{ fromJSON(format('[{0}]', inputs.small_runner || "eia860","eia861","eia923" )) }}
+        dataset: ${{ fromJSON(format('[{0}]', inputs.small_runner || '"eia860","eia861","eia923"' )) }}
       fail-fast: false
     runs-on: ubuntu-latest
     steps:
