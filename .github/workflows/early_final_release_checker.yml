@@ -110,7 +110,7 @@ jobs:
     env:
       OUTPUT1: ${{needs.archive-notify.outputs.output1}}
       # If Slack message includes new data, create a Github issue
-    if: ${{ always() && (contains(OUTPUT1, "CREATE") || contains(OUTPUT1, "UPDATE") || inputs.create_github_issue == true) }}
+    if: ${{ always() && (contains(env.OUTPUT1, "CREATE") || contains(env.OUTPUT1, "UPDATE") || inputs.create_github_issue == true) }}
     steps:
       - uses: actions/checkout@v4
       - name: Create an issue
