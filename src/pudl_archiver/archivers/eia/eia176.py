@@ -8,10 +8,10 @@ import zipfile
 import pandas as pd
 
 from pudl_archiver.archivers.classes import (
-    AbstractDatasetArchiver,
     ArchiveAwaitable,
     ResourceInfo,
 )
+from pudl_archiver.archivers.eia.naturalgas import EiaNGQVArchiver
 from pudl_archiver.frictionless import ZipLayout
 from pudl_archiver.utils import add_to_archive_stable_hash
 
@@ -24,11 +24,12 @@ USER_AGENTS = [
 ]
 
 
-class Eia176Archiver(AbstractDatasetArchiver):
+class Eia176Archiver(EiaNGQVArchiver):
     """EIA 176 archiver."""
 
     name = "eia176"
-    base_url = "https://www.eia.gov/naturalgas/ngqs/data/report/RPC/data/"
+    form = "176"
+    data_url = "https://www.eia.gov/naturalgas/ngqs/data/report/RPC/data/"
     items_url = "https://www.eia.gov/naturalgas/ngqs/data/items"
 
     async def get_items(self, url: str = items_url) -> list[str]:
@@ -41,7 +42,11 @@ class Eia176Archiver(AbstractDatasetArchiver):
     async def get_resources(self) -> ArchiveAwaitable:
         """Download EIA 176 resources."""
         items_list = await self.get_items(url=self.items_url)
-        for year in range(1997, 2023):
+        datasets_list = await self.get_datasets(url=self.base_url, form=self.form)
+        dataset_years = set()
+        for dataset in datasets_list:
+            dataset_years.update([year.ayear for year in dataset.available_years])
+        for year in dataset_years:
             year = str(year)
             yield self.get_year_resource(year, items_list=items_list)
 
@@ -64,7 +69,7 @@ class Eia176Archiver(AbstractDatasetArchiver):
             rand = random.randint(0, 2)  # noqa: S311
             logger.debug(f"Getting items {i}-{i+20} of data for {year}")
             # Chunk items list into 20 to avoid error message
-            download_url = self.base_url + f"{year}/{year}/ICA/Name/"
+            download_url = self.data_url + f"{year}/{year}/ICA/Name/"
             items = items_list[i : i + 20]
             for item in items:
                 download_url += f"{item}/"

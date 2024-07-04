@@ -1,5 +1,6 @@
 """Download NREL ATB for Electricity Parquet data."""
 
+import re
 from pathlib import Path
 
 from pudl_archiver.archivers.classes import (
@@ -11,6 +12,7 @@ from pudl_archiver.archivers.classes import (
 # Note: Using non s3:// link here as compatibility between asyncio and botocore is
 # complex.
 BASE_URL = "https://oedi-data-lake.s3.amazonaws.com/ATB/electricity/parquet"
+LINK_URL = "https://data.openei.org/s3_viewer?bucket=oedi-data-lake&prefix=ATB%2Felectricity%2Fparquet%2F"
 
 
 class NrelAtbArchiver(AbstractDatasetArchiver):
@@ -19,8 +21,13 @@ class NrelAtbArchiver(AbstractDatasetArchiver):
     name = "nrelatb"
 
     async def get_resources(self) -> ArchiveAwaitable:
-        """Download NREL ATB resources."""
-        for year in range(2019, 2025):
+        """Using years gleaned from LINK_URL, iterate and download all files."""
+        link_pattern = re.compile(r"parquet%2F(\d{4})")
+        for link in await self.get_hyperlinks(LINK_URL, link_pattern):
+            matches = link_pattern.search(link)
+            if not matches:
+                continue
+            year = int(matches.group(1))
             if self.valid_year(year):
                 yield self.get_year_resource(year)
 
