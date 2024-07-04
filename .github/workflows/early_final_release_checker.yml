@@ -75,7 +75,7 @@ jobs:
       - archive-run-small
     if: ${{ always() }}
     outputs:
-      output1: ${{ steps.all_summaries.outputs }}
+      output1: ${{ steps.all_summaries.outputs.SLACK_PAYLOAD }}
     steps:
       - uses: actions/checkout@v4
       - name: Download summaries
