@@ -112,7 +112,7 @@ jobs:
       - name: Create an issue
         uses: JasonEtco/create-an-issue@v2.9.2
         # If Slack message includes new data, create a Github issue
-        if: ${{ always() && ((contains(needs.archive-notify.outputs.output1, 'CREATE') || contains(needs.archive-notify.outputs.output1, 'UPDATE')) || inputs.create_github_issue == true) }}
+        if: ${{ always() && ( inputs.create_github_issue == true || (contains(needs.archive-notify.outputs.output1, 'CREATE') || contains(needs.archive-notify.outputs.output1, 'UPDATE')) }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
