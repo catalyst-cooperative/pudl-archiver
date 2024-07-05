@@ -6,7 +6,7 @@ on:
     inputs:
       small_runner:
         description: 'Small runner: Comma-separated list of datasets to archive (e.g., "ferc2","ferc6").'
-        # We can't pass env variables to the workflow_dispatch, so we manually list all small datasets here.
+        # We can't pass env variables to the workflow_dispatch, so we manually list the target datasets here.
         default: '"eia860","eia861","eia923"'
         required: true
         type: string
