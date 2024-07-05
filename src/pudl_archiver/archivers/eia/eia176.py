@@ -1,4 +1,9 @@
-"""Download EIA 176 data."""
+"""Download EIA 176 data.
+
+Unlike the other NGQV datasets, the "reports" provided for EIA 176 do not contain all
+fields of data. To get around this, we query the list of item codes for 176 from the
+portal, and then manually download subsets of data from all item codes for all years.
+"""
 
 import asyncio
 import logging
@@ -33,7 +38,7 @@ class Eia176Archiver(EiaNGQVArchiver):
     items_url = "https://www.eia.gov/naturalgas/ngqs/data/items"
 
     async def get_items(self, url: str = items_url) -> list[str]:
-        """Get list of item codes from EIA NQGS portal."""
+        """Get list of item codes from EIA NQGV portal."""
         logger.info("Getting list of items in Form 176.")
         items_response = await self.get_json(url)
         items_list = [item["item"] for item in items_response]
@@ -42,9 +47,15 @@ class Eia176Archiver(EiaNGQVArchiver):
     async def get_resources(self) -> ArchiveAwaitable:
         """Download EIA 176 resources."""
         items_list = await self.get_items(url=self.items_url)
+        # Get the list of 176 datasets and their years of availability from the
+        # dataset list in the NGQV API. Unlike other NGQV datasets, we query the base
+        # URL only to get the list of years that data is available. The data itself is
+        # downloaded from the data_url.
         datasets_list = await self.get_datasets(url=self.base_url, form=self.form)
         dataset_years = set()
         for dataset in datasets_list:
+            # Get all years for which there is 176 data available, based on information
+            # provided by the NGQV API.
             dataset_years.update([year.ayear for year in dataset.available_years])
         for year in dataset_years:
             year = str(year)
