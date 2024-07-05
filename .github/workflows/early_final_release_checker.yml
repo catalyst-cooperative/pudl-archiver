@@ -6,8 +6,8 @@ on:
     inputs:
       small_runner:
         description: 'Small runner: Comma-separated list of datasets to archive (e.g., "ferc2","ferc6").'
-        # We can't pass env variables to the workflow_dispatch, so we manually list all small datasets here.
-        default: '"eia860m","eia861","eia923"'
+        # We can't pass env variables to the workflow_dispatch, so we manually list the target datasets here.
+        default: '"eia860","eia861","eia923"'
         required: true
         type: string
       create_github_issue:
@@ -26,7 +26,7 @@ jobs:
     strategy:
       matrix:
         # Note that we can't pass global env variables to the matrix, so we manually reproduce the list of datasets here.
-        dataset: ${{ fromJSON(format('[{0}]', inputs.small_runner || "eia860","eia861","eia923" )) }}
+        dataset: ${{ fromJSON(format('[{0}]', inputs.small_runner || '"eia860","eia861","eia923"' )) }}
       fail-fast: false
     runs-on: ubuntu-latest
     steps:
@@ -75,7 +75,7 @@ jobs:
       - archive-run-small
     if: ${{ always() }}
     outputs:
-      output1: ${{ steps.all_summaries.outputs }}
+      output1: ${{ steps.all_summaries.outputs.SLACK_PAYLOAD }}
     steps:
       - uses: actions/checkout@v4
       - name: Download summaries
@@ -107,14 +107,12 @@ jobs:
     needs:
       - archive-run-small
       - archive-notify
-    env:
-      OUTPUT1: ${{needs.archive-notify.outputs.output1}}
-      # If Slack message includes new data, create a Github issue
-    if: ${{ always() && (contains(OUTPUT1, "CREATE") || contains(OUTPUT1, "UPDATE") || inputs.create_github_issue == true) }}
     steps:
       - uses: actions/checkout@v4
       - name: Create an issue
         uses: JasonEtco/create-an-issue@v2.9.2
+        # If Slack message includes new data, create a Github issue
+        if: ${{ always() && ( inputs.create_github_issue == true || (contains(needs.archive-notify.outputs.output1, 'CREATE') || contains(needs.archive-notify.outputs.output1, 'UPDATE'))) }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
