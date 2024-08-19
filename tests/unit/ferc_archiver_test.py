@@ -4,6 +4,7 @@ from collections import defaultdict
 from pathlib import Path
 
 import pytest
+
 from pudl_archiver.archivers.ferc.ferc1 import Ferc1Archiver
 from pudl_archiver.archivers.ferc.ferc2 import Ferc2Archiver
 from pudl_archiver.archivers.ferc.ferc6 import Ferc6Archiver

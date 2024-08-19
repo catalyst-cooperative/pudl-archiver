@@ -7,6 +7,7 @@ from io import BytesIO
 from pathlib import Path
 
 import pytest
+
 from pudl_archiver.archivers import validate
 from pudl_archiver.frictionless import Resource, ZipLayout
 from pudl_archiver.utils import Url
