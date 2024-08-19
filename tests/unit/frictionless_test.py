@@ -4,6 +4,7 @@ import random
 from pathlib import Path
 
 from frictionless.package import Package
+
 from pudl_archiver.archivers.classes import ResourceInfo
 from pudl_archiver.depositors.zenodo.depositor import _resource_from_file
 from pudl_archiver.depositors.zenodo.entities import DepositionFile, FileLinks

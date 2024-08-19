@@ -1,4 +1,5 @@
 import pytest
+
 from pudl_archiver.archivers.eia.eiawater import EiaWaterArchiver
 
 
