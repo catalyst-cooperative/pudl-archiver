@@ -151,7 +151,7 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
       - name: Post update to pudl-deployment
-        uses: slackapi/slack-github-action@v1.26.0
+        uses: slackapi/slack-github-action@v1.27.0
         with:
           channel-id: "C03FHB9N0PQ"
           payload: ${{ steps.all_summaries.outputs.SLACK_PAYLOAD }}
