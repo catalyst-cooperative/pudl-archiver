@@ -249,7 +249,7 @@ async def archive_taxonomies(
     taxonomy_versions = []
     archive_path = output_dir / f"ferc{form.as_int()}-xbrl-taxonomies.zip"
     with zipfile.ZipFile(archive_path, "w", compression=ZIP_DEFLATED) as archive:
-        for taxonomy_entry_point in taxonomies_referenced:
+        for taxonomy_entry_point in sorted(taxonomies_referenced):
             logger.info(f"Archiving {taxonomy_entry_point}.")
 
             # Use Arelle to parse taxonomy

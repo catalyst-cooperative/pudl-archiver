@@ -232,6 +232,11 @@ class DraftDeposition(BaseModel, ABC):
         ...
 
     @abstractmethod
+    async def delete_deposition(self):
+        """Delete deposition if no changes found."""
+        ...
+
+    @abstractmethod
     def generate_datapackage(
         self, resource_info: dict[str, ResourceInfo]
     ) -> DataPackage:
@@ -246,7 +251,11 @@ class DraftDeposition(BaseModel, ABC):
         return await self._apply_change(change)
 
     async def publish_if_valid(
-        self, run_summary: RunSummary, datapackage_updated: bool, auto_publish: bool
+        self,
+        run_summary: RunSummary,
+        datapackage_updated: bool,
+        clobber_unchanged: bool,
+        auto_publish: bool,
     ) -> PublishedDeposition | None:
         """Check that deposition is valid and worth changing, then publish if so."""
         if not run_summary.success:
@@ -256,10 +265,14 @@ class DraftDeposition(BaseModel, ABC):
             )
             return run_summary
         if len(run_summary.file_changes) == 0 and not datapackage_updated:
-            logger.info(
-                "No changes detected, kept draft at "
-                f"{self.get_deposition_link()} for inspection."
-            )
+            if clobber_unchanged:
+                await self.delete_deposition()
+                logger.info("No changes detected, deleted draft.")
+            else:
+                logger.info(
+                    "No changes detected, kept draft at "
+                    f"{self.get_deposition_link()} for inspection."
+                )
             return None
         if not auto_publish:
             logger.info(
