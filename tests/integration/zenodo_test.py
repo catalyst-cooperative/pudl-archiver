@@ -146,6 +146,7 @@ async def test_zenodo_workflow(
     deposition_metadata: DepositionMetadata,
     datasource: DataSource,
     mocker,
+    caplog,
 ):
     """Test the entire zenodo client workflow."""
     # Mock settings path
@@ -157,6 +158,7 @@ async def test_zenodo_workflow(
 
     settings = RunSettings(
         sandbox=True,
+        clobber_unchanged=True,
         auto_publish=False,
         refresh_metadata=False,
         initialize=True,
@@ -250,13 +252,14 @@ async def test_zenodo_workflow(
     )
 
     # Update files
+    settings.initialize = False
+
     v2_resources = {
         file_data["path"].name: ResourceInfo(
             local_path=file_data["path"], partitions={}
         )
         for file_data in test_files["updated"]
     }
-    settings.initialize = False
 
     # Should fail due to deleted file
     downloader = TestDownloader(v2_resources, session=session)
@@ -306,6 +309,7 @@ async def test_zenodo_workflow(
         session=session,
     )
     assert len(v4_summary.file_changes) == 0
+    assert caplog.records[-1].msg == "No changes detected, deleted draft."
 
     # legacy Zenodo API "get latest for concept DOI" endpoint is very slow to update,
     # but requesting the DOI directly updates quickly.
@@ -314,3 +318,5 @@ async def test_zenodo_workflow(
         timeout=10.0,
     )
     assert str(v3_refreshed.deposition.id_) in res.text
+    # Assert last draft actually deleted, getting DOI from end of record URL
+    assert str(v4_summary.record_url).split("/")[-1] not in res.text

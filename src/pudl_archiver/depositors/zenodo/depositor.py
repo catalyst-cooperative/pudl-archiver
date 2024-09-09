@@ -234,6 +234,33 @@ class ZenodoAPIClient(BaseModel, DepositorAPIClient):
 
         return await self.get_deposition_by_id(deposition.id_)
 
+    async def delete_deposition(self, deposition: Deposition) -> None:
+        """Delete an un-submitted deposition.
+
+        As of 2023-11-22, Zenodo API times out on first few deletion attempts,
+        occasionally 500s, and then 404s once the delete has actually gone
+        through.
+
+        Args:
+            deposition: the deposition you want to delete.
+        """
+        try:
+            await self._request(
+                "DELETE",
+                deposition.links.self,
+                log_label="Deleting deposition",
+                headers=self.auth_write,
+                parse_json=False,
+                retry_count=5,
+            )
+        except ZenodoClientError as e:
+            if e.status != 404:
+                raise e
+            logger.info(
+                f"404 Not Found when deleting {deposition.links.self}, assume "
+                "earlier delete succeeded."
+            )
+
     async def publish(self, deposition: Deposition) -> Deposition:
         """Publish draft deposition and return new depositor with updated deposition."""
         url = deposition.links.publish
@@ -708,6 +735,10 @@ class ZenodoDraftDeposition(DraftDeposition):
         logger.error(
             f"Failed while creating new deposition: {traceback.print_exception(e)}"
         )
+
+    async def delete_deposition(self) -> None:
+        """Delete an un-submitted deposition."""
+        return await self.api_client.delete_deposition(self.deposition)
 
 
 register_depositor(

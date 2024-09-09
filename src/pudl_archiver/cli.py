@@ -48,6 +48,11 @@ def parse_main(args=None):
         help="Initialize new deposition by preserving a DOI",
     )
     parser.add_argument(
+        "--clobber-unchanged",
+        action="store_true",
+        help="Delete draft deposition if unchanged.",
+    )
+    parser.add_argument(
         "--summary-file",
         type=Path,
         help="Generate a JSON archive run summary",

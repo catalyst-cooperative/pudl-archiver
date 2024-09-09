@@ -127,6 +127,7 @@ class RunSettings(BaseModel):
     only_years: list[int] | None = []
     summary_file: Path | None = None
     download_dir: str | None = None
+    clobber_unchanged: bool = False
     auto_publish: bool = False
     refresh_metadata: bool = False
     resume_run: bool = False
