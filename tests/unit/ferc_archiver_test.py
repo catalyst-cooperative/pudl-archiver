@@ -206,4 +206,7 @@ async def test_archive_year_metadata(tmpdir):
         zipfile.ZipFile(tmpdir / "ferc1-xbrl-2021.zip", mode="r") as archive,
         archive.open("rssfeed") as f,
     ):
-        assert json.dumps(expected_metadata, default=str).encode() == f.read()
+        assert (
+            json.dumps(sorted(expected_metadata), default=str, indent=2).encode()
+            == f.read()
+        )
