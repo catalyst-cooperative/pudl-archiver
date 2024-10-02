@@ -57,6 +57,23 @@ logger = logging.getLogger(f"catalystcoop.{__name__}")
                 )
             ],
         ),
+        (
+            {"part0": ["val0", "val1"]},
+            {"part0": ["val1", "val0"]},
+            [],
+        ),
+        (
+            {"part0": ["val0", "val1"]},
+            {"part0": ["val1", "val0", "val2"]},
+            [
+                validate.PartitionDiff(
+                    key="part0",
+                    value=sorted(["val1", "val0", "val2"]),
+                    previous_value=["val0", "val1"],
+                    diff_type="UPDATE",
+                )
+            ],
+        ),
     ],
 )
 def test_process_partition_diffs(baseline_partitions, new_partitions, diffs):

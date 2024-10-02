@@ -184,6 +184,12 @@ def _process_partition_diffs(
         baseline_val = baseline_partitions.get(key)
         new_val = new_partitions.get(key)
 
+        # Sort partitions if list or set
+        if isinstance(baseline_val, list | set):
+            baseline_val = sorted(baseline_val)
+        if isinstance(new_val, list | set):
+            new_val = sorted(new_val)
+
         match baseline_val, new_val:
             case [None, created_part_val]:
                 partition_diffs.append(
