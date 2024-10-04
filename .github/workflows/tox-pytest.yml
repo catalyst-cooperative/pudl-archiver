@@ -17,6 +17,14 @@ jobs:
         with:
           fetch-depth: 2
 
+      - name: Set default GCP credentials
+        id: gcloud-auth
+        continue-on-error: true
+        uses: "google-github-actions/auth@v2"
+        with:
+          workload_identity_provider: "projects/345950277072/locations/global/workloadIdentityPools/gh-actions-pool/providers/gh-actions-provider"
+          service_account: "pudl-sources@catalyst-cooperative-pudl.iam.gserviceaccount.com"
+
       - name: Install Conda environment using mamba
         uses: mamba-org/setup-micromamba@v1
         with:
