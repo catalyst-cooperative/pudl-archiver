@@ -11,6 +11,9 @@ jobs:
     defaults:
       run:
         shell: bash -l {0}
+    permissions:
+      contents: "read"
+      id-token: "write"
 
     steps:
       - uses: actions/checkout@v4
