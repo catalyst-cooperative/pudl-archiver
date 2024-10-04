@@ -19,6 +19,8 @@ MEDIA_TYPES: dict[str, str] = {
     "csv": "text/csv",
     "txt": "text/csv",
     "parquet": "application/vnd.apache.parquet",
+    "pdf": "application/pdf",
+    "md": "text/markdown",
 }
 
 

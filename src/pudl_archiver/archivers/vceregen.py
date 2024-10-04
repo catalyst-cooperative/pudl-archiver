@@ -73,8 +73,8 @@ class VCEReGenArchiver(AbstractDatasetArchiver):
                 partitions={"fips": True},
             )
 
-        # Handle documentation
-        if file_name.endswith(".pdf"):
+        # Handle documentation and README
+        if file_name.endswith(".pdf") or file_name.endswith(".md"):
             return ResourceInfo(local_path=path_to_file, partitions={})
 
         raise AssertionError(
