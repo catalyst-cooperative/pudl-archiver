@@ -45,7 +45,6 @@ jobs:
           condarc: |
             channels:
             - conda-forge
-            - defaults
             channel_priority: strict
 
       - name: Log the conda environment
@@ -95,7 +94,6 @@ jobs:
           condarc: |
             channels:
             - conda-forge
-            - defaults
             channel_priority: strict
 
       - name: Log the conda environment
