@@ -49,12 +49,6 @@ repos:
       - id: doc8
         args: ["--config", "pyproject.toml"]
 
-  # Lint Dockerfiles for errors and to ensure best practices
-  - repo: https://github.com/AleksaC/hadolint-py
-    rev: v2.12.1b3
-    hooks:
-      - id: hadolint
-
   # Check Github Actions
   - repo: https://github.com/rhysd/actionlint
     rev: v1.7.3

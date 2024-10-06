@@ -84,9 +84,7 @@ jobs:
         # Note that we can't pass global env variables to the matrix, so we manually list the datasets here.
         dataset: ${{ fromJSON(format('[{0}]', '"epacems"' )) }}
       fail-fast: false
-    runs-on:
-      group: large-runner-group
-      labels: ubuntu-latest-4core
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Install Conda environment using mamba
