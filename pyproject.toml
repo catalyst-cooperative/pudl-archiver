@@ -32,7 +32,7 @@ classifiers = [
 
 [project.optional-dependencies]
 dev = [
-    "ruff>=0.4,<0.7",
+    "ruff>=0.6,<0.7",
     "build>=1.2,<1.3",
     "tox>=4.16.0,<4.22",  # Python test environment manager
     "twine>=3.3,<5.2",  # Used to make releases to PyPI
@@ -50,14 +50,14 @@ docs = [
 tests = [
     "coverage>=7,<7.7",  # Lets us track what code is being tested
     "doc8>=1.1,<1.2",  # Ensures clean documentation formatting
-    "pre-commit>=3,<4.1",  # Allow us to run pre-commit hooks in testing
+    "pre-commit>=4,<4.1",  # Allow us to run pre-commit hooks in testing
     "pydocstyle>=6,<6.4",  # Style guidelines for Python documentation
     "pytest>=8,<8.4",  # Our testing framework
     "pytest-asyncio>=0.20,<0.25",  # Test async functions
     "pytest-console-scripts>=1.1,<1.5",  # Allow automatic testing of scripts
     "pytest-cov>=5,<5.1",  # Pytest plugin for working with coverage
     "pytest-mock>=3.0,<3.15",  # Pytest plugin for mocking function calls and objects
-    "ruff>=0.4,<0.7",
+    "ruff>=0.6,<0.7",
 ]
 
 [project.scripts]
