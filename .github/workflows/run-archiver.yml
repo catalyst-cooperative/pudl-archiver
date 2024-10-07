@@ -4,17 +4,11 @@ name: run-archiver
 on:
   workflow_dispatch:
     inputs:
-      small_runner:
-        description: 'Small runner: Comma-separated list of datasets to archive (e.g., "ferc2","ferc6").'
-        # We can't pass env variables to the workflow_dispatch, so we manually list all small datasets here.
-        default: '"eia176","eia191","eia757a","eia860","eia860m","eia861","eia923","eia930","eiaaeo","eiawater","eia_bulk_elec","epacamd_eia","ferc1","ferc2","ferc6","ferc60","ferc714","mshamines","nrelatb","phmsagas"'
+      datasets:
+        description: 'Comma-separated list of datasets to archive (e.g., "ferc2","ferc6").'
+        default: '"eia176","eia191","eia757a","eia860","eia860m","eia861","eia923","eia930","eiaaeo","eiawater","eia_bulk_elec","epacamd_eia","epacems",ferc1","ferc2","ferc6","ferc60","ferc714","mshamines","nrelatb","phmsagas"'
         required: true
         type: string
-      large_runner:
-        description: "Kick off large runners (for epacems)?"
-        required: true
-        default: false
-        type: boolean
       create_github_issue:
         description: "Create a Github issue from this run?"
         default: false
@@ -24,14 +18,14 @@ on:
     - cron: "21 8 1 * *" # 8:21 AM UTC, first of every month
 
 jobs:
-  archive-run-small:
+  archive-run:
     defaults:
       run:
         shell: bash -l {0}
     strategy:
       matrix:
         # Note that we can't pass global env variables to the matrix, so we manually reproduce the list of datasets here.
-        dataset: ${{ fromJSON(format('[{0}]', inputs.small_runner || '"eia176","eia191","eia757a","eia860","eia860m","eia861","eia923","eia930","eiaaeo","eiawater","eia_bulk_elec","epacamd_eia","ferc1","ferc2","ferc6","ferc60","ferc714","mshamines","nrelatb","phmsagas"' )) }}
+        dataset: ${{ fromJSON(format('[{0}]', inputs.datasets || '"eia176","eia191","eia757a","eia860","eia860m","eia861","eia923","eia930","eiaaeo","eiawater","eia_bulk_elec","epacamd_eia","epacems",ferc1","ferc2","ferc6","ferc60","ferc714","mshamines","nrelatb","phmsagas"' )) }}
       fail-fast: false
     runs-on: ubuntu-latest
     steps:
@@ -73,61 +67,10 @@ jobs:
           name: run-summaries-${{ matrix.dataset }}
           path: ${{ matrix.dataset }}_run_summary.json
 
-  archive-run-large:
-    if: ${{ github.event_name == 'schedule' || inputs.large_runner }}
-    defaults:
-      run:
-        shell: bash -l {0}
-    strategy:
-      matrix:
-        # Note that we can't pass global env variables to the matrix, so we manually list the datasets here.
-        dataset: ${{ fromJSON(format('[{0}]', '"epacems"' )) }}
-      fail-fast: false
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install Conda environment using mamba
-        uses: mamba-org/setup-micromamba@v2
-        with:
-          environment-file: environment.yml
-          cache-environment: true
-          condarc: |
-            channels:
-            - conda-forge
-            channel_priority: strict
-
-      - name: Log the conda environment
-        run: |
-          conda info
-          conda list
-          conda config --show-sources
-          conda config --show
-          printenv | sort
-
-      - name: Run archiver for ${{ matrix.dataset }}
-        env:
-          ZENODO_SANDBOX_TOKEN_UPLOAD: ${{ secrets.ZENODO_SANDBOX_TOKEN_UPLOAD }}
-          ZENODO_SANDBOX_TOKEN_PUBLISH: ${{ secrets.ZENODO_SANDBOX_TOKEN_PUBLISH }}
-          EPACEMS_API_KEY: ${{ secrets.EPACEMS_API_KEY }}
-          ZENODO_TOKEN_UPLOAD: ${{ secrets.ZENODO_TOKEN_UPLOAD }}
-          ZENODO_TOKEN_PUBLISH: ${{ secrets.ZENODO_TOKEN_PUBLISH }}
-        run: |
-          pudl_archiver --datasets ${{ matrix.dataset }} --summary-file ${{ matrix.dataset }}_run_summary.json
-        # Here we don't clobber the draft if it's unchanged, as it's far more labor intensive to recreate if needed!
-
-      - name: Upload run summaries
-        if: failure() || success()
-        id: upload_summaries
-        uses: actions/upload-artifact@v4
-        with:
-          name: run-summaries-${{ matrix.dataset }}
-          path: ${{ matrix.dataset }}_run_summary.json
-
   archive-notify:
     runs-on: ubuntu-latest
     needs:
-      - archive-run-small
-      - archive-run-large
+      - archive-run
     if: ${{ always() }}
     steps:
       - uses: actions/checkout@v4
@@ -159,8 +102,7 @@ jobs:
     if: ${{ always() && (github.event_name == 'schedule' || inputs.create_github_issue == true) }}
     runs-on: ubuntu-latest
     needs:
-      - archive-run-small
-      - archive-run-large
+      - archive-run
     steps:
       - uses: actions/checkout@v4
       - name: Create an issue
