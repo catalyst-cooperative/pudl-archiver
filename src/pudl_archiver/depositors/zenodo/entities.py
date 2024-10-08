@@ -72,11 +72,21 @@ class DepositionCreator(BaseModel):
 
     name: str
     affiliation: str | None = None
+    type_: str = Field(
+        alias="type", default=None
+    )  # TODO: 10-04 not working as expected, waiting on response from Zenodo support
 
     @classmethod
     def from_contributor(cls, contributor: Contributor) -> "DepositionCreator":
         """Construct deposition metadata object from PUDL Contributor model."""
-        return cls(name=contributor.title, affiliation=contributor.organization)
+        contributor_type = "".join(
+            t.title() for t in contributor.zenodo_role.split()
+        )  # Reformat to camel case
+        return cls(
+            name=contributor.title,
+            affiliation=contributor.organization,
+            type=contributor_type,
+        )
 
 
 class DepositionMetadata(BaseModel):
@@ -121,6 +131,26 @@ class DepositionMetadata(BaseModel):
                 )
             ]
 
+        # If data source was manually archived by us, specify that the
+        # data_source.path is a documentation link, rather than where we archived
+        # the data from.
+        if data_source_id in ["gridpathratoolkit", "vceregen"]:
+            return cls(
+                title=f"PUDL Raw {data_source.title}",
+                description=(
+                    f"<p>{data_source.description}</p> <p>Archived from data provided by \n"
+                    "the dataset's creator. For more information, see \n"
+                    f'<a href="{data_source.path}">{data_source.path}</a></p>'
+                    f"{PUDL_DESCRIPTION}"
+                ),
+                creators=creators,
+                license=data_source.license_raw.name,
+                keywords=data_source.keywords,
+                version="1.0.0",
+            )
+
+        # Otherwise, specify that data was archived from the data_source.path
+        # and can be found there.
         return cls(
             title=f"PUDL Raw {data_source.title}",
             description=(
