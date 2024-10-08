@@ -29,7 +29,7 @@ jobs:
           service_account: "pudl-sources@catalyst-cooperative-pudl.iam.gserviceaccount.com"
 
       - name: Install Conda environment using mamba
-        uses: mamba-org/setup-micromamba@v1
+        uses: mamba-org/setup-micromamba@v2
         with:
           environment-file: environment.yml
           cache-environment: true
