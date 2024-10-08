@@ -4,7 +4,7 @@ name: run-archiver
 on:
   workflow_dispatch:
     inputs:
-     datasets:
+      datasets:
         description: 'Comma-separated list of datasets to archive (e.g., "ferc2","ferc6").'
         default: '"eia176","eia191","eia757a","eia860","eia860m","eia861","eia923","eia930","eiaaeo","eiawater","eia_bulk_elec","epacamd_eia","epacems",ferc1","ferc2","ferc6","ferc60","ferc714","mshamines","nrelatb","phmsagas","vceregen"'
         required: true
