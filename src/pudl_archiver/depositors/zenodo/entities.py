@@ -72,20 +72,13 @@ class DepositionCreator(BaseModel):
 
     name: str
     affiliation: str | None = None
-    type_: str = Field(
-        alias="type", default=None
-    )  # TODO: 10-04 not working as expected, waiting on response from Zenodo support
 
     @classmethod
     def from_contributor(cls, contributor: Contributor) -> "DepositionCreator":
         """Construct deposition metadata object from PUDL Contributor model."""
-        contributor_type = "".join(
-            t.title() for t in contributor.zenodo_role.split()
-        )  # Reformat to camel case
         return cls(
             name=contributor.title,
             affiliation=contributor.organization,
-            type=contributor_type,
         )
 
 
