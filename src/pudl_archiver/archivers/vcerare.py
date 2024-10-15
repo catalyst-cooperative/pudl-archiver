@@ -1,4 +1,4 @@
-"""Archive VCE Resource Adequacy for Renewable Energy (RARE) data.
+"""Archive VCE Resource Adequacy Renewable Energy (RARE) data.
 
 This dataset was produced by Vibrant Clean Energy, and is licensed to the public under
 the Creative Commons Attribution 4.0 International license (CC-BY-4.0). It is archived
