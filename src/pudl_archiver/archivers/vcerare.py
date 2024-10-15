@@ -1,4 +1,4 @@
-"""Archive VCE renewable generation data.
+"""Archive VCE Resource Adequacy for Renewable Energy (RARE) data.
 
 This dataset was produced by Vibrant Clean Energy, and is licensed to the public under
 the Creative Commons Attribution 4.0 International license (CC-BY-4.0). It is archived
@@ -20,14 +20,14 @@ from pudl_archiver.archivers.classes import (
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 
-class VCEReGenArchiver(AbstractDatasetArchiver):
-    """VCE Renewable Generation Profiles archiver."""
+class VCERAREArchiver(AbstractDatasetArchiver):
+    """VCE RARE data archiver."""
 
-    name = "vceregen"
+    name = "vcerare"
     bucket_name = "sources.catalyst.coop"
 
     async def get_resources(self) -> ArchiveAwaitable:
-        """Download VCE renewable generation resources."""
+        """Download VCE RARE resources."""
         bucket = storage.Client().get_bucket(self.bucket_name)
         blobs = bucket.list_blobs(prefix=f"{self.name}/")  # Get all blobs in folder
 
@@ -40,7 +40,7 @@ class VCEReGenArchiver(AbstractDatasetArchiver):
         """Download VCE renewable generation profile files from GCS.
 
         There are three types of files: a documentation PDF, a single CSV and a series
-        of zipped annual files that are named vceregen_{year}.zip.
+        of zipped annual files that are named vcerare_{year}.zip.
         """
         # Remove folder name (identical to dataset name) and set download path
         file_name = blob.name.replace(f"{self.name}/", "")
@@ -50,8 +50,8 @@ class VCEReGenArchiver(AbstractDatasetArchiver):
         blob.download_to_filename(path_to_file)
 
         # Set up partitions:
-        # vceregen-ra-county-lat-long-fips.csv should have partition fips: true
-        # vceregen-YYYY.zip should have partition year: YYYY
+        # vcerare-county-lat-long-fips.csv should have partition fips: true
+        # vcerare-YYYY.zip should have partition year: YYYY
         # The documentation file should have no partitions, as we don't ETL it.
 
         # Handle annual zip files
@@ -67,7 +67,7 @@ class VCEReGenArchiver(AbstractDatasetArchiver):
             )
 
         # Handle single lat/lon/FIPS CSV
-        if file_name == "vceregen-ra-county-lat-long-fips.csv":
+        if file_name == "vcerare-county-lat-long-fips.csv":
             return ResourceInfo(
                 local_path=path_to_file,
                 partitions={"fips": True},

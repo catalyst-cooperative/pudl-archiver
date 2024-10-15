@@ -129,10 +129,11 @@ class DepositionMetadata(BaseModel):
         # the data from.
         if data_source_id in ["gridpathratoolkit", "vceregen"]:
             return cls(
-                title=f"PUDL Raw {data_source.title}",
+                title=f"{data_source.title}",
                 description=(
-                    f"<p>{data_source.description}</p> <p>Archived from data provided by \n"
-                    "the dataset's creator. For more information, see \n"
+                    f"<p>{data_source.description}</p> <p>Archived by Catalyst \n"
+                    "Cooperative from data provided directly from the dataset's \n"
+                    "creator. For more information, see \n"
                     f'<a href="{data_source.path}">{data_source.path}</a></p>'
                     f"{PUDL_DESCRIPTION}"
                 ),

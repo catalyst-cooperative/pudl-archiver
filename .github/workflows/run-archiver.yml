@@ -6,7 +6,7 @@ on:
     inputs:
       datasets:
         description: 'Comma-separated list of datasets to archive (e.g., "ferc2","ferc6").'
-        default: '"eia176","eia191","eia757a","eia860","eia860m","eia861","eia923","eia930","eiaaeo","eiawater","eia_bulk_elec","epacamd_eia","epacems",ferc1","ferc2","ferc6","ferc60","ferc714","mshamines","nrelatb","phmsagas","vceregen"'
+        default: '"eia176","eia191","eia757a","eia860","eia860m","eia861","eia923","eia930","eiaaeo","eiawater","eia_bulk_elec","epacamd_eia","epacems",ferc1","ferc2","ferc6","ferc60","ferc714","mshamines","nrelatb","phmsagas","vcerare"'
         required: true
         type: string
       create_github_issue:
@@ -25,7 +25,7 @@ jobs:
     strategy:
       matrix:
         # Note that we can't pass global env variables to the matrix, so we manually reproduce the list of datasets here.
-        dataset: ${{ fromJSON(format('[{0}]', inputs.datasets || '"eia176","eia191","eia757a","eia860","eia860m","eia861","eia923","eia930","eiaaeo","eiawater","eia_bulk_elec","epacamd_eia","epacems",ferc1","ferc2","ferc6","ferc60","ferc714","mshamines","nrelatb","phmsagas","vceregen"' )) }}
+        dataset: ${{ fromJSON(format('[{0}]', inputs.datasets || '"eia176","eia191","eia757a","eia860","eia860m","eia861","eia923","eia930","eiaaeo","eiawater","eia_bulk_elec","epacamd_eia","epacems",ferc1","ferc2","ferc6","ferc60","ferc714","mshamines","nrelatb","phmsagas","vcerare"' )) }}
       fail-fast: false
     runs-on: ubuntu-latest
     permissions:
