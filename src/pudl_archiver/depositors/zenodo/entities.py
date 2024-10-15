@@ -127,7 +127,7 @@ class DepositionMetadata(BaseModel):
         # If data source was manually archived by us, specify that the
         # data_source.path is a documentation link, rather than where we archived
         # the data from.
-        if data_source_id in ["gridpathratoolkit", "vceregen"]:
+        if data_source_id in ["gridpathratoolkit", "vcerare"]:
             return cls(
                 title=f"{data_source.title}",
                 description=(
