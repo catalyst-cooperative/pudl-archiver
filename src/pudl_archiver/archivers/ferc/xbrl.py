@@ -25,7 +25,7 @@ from tqdm import tqdm
 
 from pudl_archiver.archivers.classes import ResourceInfo
 from pudl_archiver.frictionless import ZipLayout
-from pudl_archiver.utils import retry_async
+from pudl_archiver.utils import add_to_archive_stable_hash, retry_async
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
@@ -305,7 +305,7 @@ async def archive_year(
     form: FercForm,
     output_dir: Path,
     session: aiohttp.ClientSession,
-) -> tuple[Path, set[str]]:
+) -> ResourceInfo:
     """Archive a single year of data for a desired form.
 
     Args:
@@ -353,9 +353,8 @@ async def archive_year(
             metadata[filing_name].append(filing_metadata.model_dump())
             taxonomies_referenced.add(filing_metadata.taxonomy_url)
 
-            with archive.open(filename, "w") as f:
-                files_in_zip.append(filename)
-                f.write(response_bytes)
+            files_in_zip.append(filename)
+            add_to_archive_stable_hash(archive, filename, response_bytes)
 
         # Save snapshot of RSS feed
         with archive.open("rssfeed", "w") as f:
