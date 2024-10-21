@@ -10,6 +10,6 @@ dependencies:
   # GDAL is a transitive dependency whose binaries must match those installed by the
   # pudl-dev conda environment, so we also install it with conda here.
   # TODO: once we break the archiver repo's dependency on pudl we should remove this.
-  - gdal>=3.9.2
+  - gdal==3.9.2 # pinned while waiting for conda-forge feedstock to get 3.9.3
   - pip:
       - --editable ./[dev,docs,tests]
