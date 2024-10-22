@@ -6,7 +6,7 @@ on:
     inputs:
       datasets:
         description: 'Comma-separated list of datasets to archive (e.g., "ferc2","ferc6").'
-        default: '"eia176","eia191","eia757a","eia860","eia860m","eia861","eia923","eia930","eiaaeo","eiawater","eia_bulk_elec","epacamd_eia","epacems",ferc1","ferc2","ferc6","ferc60","ferc714","mshamines","nrelatb","phmsagas"'
+        default: '"eia176","eia191","eia757a","eia860","eia860m","eia861","eia923","eia930","eiaaeo","eiawater","eia_bulk_elec","epacamd_eia","epacems",ferc1","ferc2","ferc6","ferc60","ferc714","mshamines","nrelatb","phmsagas","vcerare"'
         required: true
         type: string
       create_github_issue:
@@ -25,11 +25,22 @@ jobs:
     strategy:
       matrix:
         # Note that we can't pass global env variables to the matrix, so we manually reproduce the list of datasets here.
-        dataset: ${{ fromJSON(format('[{0}]', inputs.datasets || '"eia176","eia191","eia757a","eia860","eia860m","eia861","eia923","eia930","eiaaeo","eiawater","eia_bulk_elec","epacamd_eia","epacems",ferc1","ferc2","ferc6","ferc60","ferc714","mshamines","nrelatb","phmsagas"' )) }}
+        dataset: ${{ fromJSON(format('[{0}]', inputs.datasets || '"eia176","eia191","eia757a","eia860","eia860m","eia861","eia923","eia930","eiaaeo","eiawater","eia_bulk_elec","epacamd_eia","epacems",ferc1","ferc2","ferc6","ferc60","ferc714","mshamines","nrelatb","phmsagas","vcerare"' )) }}
       fail-fast: false
     runs-on: ubuntu-latest
+    permissions:
+      contents: "read"
+      id-token: "write"
     steps:
       - uses: actions/checkout@v4
+
+      - name: Set default GCP credentials
+        id: gcloud-auth
+        continue-on-error: true
+        uses: "google-github-actions/auth@v2"
+        with:
+          workload_identity_provider: "projects/345950277072/locations/global/workloadIdentityPools/gh-actions-pool/providers/gh-actions-provider"
+          service_account: "pudl-sources@catalyst-cooperative-pudl.iam.gserviceaccount.com"
 
       - name: Install Conda environment using mamba
         uses: mamba-org/setup-micromamba@v2
