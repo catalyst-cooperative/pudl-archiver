@@ -72,9 +72,6 @@ class DepositionCreator(BaseModel):
 
     name: str
     affiliation: str | None = None
-    type_: str = Field(
-        alias="type", default=None
-    )  # TODO: 10-04 not working as expected, waiting on response from Zenodo support
 
     @classmethod
     def from_contributor(cls, contributor: Contributor) -> "DepositionCreator":
