@@ -1,5 +1,6 @@
 """Archive EIA Manufacturing Energy Consumption Survey (MECS)."""
 
+import logging
 import re
 
 from pudl_archiver.archivers.classes import (
@@ -9,6 +10,7 @@ from pudl_archiver.archivers.classes import (
 )
 
 BASE_URL = "https://www.eia.gov/consumption/manufacturing/data"
+logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 
 class EiaMECSArchiver(AbstractDatasetArchiver):
@@ -27,7 +29,10 @@ class EiaMECSArchiver(AbstractDatasetArchiver):
 
         # Loop through all download links for tables
         tables = []
-        for table_link in await self.get_hyperlinks(BASE_URL, table_link_pattern):
+        year_url = f"{BASE_URL}/{year}"
+        for table_link in await self.get_hyperlinks(year_url, table_link_pattern):
+            table_link = f"{year_url}/{table_link}"
+            logger.info(f"Fetching {table_link}")
             # Get table major/minor number from links
             match = table_link_pattern.search(table_link)
             major_num, minor_num = match.group(1), match.group(2)
@@ -45,3 +50,4 @@ class EiaMECSArchiver(AbstractDatasetArchiver):
                     partitions={"year": year, "table": f"{major_num}_{minor_num}"},
                 )
             )
+        return tables

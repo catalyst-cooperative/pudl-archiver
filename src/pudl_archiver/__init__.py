@@ -10,7 +10,6 @@ import aiohttp
 import pudl_archiver.orchestrator  # noqa: F401
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver
 from pudl_archiver.archivers.validate import RunSummary
-from pudl_archiver.depositors.zenodo.depositor import ZenodoPublishedDeposition
 from pudl_archiver.orchestrator import orchestrate_run
 from pudl_archiver.utils import RunSettings
 
