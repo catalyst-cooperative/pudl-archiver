@@ -122,20 +122,3 @@ class GridPathRAToolkitArchiver(AbstractDatasetArchiver):
             partitions={"part": final_zipfile_name},
             layout=ZipLayout(file_paths=data_paths_in_archive),
         )
-
-
-# if original_file.startwith("MonteCarlo_Inputs.zip"):
-#             path_to_file = self.download_directory / "MonteCarlo_Inputs.zip"
-
-# if original_file.startwith("MonteCarlo_Inputs.zip"):
-#             if not os.path.isfile(path_to_file):
-#                 blob.download_to_filename(path_to_file)
-
-# # If the blob is a zipped file, download desired files from that zipfile.
-#         # Then, rezip those files and point to that path.
-#         if original_file.startwith("MonteCarlo_Inputs.zip"):
-
-#             with zipfile.ZipFile(path_to_file) as archive:
-#                 for file in archive.namelist():
-#                     if file.startswith(original_file.replace("MonteCarlo_Inputs.zip/")):
-#                         archive.extract(file, 'destination_path')
