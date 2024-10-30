@@ -35,10 +35,11 @@ class GridPathRAToolkitArchiver(AbstractDatasetArchiver):
         "MonteCarlo_Inputs/temporal_data/solar/": "aggregated_solar_capacity.zip",
         "MonteCarlo_Inputs/temporal_data/solar_syn/": "aggregated_extended_solar_capacity.zip",
         "TemporalData/DailyWeatherData_cleaned.csv": "daily_weather.csv",
-        "SolarAggregations.csv": "solar_aggregations.csv",
-        "WindAggregations.csv": "wind_aggregations.csv",
+        "SolarAggregations.csv": "solar_capacity_aggregations.csv",
+        "WindAggregations.csv": "wind_capacity_aggregations.csv",
         "GridPath_RA_Toolkit_HowTo.pdf": "gridpathratoolkit_howto.pdf",
         "GridPath_RA_Toolkit_Report_2022-10-12.pdf": "gridpathratoolkit_report_2022_10_12.pdf",
+        "TemporalData/readme.txt": "readme.txt",
     }
 
     async def get_resources(self) -> ArchiveAwaitable:
@@ -125,6 +126,8 @@ class GridPathRAToolkitArchiver(AbstractDatasetArchiver):
 
         return ResourceInfo(
             local_path=archive_path,
-            partitions={"part": final_zipfile_name},
+            partitions={
+                "part": final_zipfile_name.split(".")[0]
+            },  # Drop file type suffix
             layout=ZipLayout(file_paths=data_paths_in_archive),
         )
