@@ -2,25 +2,6 @@
 
 This dataset was produced by Moment Energy Insights (now Sylvan Energy Analytics).
 It is archived from files stored in the private sources.catalyst.coop bucket.
-
-The files in the GCS bucket map to our file names in the following way:
-
-Solar data:
-* gridpath-ra-toolkit/TemporalData/HourlySolar_byProject.zip --> original_solar_capacity.zip
-* gridpath-ra-toolkit/MonteCarlo_Inputs.zip/temporal_data/solar/ --> aggregated_solar_capacity.zip
-* gridpath-ra-toolkit/MonteCarlo_Inputs.zip/temporal_data/solar_syn/ --> aggregated_extended_solar_capacity.zip
-* ??? --> solar_capacity_aggregations.csv
-
-Wind data:
-* gridpath-ra-toolkit/TemporalData/HourlyWind_byProject.zip --> original_wind_capacity.zip
-* gridpath-ra-toolkit/MonteCarlo_Inputs.zip/temporal_data/wind/ --> aggregated_wind_capacity.zip
-* gridpath-ra-toolkit/MonteCarlo_Inputs.zip/temporal_data/wind_syn/ --> aggregated_extended_wind_capacity.zip
-* ??? --> wind_capacity_aggregations.csv
-
-
-Weather data:
-* gridpath-ra-toolkit/TemporalData/DailyWeatherData_cleaned.csv --> daily_weather.csv
-
 """
 
 import logging
@@ -60,7 +41,7 @@ class GridPathRAToolkitArchiver(AbstractDatasetArchiver):
     }
 
     async def get_resources(self) -> ArchiveAwaitable:
-        """Download VCE renewable generation resources."""
+        """Download GridPath RA Toolkit resources."""
         bucket = storage.Client().get_bucket(self.bucket_name)
 
         for original_file in self.rename_dict:
@@ -73,11 +54,11 @@ class GridPathRAToolkitArchiver(AbstractDatasetArchiver):
     async def get_gcs_resource(
         self, original_file: str, bucket: storage.Bucket
     ) -> tuple[Path, dict]:
-        """Download VCE renewable generation profile files from GCS.
+        """Download GridPath RA Toolkit data files from GCS.
 
-        There are three types of files: a documentation PDF, a series of zipped annual
-        files, a series of CSV files,  and a series of files to download from within a
-        zipped file.
+        There are several types of files: a documentation PDF, a series of zipped files,
+        a series of CSV files,  and a series of files to download from within a
+        particular folder and zip before archiving.
         """
         file_name = self.rename_dict[original_file]
         path_to_file = self.download_directory / file_name
