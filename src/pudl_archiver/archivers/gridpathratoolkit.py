@@ -5,6 +5,7 @@ It is archived from files stored in the private sources.catalyst.coop bucket.
 """
 
 import logging
+import zipfile
 from pathlib import Path
 
 from google.cloud import storage
@@ -102,17 +103,22 @@ class GridPathRAToolkitArchiver(AbstractDatasetArchiver):
 
         data_paths_in_archive = set()
 
-        for blob in blobs:
-            if blob.name.endswith("/"):
-                continue
+        with zipfile.ZipFile(
+            archive_path,
+            "w",
+            compression=zipfile.ZIP_DEFLATED,
+        ) as archive:
+            for blob in blobs:
+                if blob.name.endswith("/"):
+                    continue
 
-            # Download all files locally
-            logger.info(f"Downloading {blob.name} to {final_zipfile_name}")
-            string = blob.download_as_string()
-            add_to_archive_stable_hash(
-                archive=archive_path, filename=blob.name.split("/")[-1], data=string
-            )
-            data_paths_in_archive.add(blob.name.split("/")[-1])
+                # Download all files locally
+                logger.info(f"Downloading {blob.name} to {final_zipfile_name}")
+                string = blob.download_as_string()
+                add_to_archive_stable_hash(
+                    archive=archive, filename=blob.name.split("/")[-1], data=string
+                )
+                data_paths_in_archive.add(blob.name.split("/")[-1])
 
         # The partition should be the filename without the filetype extension.
         # E.g., solar_capacity_aggregations.csv has part: solar_capacity_aggregations
