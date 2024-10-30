@@ -2,7 +2,6 @@
 
 import logging
 import traceback
-from hashlib import md5
 from typing import BinaryIO
 
 import aiohttp
@@ -10,7 +9,7 @@ from pydantic import BaseModel, ConfigDict
 from upath import UPath
 
 from ..frictionless import MEDIA_TYPES, DataPackage, Resource, ResourceInfo
-from ..utils import RunSettings
+from ..utils import RunSettings, compute_md5
 from .depositor import (
     DepositionAction,
     DepositionChange,
@@ -21,16 +20,6 @@ from .depositor import (
 )
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
-
-
-def _compute_md5(file_path: UPath) -> str:
-    """Compute an md5 checksum to compare to files in zenodo deposition."""
-    hash_md5 = md5()  # noqa: S324
-    with file_path.open(mode="rb") as f:
-        for chunk in iter(lambda: f.read(4096), b""):
-            hash_md5.update(chunk)
-
-    return hash_md5.hexdigest()
 
 
 def _resource_from_upath(path: UPath, parts: dict[str, str]) -> Resource:
@@ -50,7 +39,7 @@ def _resource_from_upath(path: UPath, parts: dict[str, str]) -> Resource:
         mediatype=mt,
         parts=parts,
         bytes=path.stat().st_size,
-        hash=_compute_md5(path),
+        hash=compute_md5(path),
         format=path.suffix,
     )
 
@@ -216,8 +205,8 @@ class FsspecDraftDeposition(DraftDeposition):
         remote_path = self.deposition.deposition_path / filename
 
         if remote_path.exists():
-            remote_md5 = _compute_md5(remote_path)
-            local_md5 = _compute_md5(resource.local_path)
+            remote_md5 = compute_md5(remote_path)
+            local_md5 = compute_md5(resource.local_path)
             if remote_md5 != local_md5:
                 logger.info(
                     f"Updating {filename}: local hash {local_md5} vs. remote {remote_md5}"

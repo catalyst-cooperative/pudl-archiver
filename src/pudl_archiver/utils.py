@@ -5,11 +5,13 @@ import logging
 import typing
 import zipfile
 from collections.abc import Awaitable, Callable
+from hashlib import md5
 from pathlib import Path
 
 import aiohttp
 from pydantic import AnyUrl, BaseModel
 from pydantic.functional_serializers import PlainSerializer
+from upath import UPath
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
@@ -130,3 +132,13 @@ class RunSettings(BaseModel):
     refresh_metadata: bool = False
     resume_run: bool = False
     depositor: str = "zenodo"
+
+
+def compute_md5(file_path: UPath) -> str:
+    """Compute an md5 checksum to compare to files in zenodo deposition."""
+    hash_md5 = md5()  # noqa: S324
+    with file_path.open(mode="rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_md5.update(chunk)
+
+    return hash_md5.hexdigest()

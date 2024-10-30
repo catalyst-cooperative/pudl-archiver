@@ -6,7 +6,6 @@ import json
 import logging
 import os
 import traceback
-from hashlib import md5
 from pathlib import Path
 from typing import BinaryIO, Literal
 
@@ -24,7 +23,7 @@ from pudl_archiver.depositors.depositor import (
     register_depositor,
 )
 from pudl_archiver.frictionless import MEDIA_TYPES, DataPackage, Resource, ResourceInfo
-from pudl_archiver.utils import RunSettings, Url, retry_async
+from pudl_archiver.utils import RunSettings, Url, compute_md5, retry_async
 
 from .entities import (
     Deposition,
@@ -36,16 +35,6 @@ from .entities import (
 )
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
-
-
-def _compute_md5(file_path: Path) -> str:
-    """Compute an md5 checksum to compare to files in zenodo deposition."""
-    hash_md5 = md5()  # noqa: S324
-    with Path.open(file_path, "rb") as f:
-        for chunk in iter(lambda: f.read(4096), b""):
-            hash_md5.update(chunk)
-
-    return hash_md5.hexdigest()
 
 
 class ZenodoClientError(Exception):
@@ -689,7 +678,7 @@ class ZenodoDraftDeposition(DraftDeposition):
         action = DepositionAction.NO_OP
         if file_info := self.deposition.files_map.get(filename):
             # If file is not exact match for existing file, update with new file
-            if (local_md5 := _compute_md5(resource.local_path)) != file_info.checksum:
+            if (local_md5 := compute_md5(resource.local_path)) != file_info.checksum:
                 logger.info(
                     f"Updating {filename}: local hash {local_md5} vs. remote {file_info.checksum}"
                 )
