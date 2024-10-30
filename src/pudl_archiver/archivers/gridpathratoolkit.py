@@ -40,6 +40,7 @@ class GridPathRAToolkitArchiver(AbstractDatasetArchiver):
         "GridPath_RA_Toolkit_HowTo.pdf": "gridpathratoolkit_howto.pdf",
         "GridPath_RA_Toolkit_Report_2022-10-12.pdf": "gridpathratoolkit_report_2022_10_12.pdf",
         "TemporalData/readme.txt": "readme.txt",
+        "TemporalData/license.txt": "license.txt",
     }
 
     async def get_resources(self) -> ArchiveAwaitable:
