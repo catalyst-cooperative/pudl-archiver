@@ -3,46 +3,20 @@
 Such as Zenodo, Zenodo, and Zenodo.
 """
 
-from dataclasses import dataclass
-
 import aiohttp
 
 from pudl_archiver.frictionless import DataPackage
 from pudl_archiver.utils import RunSettings
 
+from . import fsspec, zenodo
 from .depositor import (
+    DEPOSITION_BACKENDS,
     DepositionAction,
     DepositionChange,
     DepositorAPIClient,
     DraftDeposition,
     PublishedDeposition,
 )
-
-
-@dataclass
-class DepositionBackend:
-    """Wrap Published and Draft Deposition classes for a single depositor."""
-
-    api_client: type[DepositorAPIClient]
-    published_interface: type[PublishedDeposition]
-    draft_interface: type[DraftDeposition]
-
-
-DEPOSITION_BACKENDS: dict[str, DepositionBackend] = {}
-
-
-def register_depositor(
-    depositor_name: str,
-    api_client: type[DepositorAPIClient],
-    published_interface: type[PublishedDeposition],
-    draft_interface: type[DraftDeposition],
-):
-    """Function to register an implementation of the depositor interface."""
-    DEPOSITION_BACKENDS[depositor_name] = DepositionBackend(
-        api_client=api_client,
-        published_interface=published_interface,
-        draft_interface=draft_interface,
-    )
 
 
 async def get_deposition(

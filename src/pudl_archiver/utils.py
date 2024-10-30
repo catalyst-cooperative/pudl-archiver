@@ -8,16 +8,14 @@ from collections.abc import Awaitable, Callable
 from pathlib import Path
 
 import aiohttp
-from pydantic import AnyHttpUrl, BaseModel
+from pydantic import AnyUrl, BaseModel
 from pydantic.functional_serializers import PlainSerializer
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 
 # A custom type that wraps AnyHttpUrl, but nicely serializes the URL as a string
-Url = typing.Annotated[
-    AnyHttpUrl, PlainSerializer(lambda url: str(url), return_type=str)
-]
+Url = typing.Annotated[AnyUrl, PlainSerializer(lambda url: str(url), return_type=str)]
 
 
 async def retry_async(

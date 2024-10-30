@@ -160,3 +160,32 @@ class DataPackage(BaseModel):
             description=data_source.description,
             version=version,
         )
+
+    @classmethod
+    def mecs(cls, resources: Iterable[Resource], version: str | None):
+        """Temp create mecs datapackage."""
+        return DataPackage(
+            name="MECS",
+            title="EIA MECS data",
+            sources=[
+                {
+                    "title": "EIA MECS data",
+                    "path": "https://www.eia.gov/consumption/manufacturing/data/2018/",
+                }
+            ],
+            licenses=[
+                License(
+                    **{
+                        "name": "CC-BY-4.0",
+                        "title": "Creative Commons Attribution 4.0",
+                        "path": "https://creativecommons.org/licenses/by/4.0",
+                    }
+                )
+            ],
+            resources=sorted(resources, key=lambda x: x.name),  # Sort by filename
+            contributors=[CONTRIBUTORS["catalyst-cooperative"]],
+            created=str(datetime.utcnow()),
+            keywords=["MECS"],
+            description="MECS data.",
+            version=version,
+        )

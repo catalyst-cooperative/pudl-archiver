@@ -15,7 +15,7 @@ import semantic_version  # type: ignore  # noqa: PGH003
 import yaml
 from pydantic import BaseModel, PrivateAttr
 
-from pudl_archiver.depositors import (
+from pudl_archiver.depositors.depositor import (
     DepositionAction,
     DepositionChange,
     DepositorAPIClient,
@@ -127,7 +127,6 @@ class ZenodoAPIClient(BaseModel, DepositorAPIClient):
 
         Args:
             session: HTTP handler - we don't use it directly, it's wrapped in self._request.
-            run_settings: Settings from CLI.
         """
         self = cls(sandbox=sandbox)
         self._session = session
