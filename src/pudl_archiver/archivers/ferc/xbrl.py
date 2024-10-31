@@ -389,7 +389,13 @@ async def archive_xbrl_for_form(
             continue
 
         filing_resources.append(
-            await archive_year(year, filings, form, output_dir, session)
+            await archive_year(
+                year,
+                sorted(filings, key=lambda entry: entry.title),
+                form,
+                output_dir,
+                session,
+            )
         )
 
     taxonomies_referenced = {
