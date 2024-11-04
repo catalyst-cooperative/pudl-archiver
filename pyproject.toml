@@ -5,7 +5,7 @@ authors = [{name = "PUDL", email = "pudl@catalyst.coop"}]
 requires-python = ">=3.12,<3.13"
 
 dependencies = [
-    "arelle-release>=2.29,<2.34",
+    "arelle-release>=2.29,<2.36",
     "catalystcoop.pudl @ git+https://github.com/catalyst-cooperative/pudl.git",
     "coloredlogs>=14",
     "dask>=2024",
@@ -55,7 +55,7 @@ tests = [
     "pytest>=8,<8.4",  # Our testing framework
     "pytest-asyncio>=0.20,<0.25",  # Test async functions
     "pytest-console-scripts>=1.1,<1.5",  # Allow automatic testing of scripts
-    "pytest-cov>=5,<5.1",  # Pytest plugin for working with coverage
+    "pytest-cov>=5,<6.1",  # Pytest plugin for working with coverage
     "pytest-mock>=3.0,<3.15",  # Pytest plugin for mocking function calls and objects
     "ruff>=0.6,<0.8",
 ]
