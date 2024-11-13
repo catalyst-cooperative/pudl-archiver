@@ -59,8 +59,14 @@ class GridPathRAToolkitArchiver(AbstractDatasetArchiver):
         """Download GridPath RA Toolkit data files from GCS.
 
         There are several types of files: a documentation PDF, a series of zipped files,
-        a series of CSV files,  and a series of files to download from within a
-        particular folder and zip before archiving.
+        a series of CSV files, and a series of files to download from within a particular
+        folder and zip before archiving.
+
+        Args:
+            original_file: Name of the file as it appears in the original collection of files in GCS. Used as a key
+                in `self.rename_dict` to look up the new file name, and also as part of the prefix / path to the file.
+                in GCS
+            bucket: Name of the GCS Bucket from which we're downloading the original data.
         """
         file_name = self.rename_dict[original_file]
         path_to_file = self.download_directory / file_name
