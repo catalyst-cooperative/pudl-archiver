@@ -47,11 +47,12 @@ class GridPathRAToolkitArchiver(AbstractDatasetArchiver):
         bucket = storage.Client().get_bucket(self.bucket_name)
 
         for original_file in self.rename_dict:
-            if "MonteCarlo_Inputs" not in original_file:
-                yield self.get_gcs_resource(original_file, bucket)
-            # Handle resources that need to be zipped separately
-            else:
+            if "MonteCarlo_Inputs" in original_file:
+                # Handle resources that need to be zipped by us
                 yield self.get_and_zip_resources(original_file, bucket)
+            else:
+                # All other resources can be downloaded directly as files
+                yield self.get_gcs_resource(original_file, bucket)
 
     async def get_gcs_resource(
         self, original_file: str, bucket: storage.Bucket
@@ -90,7 +91,7 @@ class GridPathRAToolkitArchiver(AbstractDatasetArchiver):
             # The partition should be the filename without the filetype extension.
             # E.g., solar_capacity_aggregations.csv has part: solar_capacity_aggregations
 
-        part = file_name.split(".")[0]  # Remove .csv/.zip extension
+        part = Path(file_name).stem  # Remove parent folders and suffix
         return ResourceInfo(
             local_path=path_to_file,
             partitions={"part": part},
@@ -123,17 +124,15 @@ class GridPathRAToolkitArchiver(AbstractDatasetArchiver):
                 logger.info(f"Downloading {blob.name} to {final_zipfile_name}")
                 string = blob.download_as_string()
                 add_to_archive_stable_hash(
-                    archive=archive, filename=blob.name.split("/")[-1], data=string
+                    archive=archive, filename=Path(blob.name).name, data=string
                 )
-                data_paths_in_archive.add(blob.name.split("/")[-1])
+                data_paths_in_archive.add(Path(blob.name).name)
 
         # The partition should be the filename without the filetype extension.
         # E.g., solar_capacity_aggregations.csv has part: solar_capacity_aggregations
 
         return ResourceInfo(
             local_path=archive_path,
-            partitions={
-                "part": final_zipfile_name.split(".")[0]
-            },  # Drop file type suffix
+            partitions={"part": Path(final_zipfile_name).stem},  # Drop file type suffix
             layout=ZipLayout(file_paths=data_paths_in_archive),
         )
