@@ -1,7 +1,5 @@
 """Download EPA CAMD data."""
 
-from pathlib import Path
-
 from pudl_archiver.archivers.classes import (
     AbstractDatasetArchiver,
     ArchiveAwaitable,
@@ -15,23 +13,33 @@ class EpaCamdEiaArchiver(AbstractDatasetArchiver):
     name = "epacamd_eia"
 
     async def get_resources(self) -> ArchiveAwaitable:
-        """Download EPA CAMD to EIA crosswalk resources."""
-        for year in [2018, 2021]:
-            yield self.get_crosswalk_zip(year)
-
-    async def get_crosswalk_zip(self, year: int) -> tuple[Path, dict]:
         """Download entire repo as a zipfile from github.
 
-        For the version of the crosswalk using 2018 data, download the base EPA repo. For 2021 outputs
-        use our fork. If we decide to archive more years we can add infrastructure to dynamically run
-        the crosswalk and only archive the outputs, but for now this is the simplest way to archive
-        the years in use.
+        The EPA developed the original version of the crosswalk, but this has been dormant
+        for several years and only uses EIA data from 2018. We have a fork of this repo,
+        which we've modified slightly to run with later years of data. For now, the
+        simplest solution is to use the 2018 data from the EPA repo and the latest data
+        from our fork as static outputs. At some point it would be best to either
+        integrate the notebook into our ETL so we can dynamically run it with all years
+        interest, or develop our own linkage.
         """
-        crosswalk_urls = {
-            2018: "https://github.com/USEPA/camd-eia-crosswalk/archive/refs/heads/master.zip",
-            2021: "https://github.com/catalyst-cooperative/camd-eia-crosswalk-2021/archive/refs/heads/main.zip",
-        }
-        download_path = self.download_directory / f"epacamd_eia_{year}.zip"
-        await self.download_zipfile(crosswalk_urls[year], download_path)
+        yield self.get_2018()
+        yield self.get_latest()
 
-        return ResourceInfo(local_path=download_path, partitions={"year": year})
+    async def get_latest(self) -> ResourceInfo:
+        """Get latest version from our forked repo."""
+        url = "https://github.com/catalyst-cooperative/camd-eia-crosswalk-latest/archive/refs/heads/main.zip"
+        download_path = self.download_directory / "epacamd_eia_latest.zip"
+        await self.download_zipfile(url, download_path)
+
+        return ResourceInfo(local_path=download_path, partitions={"year": "latest"})
+
+    async def get_2018(self) -> ResourceInfo:
+        """Get 2018 data from EPA repo."""
+        url = (
+            "https://github.com/USEPA/camd-eia-crosswalk/archive/refs/heads/master.zip"
+        )
+        download_path = self.download_directory / "epacamd_eia_2018.zip"
+        await self.download_zipfile(url, download_path)
+
+        return ResourceInfo(local_path=download_path, partitions={"year": "2018"})
