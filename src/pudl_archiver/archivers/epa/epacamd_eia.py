@@ -24,15 +24,20 @@ class EpaCamdEiaArchiver(AbstractDatasetArchiver):
         interest, or develop our own linkage.
         """
         yield self.get_2018()
-        yield self.get_latest()
+        yield self.get_latest_years()
 
-    async def get_latest(self) -> ResourceInfo:
+    async def get_latest_years(self) -> ResourceInfo:
         """Get latest version from our forked repo."""
-        url = "https://github.com/catalyst-cooperative/camd-eia-crosswalk-latest/archive/refs/heads/main.zip"
-        download_path = self.download_directory / "epacamd_eia_latest.zip"
-        await self.download_zipfile(url, download_path)
+        resources = []
+        for year in [2021, 2023]:
+            url = f"https://github.com/catalyst-cooperative/camd-eia-crosswalk-latest/archive/refs/tags/v{year}.zip"
+            download_path = self.download_directory / f"epacamd_eia_{year}.zip"
+            await self.download_zipfile(url, download_path)
 
-        return ResourceInfo(local_path=download_path, partitions={"year": "latest"})
+            resources.append(
+                ResourceInfo(local_path=download_path, partitions={"year": year})
+            )
+        return resources
 
     async def get_2018(self) -> ResourceInfo:
         """Get 2018 data from EPA repo."""
