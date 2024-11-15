@@ -25,7 +25,7 @@ class EiaMECSArchiver(AbstractDatasetArchiver):
 
     async def get_year_resources(self, year: int) -> list[ResourceInfo]:
         """Download all excel tables for a year."""
-        table_link_pattern = re.compile(r"[Tt]able(\d)_(\d).xlsx")
+        table_link_pattern = re.compile(r"[Tt]able(\d{1,2})_(\d{1,2}).xlsx")
 
         # Loop through all download links for tables
         tables = []
