@@ -26,7 +26,7 @@ def _resource_from_upath(path: UPath, parts: dict[str, str]) -> Resource:
     """Create a resource from a single file with partitions.
 
     Args:
-        file: Deposition file metadata returned by Zenodo api.
+        path: UPath pointing to resource on local or remote filesystem.
         parts: Working partitions of current resource.
     """
     mt = MEDIA_TYPES[path.suffix[1:]]
