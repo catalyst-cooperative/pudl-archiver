@@ -81,6 +81,11 @@ class FsspecAPIClient(DepositorAPIClient):
         sandbox: bool,
     ) -> "FsspecAPIClient":
         """Return initialized fsspec api client."""
+        if sandbox:
+            raise NotImplementedError(
+                "There is no sandbox available for fsspec archiver. "
+                "An alternative for testing would be to use the 'local' depositor backend."
+            )
         return cls()
 
     async def get_deposition(self, dataset_id: str):
