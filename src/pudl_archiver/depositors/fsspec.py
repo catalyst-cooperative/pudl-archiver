@@ -81,6 +81,11 @@ class FsspecAPIClient(DepositorAPIClient):
         sandbox: bool,
     ) -> "FsspecAPIClient":
         """Return initialized fsspec api client."""
+        logger.warning(
+            "The fsspec depositor backend is in an early/experimental state. "
+            "It currently does not support versioning so any existing archive would be overwritten. "
+            "Please use with caution."
+        )
         if sandbox:
             raise NotImplementedError(
                 "There is no sandbox available for fsspec archiver. "
@@ -244,7 +249,8 @@ class FsspecDraftDeposition(DraftDeposition):
             for fname in self.deposition.file_list
             if fname != "datapackage.json"
         ]
-        datapackage = DataPackage.mecs(
+        datapackage = DataPackage.new_datapackage(
+            self.dataset_id,
             resources,
             self.deposition.version,
         )

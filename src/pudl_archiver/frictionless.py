@@ -146,6 +146,18 @@ class DataPackage(BaseModel):
                        the local path to the resource, and its working partitions.
             version: Version string for current deposition version.
         """
+        if name == "mecs":
+            return cls.mecs(resources=resources, version=version)
+        return cls.from_pudl_metadata(name=name, resources=resources, version=version)
+
+    @classmethod
+    def from_pudl_metadata(
+        cls,
+        name: str,
+        resources: Iterable[Resource],
+        version: str | None,
+    ) -> "DataPackage":
+        """Create a datapackage using PUDL metadata associated with ``name``."""
         data_source = DataSource.from_id(name)
 
         return DataPackage(
@@ -163,7 +175,7 @@ class DataPackage(BaseModel):
 
     @classmethod
     def mecs(cls, resources: Iterable[Resource], version: str | None):
-        """Temp create mecs datapackage."""
+        """Hack method to create a Datapackage for EIA MECS data not in PUDL metadata."""
         return DataPackage(
             name="MECS",
             title="EIA MECS data",
