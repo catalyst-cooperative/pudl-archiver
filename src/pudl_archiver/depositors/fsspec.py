@@ -206,7 +206,9 @@ class FsspecDraftDeposition(DraftDeposition):
 
     async def delete_deposition(self) -> None:
         """Delete an un-submitted deposition."""
-        pass
+        raise NotImplementedError(
+            "Versioning is not yet implemented for fsspec backend, so deleting a draft deposition is not possible."
+        )
 
     def generate_change(
         self, filename: str, resource: ResourceInfo
