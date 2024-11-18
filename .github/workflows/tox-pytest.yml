@@ -56,7 +56,7 @@ jobs:
           tox
 
       - name: Upload test coverage report to CodeCov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
 
   ci-notify:
     runs-on: ubuntu-latest
