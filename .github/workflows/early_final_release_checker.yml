@@ -96,10 +96,11 @@ jobs:
       - name: Post update to pudl-deployment
         uses: slackapi/slack-github-action@v2.0.0
         with:
-          channel-id: "C03FHB9N0PQ"
-          payload: ${{ steps.all_summaries.outputs.SLACK_PAYLOAD }}
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.PUDL_DEPLOY_SLACK_TOKEN }}
+          method: chat.postMessage
+          token: ${{ secrets.PUDL_DEPLOY_SLACK_TOKEN }}
+          payload: |
+            text: ${{ steps.all_summaries.outputs.SLACK_PAYLOAD }}
+            channel: "C03FHB9N0PQ"
 
   make-github-issue:
     runs-on: ubuntu-latest
