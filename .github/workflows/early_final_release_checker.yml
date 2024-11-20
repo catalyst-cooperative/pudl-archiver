@@ -100,7 +100,7 @@ jobs:
           token: ${{ secrets.PUDL_DEPLOY_SLACK_TOKEN }}
           payload: |
             text: "PUDL data archive run complete."
-            attachments: ${{ steps.all_summaries.outputs.SLACK_PAYLOAD }}
+            blocks: ${{ steps.all_summaries.outputs.SLACK_PAYLOAD }}
             channel: "C03FHB9N0PQ"
 
   make-github-issue:
