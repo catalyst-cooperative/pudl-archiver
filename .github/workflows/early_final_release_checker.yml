@@ -99,6 +99,7 @@ jobs:
           method: chat.postMessage
           token: ${{ secrets.PUDL_DEPLOY_SLACK_TOKEN }}
           payload: |
+            text: "PUDL data archive run complete."
             blocks: ${{ steps.all_summaries.outputs.SLACK_PAYLOAD }}
             channel: "C03FHB9N0PQ"
 
