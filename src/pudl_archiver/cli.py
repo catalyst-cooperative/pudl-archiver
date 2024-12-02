@@ -64,8 +64,8 @@ def parse_main(args=None):
     )
     (
         parser.add_argument(
-            "--download-dir",
-            help="Directory to download files to. Use tmpdir if not specified.",
+            "--deposition-path",
+            help="Configurable base path used by some depositor backends.",
             default=None,
         ),
     )

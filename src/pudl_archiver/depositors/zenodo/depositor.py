@@ -91,7 +91,7 @@ def _resource_from_file(file: DepositionFile, parts: dict[str, str]) -> Resource
     )
 
 
-class ZenodoAPIClient(BaseModel, DepositorAPIClient):
+class ZenodoAPIClient(DepositorAPIClient):
     """Implements the base interface to zenodo depositions.
 
     This class will be inherited by both the Draft and Published Zenodo deposition
@@ -111,12 +111,18 @@ class ZenodoAPIClient(BaseModel, DepositorAPIClient):
         cls,
         session: aiohttp.ClientSession,
         sandbox: bool,
+        deposition_path: str | None = None,
     ) -> "ZenodoAPIClient":
         """Initialize API client connection.
 
         Args:
             session: HTTP handler - we don't use it directly, it's wrapped in self._request.
         """
+        if deposition_path:
+            raise RuntimeError(
+                "Zenodo depositor does not use deposition_path parameter."
+            )
+
         self = cls(sandbox=sandbox)
         self._session = session
         self._request = self._make_requester(session)

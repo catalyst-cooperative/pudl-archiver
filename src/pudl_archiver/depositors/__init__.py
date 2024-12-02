@@ -25,23 +25,23 @@ async def get_deposition(
     """Create draft deposition from scratch or previous version."""
     deposition_backend = DEPOSITION_BACKENDS[run_settings.depositor]
     api_client = await deposition_backend.api_client.initialize_client(
-        session, run_settings.sandbox
+        session=session,
+        sandbox=run_settings.sandbox,
+        deposition_path=run_settings.deposition_path,
     )
     if run_settings.initialize:
-        deposition = await api_client.create_new_deposition(dataset)
-        return deposition_backend.draft_interface(
+        return await deposition_backend.draft_interface.new_draft(
             dataset_id=dataset,
             settings=run_settings,
             api_client=api_client,
-            deposition=deposition,
         ), None
-    deposition = await api_client.get_deposition(dataset)
 
-    published_deposition = deposition_backend.published_interface(
-        dataset_id=dataset,
-        settings=run_settings,
-        api_client=api_client,
-        deposition=deposition,
+    published_deposition = (
+        await deposition_backend.published_interface.get_most_recent_version(
+            dataset_id=dataset,
+            settings=run_settings,
+            api_client=api_client,
+        )
     )
 
     original_datapackage_bytes = await published_deposition.get_file("datapackage.json")

@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import BinaryIO
 
 import aiohttp
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from pudl_archiver.archivers.validate import RunSummary
 from pudl_archiver.frictionless import DataPackage, ResourceInfo
@@ -62,7 +62,7 @@ class DepositionChange:
     resource: io.IOBase | Path | None = None
 
 
-class DepositorAPIClient(ABC):
+class DepositorAPIClient(BaseModel, ABC):
     """This class is used to implement an interface for a depositor.
 
     DepositorAPIClient's only have 2 required methods, which are used to retrieve
@@ -77,12 +77,14 @@ class DepositorAPIClient(ABC):
         cls,
         session: aiohttp.ClientSession,
         sandbox: bool,
+        deposition_path: str | None = None,
     ) -> "DepositorAPIClient":
         """Initialize API client connection.
 
         Args:
             session: HTTP handler - we don't use it directly, it's wrapped in self._request.
-            run_settings: Settings from CLI.
+            sandbox: False for production archives.
+            deposition_path: Some depositors take a configurable path.
         """
         ...
 
@@ -105,6 +107,14 @@ class DepositorAPIClient(ABC):
         ...
 
 
+class DepositionState(BaseModel):
+    """Base class to define deposition state for a depositor.
+
+    This base class does not define anything as the state will depend entirely on
+    the specific depositor.
+    """
+
+
 class PublishedDeposition(BaseModel, ABC):
     """Abstract base class defining the interface for a published deposition.
 
@@ -117,7 +127,29 @@ class PublishedDeposition(BaseModel, ABC):
     For an example of this, see `src/pudl_archiver/depositors/zenodo/depositor.py`.
     """
 
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     settings: RunSettings
+    api_client: DepositorAPIClient
+    dataset_id: str
+    deposition: DepositionState
+
+    @classmethod
+    async def get_most_recent_version(
+        cls,
+        settings: RunSettings,
+        api_client: DepositorAPIClient,
+        dataset_id: str,
+    ) -> "PublishedDeposition":
+        """Get most recent version of a published deposition."""
+        deposition = await api_client.get_deposition(dataset_id)
+
+        return cls(
+            dataset_id=dataset_id,
+            settings=settings,
+            api_client=api_client,
+            deposition=deposition,
+        )
 
     @abstractmethod
     async def open_draft(self) -> "DraftDeposition":
@@ -156,7 +188,28 @@ class DraftDeposition(BaseModel, ABC):
     and should not be overriden except in exceptional circumstances.
     """
 
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     settings: RunSettings
+    api_client: DepositorAPIClient
+    dataset_id: str
+    deposition: DepositionState
+
+    @classmethod
+    async def new_draft(
+        cls,
+        settings: RunSettings,
+        api_client: DepositorAPIClient,
+        dataset_id: str,
+    ) -> "DraftDeposition":
+        """Construct a new deposition from scratch."""
+        deposition = await api_client.create_new_deposition(dataset_id)
+        return cls(
+            dataset_id=dataset_id,
+            settings=settings,
+            api_client=api_client,
+            deposition=deposition,
+        )
 
     @abstractmethod
     async def publish(self) -> PublishedDeposition:

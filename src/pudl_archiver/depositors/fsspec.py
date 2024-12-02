@@ -5,7 +5,7 @@ import traceback
 from typing import BinaryIO
 
 import aiohttp
-from pydantic import BaseModel, ConfigDict
+from pydantic import ConfigDict
 from upath import UPath
 
 from ..frictionless import MEDIA_TYPES, DataPackage, Resource, ResourceInfo
@@ -13,6 +13,7 @@ from ..utils import RunSettings, compute_md5
 from .depositor import (
     DepositionAction,
     DepositionChange,
+    DepositionState,
     DepositorAPIClient,
     DraftDeposition,
     PublishedDeposition,
@@ -44,7 +45,7 @@ def _resource_from_upath(path: UPath, parts: dict[str, str]) -> Resource:
     )
 
 
-class Deposition(BaseModel):
+class Deposition(DepositionState):
     """Represent an fsspec deposition."""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -72,13 +73,14 @@ class Deposition(BaseModel):
 class FsspecAPIClient(DepositorAPIClient):
     """Implement API for fsspec based depositors."""
 
-    base_path: str
+    path: str
 
     @classmethod
     async def initialize_client(
         cls,
         session: aiohttp.ClientSession,
         sandbox: bool,
+        deposition_path: str,
     ) -> "FsspecAPIClient":
         """Return initialized fsspec api client."""
         logger.warning(
@@ -91,17 +93,17 @@ class FsspecAPIClient(DepositorAPIClient):
                 "There is no sandbox available for fsspec archiver. "
                 "An alternative for testing would be to use the 'local' depositor backend."
             )
-        return cls()
+        return cls(path=deposition_path)
 
     async def get_deposition(self, dataset_id: str):
         """Get latest version of deposition associated with dataset_id."""
         return Deposition.from_upath(
-            deposition_path=UPath(self.base_path) / dataset_id,
+            deposition_path=UPath(self.path),
         )
 
     async def create_new_deposition(self, dataset_id: str):
         """Prepare new deposition associated with dataset_id."""
-        deposition_path = UPath(self.base_path) / dataset_id
+        deposition_path = UPath(self.path)
         deposition_path.mkdir(parents=True, exist_ok=True)
 
         return Deposition.from_upath(deposition_path=deposition_path)
@@ -260,26 +262,6 @@ class FsspecDraftDeposition(DraftDeposition):
         return datapackage
 
 
-# TODO: Make paths configurable for variants below
-
-
-class GCSAPIClient(FsspecAPIClient):
-    """FsspecAPIClient variant using GCS as backend."""
-
-    base_path: str = "gs://archives.catalyst.coop"
-
-
-class LocalAPIClient(FsspecAPIClient):
-    """FsspecAPIClient variant using local file system as backend."""
-
-    base_path: str = "file://archives.catalyst.coop"
-
-
 register_depositor(
-    "gcs", GCSAPIClient, FsspecPublishedDeposition, FsspecDraftDeposition
-)
-
-
-register_depositor(
-    "local", LocalAPIClient, FsspecPublishedDeposition, FsspecDraftDeposition
+    "fsspec", FsspecAPIClient, FsspecPublishedDeposition, FsspecDraftDeposition
 )

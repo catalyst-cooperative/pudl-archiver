@@ -82,7 +82,6 @@ async def archive_datasets(
             downloader = cls(
                 session,
                 run_settings.only_years,
-                download_directory=run_settings.download_dir,
             )
             tasks.append(
                 orchestrate_run(
