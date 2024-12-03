@@ -8,9 +8,7 @@ import aiohttp
 from pydantic import ConfigDict
 from upath import UPath
 
-from ..frictionless import MEDIA_TYPES, DataPackage, Resource, ResourceInfo
-from ..utils import RunSettings, compute_md5
-from .depositor import (
+from pudl_archiver.depositors.depositor import (
     DepositionAction,
     DepositionChange,
     DepositionState,
@@ -19,6 +17,8 @@ from .depositor import (
     PublishedDeposition,
     register_depositor,
 )
+from pudl_archiver.frictionless import MEDIA_TYPES, DataPackage, Resource, ResourceInfo
+from pudl_archiver.utils import RunSettings, compute_md5
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
