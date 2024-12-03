@@ -82,10 +82,11 @@ There are also four optional flags available:
   for. Overrides `--datasets`.
 - `--depositor`: select backend storage system. Defaults to `zenodo`, which is
   the only fully featured backend at this point, but we are experimenting with an
-  `fsspec` based backend which would allow using various cloud storage backends like
-  GCS. Available options include `gcs`, `local`, and `zenodo`. `gcs` and `local` use
-  the `fsspec` backend, which currently does not support versioning, so these options
-  should be used with caution.
+  `fsspec` based backend to allow storage to allow archiving to local and
+  generic cloud based storage options. To use this depositor, set this option to
+  `fsspec` and set the `--deposition-path` to an fsspec compliant path.
+- `--deposition-path`: Used with the `fsspec` option for `--depositor`. Should
+  point to an fsspec compliant path (e.g. `file://path/to/file`).
 
 ## Adding a new dataset
 
