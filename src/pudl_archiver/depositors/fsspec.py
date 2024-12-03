@@ -170,6 +170,7 @@ class FsspecDraftDeposition(DraftDeposition):
             dataset_id=self.dataset_id,
             api_client=self.api_client,
             settings=self.settings.model_copy(update={"initialize": False}),
+            deposition=self.deposition,
         )
 
     async def create_file(
