@@ -83,7 +83,7 @@ There are also four optional flags available:
 - `--depositor`: select backend storage system. Defaults to `zenodo`, which is
   the only fully featured backend at this point, but we are experimenting with an
   `fsspec` based backend which would allow using various cloud storage backends like
-  GCS. Available options include `gcs`, `local`, and `zeonodo`. `gcs` and `local` use
+  GCS. Available options include `gcs`, `local`, and `zenodo`. `gcs` and `local` use
   the `fsspec` backend, which currently does not support versioning, so these options
   should be used with caution.
 
