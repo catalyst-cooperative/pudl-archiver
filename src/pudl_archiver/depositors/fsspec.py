@@ -58,7 +58,8 @@ class Deposition(DepositionState):
     @classmethod
     def from_upath(cls, deposition_path: UPath):
         """Construct deposition object from fsspec path to deposition."""
-        assert deposition_path.exists()
+        if not deposition_path.exists():
+            deposition_path.mkdir(parents=True)
         file_list = [
             str(child.name)
             for child in deposition_path.iterdir()
