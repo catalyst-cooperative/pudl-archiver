@@ -32,9 +32,11 @@ For each of the following archives, find the run status in the Github archiver r
 - [ ] ferc6
 - [ ] ferc60
 - [ ] ferc714
+- [ ] gridpathratoolkit
 - [ ] mshamines
 - [ ] nrelatb
 - [ ] phmsagas
+- [ ] vcerare
 - [ ] epacems
 ```
 
@@ -54,4 +56,11 @@ For each run that failed because of another reason (e.g., underlying data change
 
 ```[tasklist]
 - [ ] dataset
+```
+
+# Other issues
+Any other issues that came up during the archive and need to be addressed.
+
+```[tasklist]
+- [ ] issue
 ```
