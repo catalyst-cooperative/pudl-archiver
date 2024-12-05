@@ -122,16 +122,10 @@ def main(summary_files: list[Path]) -> None:
 
     print(
         json.dumps(
-            {
-                "attachments": [
-                    {
-                        "blocks": [header_block("Archiver Run Outcomes")]
-                        + failed_blocks
-                        + changed_blocks
-                        + unchanged_blocks,
-                    }
-                ]
-            },
+            [header_block("Archiver Run Outcomes")]
+            + failed_blocks
+            + changed_blocks
+            + unchanged_blocks,
             indent=2,
         )
     )
