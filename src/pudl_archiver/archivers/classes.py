@@ -89,7 +89,6 @@ class AbstractDatasetArchiver(ABC):
         self,
         session: aiohttp.ClientSession,
         only_years: list[int] | None = None,
-        download_directory: str | None = None,
     ):
         """Initialize Archiver object.
 
@@ -102,15 +101,8 @@ class AbstractDatasetArchiver(ABC):
         self.session = session
 
         # Create a temporary directory for downloading data
-
-        if download_directory is None:
-            self.download_directory_manager = tempfile.TemporaryDirectory()
-            self.download_directory = Path(self.download_directory_manager.name)
-        else:
-            self.download_directory = Path(download_directory)
-
-        if not self.download_directory.is_dir():
-            self.download_directory.mkdir(exist_ok=True, parents=True)
+        self.download_directory_manager = tempfile.TemporaryDirectory()
+        self.download_directory = Path(self.download_directory_manager.name)
 
         if only_years is None:
             only_years = []

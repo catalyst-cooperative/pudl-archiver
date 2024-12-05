@@ -11,6 +11,7 @@ from typing import Annotated, Literal
 from pudl.metadata.classes import Contributor, DataSource
 from pydantic import BaseModel, Field, StringConstraints, field_validator
 
+from pudl_archiver.depositors.depositor import DepositionState
 from pudl_archiver.utils import Url
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
@@ -232,7 +233,7 @@ class DepositionLinks(BaseModel):
     self: Url | None = None
 
 
-class Deposition(BaseModel):
+class Deposition(DepositionState):
     """Pydantic model representing a zenodo deposition.
 
     See https://developers.zenodo.org/#depositions.

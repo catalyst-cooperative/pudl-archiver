@@ -6,7 +6,6 @@ import json
 import logging
 import os
 import traceback
-from hashlib import md5
 from pathlib import Path
 from typing import BinaryIO, Literal
 
@@ -15,7 +14,7 @@ import semantic_version  # type: ignore  # noqa: PGH003
 import yaml
 from pydantic import BaseModel, PrivateAttr
 
-from pudl_archiver.depositors import (
+from pudl_archiver.depositors.depositor import (
     DepositionAction,
     DepositionChange,
     DepositorAPIClient,
@@ -24,7 +23,7 @@ from pudl_archiver.depositors import (
     register_depositor,
 )
 from pudl_archiver.frictionless import MEDIA_TYPES, DataPackage, Resource, ResourceInfo
-from pudl_archiver.utils import RunSettings, Url, retry_async
+from pudl_archiver.utils import RunSettings, Url, compute_md5, retry_async
 
 from .entities import (
     Deposition,
@@ -36,16 +35,6 @@ from .entities import (
 )
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
-
-
-def _compute_md5(file_path: Path) -> str:
-    """Compute an md5 checksum to compare to files in zenodo deposition."""
-    hash_md5 = md5()  # noqa: S324
-    with Path.open(file_path, "rb") as f:
-        for chunk in iter(lambda: f.read(4096), b""):
-            hash_md5.update(chunk)
-
-    return hash_md5.hexdigest()
 
 
 class ZenodoClientError(Exception):
@@ -102,7 +91,7 @@ def _resource_from_file(file: DepositionFile, parts: dict[str, str]) -> Resource
     )
 
 
-class ZenodoAPIClient(BaseModel, DepositorAPIClient):
+class ZenodoAPIClient(DepositorAPIClient):
     """Implements the base interface to zenodo depositions.
 
     This class will be inherited by both the Draft and Published Zenodo deposition
@@ -122,13 +111,18 @@ class ZenodoAPIClient(BaseModel, DepositorAPIClient):
         cls,
         session: aiohttp.ClientSession,
         sandbox: bool,
+        deposition_path: str | None = None,
     ) -> "ZenodoAPIClient":
         """Initialize API client connection.
 
         Args:
             session: HTTP handler - we don't use it directly, it's wrapped in self._request.
-            run_settings: Settings from CLI.
         """
+        if deposition_path:
+            raise RuntimeError(
+                "Zenodo depositor does not use deposition_path parameter."
+            )
+
         self = cls(sandbox=sandbox)
         self._session = session
         self._request = self._make_requester(session)
@@ -690,7 +684,7 @@ class ZenodoDraftDeposition(DraftDeposition):
         action = DepositionAction.NO_OP
         if file_info := self.deposition.files_map.get(filename):
             # If file is not exact match for existing file, update with new file
-            if (local_md5 := _compute_md5(resource.local_path)) != file_info.checksum:
+            if (local_md5 := compute_md5(resource.local_path)) != file_info.checksum:
                 logger.info(
                     f"Updating {filename}: local hash {local_md5} vs. remote {file_info.checksum}"
                 )

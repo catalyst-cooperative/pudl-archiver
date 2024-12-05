@@ -64,8 +64,12 @@ def parse_main(args=None):
     )
     (
         parser.add_argument(
-            "--download-dir",
-            help="Directory to download files to. Use tmpdir if not specified.",
+            "--deposition-path",
+            help=(
+                "Configurable base path used by `fsspec` depositor. Expects paths in `fsspec` compatible "
+                "format like: 'file://local/path/to/folder' or file:///absolute/path/to/folder or "
+                "gs://path/to/gcs_bucket"
+            ),
             default=None,
         ),
     )
@@ -77,6 +81,7 @@ def parse_main(args=None):
     parser.add_argument(
         "--depositor",
         type=str,
+        help="Specifies what backend engine will be used for archive storage. Current allowable options include zenodo and fsspec",
         default="zenodo",
     )
     return parser.parse_args(args)
