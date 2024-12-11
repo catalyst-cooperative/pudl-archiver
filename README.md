@@ -86,7 +86,7 @@ There are also four optional flags available:
   generic cloud based storage options. To use this depositor, set this option to
   `fsspec` and set the `--deposition-path` to an fsspec compliant path.
 - `--deposition-path`: Used with the `fsspec` option for `--depositor`. Should
-  point to an fsspec compliant path (e.g. `file://path/to/file`).
+  point to an fsspec compliant path (e.g. `file://path/to/folder`).
 
 ## Adding a new dataset
 

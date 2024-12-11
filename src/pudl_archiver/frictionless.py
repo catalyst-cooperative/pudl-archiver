@@ -1,8 +1,8 @@
 """Core routines for frictionless data package construction."""
 
+import datetime
 import zipfile
 from collections.abc import Iterable
-from datetime import datetime
 from io import BytesIO
 from pathlib import Path
 from typing import Any
@@ -123,8 +123,11 @@ class DataPackage(BaseModel):
         """
         serialized_contributors = []
         for contributor in contributors:
-            # Pass kwargs from top-level model_dump call
-            serialized = contributor.model_dump(**info.__dict__)
+            serialized = contributor.model_dump(
+                # Pass kwargs from top-level model_dump call
+                # Do not serialize null values, e.g. contributor ORCID which is optional
+                **(info.__dict__ | {"exclude_none": True})
+            )
             serialized["path"] = str(serialized["path"])
             serialized_contributors.append(serialized)
 
@@ -142,8 +145,8 @@ class DataPackage(BaseModel):
         Args:
             name: Data source id.
             files: List file metadata returned by zenodo api.
-            resources: A dictionary mapping file names to a ResourceInfo object containing
-                       the local path to the resource, and its working partitions.
+            resources: A dictionary mapping file names to a ResourceInfo object
+                containing the local path to the resource, and its working partitions.
             version: Version string for current deposition version.
         """
         if name == "mecs":
@@ -167,7 +170,7 @@ class DataPackage(BaseModel):
             licenses=[data_source.license_raw],
             resources=sorted(resources, key=lambda x: x.name),  # Sort by filename
             contributors=[CONTRIBUTORS["catalyst-cooperative"]],
-            created=str(datetime.utcnow()),
+            created=datetime.datetime.now(tz=datetime.UTC).isoformat(),
             keywords=data_source.keywords,
             description=data_source.description,
             version=version,

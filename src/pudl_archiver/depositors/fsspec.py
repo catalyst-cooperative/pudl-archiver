@@ -86,7 +86,7 @@ class FsspecAPIClient(DepositorAPIClient):
         """Return initialized fsspec api client."""
         logger.warning(
             "The fsspec depositor backend is in an early/experimental state. "
-            "It currently does not support versioning so any existing archive would be overwritten. "
+            "It currently does not support versioning so any existing archive will be overwritten. "
             "Please use with caution."
         )
         if sandbox:
