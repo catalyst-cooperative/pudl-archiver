@@ -80,6 +80,13 @@ There are also four optional flags available:
   the new Zenodo DOI to the `dataset_doi.yaml` file.
 - `--all`: shortcut for archiving all datasets that we have defined archivers
   for. Overrides `--datasets`.
+- `--depositor`: select backend storage system. Defaults to `zenodo`, which is
+  the only fully featured backend at this point, but we are experimenting with an
+  `fsspec` based backend to allow storage to allow archiving to local and
+  generic cloud based storage options. To use this depositor, set this option to
+  `fsspec` and set the `--deposition-path` to an fsspec compliant path.
+- `--deposition-path`: Used with the `fsspec` option for `--depositor`. Should
+  point to an fsspec compliant path (e.g. `file://path/to/folder`).
 
 ## Adding a new dataset
 
