@@ -199,7 +199,7 @@ class DataPackage(BaseModel):
             ],
             resources=sorted(resources, key=lambda x: x.name),  # Sort by filename
             contributors=[CONTRIBUTORS["catalyst-cooperative"]],
-            created=str(datetime.utcnow()),
+            created=str(datetime.datetime.now(tz=datetime.UTC).isoformat()),
             keywords=["MECS"],
             description="According to the EIA, the Manufacturing Energy Consumption Survey (MECS) is a national sample survey that collects information on the stock of U.S. manufacturing establishment, their energy-related building characteristics, and their energy consumption and expenditures.",
             version=version,
