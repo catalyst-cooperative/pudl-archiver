@@ -3,13 +3,14 @@
 import argparse
 import asyncio
 import logging
+import typing
 from pathlib import Path
 
 import coloredlogs
 from dotenv import load_dotenv
 
 from pudl_archiver import ARCHIVERS, archive_datasets
-from pudl_archiver.utils import RunSettings
+from pudl_archiver.utils import Depositors, RunSettings
 
 logger = logging.getLogger("catalystcoop.pudl_archiver")
 
@@ -82,6 +83,7 @@ def parse_main(args=None):
         "--depositor",
         type=str,
         help="Specifies what backend engine will be used for archive storage. Current allowable options include zenodo and fsspec",
+        choices=list(typing.get_args(Depositors)),
         default="zenodo",
     )
     return parser.parse_args(args)

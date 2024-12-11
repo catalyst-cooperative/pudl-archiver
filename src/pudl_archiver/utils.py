@@ -119,6 +119,9 @@ async def rate_limit_tasks(tasks: list[typing.Awaitable], rate_limit: int = 10):
         yield result
 
 
+Depositors = typing.Literal["zenodo", "fsspec"]
+
+
 class RunSettings(BaseModel):
     """Settings for an archive run taken from CLI options."""
 
@@ -131,7 +134,7 @@ class RunSettings(BaseModel):
     auto_publish: bool = False
     refresh_metadata: bool = False
     resume_run: bool = False
-    depositor: str = "zenodo"
+    depositor: Depositors = "zenodo"
 
 
 def compute_md5(file_path: UPath) -> str:
