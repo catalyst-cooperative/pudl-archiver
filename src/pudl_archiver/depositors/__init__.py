@@ -8,7 +8,7 @@ import aiohttp
 from pudl_archiver.frictionless import DataPackage
 from pudl_archiver.utils import RunSettings
 
-from . import fsspec, zenodo
+from . import fsspec
 from .depositor import (
     DEPOSITION_BACKENDS,
     DepositionAction,
@@ -17,6 +17,7 @@ from .depositor import (
     DraftDeposition,
     PublishedDeposition,
 )
+from .zenodo import depositor
 
 
 async def get_deposition(
