@@ -61,7 +61,7 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
     allowed_file_rel_diff = 0.35  # Set higher tolerance than standard
 
     base_url = "https://api.epa.gov/easey/bulk-files/"
-    parameters = {"api_key": os.environ["EPACEMS_API_KEY"]}  # Set to API key
+    parameters = {"api_key": os.environ.get("EPACEMS_API_KEY")}  # Set to API key
 
     def __filter_for_complete_metadata(
         self, files_responses: list[dict]

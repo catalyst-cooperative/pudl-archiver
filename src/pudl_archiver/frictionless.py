@@ -1,8 +1,8 @@
 """Core routines for frictionless data package construction."""
 
+import datetime
 import zipfile
 from collections.abc import Iterable
-from datetime import datetime
 from io import BytesIO
 from pathlib import Path
 from typing import Any
@@ -123,8 +123,11 @@ class DataPackage(BaseModel):
         """
         serialized_contributors = []
         for contributor in contributors:
-            # Pass kwargs from top-level model_dump call
-            serialized = contributor.model_dump(**info.__dict__)
+            serialized = contributor.model_dump(
+                # Pass kwargs from top-level model_dump call
+                # Do not serialize null values, e.g. contributor ORCID which is optional
+                **(info.__dict__ | {"exclude_none": True})
+            )
             serialized["path"] = str(serialized["path"])
             serialized_contributors.append(serialized)
 
@@ -142,10 +145,22 @@ class DataPackage(BaseModel):
         Args:
             name: Data source id.
             files: List file metadata returned by zenodo api.
-            resources: A dictionary mapping file names to a ResourceInfo object containing
-                       the local path to the resource, and its working partitions.
+            resources: A dictionary mapping file names to a ResourceInfo object
+                containing the local path to the resource, and its working partitions.
             version: Version string for current deposition version.
         """
+        if name == "mecs":
+            return cls.mecs(resources=resources, version=version)
+        return cls.from_pudl_metadata(name=name, resources=resources, version=version)
+
+    @classmethod
+    def from_pudl_metadata(
+        cls,
+        name: str,
+        resources: Iterable[Resource],
+        version: str | None,
+    ) -> "DataPackage":
+        """Create a datapackage using PUDL metadata associated with ``name``."""
         data_source = DataSource.from_id(name)
 
         return DataPackage(
@@ -155,8 +170,37 @@ class DataPackage(BaseModel):
             licenses=[data_source.license_raw],
             resources=sorted(resources, key=lambda x: x.name),  # Sort by filename
             contributors=[CONTRIBUTORS["catalyst-cooperative"]],
-            created=str(datetime.utcnow()),
+            created=datetime.datetime.now(tz=datetime.UTC).isoformat(),
             keywords=data_source.keywords,
             description=data_source.description,
+            version=version,
+        )
+
+    @classmethod
+    def mecs(cls, resources: Iterable[Resource], version: str | None):
+        """Hack method to create a Datapackage for EIA MECS data not in PUDL metadata."""
+        return DataPackage(
+            name="MECS",
+            title="EIA MECS data",
+            sources=[
+                {
+                    "title": "EIA MECS data",
+                    "path": "https://www.eia.gov/consumption/manufacturing/data/2018/",
+                }
+            ],
+            licenses=[
+                License(
+                    **{
+                        "name": "CC-BY-4.0",
+                        "title": "Creative Commons Attribution 4.0",
+                        "path": "https://creativecommons.org/licenses/by/4.0",
+                    }
+                )
+            ],
+            resources=sorted(resources, key=lambda x: x.name),  # Sort by filename
+            contributors=[CONTRIBUTORS["catalyst-cooperative"]],
+            created=str(datetime.datetime.now(tz=datetime.UTC).isoformat()),
+            keywords=["MECS"],
+            description="According to the EIA, the Manufacturing Energy Consumption Survey (MECS) is a national sample survey that collects information on the stock of U.S. manufacturing establishment, their energy-related building characteristics, and their energy consumption and expenditures.",
             version=version,
         )

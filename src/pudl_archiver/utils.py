@@ -5,19 +5,19 @@ import logging
 import typing
 import zipfile
 from collections.abc import Awaitable, Callable
+from hashlib import md5
 from pathlib import Path
 
 import aiohttp
-from pydantic import AnyHttpUrl, BaseModel
+from pydantic import AnyUrl, BaseModel
 from pydantic.functional_serializers import PlainSerializer
+from upath import UPath
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 
 # A custom type that wraps AnyHttpUrl, but nicely serializes the URL as a string
-Url = typing.Annotated[
-    AnyHttpUrl, PlainSerializer(lambda url: str(url), return_type=str)
-]
+Url = typing.Annotated[AnyUrl, PlainSerializer(lambda url: str(url), return_type=str)]
 
 
 async def retry_async(
@@ -119,6 +119,9 @@ async def rate_limit_tasks(tasks: list[typing.Awaitable], rate_limit: int = 10):
         yield result
 
 
+Depositors = typing.Literal["zenodo", "fsspec"]
+
+
 class RunSettings(BaseModel):
     """Settings for an archive run taken from CLI options."""
 
@@ -126,9 +129,19 @@ class RunSettings(BaseModel):
     initialize: bool = False
     only_years: list[int] | None = []
     summary_file: Path | None = None
-    download_dir: str | None = None
+    deposition_path: str | None = None
     clobber_unchanged: bool = False
     auto_publish: bool = False
     refresh_metadata: bool = False
     resume_run: bool = False
-    depositor: str = "zenodo"
+    depositor: Depositors = "zenodo"
+
+
+def compute_md5(file_path: UPath) -> str:
+    """Compute an md5 checksum to compare to files in zenodo deposition."""
+    hash_md5 = md5()  # noqa: S324
+    with file_path.open(mode="rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_md5.update(chunk)
+
+    return hash_md5.hexdigest()
