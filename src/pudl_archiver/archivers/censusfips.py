@@ -9,7 +9,7 @@ from pudl_archiver.archivers.classes import (
     ResourceInfo,
 )
 
-BASE_URL = "https://www2.census.gov/programs-surveys/popest/geographies/"
+BASE_URL = "https://www2.census.gov/programs-surveys/popest/geographies"
 
 
 class CensusFipsArchiver(AbstractDatasetArchiver):
@@ -26,14 +26,15 @@ class CensusFipsArchiver(AbstractDatasetArchiver):
             if not matches:
                 continue
             year = int(matches.group(1))
-            if self.valid_year(year):
+            # don't go peep into the 1990-2000/ dir which just includes a txt file
+            if self.valid_year(year) and year != 2000:
                 yield self.get_year_resource(year)
 
     async def get_year_resource(self, year: int) -> tuple[Path, dict]:
         """Download excel file."""
         # before 2017, the files are xls. after that its xlsx
         file_extension = "xlsx" if year >= 2017 else "xls"
-        file_name = f"state-geocodes-v{year}.{file_extension}"
+        file_name = f"all-geocodes-v{year}.{file_extension}"
         url = f"{BASE_URL}/{year}/{file_name}"
         download_path = self.download_directory / file_name
         await self.download_file(url, download_path)
