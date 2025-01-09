@@ -16,6 +16,7 @@ from pudl_archiver.utils import Url
 MEDIA_TYPES: dict[str, str] = {
     "zip": "application/zip",
     "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "xls": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     "csv": "text/csv",
     "txt": "text/csv",
     "parquet": "application/vnd.apache.parquet",
