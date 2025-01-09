@@ -33,10 +33,15 @@ class CensusFipsArchiver(AbstractDatasetArchiver):
     async def get_year_resource(self, year: int) -> tuple[Path, dict]:
         """Download excel file."""
         # before 2017, the files are xls. after that its xlsx
-        file_extension = "xlsx" if year >= 2017 else "xls"
-        file_name = f"all-geocodes-v{year}.{file_extension}"
-        url = f"{BASE_URL}/{year}/{file_name}"
+        link_url = f"{BASE_URL}/{year}"
+        link_pattern = re.compile(rf"all-geocodes-v{year}.(xlsx|xls)")
+        file_names = await self.get_hyperlinks(link_url, link_pattern)
+        if len(file_names) != 1:
+            raise AssertionError(
+                f"We expected exactly one link for {year}, but we found: {file_names}"
+            )
+        file_name = file_names.pop()
         download_path = self.download_directory / file_name
-        await self.download_file(url, download_path)
+        await self.download_file(f"{link_url}/{file_name}", download_path)
 
         return ResourceInfo(local_path=download_path, partitions={"year": year})
