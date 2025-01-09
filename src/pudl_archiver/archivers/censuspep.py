@@ -1,4 +1,4 @@
-"""Download US Census FIPS Codes."""
+"""Download US Census Federal Information Processing Standards (FIPS) codes from Population Estimates Program (PEP)."""
 
 import re
 from pathlib import Path
@@ -12,13 +12,13 @@ from pudl_archiver.archivers.classes import (
 BASE_URL = "https://www2.census.gov/programs-surveys/popest/geographies"
 
 
-class CensusFipsArchiver(AbstractDatasetArchiver):
-    """Census FIPS Codes archiver."""
+class CensusPepArchiver(AbstractDatasetArchiver):
+    """Census PEP FIPS Codes archiver."""
 
-    name = "censusfips"
+    name = "censuspep"
 
     async def get_resources(self) -> ArchiveAwaitable:
-        """Download Census FIPS Codes resources."""
+        """Download Census PEP FIPS Codes resources."""
         # the BASE_URL page has a bunch of links with YEAR/ at the end
         link_pattern = re.compile(r"(\d{4})/$")
         for link in await self.get_hyperlinks(BASE_URL, link_pattern):
@@ -31,9 +31,12 @@ class CensusFipsArchiver(AbstractDatasetArchiver):
 
     async def get_year_resource(self, year: int) -> tuple[Path, dict]:
         """Download excel or txt file."""
-        # before 2017, the files are xls. after that its xlsx
+        # every directory besides the 1990-2000 dir has excel files
+        # that we have to sift through to find the correct file.
+        # the oldest data (1990-2000) dir includes just one txt file.
         if year != 2000:
             link_url = f"{BASE_URL}/{year}"
+            # before 2017, the files are xls. after that its xlsx
             link_pattern = re.compile(rf"all-geocodes-v{year}.(xlsx|xls)")
             file_names = await self.get_hyperlinks(link_url, link_pattern)
             if len(file_names) != 1:
