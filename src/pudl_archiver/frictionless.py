@@ -190,11 +190,7 @@ class DataPackage(BaseModel):
         version: str | None,
     ):
         """Create a datapackage for sources that won't end up in PUDL."""
-        # TODO: This is a slightly ugly workaround to avoid having to add sources into
-        # the from_id method - should I just fix this at the source?
-        data_source = DataSource(
-            **DataSource.dict_from_id(x=name, sources=NON_PUDL_SOURCES)
-        )
+        data_source = DataSource.from_id(name, sources=NON_PUDL_SOURCES)
 
         return DataPackage(
             name=data_source.name,
