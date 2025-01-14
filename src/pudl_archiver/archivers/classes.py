@@ -441,7 +441,7 @@ class AbstractDatasetArchiver(ABC):
 
         return validate.DatasetUniversalValidation(
             name="Validate data continuity",
-            description=f'Test {", ".join(list(VALID_PARTITION_RANGES.keys()))} partitions for continuity and duplication.',
+            description=f"Test {', '.join(list(VALID_PARTITION_RANGES.keys()))} partitions for continuity and duplication.",
             success=success,
             notes=note,
             required_for_run_success=self.fail_on_data_continuity,

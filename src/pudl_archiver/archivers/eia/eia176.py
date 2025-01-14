@@ -78,7 +78,7 @@ class Eia176Archiver(EiaNGQVArchiver):
 
         for i in range(0, len(items_list), 20):
             rand = random.randint(0, 2)  # noqa: S311
-            logger.debug(f"Getting items {i}-{i+20} of data for {year}")
+            logger.debug(f"Getting items {i}-{i + 20} of data for {year}")
             # Chunk items list into 20 to avoid error message
             download_url = self.data_url + f"{year}/{year}/ICA/Name/"
             items = items_list[i : i + 20]
