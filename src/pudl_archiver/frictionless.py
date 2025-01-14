@@ -167,7 +167,7 @@ class DataPackage(BaseModel):
         version: str | None,
     ) -> "DataPackage":
         """Create a datapackage using PUDL metadata associated with ``name``."""
-        data_source = DataSource.from_id(name)
+        data_source = DataSource.from_id(name, sources=SOURCES)
 
         return DataPackage(
             name=f"pudl-raw-{data_source.name}",
