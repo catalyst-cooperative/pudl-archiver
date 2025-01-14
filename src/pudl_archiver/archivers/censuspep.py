@@ -47,6 +47,7 @@ class CensusPepArchiver(AbstractDatasetArchiver):
         elif year == 2000:
             link_url = f"{BASE_URL}/1990-2000"
             file_name = "90s-fips.txt"
-        download_path = self.download_directory / file_name
-        await self.download_file(f"{link_url}/{file_name}", download_path)
+        url = f"{link_url}/{file_name}"
+        download_path = self.download_directory / f"{self.name}_{year}.zip"
+        await self.download_and_zip_file(url, file_name, download_path)
         return ResourceInfo(local_path=download_path, partitions={"year": year})
