@@ -71,7 +71,7 @@ requested datasource requested. The supported datasources include `censusdp1trac
 `eia930`, `eiaaeo`, `eiawater`, `epacems`, `epacamd_eia`, `ferc1`, `ferc2`, `ferc6`,
 `ferc60`, `ferc714`, `nrelatb`, `phmsagas`, `mshamines`.
 
-There are also four optional flags available:
+There are also five optional flags available:
 
 - `--sandbox`: used for testing. It will only interact with Zenodo's
   [sandbox](https://sandbox.zenodo.org/) instance.
@@ -256,11 +256,11 @@ for an example of this method.
 ### Step 3: Test archiver locally
 
 Once you've written your archiver, it's time to test that it works as expected! To run
-the archiver locally, run the following commands below
+the archiver locally, run the following commands in your terminal:
 
 ```bash
 mamba activate pudl-cataloger
-pudl_archiver --datasets {new_dataset_name} --initialize --summary-file {new_dataset_name}-summary.json --depositor fsspec --depositor_path {file://local/path/to/folder}
+pudl_archiver --datasets {new_dataset_name} --initialize --summary-file {new_dataset_name}-summary.json --depositor fsspec --deposition-path {file://local/path/to/folder}
 ```
 
 * `--initialize` creates a new deposition, and is used when creating a brand new archive
@@ -276,24 +276,36 @@ ensure that all files download as expected.
 
 ### Step 4: Test uploading to Zenodo
 
-*TODO: FINISH!
+Once you're satisfied with your archiver, it's time to upload it to the Zenodo sandbox
+so that others can review it. The [Zenodo sandbox](https://sandbox.zenodo.org/) allows
+you to create temporary Zenodo archives before publishing your data to the production
+server. We use the sandbox to test our archives, review each other's work, and attempt
+data integration into PUDL prior to publishing our archives on the main Zenodo site.
 
-Note that this step will require you to create your own [Zenodo validation credentials](https://zenodo.org/account/settings/applications/tokens/new/)
-if you are not a core Catalyst developer.
+Note that this step will require you to create your own
+[Zenodo sandbox credentials](https://zenodo.org/account/settings/applications/tokens/new/)
+if you are not a core Catalyst developer. Each token should have the following permissions:
 
-You will
-need to run the initialize command to create a new zenodo deposition, and
-update the config file with the new DOI:
+* ZENODO_SANDBOX_TOKEN_UPLOAD: deposit:write, user:email
+* ZENODO_SANDBOX_TOKEN_PUBLISH: deposit:actions, deposit:write, user:email
 
+Once created, you'll need to save each token as follows:
+```bash
+echo "export ZENODO_SANDBOX_TOKEN_UPLOAD='token'" >> ~/.zshrc # if you are using zsh
+echo ""export ZENODO_SANDBOX_TOKEN_UPLOAD='token'" >> ~/.bashrc # if you are using bash
+set -Ux "export ZENODO_SANDBOX_TOKEN_UPLOAD='token' # if you are using fish shell
+mamba reactivate pudl-cataloger
 ```
-pudl_archiver --datasets {new_dataset_name} --initialize --summary-file {new_dataset_name}-summary.json
+
+Like before, you will need to run the initialize command to create a new Zenodo deposition:
+
+```bash
+pudl_archiver --datasets {new_dataset_name} --initialize --sandbox --summary-file {new_dataset_name}-summary.json
 ```
-
-
 
 ### Step 5: Manually review your archive before publication.
 
-If the archiver run is successful, it will produce a link to the draft archive. Though
+If the archiver run is successful, it will produce a link to the draft sandbox archive. Though
 many of the validation steps are automated, it is worthwhile manually reviewing archives
 before publication, since a Zenodo record cannot be deleted once published. Here are
 some recommended additional manual steps for verification:
@@ -310,14 +322,33 @@ the metadata for each resource?
 4. Click to download one or two files from the archive. Extract them and open them to
 make sure they look as expected.
 
-When you're ready to submit this archive, hit "publish"! Then head over to the
-[pudl](https://github.com/catalyst-cooperative/pudl) repo to integrate the new archive.
+When you're ready to submit this archive, hit "publish"! Add this sandbox archive link
+to your pull request and request a review from a Catalyst core member.
 
-### Step 6: Update DOIs and CLI
-TODO: add to .yaml and CLI (if relevant)
+*If your dataset is destined for integration into PUDL:* Head over to the
+[pudl](https://github.com/catalyst-cooperative/pudl) repo to attempt to integrate the
+new archive using the sandbox DOI. This will help to flag any formatting problems
+before publishing to the production server.
+
+### Step 6: Finalizing the archive
+
+> [!IMPORTANT]
+> This step can only be done by core Catalyst developers, as it requires
+
+Once your PR has been approved, it's time for your archive to make its debut!
+
+* Rerun the archiver without the `--sandbox` flag to create a draft production archive
+* Review the archive using the guidelines in Step 5.
+* Once published, submit the archive to the Catalyst Cooperative community.
+* Add the concept DOIs for the published sandbox and production to `/src/pudl_archiver/package_data/zenodo_doi.yaml`. These DOIs tell the archiver when a dataset already exists, making it
+possible to update existing archives with new data.
+* If you implemented `self.valid_year()`, add your dataset manually to the list of datasets
+that support this feature in `src/pudl_archiver/cli.py`.
 
 ### Step 7: Automate archiving
-TODO: Add to GHA!
+We automatically run all our archivers once a month to make sure we capture ongoing
+changes to our archived datasets. To automate archiving of your new dataset, add the dataset
+to the list of quoted datasets in `.github/workflows/run-archiver.yml` where the `default` value of `datasets` is configured (line 9), as well as where the `dataset` inputs for the `matrix` are set (line 28).
 
 ## Development
 
