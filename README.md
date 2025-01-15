@@ -91,11 +91,21 @@ There are also four optional flags available:
 ## Adding a new dataset
 
 ### Step 1: Define the dataset's metadata
+
+> [!IMPORTANT]
+> Throughout the code, the dataset you choose will be referred to by a shorthand code -
+> e.g.,`eia860` or `mshamines` or `nrelatb`. The standard format we use for naming
+> datasets is `agency name` + `dataset name`. E.g., Form 860 from EIA becomes `eia860`.
+> When the name of the dataset is more ambiguous
+> (e.g., [MSHA's mine datasets](https://arlweb.msha.gov/OpenGovernmentData/OGIMSHA.asp)),
+> we aim to choose a name that is as indicative as possible - in this case, `mshamines`.
+> If you're unsure which name to choose, ask early in the contribution process as this
+> will get encoded in many locations.
+
 For each dataset we archive, we record information about the title, a description, who
 contributed to archiving the dataset, the segments into which the data files are
-partitioned, its license and keywords. This
-information is used to communicate about the dataset's usage and provenance to any
-future users.
+partitioned, its license and keywords. This information is used to communicate about
+the dataset's usage and provenance to any future users.
 
 * Title: The title of your dataset should clearly contain the agency publishing the data and a non-abbreviated title (e.g., EIA Manufacturing Energy Consumption Survey, not EIA MECS).
 * Path: The link to the dataset's "homepage", where information about the dataset and the path to download it can be found.
@@ -115,59 +125,173 @@ add your metadata as an entry into the `NON_PUDL_SOURCES` dictionary in
 ### Step 2: Implement archiver interface
 
 All of the archivers inherit from the `AbstractDatasetArchiver` base class (defined
-in `src/pudl_archiver/archiver/classes.py`. There is only a single method that each
-archiver needs to implement. That is the `get_resources` method. This method will be
-called by the base class to coordinate downloading all data-resources. It should be
-a generator that yields awaitables to download those resources. Those awaitables
-should be coroutines that download a single resource, and return a path to that
-resource on disk, and a dictionary of working partitions relevant to the resource.
-In practice this generally looks something like:
+in `src/pudl_archiver/archiver/classes.py`), which coordinates the process of downloading,
+uploading and validating archives.
+
+There is only a single method that each archiver needs to implement. That is the
+`get_resources` method. This method will be called by the base class to coordinate
+downloading all data-resources. It should be a generator that yields awaitables to
+download those resources. Those awaitables should be coroutines that download a
+single resource. They should return a path to that resource on disk, and a
+dictionary of working partitions relevant to the resource. In practice this generally
+looks something like:
 
 ```py
-class ExampleArchiver(AbstractDatasetArchiver):
-    name = "example"
+BASE_URL = "https://www.eia.gov/electricity/data/eia860"
+
+class Eia860Archiver(AbstractDatasetArchiver):
+    name = "eia860"
 
     async def get_resources(self) -> ArchiveAwaitable:
-        for year in range(start_year, end_year):
-            yield self.download_year(year)
+        """Download EIA-860 resources."""
+        link_pattern = re.compile(r"eia860(\d{4})(ER)*.zip")
+        for link in await self.get_hyperlinks(BASE_URL, link_pattern):
+            matches = link_pattern.search(link)
+            if not matches:
+                continue
+            year = int(matches.group(1))
+            if self.valid_year(year):
+                yield self.get_year_resource(link, year)
 
-    async def download_year(self, year: int) -> tuple[Path, dict]:
-        url = f"https://example.com/example_form_{year}.zip"
-        download_path = self.download_directory / f"example_form_{year}.zip"
+    async def get_year_resource(self, link: str, year: int) -> ResourceInfo:
+        """Download zip file."""
+        # Append hyperlink to base URL to get URL of file
+        url = f"{BASE_URL}/{link}"
+        download_path = self.download_directory / f"eia860-{year}.zip"
         await self.download_zipfile(url, download_path)
 
-        return download_path, {"year": year}
+        return ResourceInfo(local_path=download_path, partitions={"year": year})
 ```
 
-This example uses a couple of useful helper methods/variables defined in the base
-class. Notice, `download_year` uses `self.download_directory` this is a temporary
-directory created and manged by the base class that is used as a staging area for
-downloading data before uploading it to Zenodo. This temporary directory will be
-automatically removed once the data has been uploaded. `download_year` also uses the
-method `download_zipfile`. This is a helper method implemented to handle downloading
-zipfiles that includes a check for valid zipfiles, and a configurable number of
-retries. Not shown here, but also used frequently is the `get_hyperlinks` method.
-This helper method takes a URL, and a `regex` pattern, and it will find all
-hyperlinks matching the pattern on the page pointed to by the URL. This is useful if
-there's a page containing links to a series of data resources that have somewhat
-structured names.
+#### Create a new archiver script.
 
-### Step 3: Run --initialize command
+1. To create a new archiver, create a new Python file in `src.pudl_archiver.archivers`.
+Files for archivers produced by the same agency are sub-categorized into folders (e.g.,
+`src.pudl_archiver.archivers.eia`).
+2. Subclass the `AbstractDatasetArchiver` to create an archiver class for your dataset -
+e.g., `NrelAtbArchiver` or `PhmsaGasArchiver`.
+3. Define the `name` of your dataset to be the shorthand code you defined in Step 1 (e.g.,
+`eia860`). This should match the name you used for the dictionary key in the source
+dictionary.
 
-You will need to run the initialize command to create a new zenodo deposition, and
+#### Defining `get_resources`
+
+`get_resources()` is the core method required for every archiver - it should identify
+every link or API call required to download all the required data, and yield a series of
+awaitables that will download each partition of the data, matching the partitions you
+defined in step 1 (e.g., one file per year). The content of this method will
+vary depending on the format and accessibility of the dataset that you are archiving, but
+typically tends to follow one of the following patterns:
+
+* Yields an awaitable downloading a single known link (see `archivers.eia.eia_bulk_elec.py`)
+* Gets all of the links on a page, identifies relevant links using a regex pattern, and
+yields awaitables downloading each link on the page (see `archivers.eia.eia860.py` or `archivers.eia.eiamecs.py`). This relies on the frequently used `get_hyperlinks` method. This helper
+method takes a URL, and a `regex` pattern, and it will find all hyperlinks matching the
+pattern on the page pointed to by the URL. This is useful if there's a page containing
+links to a series of data resources that have somewhat structured names.
+* Calls an API to identify download queries for each partition of the data, and yields
+awaitables downloading each partition of the data from the API (see `archivers.eia.epacems.py`).
+
+In the example above, `get_resources` is defined as follows:
+```py
+async def get_resources(self) -> ArchiveAwaitable:
+  """Download EIA-860 resources."""
+  link_pattern = re.compile(r"eia860(\d{4})(ER)*.zip")
+  for link in await self.get_hyperlinks(BASE_URL, link_pattern):
+      matches = link_pattern.search(link)
+      if not matches:
+          continue
+      year = int(matches.group(1))
+      if self.valid_year(year):
+          yield self.get_year_resource(link, year)
+```
+In this case, we know that Form 860 data is on a webpage (`BASE_URL`) containing a
+series of download links, and that the links to the data we want follow a general pattern:
+they are called `eia860{year}.zip` or `eia860{year}ER.zip`. We search through all the
+links in `BASEURL` to find links that match this pattern. For each matching link, we
+extract the year from the file name and pass both the link and the year to the
+`get_year_resource()` method.
+
+> [!TIP]
+> `self.valid_year()` is an optional method that allows us to easily run the archiver on
+> only a year or two of data, for datasets partitioned by year. Though optional, it helps
+> to speed up testing of the data. The method expects a year and returns a boolean
+> indicating whether or not the year is valid.
+
+#### Getting each individual resource
+
+In the example above, we define a second async method. This method downloads a single file per partition:
+```py
+async def get_year_resource(self, link: str, year: int) -> ResourceInfo:
+  """Download zip file."""
+  # Append hyperlink to base URL to get URL of file
+  url = f"{BASE_URL}/{link}"
+  download_path = self.download_directory / f"eia860-{year}.zip"
+  await self.download_zipfile(url, download_path)
+
+  return ResourceInfo(local_path=download_path, partitions={"year": year})
+```
+This method should handle the following steps:
+* identify the specific download link for the file(s) in the partition
+* construct the name of the downloaded file. We rename files to match the format
+`datasource-year.ext` - e.g. `eia860-1990.zip`.
+* construct the path to the downloaded file, using `self.download_directory`: this is
+a temporary directory created and manged by the base class that is used as a staging area
+for downloading data before uploading it to Zenodo. This temporary directory will be
+automatically removed once the data has been uploaded.
+* return `ResourceInfo`, where `local_path` is the path to the downloaded file and
+`partitions` is a dictionary specifying the partition(s) of the dataset.
+
+We have written a number of download methods to handle different file formats:
+* You're downloading a zipfile: `self.download_zipfile()` is a helper method implemented
+to handle downloading zipfiles that includes a check for valid zipfiles, and a
+configurable number of retries.
+* You're downloading a single file in another format (e.g., Excel): `self.download_and_zipfile()` downloads a file and zips it. Where the original files are not already zipped, we zip them
+to speed up upload and download times.
+* You're downloading a number of files that belong to a single partition (e.g., multiple
+API calls per year): `add_to_archive_stable_hash()` can be used to
+download multiple files and add them to the same zipfile. See `archivers.eia.eia176.py`
+for an example of this method.
+
+### Step 3: Test archiver locally
+
+Once you've written your archiver, it's time to test that it works as expected! To run
+the archiver locally, run the following commands below
+
+```bash
+mamba activate pudl-cataloger
+pudl_archiver --datasets {new_dataset_name} --initialize --summary-file {new_dataset_name}-summary.json --depositor fsspec --depositor_path {file://local/path/to/folder}
+```
+
+* `--initialize` creates a new deposition, and is used when creating a brand new archive
+* `--summary-file` will save a .json file summarizing the results of all
+validation tests, which is useful for reviewing your dataset.
+* `--depositor` selects the backend engine used for archive storage - in this case,
+we save files locally, but by default this uploads files to Zenodo.
+* `--depositor-path`: the path to the folder where you want to download local files for
+inspection.
+
+Run the archiver and review the output in the specified folder, iterating as needed to
+ensure that all files download as expected.
+
+### Step 4: Test uploading to Zenodo
+
+*TODO: FINISH!
+
+Note that this step will require you to create your own [Zenodo validation credentials](https://zenodo.org/account/settings/applications/tokens/new/)
+if you are not a core Catalyst developer.
+
+You will
+need to run the initialize command to create a new zenodo deposition, and
 update the config file with the new DOI:
 
 ```
 pudl_archiver --datasets {new_dataset_name} --initialize --summary-file {new_dataset_name}-summary.json
 ```
 
-Using the `--summary-file` flag will save a .json file summarizing the results of all
-validation tests, which is useful for reviewing your dataset. Note that this step will
-require you to create your own
-[Zenodo validation credentials](https://zenodo.org/account/settings/applications/tokens/new/)
-if you are not a core Catalyst developer.
 
-### Step 4: Manually review your archive before publication.
+
+### Step 5: Manually review your archive before publication.
 
 If the archiver run is successful, it will produce a link to the draft archive. Though
 many of the validation steps are automated, it is worthwhile manually reviewing archives
@@ -188,6 +312,12 @@ make sure they look as expected.
 
 When you're ready to submit this archive, hit "publish"! Then head over to the
 [pudl](https://github.com/catalyst-cooperative/pudl) repo to integrate the new archive.
+
+### Step 6: Update DOIs and CLI
+TODO: add to .yaml and CLI (if relevant)
+
+### Step 7: Automate archiving
+TODO: Add to GHA!
 
 ## Development
 
