@@ -42,7 +42,7 @@ Run:
 
 ```
 conda env create -f environment.yml
-conda activate pudl-cataloger
+conda activate pudl-archiver
 ```
 
 ## Setting up environment
@@ -249,8 +249,8 @@ configurable number of retries.
 * You're downloading a single file in another format (e.g., Excel): `self.download_and_zipfile()` downloads a file and zips it. Where the original files are not already zipped, we zip them
 to speed up upload and download times.
 * You're downloading a number of files that belong to a single partition (e.g., multiple
-API calls per year): `add_to_archive_stable_hash()` can be used to
-download multiple files and add them to the same zipfile. See `archivers.eia.eia176.py`
+API calls per year): `self.add_to_archive()` can be used to
+download multiple files and add them to the same zipfile. See `archivers.eia.eia860m.py`
 for an example of this method.
 
 ### Step 3: Test archiver locally
@@ -259,7 +259,7 @@ Once you've written your archiver, it's time to test that it works as expected! 
 the archiver locally, run the following commands in your terminal:
 
 ```bash
-mamba activate pudl-cataloger
+mamba activate pudl-archiver
 pudl_archiver --datasets {new_dataset_name} --initialize --summary-file {new_dataset_name}-summary.json --depositor fsspec --deposition-path {file://local/path/to/folder}
 ```
 
@@ -294,7 +294,7 @@ Once created, you'll need to save each token as follows:
 echo "export ZENODO_SANDBOX_TOKEN_UPLOAD='token'" >> ~/.zshrc # if you are using zsh
 echo ""export ZENODO_SANDBOX_TOKEN_UPLOAD='token'" >> ~/.bashrc # if you are using bash
 set -Ux "export ZENODO_SANDBOX_TOKEN_UPLOAD='token' # if you are using fish shell
-mamba reactivate pudl-cataloger
+mamba reactivate pudl-archiver
 ```
 
 Like before, you will need to run the initialize command to create a new Zenodo deposition:
