@@ -27,7 +27,7 @@ Based on the [README documentation on creating a new archive](https://github.com
 - [ ] [Test archiver locally](https://github.com/catalyst-cooperative/pudl-archiver#step-3-test-archiver-locally)
 - [ ] [Test uploading to Zenodo](https://github.com/catalyst-cooperative/pudl-archiver#step-4-test-uploading-to-zenodo)
 - [ ] [Manually review archive before publication](https://github.com/catalyst-cooperative/pudl-archiver#step-5-manually-review-your-archive-before-publication)
-- [ ] [Finalize archive](https://github.com/catalyst-cooperative/pudl-archiver#step-6-finalize-archive)
+- [ ] [Finalize archive](https://github.com/catalyst-cooperative/pudl-archiver#step-6-finalize-archive) (only core Catalyst developers can complete this step)
 - [ ] [Automate archiving](https://github.com/catalyst-cooperative/pudl-archiver#step-7-automate-archiving)
 
 ### Links to published archives:

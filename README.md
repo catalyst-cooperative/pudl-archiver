@@ -171,17 +171,17 @@ Files for archivers produced by the same agency are sub-categorized into folders
 2. Subclass the `AbstractDatasetArchiver` to create an archiver class for your dataset -
 e.g., `NrelAtbArchiver` or `PhmsaGasArchiver`.
 3. Define the `name` of your dataset to be the shorthand code you defined in Step 1 (e.g.,
-`eia860`). This should match the name you used for the dictionary key in the source
-dictionary.
+`eia860`). This should match the name you used for the dictionary key in the metadata
+sources dictionary.
 
 #### Defining `get_resources`
 
 `get_resources()` is the core method required for every archiver - it should identify
-every link or API call required to download all the required data, and yield a series of
-awaitables that will download each partition of the data, matching the partitions you
-defined in step 1 (e.g., one file per year). The content of this method will
-vary depending on the format and accessibility of the dataset that you are archiving, but
-typically tends to follow one of the following patterns:
+every link or API call needed to download all the data, and yield a series of
+awaitables that will download each partition of the data. These partitions should match
+the partitions you defined in step 1 (e.g., one file per year). The content of this
+method will vary depending on the format and accessibility of the dataset that you are
+archiving, but typically tends to follow one of the following patterns:
 
 * Yields an awaitable downloading a single known link (see `archivers.eia.eia_bulk_elec.py`)
 * Gets all of the links on a page, identifies relevant links using a regex pattern, and
@@ -233,21 +233,25 @@ async def get_year_resource(self, link: str, year: int) -> ResourceInfo:
 ```
 This method should handle the following steps:
 * identify the specific download link for the file(s) in the partition
-* construct the name of the downloaded file. We rename files to match the format
-`datasource-year.ext` - e.g. `eia860-1990.zip`.
-* construct the path to the downloaded file, using `self.download_directory`: this is
-a temporary directory created and manged by the base class that is used as a staging area
-for downloading data before uploading it to Zenodo. This temporary directory will be
-automatically removed once the data has been uploaded.
-* return `ResourceInfo`, where `local_path` is the path to the downloaded file and
-`partitions` is a dictionary specifying the partition(s) of the dataset.
+* rename the file to match our data conventions. We rename files to match the format
+`datasource-partition.ext` - e.g. `eia860-1990.zip`.
+* construct the path to where we want to temporarily store the file locally, using
+`self.download_directory`: this is a temporary directory created and manged by the base
+class that is used as a staging area for downloading data before uploading it to its
+final location (e.g. Zenodo, a cloud bucket).
+This temporary directory will be automatically removed once the data has been uploaded.
+* return `ResourceInfo`, where `local_path` is the path to the file's location in
+`self.download_directory` and `partitions` is a dictionary specifying the partition(s)
+of the dataset. We'll use this to coordinate validation and upload once all files have
+been downloaded.
 
 We have written a number of download methods to handle different file formats:
 * You're downloading a zipfile: `self.download_zipfile()` is a helper method implemented
 to handle downloading zipfiles that includes a check for valid zipfiles, and a
 configurable number of retries.
 * You're downloading a single file in another format (e.g., Excel): `self.download_and_zipfile()` downloads a file and zips it. Where the original files are not already zipped, we zip them
-to speed up upload and download times.
+to speed up upload and download times. See `archivers.censuspep.py` for an example of
+this method.
 * You're downloading a number of files that belong to a single partition (e.g., multiple
 API calls per year): `self.add_to_archive()` can be used to
 download multiple files and add them to the same zipfile. See `archivers.eia.eia860m.py`
@@ -259,7 +263,6 @@ Once you've written your archiver, it's time to test that it works as expected! 
 the archiver locally, run the following commands in your terminal:
 
 ```bash
-mamba activate pudl-archiver
 pudl_archiver --datasets {new_dataset_name} --initialize --summary-file {new_dataset_name}-summary.json --depositor fsspec --deposition-path {file://local/path/to/folder}
 ```
 
@@ -333,7 +336,9 @@ before publishing to the production server.
 ### Step 6: Finalizing the archive
 
 > [!IMPORTANT]
-> This step can only be done by core Catalyst developers, as it requires
+> This step can only be done by core Catalyst developers, as it requires credentials
+> to our production Zenodo account. We'll handle this step as part of the PR review
+> process.
 
 Once your PR has been approved, it's time for your archive to make its debut!
 
@@ -343,7 +348,8 @@ Once your PR has been approved, it's time for your archive to make its debut!
 * Add the concept DOIs for the published sandbox and production to `/src/pudl_archiver/package_data/zenodo_doi.yaml`. These DOIs tell the archiver when a dataset already exists, making it
 possible to update existing archives with new data.
 * If you implemented `self.valid_year()`, add your dataset manually to the list of datasets
-that support this feature in `src/pudl_archiver/cli.py`.
+that support this feature in `src/pudl_archiver/cli.py` under the `--only-years` flag
+description.
 
 ### Step 7: Automate archiving
 We automatically run all our archivers once a month to make sure we capture ongoing
