@@ -9,9 +9,11 @@ import re
 from typing import Annotated, Literal
 
 from pudl.metadata.classes import Contributor, DataSource
+from pudl.metadata.sources import SOURCES
 from pydantic import BaseModel, Field, StringConstraints, field_validator
 
 from pudl_archiver.depositors.depositor import DepositionState
+from pudl_archiver.metadata.sources import NON_PUDL_SOURCES
 from pudl_archiver.utils import Url
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
@@ -112,7 +114,9 @@ class DepositionMetadata(BaseModel):
     @classmethod
     def from_data_source(cls, data_source_id: str) -> "DepositionMetadata":
         """Construct deposition metadata object from PUDL DataSource model."""
-        data_source = DataSource.from_id(data_source_id)
+        # Identify whether metadata originates from PUDL or archiver repo
+        sources = SOURCES if data_source_id in SOURCES else NON_PUDL_SOURCES
+        data_source = DataSource.from_id(data_source_id, sources=sources)
         creators = [
             DepositionCreator.from_contributor(contributor)
             for contributor in data_source.contributors

@@ -9,8 +9,10 @@ from typing import Any
 
 from pudl.metadata.classes import Contributor, DataSource, License
 from pudl.metadata.constants import CONTRIBUTORS
+from pudl.metadata.sources import SOURCES
 from pydantic import BaseModel, Field, field_serializer
 
+from pudl_archiver.metadata.sources import NON_PUDL_SOURCES
 from pudl_archiver.utils import Url
 
 MEDIA_TYPES: dict[str, str] = {
@@ -149,9 +151,13 @@ class DataPackage(BaseModel):
                 containing the local path to the resource, and its working partitions.
             version: Version string for current deposition version.
         """
-        if name == "mecs":
-            return cls.mecs(resources=resources, version=version)
-        return cls.from_pudl_metadata(name=name, resources=resources, version=version)
+        if name in SOURCES:  # If data source in PUDL source metadata
+            return cls.from_pudl_metadata(
+                name=name, resources=resources, version=version
+            )
+        return cls.from_non_pudl_metadata(
+            name=name, resources=resources, version=version
+        )
 
     @classmethod
     def from_pudl_metadata(
@@ -161,7 +167,7 @@ class DataPackage(BaseModel):
         version: str | None,
     ) -> "DataPackage":
         """Create a datapackage using PUDL metadata associated with ``name``."""
-        data_source = DataSource.from_id(name)
+        data_source = DataSource.from_id(name, sources=SOURCES)
 
         return DataPackage(
             name=f"pudl-raw-{data_source.name}",
@@ -177,30 +183,25 @@ class DataPackage(BaseModel):
         )
 
     @classmethod
-    def mecs(cls, resources: Iterable[Resource], version: str | None):
-        """Hack method to create a Datapackage for EIA MECS data not in PUDL metadata."""
+    def from_non_pudl_metadata(
+        cls,
+        name: str,
+        resources: Iterable[Resource],
+        version: str | None,
+    ):
+        """Create a datapackage for sources that won't end up in PUDL."""
+        data_source = DataSource.from_id(name, sources=NON_PUDL_SOURCES)
+
         return DataPackage(
-            name="MECS",
-            title="EIA MECS data",
-            sources=[
-                {
-                    "title": "EIA MECS data",
-                    "path": "https://www.eia.gov/consumption/manufacturing/data/2018/",
-                }
-            ],
-            licenses=[
-                License(
-                    **{
-                        "name": "CC-BY-4.0",
-                        "title": "Creative Commons Attribution 4.0",
-                        "path": "https://creativecommons.org/licenses/by/4.0",
-                    }
-                )
-            ],
+            name=data_source.name,
+            title=data_source.title,
+            sources=[{"title": data_source.title, "path": str(data_source.path)}],
+            licenses=[data_source.license_raw],
             resources=sorted(resources, key=lambda x: x.name),  # Sort by filename
-            contributors=[CONTRIBUTORS["catalyst-cooperative"]],
-            created=str(datetime.datetime.now(tz=datetime.UTC).isoformat()),
-            keywords=["MECS"],
-            description="According to the EIA, the Manufacturing Energy Consumption Survey (MECS) is a national sample survey that collects information on the stock of U.S. manufacturing establishment, their energy-related building characteristics, and their energy consumption and expenditures.",
+            # Make it easier to add contributors directly into source dictionary
+            contributors=data_source.contributors,
+            created=datetime.datetime.now(tz=datetime.UTC).isoformat(),
+            keywords=data_source.keywords,
+            description=data_source.description,
             version=version,
         )

@@ -90,7 +90,29 @@ There are also four optional flags available:
 
 ## Adding a new dataset
 
-### Step 1: Implement archiver interface
+### Step 1: Define the dataset's metadata
+For each dataset we archive, we record information about the title, a description, who
+contributed to archiving the dataset, the segments into which the data files are
+partitioned, its license and keywords. This
+information is used to communicate about the dataset's usage and provenance to any
+future users.
+
+* Title: The title of your dataset should clearly contain the agency publishing the data and a non-abbreviated title (e.g., EIA Manufacturing Energy Consumption Survey, not EIA MECS).
+* Path: The link to the dataset's "homepage", where information about the dataset and the path to download it can be found.
+* Working partitions: A dictionary where the key is the name of the partition (e.g., month, year, form), and the values are the actual available partitions (e.g., 2002-2020).
+* License: We only archive data with an open source license (e.g., US Government Works or a Creative Commons License), so make sure any data you're archiving is licensed for re-distribution.
+* Keywords: Words that someone might use to search for this dataset. These are used to help people find our data on Zenodo.
+
+If your dataset will be integrated directly into
+[PUDL](https://github.com/catalyst-cooperative/pudl), you'll need to add the metadata
+for the dataset into the PUDL repository in the `SOURCES` dictionary in
+`src.pudl.metadata.sources.py`.
+
+If you aren't sure, or you're archiving data that won't go into PUDL, you'll want to
+add your metadata as an entry into the `NON_PUDL_SOURCES` dictionary in
+`src/pudl_archiver/metadata/sources.py`.
+
+### Step 2: Implement archiver interface
 
 All of the archivers inherit from the `AbstractDatasetArchiver` base class (defined
 in `src/pudl_archiver/archiver/classes.py`. There is only a single method that each
@@ -130,7 +152,7 @@ hyperlinks matching the pattern on the page pointed to by the URL. This is usefu
 there's a page containing links to a series of data resources that have somewhat
 structured names.
 
-### Step 2: Run --initialize command
+### Step 3: Run --initialize command
 
 You will need to run the initialize command to create a new zenodo deposition, and
 update the config file with the new DOI:
@@ -145,7 +167,7 @@ require you to create your own
 [Zenodo validation credentials](https://zenodo.org/account/settings/applications/tokens/new/)
 if you are not a core Catalyst developer.
 
-### Step 3: Manually review your archive before publication.
+### Step 4: Manually review your archive before publication.
 
 If the archiver run is successful, it will produce a link to the draft archive. Though
 many of the validation steps are automated, it is worthwhile manually reviewing archives

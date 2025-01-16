@@ -16,7 +16,7 @@ logger = logging.getLogger(f"catalystcoop.{__name__}")
 class EiaMECSArchiver(AbstractDatasetArchiver):
     """EIA MECS archiver."""
 
-    name = "mecs"
+    name = "eiamecs"
 
     async def get_resources(self) -> ArchiveAwaitable:
         """Download EIA-MECS resources."""
