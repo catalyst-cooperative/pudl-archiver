@@ -36,13 +36,13 @@ uploaded to Zenodo.
 
 ## Installation
 
-We recommend using conda to create and manage your environment.
+We recommend using mamba to create and manage your environment.
 
 Run:
 
 ```
-conda env create -f environment.yml
-conda activate pudl-archiver
+mamba env create -f environment.yml
+mamba activate pudl-cataloger
 ```
 
 ## Setting up environment
@@ -297,7 +297,7 @@ Once created, you'll need to save each token as follows:
 echo "export ZENODO_SANDBOX_TOKEN_UPLOAD='token'" >> ~/.zshrc # if you are using zsh
 echo ""export ZENODO_SANDBOX_TOKEN_UPLOAD='token'" >> ~/.bashrc # if you are using bash
 set -Ux "export ZENODO_SANDBOX_TOKEN_UPLOAD='token' # if you are using fish shell
-mamba reactivate pudl-archiver
+mamba reactivate pudl-cataloger
 ```
 
 Like before, you will need to run the initialize command to create a new Zenodo deposition:
