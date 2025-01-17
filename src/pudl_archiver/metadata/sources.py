@@ -22,6 +22,28 @@ from pudl.metadata.constants import CONTRIBUTORS, LICENSES
 ADDL_CONTRIBUTORS: dict[str, dict[str, str]] = {}
 
 NON_PUDL_SOURCES: dict[str, Any] = {
+    "doelead": {
+        "title": "DOE LEAD -- Low Income Energy Affordability Data",
+        "path": "https://www.energy.gov/scep/low-income-energy-affordability-data-lead-tool",
+        "description": (
+            "This archive includes the data behind the Department of Energy's (DOE)"
+            "Low Income Energy Affordability Data (LEAD) tool. The LEAD tool is an"
+            "online, interactive platform that helps users make data-driven decisions"
+            "on energy goals and program planning by improving their understanding of"
+            "low-income and moderate-income household energy characteristics. The LEAD"
+            "Tool offers the ability to select and combine geographic areas (state,"
+            "county, city and census tract) into one customized group so users can see"
+            "the total area for their customized geographies (e.g., specific service"
+            "territories)."
+        ),
+        "working_partitions": {"years": [2022, 2018]},
+        "keywords": sorted(
+            {"doe", "lead", "low income", "energy affordability", "energy burden"}
+        ),
+        "license_raw": LICENSES["us-govt"],
+        "license_pudl": LICENSES["cc-by-4.0"],
+        "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
+    },
     "eiacbecs": {
         "title": "EIA CBECS -- Commercial Buildings Energy Consumption Survey",
         "path": "https://www.eia.gov/consumption/manufacturing/data/2018/",
@@ -46,14 +68,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
             ]  # there are PDF only versions for 1999, 1995 and 1992
         },
         "keywords": sorted(
-            {
-                "eia",
-                "energy",
-                "cbecs",
-                "consumption",
-                "buildings",
-                "commercial",
-            }
+            {"eia", "energy", "cbecs", "consumption", "buildings", "commercial"}
         ),
         "license_raw": LICENSES["us-govt"],
         "license_pudl": LICENSES["cc-by-4.0"],
