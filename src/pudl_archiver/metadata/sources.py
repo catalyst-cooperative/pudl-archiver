@@ -23,7 +23,7 @@ ADDL_CONTRIBUTORS: dict[str, dict[str, str]] = {}
 
 NON_PUDL_SOURCES: dict[str, Any] = {
     "eiamecs": {
-        "title": "EIA Manufacturing Energy Consumption Survey",
+        "title": "EIA MECS -- Manufacturing Energy Consumption Survey",
         "path": "https://www.eia.gov/consumption/manufacturing/data/2018/",
         "description": (
             "EIA Form 846 A and B is more commonly known as the Manufacturing Energy"
@@ -45,8 +45,8 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         "license_pudl": LICENSES["cc-by-4.0"],
         "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
     },
-    "usgswtdb": {
-        "title": "USGS U.S. Wind Turbine Database",
+    "usgsuswtdb": {
+        "title": "USGS USWTDB - U.S. Wind Turbine Database",
         "path": "https://energy.usgs.gov/uswtdb/data/",
         "description": (
             "The United States Wind Turbine Database (USWTDB) provides the locations"
@@ -70,7 +70,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         "keywords": sorted(
             {
                 "usgs",
-                "wtdb",
+                "uswtdb",
                 "wind",
                 "wind turbines",
             }
@@ -80,7 +80,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
     },
     "usgsuspvdb": {
-        "title": "The U.S. Large-Scale Solar Photovoltaic Database",
+        "title": "USGS USPVDB -- U.S. Large-Scale Solar Photovoltaic Database",
         "path": "https://energy.usgs.gov/uspvdb/",
         "description": (
             "The United States Large-Scale Solar Photovoltaic Database (USPVDB) provides"
@@ -104,6 +104,36 @@ NON_PUDL_SOURCES: dict[str, Any] = {
                 "solar",
                 "pv",
                 "photovoltaic",
+            }
+        ),
+        "license_raw": LICENSES["us-govt"],
+        "license_pudl": LICENSES["cc-by-4.0"],
+        "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
+    },
+    "epaegrid": {
+        "title": "EPA eGRID -- Emissions & Generation Resource Integrated Database",
+        "path": "https://www.epa.gov/egrid",
+        "description": (
+            "The Emissions & Generation Resource Integrated Database (eGRID) is a"
+            "comprehensive source of data from EPA's Clean Air Power Sector Programs on"
+            "the environmental characteristics of almost all electric power generated in"
+            "the United States. The data includes emissions, emission rates, generation,"
+            "heat input, resource mix, and many other attributes. eGRID is typically used"
+            "for greenhouse gas registries and inventories, carbon footprints for"
+            "electricity purchases, consumer information disclosure, emission inventories"
+            "and standards, power market changes, and avoided emission estimates."
+        ),
+        "working_partitions": {"years": [2018, 2019, 2020, 2021, 2022, 2023]},
+        "keywords": sorted(
+            {
+                "epa",
+                "egrid",
+                "emissions",
+                "greenhouse gas",
+                "heat input",
+                "resource mix",
+                "carbon footprint",
+                "avoided emissions",
             }
         ),
         "license_raw": LICENSES["us-govt"],
