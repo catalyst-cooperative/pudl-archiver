@@ -82,6 +82,34 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         "license_pudl": LICENSES["cc-by-4.0"],
         "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
     },
+    "eiarecs": {
+        "title": "EIA RECS -- Residential Energy Consumption Survey",
+        "path": "https://www.eia.gov/consumption/residential/data/2020/",
+        "description": (
+            "EIA administers the Residential Energy Consumption Survey (RECS) to a"
+            "nationally representative sample of housing units. Traditionally,"
+            "specially trained interviewers collect energy characteristics on the"
+            "housing unit, usage patterns, and household demographics. For the 2020"
+            "survey cycle, EIA used Web and mail forms to collect detailed information"
+            "on household energy characteristics. This information is combined with"
+            "data from energy suppliers to these homes to estimate energy costs and"
+            "usage for heating, cooling, appliances and other end uses — information"
+            "critical to meeting future energy demand and improving efficiency and"
+            "building design. "
+        ),
+        "working_partitions": {
+            "years": [2009, 2015, 2020]  # Only PDFs: 1993, 1997, 2001, 2005
+        },
+        "keywords": sorted(
+            {
+                "manufacturing",
+                "MECS",
+            }
+        ),
+        "license_raw": LICENSES["us-govt"],
+        "license_pudl": LICENSES["cc-by-4.0"],
+        "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
+    },
     "usgsuswtdb": {
         "title": "USGS USWTDB - U.S. Wind Turbine Database",
         "path": "https://energy.usgs.gov/uswtdb/data/",
