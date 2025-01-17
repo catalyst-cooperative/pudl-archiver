@@ -34,7 +34,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         ),
         "working_partitions": {
             "years": [1991, 1994, 1998, 2002, 2006, 2010, 2014, 2018]
-        },  # Census DP1 is monolithic.
+        },
         "keywords": sorted(
             {
                 "manufacturing",
@@ -73,6 +73,37 @@ NON_PUDL_SOURCES: dict[str, Any] = {
                 "wtdb",
                 "wind",
                 "wind turbines",
+            }
+        ),
+        "license_raw": LICENSES["us-govt"],
+        "license_pudl": LICENSES["cc-by-4.0"],
+        "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
+    },
+    "usgsuspvdb": {
+        "title": "The U.S. Large-Scale Solar Photovoltaic Database",
+        "path": "https://energy.usgs.gov/uspvdb/",
+        "description": (
+            "The United States Large-Scale Solar Photovoltaic Database (USPVDB) provides"
+            "the locations and array boundaries of U.S. ground-mounted photovoltaic (PV)"
+            "facilities with capacity of 1 megawatt or more. It includes corresponding PV"
+            "facility information, including panel type, site type, and initial year of"
+            "operation. The creation of this database was jointly funded by the U.S."
+            "Department of Energy (DOE) Solar Energy Technologies Office (SETO) via the"
+            "Lawrence Berkeley National Laboratory (LBNL) Energy Markets and Policy"
+            "Department, and the U.S. Geological Survey (USGS) Energy Resources Program."
+            "The PV facility records are collected from the U.S. Energy Information"
+            "Administration (EIA), position-verified and digitized from aerial imagery,"
+            "and checked for quality. EIA facility data are supplemented with additional"
+            "attributes obtained from public sources."
+        ),
+        "working_partitions": {"years": [2023, 2024]},
+        "keywords": sorted(
+            {
+                "usgs",
+                "uspvdb",
+                "solar",
+                "pv",
+                "photovoltaic",
             }
         ),
         "license_raw": LICENSES["us-govt"],
