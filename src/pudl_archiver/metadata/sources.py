@@ -2,6 +2,7 @@
 
 from typing import Any
 
+import pandas as pd
 from pudl.metadata.constants import CONTRIBUTORS, LICENSES
 
 # To add a new contributor, follow the following format to add an entry to the
@@ -38,6 +39,40 @@ NON_PUDL_SOURCES: dict[str, Any] = {
             {
                 "manufacturing",
                 "MECS",
+            }
+        ),
+        "license_raw": LICENSES["us-govt"],
+        "license_pudl": LICENSES["cc-by-4.0"],
+        "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
+    },
+    "usgswtdb": {
+        "title": "USGS U.S. Wind Turbine Database",
+        "path": "https://energy.usgs.gov/uswtdb/data/",
+        "description": (
+            "The United States Wind Turbine Database (USWTDB) provides the locations"
+            "of land-based and offshore wind turbines in the United States,"
+            "corresponding wind project information, and turbine technical"
+            "specifications. Wind turbine records are collected and compiled from"
+            "various public and private sources, digitized and position-verified from"
+            "aerial imagery, and quality checked. The USWTDB is available for download"
+            "in a variety of tabular and geospatial file formats, to meet a range of"
+            "user/software needs. Dynamic web services are available for users that wish"
+            "to access the USWTDB as a Representational State Transfer Services (RESTful)"
+            "web service."
+        ),
+        "working_partitions": {
+            "year_quarters": [
+                str(q).lower()
+                for q in pd.period_range(start="2018q2", end="2024q2", freq="Q")
+            ]  # Note: this looks mostly right but not always. maybe this should be year_month
+            # and we should just enumerate the months.
+        },
+        "keywords": sorted(
+            {
+                "usgs",
+                "wtdb",
+                "wind",
+                "wind turbines",
             }
         ),
         "license_raw": LICENSES["us-govt"],
