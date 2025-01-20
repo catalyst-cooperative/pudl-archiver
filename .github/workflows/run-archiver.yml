@@ -15,7 +15,7 @@ on:
         required: true
         type: boolean
   schedule:
-    - cron: "21 8 1 * *" # 8:21 AM UTC, first of every month
+    - cron: "21 8 * * 1" # 8:21 AM UTC, every Monday
 
 jobs:
   archive-run:
