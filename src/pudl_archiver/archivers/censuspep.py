@@ -48,6 +48,6 @@ class CensusPepArchiver(AbstractDatasetArchiver):
             link_url = f"{BASE_URL}/1990-2000"
             file_name = "90s-fips.txt"
         url = f"{link_url}/{file_name}"
-        download_path = self.download_directory / f"{self.name}_{year}.zip"
+        download_path = self.download_directory / f"{self.name}-{year}.zip"
         await self.download_and_zip_file(url, file_name, download_path)
         return ResourceInfo(local_path=download_path, partitions={"year": year})
