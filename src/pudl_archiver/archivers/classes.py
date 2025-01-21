@@ -144,7 +144,7 @@ class AbstractDatasetArchiver(ABC):
 
         Args:
             url: URL of zipfile.
-            file_path: Local path to write file to disk or bytes object to save file in memory.
+            zip_path: Local path to write file to disk or bytes object to save file in memory.
             retries: Number of times to attempt to download a zipfile.
             kwargs: Key word args to pass to request.
         """
