@@ -235,6 +235,9 @@ NON_PUDL_SOURCES: dict[str, Any] = {
                 "solar",
                 "pv",
                 "photovoltaic",
+                "doe",
+                "seto",
+                "lbnl",
             }
         ),
         "license_raw": LICENSES["us-govt"],
