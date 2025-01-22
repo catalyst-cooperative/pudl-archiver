@@ -11,10 +11,10 @@ from pudl_archiver.archivers.classes import (
 BASE_URL = "https://www.sciencebase.gov/catalog/item/5e99a01082ce172707f6fd2a"
 
 
-class USWTDBArchiver(AbstractDatasetArchiver):
+class UsgsUswtdbArchiver(AbstractDatasetArchiver):
     """USGS USWTDB archiver."""
 
-    name = "uswtdb"
+    name = "usgsuswtdb"
 
     async def get_resources(self) -> ArchiveAwaitable:
         """Download USWTDB resources."""
@@ -33,7 +33,7 @@ class USWTDBArchiver(AbstractDatasetArchiver):
         """Download zip file."""
         # Append hyperlink to base URL to get URL of file
         url = f"{BASE_URL}/{link}"
-        download_path = self.download_directory / f"uswtdb-{year_month}.zip"
+        download_path = self.download_directory / f"usgsuswtdb-{year_month}.zip"
         await self.download_zipfile(url, download_path)
 
         return ResourceInfo(
