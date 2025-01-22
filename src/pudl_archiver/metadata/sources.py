@@ -331,7 +331,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
             "or remote areas. These criteria ensure that support is directed to communities facing systemic "
             "inequities and the greatest need for clean energy and environmental investments."
         ),
-        "working_partitions": {"years": [2023]},  # not 100% sure on year
+        "working_partitions": {},  # not 100% sure
         "keywords": sorted(
             {"energy", "community", "ira", "environment", "justice", "epa"}
         ),
