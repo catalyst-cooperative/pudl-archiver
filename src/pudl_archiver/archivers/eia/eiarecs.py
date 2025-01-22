@@ -105,11 +105,11 @@ class EiaRECSArchiver(AbstractDatasetArchiver):
                 data_paths_in_archive.add(output_filename)
                 download_path.unlink()
 
-                tables.append(
-                    ResourceInfo(
-                        local_path=zip_path,
-                        partitions={"year": year},
-                        layout=ZipLayout(file_paths=data_paths_in_archive),
-                    )
-                )
+        tables.append(
+            ResourceInfo(
+                local_path=zip_path,
+                partitions={"year": year},
+                layout=ZipLayout(file_paths=data_paths_in_archive),
+            )
+        )
         return tables
