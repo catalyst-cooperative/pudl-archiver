@@ -336,4 +336,30 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         "license_pudl": LICENSES["cc-by-4.0"],
         "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
     },
+    "epadcecjp": {
+        "title": "EPA Disadvantaged Community Energy Justice Program",
+        "path": "https://www.arcgis.com/home/webmap/viewer.html?url=https://geopub.epa.gov/arcgis/rest/services/ejscreen/environmental_climate_justice_program/MapServer&source=sd",
+        "description": (
+            "This dataset denotes whether a region is considered a disadvantaged community based on "
+            "the EPA's Energy Justice Program. An EPA Disadvantaged Community under the Energy Justice "
+            "Program is identified based on four key factors: environmental challenges like high pollution "
+            "exposure, economic hardships such as low income or high unemployment, social vulnerabilities "
+            "including health disparities and minority status, and geographic disadvantages in rural, urban, "
+            "or remote areas. These criteria ensure that support is directed to communities facing systemic "
+            "inequities and the greatest need for clean energy and environmental investments."
+        ),
+        "working_partitions": {"years": [2023]}, # not 100% sure on year
+        "keywords": sorted(
+            {
+                "energy",
+                "community",
+                "ira",
+                "environment",
+                "justice",
+                "epa"
+            }
+        ),
+        "license_raw": LICENSES["us-govt"],
+        "license_pudl": LICENSES["cc-by-4.0"],
+        "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
 }
