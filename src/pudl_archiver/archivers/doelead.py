@@ -12,7 +12,8 @@ BASE_URL = "https://www.energy.gov/scep/low-income-energy-affordability-data-lea
 
 # verified working 2025-01-22 via
 # $ wget "https://www.energy.gov/scep/low-income-energy-affordability-data-lead-tool" -O foo.html -U "Mozilla/5.0 Catalyst/2025 Cooperative/2025"
-HEADERS = {"User-Agent":"Mozilla/5.0 Catalyst/2025 Cooperative/2025"}
+HEADERS = {"User-Agent": "Mozilla/5.0 Catalyst/2025 Cooperative/2025"}
+
 
 class DoeLeadArchiver(AbstractDatasetArchiver):
     """DOE LEAD archiver."""

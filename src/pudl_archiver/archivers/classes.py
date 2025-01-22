@@ -242,8 +242,12 @@ class AbstractDatasetArchiver(ABC):
         parser = _HyperlinkExtractor()
 
         response = await retry_async(
-            self.session.get, args=[url], kwargs={"ssl": verify, 
-                **({"headers":headers} if headers is not None else {})}
+            self.session.get,
+            args=[url],
+            kwargs={
+                "ssl": verify,
+                **({"headers": headers} if headers is not None else {}),
+            },
         )
         text = await retry_async(response.text)
         parser.feed(text)
