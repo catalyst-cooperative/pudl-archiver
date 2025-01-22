@@ -113,7 +113,7 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
             year: the year we're downloading data for
             files: the files we've associated with this year.
         """
-        archive_path = self.download_directory / f"epacems-{year}.zip"
+        zip_path = self.download_directory / f"epacems-{year}.zip"
         data_paths_in_archive = set()
         for file in files:
             url = self.base_url + file.s3_path
@@ -124,10 +124,10 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
 
             filename = f"epacems-{year}q{quarter}.csv"
             file_path = self.download_directory / filename
-            await self.download_file(url=url, file=file_path)
+            await self.download_file(url=url, file_path=file_path)
             self.add_to_archive(
-                target_archive=archive_path,
-                name=filename,
+                zip_path=zip_path,
+                filename=filename,
                 blob=file_path.open("rb"),
             )
             data_paths_in_archive.add(filename)
@@ -136,7 +136,7 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
             file_path.unlink()
 
         return ResourceInfo(
-            local_path=archive_path,
+            local_path=zip_path,
             partitions={
                 "year_quarter": sorted(
                     [f"{year}q{file.metadata.quarter}" for file in files]

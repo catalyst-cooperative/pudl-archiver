@@ -1,6 +1,9 @@
 censusdp1tract:
   production_doi: 10.5281/zenodo.4127048
   sandbox_doi: 10.5072/zenodo.3138
+censuspep:
+  production_doi: 10.5281/zenodo.14624611
+  sandbox_doi: 10.5072/zenodo.151368
 eia176:
   production_doi: 10.5281/zenodo.7682357
   sandbox_doi: 10.5072/zenodo.3158
