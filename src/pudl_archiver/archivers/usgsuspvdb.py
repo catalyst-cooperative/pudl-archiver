@@ -11,6 +11,7 @@ from pudl_archiver.archivers.classes import (
 
 class UsgsUsPvDbArchiver(AbstractDatasetArchiver):
     """USGS USPVDB -- U.S. Large-Scale Solar Photovoltaic Database.
+
     This dataset is mainly static with versions that are issued as separate datasets. As of
     Jan 2025, there are 2 Child items (versions) viewable at
     https://www.sciencebase.gov/catalog/item/66707f69d34e89718fa3f82f (United States
@@ -32,9 +33,11 @@ class UsgsUsPvDbArchiver(AbstractDatasetArchiver):
             yield self.get_crosswalk_zip(year)
 
     async def get_crosswalk_zip(self, year: int) -> tuple[Path, dict]:
-        """Download entire repo as a zipfile.
+        """Download entire dataset as a zipfile.
 
-        .
+        The `get` URLs are found on: 
+        * https://www.sciencebase.gov/catalog/item/6442d8a2d34ee8d4ade8e6db
+        * https://www.sciencebase.gov/catalog/item/6671c479d34e84915adb7536
         """
         crosswalk_urls = {
             2023: "https://www.sciencebase.gov/catalog/file/get/6442d8a2d34ee8d4ade8e6db",
