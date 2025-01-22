@@ -290,7 +290,6 @@ NON_PUDL_SOURCES: dict[str, Any] = {
     "doeiraec": {
         "title": "DOE -- IRA Energy Community Data Layers",
         "path": "https://edx.netl.doe.gov/dataset/ira-energy-community-data-layers",
-        "path": "https://edx.netl.doe.gov/dataset/ira-energy-community-data-layers",
         "description": (
             "This dataset outlines energy communities across the U.S. based off part of the Inflation "
             "Reduction Act’s (IRA) definition that is focused on census tracts and directly adjoining "
