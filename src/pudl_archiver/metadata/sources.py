@@ -148,7 +148,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
     },
     "usgsuswtdb": {
         "title": "USGS USWTDB - U.S. Wind Turbine Database",
-        "path": "https://energy.usgs.gov/uswtdb/data/",
+        "path": "https://energy.usgs.gov/uswtdb/",
         "description": (
             "The United States Wind Turbine Database (USWTDB) provides the locations "
             "of land-based and offshore wind turbines in the United States, "
