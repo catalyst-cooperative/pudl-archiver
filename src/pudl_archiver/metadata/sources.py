@@ -321,7 +321,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
     },
     "epadcejp": {
-        "title": "EPA -- Disadvantaged Community Energy Justice Program Dataset",
+        "title": "EPA -- Disadvantaged Community Energy Justice Program",
         "path": "https://www.arcgis.com/home/webmap/viewer.html?url=https://geopub.epa.gov/arcgis/rest/services/ejscreen/environmental_climate_justice_program/MapServer&source=sd",
         "description": (
             "This dataset denotes whether a region is considered a disadvantaged community based on "
@@ -341,7 +341,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
     },
     "epamats": {
-        "title": "EPA -- Mercury and Air Toxics Standards Dataset",
+        "title": "EPA -- Mercury and Air Toxics Standards",
         "path": "https://www.epa.gov/stationary-sources-air-pollution/mercury-and-air-toxics-standards",
         "description": (
             "The EPA Mercury and Air Toxics Standards (MATS) dataset provides detailed information on emissions "
