@@ -321,7 +321,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
     },
     "epadcejp": {
         "title": "EPA -- Disadvantaged Community Energy Justice Program",
-        "path": "https://www.arcgis.com/home/webmap/viewer.html?url=https://geopub.epa.gov/arcgis/rest/services/ejscreen/environmental_climate_justice_program/MapServer&source=sd",
+        "path": "https://www.epa.gov/ejscreen/technical-information-and-data-downloads",
         "description": (
             "This dataset denotes whether a region is considered a disadvantaged community based on "
             "the EPA's Energy Justice Program. An EPA Disadvantaged Community under the Energy Justice "
