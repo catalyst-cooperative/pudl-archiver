@@ -35,7 +35,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
             "the total area for their customized geographies (e.g., specific service "
             "territories)."
         ),
-        "working_partitions": {"years": [2022, 2018]},
+        "working_partitions": {"years": [2018, 2022]},
         "keywords": sorted(
             {"doe", "lead", "low income", "energy affordability", "energy burden"}
         ),
