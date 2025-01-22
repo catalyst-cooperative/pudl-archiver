@@ -322,16 +322,9 @@ NON_PUDL_SOURCES: dict[str, Any] = {
             "or remote areas. These criteria ensure that support is directed to communities facing systemic "
             "inequities and the greatest need for clean energy and environmental investments."
         ),
-        "working_partitions": {"years": [2023]}, # not 100% sure on year
+        "working_partitions": {"years": [2023]},  # not 100% sure on year
         "keywords": sorted(
-            {
-                "energy",
-                "community",
-                "ira",
-                "environment",
-                "justice",
-                "epa"
-            }
+            {"energy", "community", "ira", "environment", "justice", "epa"}
         ),
         "license_raw": LICENSES["us-govt"],
         "license_pudl": LICENSES["cc-by-4.0"],
@@ -352,22 +345,45 @@ NON_PUDL_SOURCES: dict[str, Any] = {
             "measures, monitor compliance, and evaluate the environmental and public health impacts of power "
             "plant emissions."
         ),
-        "working_partitions": {"years": [
-            1990, 1991, 1992, 1993, 1994, 1995, 1996,
-            1997, 1998, 1999, 2000, 2001, 2002, 2003,
-            2004, 2005, 2006, 2007, 2008, 2009, 2010,
-            2011, 2012, 2013, 2014, 2015, 2016, 2017,
-            2018, 2019, 2020, 2021, 2022
-        ]}, # not 100% sure on years
+        "working_partitions": {
+            "years": [
+                1990,
+                1991,
+                1992,
+                1993,
+                1994,
+                1995,
+                1996,
+                1997,
+                1998,
+                1999,
+                2000,
+                2001,
+                2002,
+                2003,
+                2004,
+                2005,
+                2006,
+                2007,
+                2008,
+                2009,
+                2010,
+                2011,
+                2012,
+                2013,
+                2014,
+                2015,
+                2016,
+                2017,
+                2018,
+                2019,
+                2020,
+                2021,
+                2022,
+            ]
+        },  # not 100% sure on years
         "keywords": sorted(
-            {
-                "mercury",
-                "toxics",
-                "standards",
-                "air",
-                "environment",
-                "epa"
-            }
+            {"mercury", "toxics", "standards", "air", "environment", "epa"}
         ),
         "license_raw": LICENSES["us-govt"],
         "license_pudl": LICENSES["cc-by-4.0"],
