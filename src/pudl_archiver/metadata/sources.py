@@ -119,7 +119,6 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
     },
     "eiarecs": {
-<<<<<<< HEAD
         "title": "EIA RECS -- Residential Energy Consumption Survey",
         "path": "https://www.eia.gov/consumption/residential/",
         "description": (
@@ -284,18 +283,6 @@ NON_PUDL_SOURCES: dict[str, Any] = {
                 "avoided emissions",
             }
         ),
-=======
-        "title": "EIA Residential Energy Consumption Survey",
-        "path": "https://www.eia.gov/consumption/residential/data/2020/",
-        "description": (
-            "EIA Form 457 is commonly known as the Residential Energy Consumption Survey"
-            "(RECS). RECS is a national sample survey that collects detailed information"
-            "on household energy characteristics. The data is tabulated by geography"
-            "housing unit type, income, etc. RECS is conducted roughly every five years."
-        ),
-        "working_partitions": {"years": [2020, 2015, 2009, 2005, 2001, 1997, 1993]},
-        "keywords": sorted({"residential", "RECS"}),
->>>>>>> 2a0933e (Initial work on eiarecs)
         "license_raw": LICENSES["us-govt"],
         "license_pudl": LICENSES["cc-by-4.0"],
         "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
