@@ -138,61 +138,52 @@ class AbstractDatasetArchiver(ABC):
         ...
 
     async def download_zipfile(
-        self, url: str, file: Path | io.BytesIO, retries: int = 5, **kwargs
+        self, url: str, zip_path: Path | io.BytesIO, retries: int = 5, **kwargs
     ):
         """Attempt to download a zipfile and retry if zipfile is invalid.
 
         Args:
             url: URL of zipfile.
-            file: Local path to write file to disk or bytes object to save file in memory.
+            zip_path: Local path to write file to disk or bytes object to save file in memory.
             retries: Number of times to attempt to download a zipfile.
             kwargs: Key word args to pass to request.
         """
         for _ in range(0, retries):
-            await self.download_file(url, file, **kwargs)
+            await self.download_file(url, zip_path, **kwargs)
 
-            if zipfile.is_zipfile(file):
+            if zipfile.is_zipfile(zip_path):
                 return
 
         # If it makes it here that means it couldn't download a valid zipfile
         raise RuntimeError(f"Failed to download valid zipfile from {url}")
 
-    async def download_file(
-        self,
-        url: str,
-        file: Path | io.BytesIO,
-        **kwargs,
-    ):
+    async def download_file(self, url: str, file_path: Path | io.BytesIO, **kwargs):
         """Download a file using async session manager.
 
         Args:
             url: URL to file to download.
-            file: Local path to write file to disk or bytes object to save file in memory.
-            kwargs: Key word args to pass to request.
+            file_path: Local path to write file to disk or bytes object to save file in memory.
+            kwargs: Key word args to pass to retry_async.
         """
-        await retry_async(_download_file, [self.session, url, file], kwargs)
+        await retry_async(_download_file, [self.session, url, file_path], kwargs)
 
     async def download_and_zip_file(
-        self,
-        url: str,
-        filename: str,
-        archive_path: Path,
-        **kwargs,
+        self, url: str, filename: str, zip_path: Path, **kwargs
     ):
         """Download and zip a file using async session manager.
 
         Args:
             url: URL to file to download.
             filename: name of file to be zipped
-            archive_path: Local path to write file to disk.
-            kwargs: Key word args to pass to request.
+            zip_path: Local path to write file to disk.
+            kwargs: Key word args to pass to retry_async.
         """
         response = await retry_async(self.session.get, args=[url], kwargs=kwargs)
         response_bytes = await retry_async(response.read)
 
         # Write to zipfile
         with zipfile.ZipFile(
-            archive_path,
+            zip_path,
             "w",
             compression=zipfile.ZIP_DEFLATED,
         ) as archive:
@@ -200,20 +191,22 @@ class AbstractDatasetArchiver(ABC):
                 archive=archive, filename=filename, data=response_bytes
             )
 
-    def add_to_archive(self, target_archive: Path, name: str, blob: typing.BinaryIO):
+    def add_to_archive(self, zip_path: Path, filename: str, blob: typing.BinaryIO):
         """Add a file to a ZIP archive.
 
         Args:
-            target_archive: path to target archive.
-            name: name of the file *within* the archive.
+            zip_path: path to target archive.
+            filename: name of the file *within* the archive.
             blob: the content you'd like to write to the archive.
         """
         with zipfile.ZipFile(
-            target_archive,
+            zip_path,
             "a",
             compression=zipfile.ZIP_DEFLATED,
         ) as archive:
-            add_to_archive_stable_hash(archive=archive, filename=name, data=blob.read())
+            add_to_archive_stable_hash(
+                archive=archive, filename=filename, data=blob.read()
+            )
 
     async def get_json(self, url: str, **kwargs) -> dict[str, str]:
         """Get a JSON and return it as a dictionary."""

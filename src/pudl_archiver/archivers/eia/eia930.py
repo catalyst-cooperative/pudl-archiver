@@ -48,30 +48,28 @@ class Eia930Archiver(AbstractDatasetArchiver):
     ) -> tuple[Path, dict]:
         """Download zip file of all files in year."""
         logger.debug(f"Downloading data for {year}half{half_year}.")
-        archive_path = self.download_directory / f"eia930-{year}half{half_year}.zip"
+        zip_path = self.download_directory / f"eia930-{year}half{half_year}.zip"
         data_paths_in_archive = set()
         period_files = file_list[
             (year == file_list.YEAR) & (half_year == file_list.PERIOD)
         ]
         for index, file in period_files.iterrows():
             url = BASE_URL + file.FILENAME
-            download_name = (
-                f"eia930-{year}half{half_year}-{file.DESCRIPTION.lower()}.csv"
-            )
-            download_path = self.download_directory / download_name
+            filename = f"eia930-{year}half{half_year}-{file.DESCRIPTION.lower()}.csv"
+            download_path = self.download_directory / filename
             await self.download_file(url, download_path)
             self.add_to_archive(
-                target_archive=archive_path,
-                name=download_name,
+                zip_path=zip_path,
+                filename=filename,
                 blob=download_path.open("rb"),
             )
-            data_paths_in_archive.add(download_name)
+            data_paths_in_archive.add(filename)
             # Don't want to leave multiple giant CSVs on disk, so delete
             # immediately after they're safely stored in the ZIP
             download_path.unlink()
 
         return ResourceInfo(
-            local_path=archive_path,
+            local_path=zip_path,
             partitions={"half_year": f"{year}half{half_year}"},
             layout=ZipLayout(file_paths=data_paths_in_archive),
         )
