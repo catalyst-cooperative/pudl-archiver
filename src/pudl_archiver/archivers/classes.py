@@ -223,6 +223,7 @@ class AbstractDatasetArchiver(ABC):
         url: str,
         filter_pattern: typing.Pattern | None = None,
         verify: bool = True,
+        headers: dict | None = None,
     ) -> list[str]:
         """Return all hyperlinks from a specific web page.
 
@@ -240,14 +241,16 @@ class AbstractDatasetArchiver(ABC):
         parser = _HyperlinkExtractor()
 
         response = await retry_async(
-            self.session.get, args=[url], kwargs={"ssl": verify}
+            self.session.get, args=[url], kwargs={"ssl": verify, 
+                **({"headers":headers} if headers is not None else {})}
         )
         text = await retry_async(response.text)
         parser.feed(text)
 
         # Filter to those that match filter_pattern
         hyperlinks = parser.hyperlinks
-        if filter_pattern:
+        if filter_pattern is not None:
+            self.logger.info(f"Filtering using {filter_pattern}")
             hyperlinks = {link for link in hyperlinks if filter_pattern.search(link)}
 
         # Warn if no links are found
