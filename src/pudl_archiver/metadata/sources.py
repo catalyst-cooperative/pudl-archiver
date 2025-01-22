@@ -73,6 +73,27 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         "license_pudl": LICENSES["cc-by-4.0"],
         "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
     },
+    "eianems": {
+        "title": "EIA NEMS -- National Energy Modeling System",
+        "path": "https://github.com/EIAgov/NEMS/tree/main?tab=readme-ov-file",
+        "description": (
+            "The National Energy Modeling System (NEMS) is a long-term energy-economy"
+            "modeling system of U.S. energy markets. The model is used to project"
+            "production, imports, exports, conversion, consumption, and prices of"
+            "energy, subject to user-defined assumptions. The assumptions encompass"
+            "macroeconomic and financial factors, world energy markets, resource"
+            "availability and costs, behavioral and technological choice criteria,"
+            "technology characteristics, and demographics. EIA's Office of Energy"
+            "Analysis develops and maintains NEMS to support the Annual Energy Outlook"
+            "(AEO). The NEMS model was open sourced in 2024 for the 2023 version of"
+            "AEO. Beyond the model itself, the inputs for NEMS contains valuable data."
+        ),
+        "working_partitions": {"years": [2023]},
+        "keywords": sorted({"eia", "nems", "aeo"}),
+        "license_raw": LICENSES["us-govt"],
+        "license_pudl": LICENSES["cc-by-4.0"],
+        "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
+    },
     "eiamecs": {
         "title": "EIA MECS -- Manufacturing Energy Consumption Survey",
         "path": "https://www.eia.gov/consumption/manufacturing/data/2018/",
@@ -166,7 +187,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
                 "2023-11",
                 "2024-05",
                 "2024-11",
-            ]
+            ]  # these are almost year_quarters but not quite....
         },
         "keywords": sorted(
             {
