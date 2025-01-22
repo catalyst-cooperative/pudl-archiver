@@ -9,32 +9,39 @@ from pudl_archiver.archivers.classes import (
     ResourceInfo,
 )
 
-# Note: Using non s3:// link here as compatibility between asyncio and botocore is
-# complex.
-BASE_URL = "https://oedi-data-lake.s3.amazonaws.com/ATB/electricity/parquet"
-LINK_URL = "https://data.openei.org/s3_viewer?bucket=oedi-data-lake&prefix=ATB%2Felectricity%2Fparquet%2F"
 
+class UsgsUsPvDbArchiver(AbstractDatasetArchiver):
+    """USGS USPVDB -- U.S. Large-Scale Solar Photovoltaic Database.
+    This dataset is mainly static with versions that are issued as separate datasets. As of
+    Jan 2025, there are 2 Child items (versions) viewable at 
+    https://www.sciencebase.gov/catalog/item/66707f69d34e89718fa3f82f (United States 
+    Large-Scale Solar Photovoltaic Database).
+    
+    The most recent version is also available via a link called "CSV format" (Tabular Format)
+    at https://energy.usgs.gov/uspvdb/data/" but the filename will include the date of the release
+    which is not predictable. 
 
-class NrelAtbArchiver(AbstractDatasetArchiver):
-    """NREL ATB for Electricity archiver."""
+    This code will have to be updated if new versions are available. Maybe check for the number of 
+    datasets returned in the catalog somehow?
+    """
 
-    name = "nrelatb"
-
+    name = "usgsuspvdb"
+   
     async def get_resources(self) -> ArchiveAwaitable:
-        """Using years gleaned from LINK_URL, iterate and download all files."""
-        link_pattern = re.compile(r"parquet%2F(\d{4})")
-        for link in await self.get_hyperlinks(LINK_URL, link_pattern):
-            matches = link_pattern.search(link)
-            if not matches:
-                continue
-            year = int(matches.group(1))
-            if self.valid_year(year):
-                yield self.get_year_resource(year)
+        """Download the 2 version of the database released in different years."""
+        for year in [2023, 2024]:
+            yield self.get_crosswalk_zip(year)
 
-    async def get_year_resource(self, year: int) -> tuple[Path, dict]:
-        """Download parquet file."""
-        url = f"{BASE_URL}/{year}/ATBe.parquet"
-        download_path = self.download_directory / f"nrelatb-{year}.parquet"
-        await self.download_file(url, download_path)
+    async def get_crosswalk_zip(self, year: int) -> tuple[Path, dict]:
+        """Download entire repo as a zipfile.
+
+        F.
+        """
+        crosswalk_urls = {
+            2023: "https://www.sciencebase.gov/catalog/item/6442d8a2d34ee8d4ade8e6db",
+            2024: "https://www.sciencebase.gov/catalog/item/6671c479d34e84915adb7536",
+        }
+        download_path = self.download_directory / f"usgsuspvdb_{year}.zip"
+        await self.download_zipfile(crosswalk_urls[year], download_path)
 
         return ResourceInfo(local_path=download_path, partitions={"year": year})
