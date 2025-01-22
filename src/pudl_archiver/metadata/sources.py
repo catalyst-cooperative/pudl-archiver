@@ -2,7 +2,6 @@
 
 from typing import Any
 
-import pandas as pd
 from pudl.metadata.constants import CONTRIBUTORS, LICENSES
 
 # To add a new contributor, follow the following format to add an entry to the
@@ -141,11 +140,33 @@ NON_PUDL_SOURCES: dict[str, Any] = {
             "web service."
         ),
         "working_partitions": {
-            "year_quarters": [
-                str(q).lower()
-                for q in pd.period_range(start="2018q2", end="2024q2", freq="Q")
-            ]  # Note: this looks mostly right but not always. maybe this should be year_month
-            # and we should just enumerate the months.
+            "year_months": [
+                "2018-04",
+                "2018-07",
+                "2018-10",
+                "2019-01",
+                "2019-04",
+                "2019-07",
+                "2019-10",
+                "2020-01",
+                "2020-04",
+                "2020-05",
+                "2020-07",
+                "2020-10",
+                "2021-01",
+                "2021-04",
+                "2021-07",
+                "2021-11",
+                "2022-01",
+                "2022-04",
+                "2022-07",
+                "2022-10",
+                "2023-01",
+                "2023-05",
+                "2023-11",
+                "2024-05",
+                "2024-11",
+            ]
         },
         "keywords": sorted(
             {
