@@ -291,10 +291,20 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         "title": "DOE -- IRA Energy Community Data Layers",
         "path": "https://edx.netl.doe.gov/dataset/ira-energy-community-data-layers",
         "description": (
-            "This dataset outlines energy communities across the U.S. based off part of the Inflation "
-            "Reduction Act’s (IRA) definition that is focused on census tracts and directly adjoining "
-            "tracts that have had coal mine closures since 1999 or coal-fired electric generating unit "
-            "retirements since 2009."
+            "An IRA Energy Community refers to areas designated under the U.S. Inflation Reduction "
+            "Act (IRA) as eligible for special incentives to promote clean energy development. These "
+            "communities are typically regions impacted by the transition away from fossil fuels, "
+            "such as those with closed coal mines or retired coal-fired power plants. The designation "
+            "aims to boost local economies and job creation by attracting renewable energy projects "
+            "like wind, solar, and battery storage, often offering enhanced tax credits to developers "
+            "working in these areas."
+            
+            "This source contains data for two types of potentially qualifying energy communities: 1) "
+            "Census tracts and directly adjoining tracts that have had coal mine closures since 1999 "
+            "or coal-fired electric generating unit retirements since 2009. These census tracts qualify "
+            "as energy communities. 2) Metropolitan statistical areas (MSAs) and non-metropolitan statistical "
+            "areas (non-MSAs) that are energy communities for 2023 and 2024, along with their fossil "
+            "fuel employment (FFE) status."
         ),
         "working_partitions": {"years": [2024]},
         "keywords": sorted(
