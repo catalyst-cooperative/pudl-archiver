@@ -310,7 +310,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         "license_pudl": LICENSES["cc-by-4.0"],
         "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
     },
-    "epadcecjp": {
+    "epadcejp": {
         "title": "EPA -- Disadvantaged Community Energy Justice Program Dataset",
         "path": "https://www.arcgis.com/home/webmap/viewer.html?url=https://geopub.epa.gov/arcgis/rest/services/ejscreen/environmental_climate_justice_program/MapServer&source=sd",
         "description": (
