@@ -236,6 +236,7 @@ class AbstractDatasetArchiver(ABC):
             url: URL of web page.
             filter_pattern: If present, only return links that contain pattern.
             verify: Verify ssl certificate (EPACEMS https source has bad certificate).
+            headers: Additional headers to send in the GET request.
         """
         # Parse web page to get all hyperlinks
         parser = _HyperlinkExtractor()
@@ -249,15 +250,14 @@ class AbstractDatasetArchiver(ABC):
 
         # Filter to those that match filter_pattern
         hyperlinks = parser.hyperlinks
-        if filter_pattern is not None:
-            self.logger.info(f"Filtering using {filter_pattern}")
+        if filter_pattern:
             hyperlinks = {link for link in hyperlinks if filter_pattern.search(link)}
 
         # Warn if no links are found
         if not hyperlinks:
             self.logger.warning(
-                f"The archiver couldn't find any hyperlinks that match {filter_pattern}."
-                f"Make sure your filter_pattern is correct or if the structure of the {url} page changed."
+                f"The archiver couldn't find any hyperlinks{('that match' + filter_pattern) if filter_pattern else ''}."
+                f"Make sure your filter_pattern is correct, check if the structure of the {url} page changed, or if you are missing HTTP headers."
             )
 
         return hyperlinks
