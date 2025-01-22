@@ -290,6 +290,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
     "doeiraec": {
         "title": "DOE -- IRA Energy Community Data Layers",
         "path": "https://edx.netl.doe.gov/dataset/ira-energy-community-data-layers",
+        "path": "https://edx.netl.doe.gov/dataset/ira-energy-community-data-layers",
         "description": (
             "This dataset outlines energy communities across the U.S. based off part of the Inflation "
             "Reduction Act’s (IRA) definition that is focused on census tracts and directly adjoining "
@@ -299,8 +300,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         "working_partitions": {"years": [2024]},
         "keywords": sorted(
             {
-                "energy",
-                "community",
+                "energy community",
                 "coal",
                 "mines",
                 "closure",
@@ -311,33 +311,8 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         "license_pudl": LICENSES["cc-by-4.0"],
         "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
     },
-    "ecffemployment": {
-        "title": "MSA/Non-MSAs that only meets the Fossil Fuel Employment 0.17% Threshold Dataset",
-        "path": "https://edx.netl.doe.gov/dataset/ira-energy-community-data-layers",
-        "description": (
-            "Dataset outlining energy communities across the U.S. based off part of the Inflation Reduction "
-            "Act’s (IRA) definition, based off metropolitan statistical area (MSA) or non-metropolitan "
-            "statistical area (non-MSA) that has (or had at any time after December 31, 2009) 0.17 percent "
-            "or greater direct employment (Fossil Fuel Employment) related to the extraction, processing, "
-            "transport, or storage of coal, oil, or natural gas."
-        ),
-        "working_partitions": {"years": [2024]},
-        "keywords": sorted(
-            {
-                "energy",
-                "community",
-                "ira",
-                "employement",
-                "fossil",
-                "msa"
-            }
-        ),
-        "license_raw": LICENSES["us-govt"],
-        "license_pudl": LICENSES["cc-by-4.0"],
-        "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
-    },
     "epadcecjp": {
-        "title": "EPA Disadvantaged Community Energy Justice Program",
+        "title": "EPA -- Disadvantaged Community Energy Justice Program Dataset",
         "path": "https://www.arcgis.com/home/webmap/viewer.html?url=https://geopub.epa.gov/arcgis/rest/services/ejscreen/environmental_climate_justice_program/MapServer&source=sd",
         "description": (
             "This dataset denotes whether a region is considered a disadvantaged community based on "
@@ -363,7 +338,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         "license_pudl": LICENSES["cc-by-4.0"],
         "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
     "epamats": {
-        "title": "EPA Mercury and Air Toxics Standards Dataset",
+        "title": "EPA -- Mercury and Air Toxics Standards Dataset",
         "path": "https://www.epa.gov/stationary-sources-air-pollution/mercury-and-air-toxics-standards",
         "description": (
             "The EPA Mercury and Air Toxics Standards (MATS) dataset provides detailed information on emissions "
