@@ -287,7 +287,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         "license_pudl": LICENSES["cc-by-4.0"],
         "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
     },
-    "eccoalclosure": {
+    "doeiraec": {
         "title": "Coal Closure Energy Communities Dataset",
         "path": "https://edx.netl.doe.gov/dataset/ira-energy-community-data-layers",
         "description": (
