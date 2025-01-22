@@ -238,7 +238,15 @@ NON_PUDL_SOURCES: dict[str, Any] = {
                 "doe",
                 "seto",
                 "lbnl",
-            }
+                "spatial",
+                "gis",
+                "geospatial",
+                "geometry",
+                "renewable",
+                "electricity",
+                "generation",
+                "energy",
+      }
         ),
         "license_raw": LICENSES["us-govt"],
         "license_pudl": LICENSES["cc-by-4.0"],
