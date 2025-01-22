@@ -28,7 +28,9 @@ class DoeLeadArchiver(AbstractDatasetArchiver):
         #       https://data.openei.org/files/6219/Data%20Dictionary%202022.xlsx
         #       https://data.openei.org/files/6219/LEAD%20Tool%20States%20List%202022.xlsx
         data_link_pattern = re.compile(r"([^/]+(\d{4})(?:-LEAD-data.zip|.xlsx))")
-        for oei_link in await self.get_hyperlinks(BASE_URL, oei_link_pattern, headers=HEADERS):
+        for oei_link in await self.get_hyperlinks(
+            BASE_URL, oei_link_pattern, headers=HEADERS
+        ):
             self.logger.info(f"LEAD tool raw dataset: {oei_link}")
             year_links = {}
             oei_year = -1
@@ -41,7 +43,9 @@ class DoeLeadArchiver(AbstractDatasetArchiver):
                     oei_year = link_year
                 else:
                     if oei_year != link_year:
-                        self.logger.warning(f"Mixed years found at {oei_link}: {oei_year}, {link_year} from {data_link}")
+                        self.logger.warning(
+                            f"Mixed years found at {oei_link}: {oei_year}, {link_year} from {data_link}"
+                        )
                 self.logger.debug(f"OEI data: {data_link}")
                 year_links[matches.group(1)] = data_link
             if year_links:
@@ -70,5 +74,5 @@ class DoeLeadArchiver(AbstractDatasetArchiver):
         return ResourceInfo(
             local_path=zip_path,
             partitions={"year": year},
-            layout=ZipLayout(file_paths=data_paths_in_archive)
+            layout=ZipLayout(file_paths=data_paths_in_archive),
         )
