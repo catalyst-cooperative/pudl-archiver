@@ -246,7 +246,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
                 "electricity",
                 "generation",
                 "energy",
-      }
+            }
         ),
         "license_raw": LICENSES["us-govt"],
         "license_pudl": LICENSES["cc-by-4.0"],
