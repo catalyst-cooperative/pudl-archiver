@@ -298,7 +298,6 @@ NON_PUDL_SOURCES: dict[str, Any] = {
             "aims to boost local economies and job creation by attracting renewable energy projects "
             "like wind, solar, and battery storage, often offering enhanced tax credits to developers "
             "working in these areas."
-            
             "This source contains data for two types of potentially qualifying energy communities: 1) "
             "Census tracts and directly adjoining tracts that have had coal mine closures since 1999 "
             "or coal-fired electric generating unit retirements since 2009. These census tracts qualify "
