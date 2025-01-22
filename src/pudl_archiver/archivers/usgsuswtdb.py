@@ -25,8 +25,9 @@ class UsgsUswtdbArchiver(AbstractDatasetArchiver):
                 continue
 
             date = matches.group(4)
-            year_month = f"{date[:4]}-{date[4:6]}"
-            if self.valid_year(year_month[:4]):
+            year, month = date[:4], date[4:6]
+            year_month = f"{year}-{month}"
+            if self.valid_year(int(year)):
                 yield self.get_year_month_resource(link, year_month)
 
     async def get_year_month_resource(self, link: str, year_month: str) -> ResourceInfo:
