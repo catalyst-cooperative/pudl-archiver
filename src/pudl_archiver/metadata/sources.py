@@ -120,7 +120,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
     },
     "eiarecs": {
         "title": "EIA RECS -- Residential Energy Consumption Survey",
-        "path": "https://www.eia.gov/consumption/residential/data/2020/",
+        "path": "https://www.eia.gov/consumption/residential/",
         "description": (
             "EIA administers the Residential Energy Consumption Survey (RECS) to a "
             "nationally representative sample of housing units. Traditionally, "
