@@ -337,6 +337,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         "license_raw": LICENSES["us-govt"],
         "license_pudl": LICENSES["cc-by-4.0"],
         "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
+    },
     "epamats": {
         "title": "EPA -- Mercury and Air Toxics Standards Dataset",
         "path": "https://www.epa.gov/stationary-sources-air-pollution/mercury-and-air-toxics-standards",
