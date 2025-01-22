@@ -75,7 +75,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
     },
     "eianems": {
         "title": "EIA NEMS -- National Energy Modeling System",
-        "path": "https://github.com/EIAgov/NEMS/tree/main?tab=readme-ov-file",
+        "path": "https://github.com/EIAgov/NEMS",
         "description": (
             "The National Energy Modeling System (NEMS) is a long-term energy-economy "
             "modeling system of U.S. energy markets. The model is used to project "
