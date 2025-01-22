@@ -35,11 +35,11 @@ class UsgsUsPvDbArchiver(AbstractDatasetArchiver):
     async def get_crosswalk_zip(self, year: int) -> tuple[Path, dict]:
         """Download entire repo as a zipfile.
 
-        F.
+        .
         """
         crosswalk_urls = {
-            2023: "https://www.sciencebase.gov/catalog/item/6442d8a2d34ee8d4ade8e6db",
-            2024: "https://www.sciencebase.gov/catalog/item/6671c479d34e84915adb7536",
+            2023: "https://www.sciencebase.gov/catalog/file/get/6442d8a2d34ee8d4ade8e6db",
+            2024: "https://www.sciencebase.gov/catalog/file/get/6671c479d34e84915adb7536",
         }
         download_path = self.download_directory / f"usgsuspvdb_{year}.zip"
         await self.download_zipfile(crosswalk_urls[year], download_path)
