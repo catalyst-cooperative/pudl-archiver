@@ -35,7 +35,7 @@ class UsgsUsPvDbArchiver(AbstractDatasetArchiver):
     async def get_crosswalk_zip(self, year: int) -> tuple[Path, dict]:
         """Download entire dataset as a zipfile.
 
-        The `get` URLs are found on: 
+        The `get` URLs are found on:
         * https://www.sciencebase.gov/catalog/item/6442d8a2d34ee8d4ade8e6db
         * https://www.sciencebase.gov/catalog/item/6671c479d34e84915adb7536
         """
