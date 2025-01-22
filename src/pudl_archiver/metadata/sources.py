@@ -45,7 +45,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
     },
     "eiacbecs": {
         "title": "EIA CBECS -- Commercial Buildings Energy Consumption Survey",
-        "path": "https://www.eia.gov/consumption/manufacturing/data/2018/",
+        "path": "https://www.eia.gov/consumption/commercial/",
         "description": (
             "The Commercial Buildings Energy Consumption Survey (CBECS) is a national "
             "sample survey that collects information on the stock of U.S. commercial "
