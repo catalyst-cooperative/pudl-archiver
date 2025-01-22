@@ -362,4 +362,39 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         "license_raw": LICENSES["us-govt"],
         "license_pudl": LICENSES["cc-by-4.0"],
         "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
+    "epamats": {
+        "title": "EPA Mercury and Air Toxics Standards Dataset",
+        "path": "https://www.epa.gov/stationary-sources-air-pollution/mercury-and-air-toxics-standards",
+        "description": (
+            "The EPA Mercury and Air Toxics Standards (MATS) dataset provides detailed information on emissions "
+            "of hazardous air pollutants, specifically mercury and other toxic substances, from power plants in "
+            "the United States. Established by the U.S. Environmental Protection Agency (EPA) under the Clean Air "
+            "Act, MATS aims to reduce air pollution and its associated health risks by setting limits on the "
+            "emissions of mercury, arsenic, acid gases, and other pollutants from coal- and oil-fired power "
+            "plants. The dataset typically includes metrics such as emission levels, compliance testing results, "
+            "facility locations, and operational data. It serves as a critical resource for policymakers, "
+            "researchers, and environmental organizations to assess the effectiveness of pollution control "
+            "measures, monitor compliance, and evaluate the environmental and public health impacts of power "
+            "plant emissions."
+        ),
+        "working_partitions": {"years": [
+            1990, 1991, 1992, 1993, 1994, 1995, 1996, 
+            1997, 1998, 1999, 2000, 2001, 2002, 2003,
+            2004, 2005, 2006, 2007, 2008, 2009, 2010, 
+            2011, 2012, 2013, 2014, 2015, 2016, 2017, 
+            2018, 2019, 2020, 2021, 2022
+        ]}, # not 100% sure on years
+        "keywords": sorted(
+            {
+                "mercury",
+                "toxics",
+                "standards",
+                "air",
+                "environment",
+                "epa"
+            }
+        ),
+        "license_raw": LICENSES["us-govt"],
+        "license_pudl": LICENSES["cc-by-4.0"],
+        "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
 }
