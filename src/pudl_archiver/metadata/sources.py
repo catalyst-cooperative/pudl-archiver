@@ -109,6 +109,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         },
         "keywords": sorted(
             {
+                "eia",
                 "manufacturing",
                 "MECS",
             }
