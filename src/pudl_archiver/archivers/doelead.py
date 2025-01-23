@@ -7,6 +7,7 @@ from pudl_archiver.archivers.classes import (
     ArchiveAwaitable,
     ResourceInfo,
 )
+from pudl_archiver.frictionless import ZipLayout
 
 BASE_URL = "https://www.energy.gov/scep/low-income-energy-affordability-data-lead-tool"
 
