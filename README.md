@@ -445,4 +445,4 @@ in 2019, 2021, and 2024.
 
 In 2024 the PUDL Project was awarded a grant from
 [NSF's Pathways to Enable Open Source Ecosystems (POSE)](https://new.nsf.gov/funding/opportunities/pathways-enable-open-source-ecosystems-pose) program
-([award 2346139](https://www.nsf.gov/awardsearch/showAward?AWD_ID=2346139>)).
+([award 2346139](https://www.nsf.gov/awardsearch/showAward?AWD_ID=2346139)).
