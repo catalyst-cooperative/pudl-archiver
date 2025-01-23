@@ -1,4 +1,25 @@
-"""Download DOE LEAD data."""
+"""Download DOE LEAD data.
+
+Each partition includes:
+- Data Dictionary
+- Census Tracts List
+- Cities List
+- Counties List
+- States List
+- Tribal Areas List
+- Cities Census Track Overlaps
+- Tribal Areas Tract Overlaps
+- One .zip file per state, each of which includes:
+  - AMI Census Tracts
+  - SMI Census Tracts
+  - LLSI Census Tracts
+  - FPL Census Tracts
+  - LLSI Counties
+  - SMI Counties
+  - FPL Counties
+  - AMI Counties
+"""
+
 
 import re
 
