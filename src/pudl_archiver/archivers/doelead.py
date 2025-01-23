@@ -20,7 +20,6 @@ Each partition includes:
   - AMI Counties
 """
 
-
 import re
 
 from pudl_archiver.archivers.classes import (
