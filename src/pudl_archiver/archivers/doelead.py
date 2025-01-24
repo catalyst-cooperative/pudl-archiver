@@ -29,7 +29,11 @@ from pudl_archiver.archivers.classes import (
 )
 from pudl_archiver.frictionless import ZipLayout
 
-BASE_URL = "https://www.energy.gov/scep/low-income-energy-affordability-data-lead-tool"
+TOOL_URL = "https://www.energy.gov/scep/low-income-energy-affordability-data-lead-tool"
+YEARS_DOIS = {
+    2022: "https://doi.org/10.25984/2504170",
+    2018: "https://doi.org/10.25984/1784729",
+}
 
 # verified working 2025-01-22 via
 # $ wget "https://www.energy.gov/scep/low-income-energy-affordability-data-lead-tool" -O foo.html -U "Mozilla/5.0 Catalyst/2025 Cooperative/2025"
@@ -42,40 +46,71 @@ class DoeLeadArchiver(AbstractDatasetArchiver):
     name = "doelead"
 
     async def get_resources(self) -> ArchiveAwaitable:
-        """Download DOE LEAD resources."""
+        """Download DOE LEAD resources.
+        
+        The DOE LEAD Tool doesn't provide direct access to the raw data, but instead links to the current raw data release hosted on OEDI. It does not provide links to past data releases. So, we hard-code the DOIs for all known releases, archive those, but also check the DOE LEAD Tool page to see if there's a new release we don't know about yet.
+        """
         # e.g.: https://data.openei.org/submissions/6219
-        oei_link_pattern = re.compile(r"data\.openei\.org/submissions")
+        currentrelease_link_pattern = re.compile(r"data\.openei\.org/submissions")
+        """Regex for matching the current raw data release on the DOE LEAD Tool page"""
+        
+        doi_link_pattern = re.compile(r"https://doi.org")
+        """Regex for matching the DOI of the OEDI submission"""
+        
         # e.g.: https://data.openei.org/files/6219/DC-2022-LEAD-data.zip
         #       https://data.openei.org/files/6219/Data%20Dictionary%202022.xlsx
         #       https://data.openei.org/files/6219/LEAD%20Tool%20States%20List%202022.xlsx
         data_link_pattern = re.compile(r"([^/]+(\d{4})(?:-LEAD-data.zip|.xlsx))")
-        for oei_link in await self.get_hyperlinks(
-            BASE_URL, oei_link_pattern, headers=HEADERS
-        ):
-            self.logger.info(f"LEAD tool raw dataset: {oei_link}")
-            year_links = {}
-            oei_year = -1
-            for data_link in await self.get_hyperlinks(oei_link, data_link_pattern):
+        """Regex for matching the data files in a release on the OEDI page. Captures the year, and supports both .zip and .xlsx file names."""
+        
+        currentrelease_link = await self.get_hyperlinks(
+            TOOL_URL, currentrelease_link_pattern, headers=HEADERS
+        )
+        if len(currentrelease_link) != 1:
+            raise AssertionError(
+                f"We expect exactly one outgoing link to data.openei.org/submissions at {BASE_URL}, but we found: {currentrelease_link}"
+            )
+        currentrelease_link = currentrelease_link.pop()
+        currentrelease_doi = await self.get_hyperlinks(currentrelease_link, doi_link_pattern)
+        if len(currentrelease_doi) != 1:
+            raise AssertionError(
+                f"We expect exactly one DOI link at {currentrelease_link}, but we found: {currentrelease_doi}"
+            )
+        currentrelease_doi = currentrelease_doi.pop()
+        
+        currentrelease_found = False
+        for year, doi in YEARS_DOIS.items():
+            self.logger.info(f"Processing DOE LEAD raw data release for {year}: {doi}")
+            if doi == currentrelease_doi:
+                currentrelease_found = True
+            filenames_links = {}
+            for data_link in await self.get_hyperlinks(doi, data_link_pattern):
                 matches = data_link_pattern.search(data_link)
                 if not matches:
                     continue
                 link_year = int(matches.group(2))
-                if oei_year < 0:
-                    oei_year = link_year
-                else:
-                    if oei_year != link_year:
-                        self.logger.warning(
-                            f"Mixed years found at {oei_link}: {oei_year}, {link_year} from {data_link}"
-                        )
-                self.logger.debug(f"OEI data: {data_link}")
-                year_links[matches.group(1)] = data_link
-            if year_links:
-                self.logger.info(f"Downloading: {oei_year}, {len(year_links)} items")
-                yield self.get_year_resource(year_links, oei_year)
-        self.logger.info("ALL DONE")
+                if link_year != year:
+                    raise AssertionError(
+                        f"We expect all files at {doi} to be for {year}, but we found: {link_year} from {data_link}"
+                    )
+                filenames_links[matches.group(1)] = data_link
+            if filenames_links:
+                self.logger.info(f"Downloading: {year}, {len(filenames_links)} items")
+                yield self.get_year_resource(filenames_links, year)
+        if not currentrelease_found:
+            raise AssertionError(
+                f"New DOE LEAD raw data release detected at {currentrelease_doi}. Update the archiver to process it."
+            )
 
     async def get_year_resource(self, links: dict[str, str], year: int) -> ResourceInfo:
-        """Download zip file."""
+        """Download all available data for a year.
+        
+        Resulting resource contains one zip file of CSVs per state/territory, plus a handful of .xlsx dictionary and geocoding files.
+        
+        Args:
+            links: filename->URL mapping for files to download
+            year: the year we're downloading data for
+        """
         host = "https://data.openei.org"
         zip_path = self.download_directory / f"doelead-{year}.zip"
         data_paths_in_archive = set()
