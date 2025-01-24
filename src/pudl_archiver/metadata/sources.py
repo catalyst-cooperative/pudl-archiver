@@ -287,4 +287,115 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         "license_pudl": LICENSES["cc-by-4.0"],
         "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
     },
+    "doeiraec": {
+        "title": "DOE -- IRA Energy Community Data Layers",
+        "path": "https://edx.netl.doe.gov/dataset/ira-energy-community-data-layers",
+        "description": (
+            "An IRA Energy Community refers to areas designated under the U.S. Inflation Reduction "
+            "Act (IRA) as eligible for special incentives to promote clean energy development. These "
+            "communities are typically regions impacted by the transition away from fossil fuels, "
+            "such as those with closed coal mines or retired coal-fired power plants. The designation "
+            "aims to boost local economies and job creation by attracting renewable energy projects "
+            "like wind, solar, and battery storage, often offering enhanced tax credits to developers "
+            "working in these areas."
+            "This source contains data for two types of potentially qualifying energy communities: 1) "
+            "Census tracts and directly adjoining tracts that have had coal mine closures since 1999 "
+            "or coal-fired electric generating unit retirements since 2009. These census tracts qualify "
+            "as energy communities. 2) Metropolitan statistical areas (MSAs) and non-metropolitan statistical "
+            "areas (non-MSAs) that are energy communities for 2023 and 2024, along with their fossil "
+            "fuel employment (FFE) status."
+        ),
+        "working_partitions": {"years": [2024]},
+        "keywords": sorted(
+            {
+                "energy community",
+                "coal",
+                "mines",
+                "closure",
+                "ira",
+            }
+        ),
+        "license_raw": LICENSES["us-govt"],
+        "license_pudl": LICENSES["cc-by-4.0"],
+        "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
+    },
+    "epadcejp": {
+        "title": "EPA -- Disadvantaged Community Energy Justice Program",
+        "path": "https://www.epa.gov/ejscreen/technical-information-and-data-downloads",
+        "description": (
+            "This dataset denotes whether a region is considered a disadvantaged community based on "
+            "the EPA's Energy Justice Program. An EPA Disadvantaged Community under the Energy Justice "
+            "Program is identified based on four key factors: environmental challenges like high pollution "
+            "exposure, economic hardships such as low income or high unemployment, social vulnerabilities "
+            "including health disparities and minority status, and geographic disadvantages in rural, urban, "
+            "or remote areas. These criteria ensure that support is directed to communities facing systemic "
+            "inequities and the greatest need for clean energy and environmental investments."
+        ),
+        "working_partitions": {},  # not 100% sure
+        "keywords": sorted(
+            {"energy", "community", "ira", "environment", "justice", "epa"}
+        ),
+        "license_raw": LICENSES["us-govt"],
+        "license_pudl": LICENSES["cc-by-4.0"],
+        "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
+    },
+    "epamats": {
+        "title": "EPA -- Mercury and Air Toxics Standards",
+        "path": "https://www.epa.gov/stationary-sources-air-pollution/mercury-and-air-toxics-standards",
+        "description": (
+            "The EPA Mercury and Air Toxics Standards (MATS) dataset provides detailed information on emissions "
+            "of hazardous air pollutants, specifically mercury and other toxic substances, from power plants in "
+            "the United States. Established by the U.S. Environmental Protection Agency (EPA) under the Clean Air "
+            "Act, MATS aims to reduce air pollution and its associated health risks by setting limits on the "
+            "emissions of mercury, arsenic, acid gases, and other pollutants from coal- and oil-fired power "
+            "plants. The dataset typically includes metrics such as emission levels, compliance testing results, "
+            "facility locations, and operational data. It serves as a critical resource for policymakers, "
+            "researchers, and environmental organizations to assess the effectiveness of pollution control "
+            "measures, monitor compliance, and evaluate the environmental and public health impacts of power "
+            "plant emissions."
+        ),
+        "working_partitions": {
+            "years": [
+                1990,
+                1991,
+                1992,
+                1993,
+                1994,
+                1995,
+                1996,
+                1997,
+                1998,
+                1999,
+                2000,
+                2001,
+                2002,
+                2003,
+                2004,
+                2005,
+                2006,
+                2007,
+                2008,
+                2009,
+                2010,
+                2011,
+                2012,
+                2013,
+                2014,
+                2015,
+                2016,
+                2017,
+                2018,
+                2019,
+                2020,
+                2021,
+                2022,
+            ]
+        },  # not 100% sure on years
+        "keywords": sorted(
+            {"mercury", "toxics", "standards", "air", "environment", "epa"}
+        ),
+        "license_raw": LICENSES["us-govt"],
+        "license_pudl": LICENSES["cc-by-4.0"],
+        "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
+    },
 }
