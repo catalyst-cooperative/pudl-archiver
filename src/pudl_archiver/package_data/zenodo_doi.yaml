@@ -70,6 +70,8 @@ nrelatb:
 phmsagas:
   production_doi: 10.5281/zenodo.7683351
   sandbox_doi: 10.5072/zenodo.45279
+usgsuspvdb:
+  sandbox_doi: 10.5072/zenodo.157776
 vcerare:
   production_doi: 10.5281/zenodo.13937522
   sandbox_doi: 10.5072/zenodo.118136
