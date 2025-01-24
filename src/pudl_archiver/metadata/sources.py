@@ -398,4 +398,22 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         "license_pudl": LICENSES["cc-by-4.0"],
         "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
     },
+    "epapcap": {
+        "title": "EPA -- Priority Climate Action Plan",
+        "path": "https://www.epa.gov/inflation-reduction-act/priority-climate-action-plan-directory",
+        "description": (
+            "EPA’s Priority Climate Action Plan (PCAP) Directory organizes data collected from 211 "
+            "PCAPs submitted by states, Metropolitan Statistical Areas (MSAs), Tribes, and territories "
+            "under EPA’s Climate Pollution Reduction Grants (CPRG) program. PCAPs are a compilation "
+            "of each jurisdiction’s identified priority actions (or measures) to reduce greenhouse "
+            "gas (GHG) emissions. The directory presents information from more than 30 data categories "
+            "related to GHG inventories, GHG reduction measures, benefits for low-income and "
+            "disadvantaged communities (LIDACs), and other PCAP elements."
+        ),
+        "working_partitions": {},
+        "keywords": sorted({}),
+        "license_raw": LICENSES["us-govt"],
+        "license_pudl": LICENSES["cc-by-4.0"],
+        "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
+    },
 }
