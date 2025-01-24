@@ -26,26 +26,47 @@ class EiaMECSArchiver(AbstractDatasetArchiver):
         for link in await self.get_hyperlinks(years_url, year_link_pattern):
             match = year_link_pattern.search(link)
             year = match.groups()[1]
-            yield self.get_year_resources(year)
+            if int(year) >= 1994:
+                yield self.get_year_resources(year)
 
     async def get_year_resources(self, year: int) -> list[ResourceInfo]:
         """Download all excel tables for a year."""
         logger.info(f"Attempting to find resources for: {year}")
-        table_link_pattern = re.compile(r"[Tt]able(\d{1,2})_(\d{1,2}).xlsx")
-
-        # Loop through all download links for tables
         data_paths_in_archive = set()
         year_url = f"{BASE_URL}/{year}"
         zip_path = self.download_directory / f"eiamecs-{year}.zip"
+        if int(year) >= 2006:
+            table_link_pattern = re.compile(
+                r"(RSE|)[Tt]able(\d{1,2}|\d{1.1})_(\d{1,2})(.xlsx|.xls)"
+            )
+        elif int(year) == 2002:
+            table_link_pattern = re.compile(
+                r"(RSE|)[Tt]able(\d{1,2}).(\d{1,2})_(\d{1,2})(.xlsx|.xls)"
+            )
+        elif int(year) == 1998:
+            table_link_pattern = re.compile(
+                r"(d|e)(\d{2})[a-z](\d{1,2})_(\d{1,2})(.xlsx|.xls)"
+            )
+        elif int(year) == 1994:
+            table_link_pattern = re.compile(r"(m|)(\d{2})_(\d{2})([a-d]|)(.xlsx|.xls)")
+
+        # Loop through all download links for tables
         for table_link in await self.get_hyperlinks(year_url, table_link_pattern):
             table_link = f"{year_url}/{table_link}"
             logger.info(f"Fetching {table_link}")
             # Get table major/minor number from links
             match = table_link_pattern.search(table_link)
-            major_num, minor_num = match.group(1), match.group(2)
+            # this is actually always first
+            is_rse = match.group(1)
+            is_rse = f"-{str.lower(is_rse)}" if is_rse != "" else ""
+            major_num = match.group(2)
+            minor_num = match.group(3)
+            extension = match.group(4)
 
             # Download file
-            filename = f"eia-mecs-{year}-table-{major_num}-{minor_num}.xlsx"
+            filename = (
+                f"eia-mecs-{year}-table-{major_num}-{minor_num}{is_rse}{extension}"
+            )
             download_path = self.download_directory / filename
             await self.download_file(table_link, download_path)
             self.add_to_archive(
@@ -57,8 +78,10 @@ class EiaMECSArchiver(AbstractDatasetArchiver):
             # Don't want to leave multiple giant CSVs on disk, so delete
             # immediately after they're safely stored in the ZIP
             download_path.unlink()
-        return ResourceInfo(
+
+        resource_info = ResourceInfo(
             local_path=zip_path,
             partitions={"year": year},
             layout=ZipLayout(file_paths=data_paths_in_archive),
         )
+        return resource_info
