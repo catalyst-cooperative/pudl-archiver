@@ -26,8 +26,7 @@ class EiaMECSArchiver(AbstractDatasetArchiver):
         for link in await self.get_hyperlinks(years_url, year_link_pattern):
             match = year_link_pattern.search(link)
             year = match.groups()[1]
-            if int(year) >= 1994:
-                yield self.get_year_resources(year)
+            yield self.get_year_resources(year)
 
     async def get_year_resources(self, year: int) -> list[ResourceInfo]:
         """Download all excel tables for a year."""
@@ -41,32 +40,48 @@ class EiaMECSArchiver(AbstractDatasetArchiver):
             )
         elif int(year) == 2002:
             table_link_pattern = re.compile(
-                r"(RSE|)[Tt]able(\d{1,2}).(\d{1,2})_(\d{1,2})(.xlsx|.xls)"
+                r"(RSE|)[Tt]able(\d{1,2}).(\d{1,2})_\d{1,2}(.xlsx|.xls)"
             )
         elif int(year) == 1998:
             table_link_pattern = re.compile(
-                r"(d|e)(\d{2})[a-z](\d{1,2})_(\d{1,2})(.xlsx|.xls)"
+                r"((d|e)\d{2}[a-z](\d{1,2})_(\d{1,2})(.xlsx|.xls))"
             )
         elif int(year) == 1994:
-            table_link_pattern = re.compile(r"(m|)(\d{2})_(\d{2})([a-d]|)(.xlsx|.xls)")
+            table_link_pattern = re.compile(
+                r"((rse|)m\d{2}_(\d{2})([a-d]|)(.xlsx|.xls))"
+            )
+        elif int(year) == 1991:
+            table_link_pattern = re.compile(r"((rse|)mecs(\d{2})([a-z])(.xlsx|.xls))")
 
         # Loop through all download links for tables
         for table_link in await self.get_hyperlinks(year_url, table_link_pattern):
             table_link = f"{year_url}/{table_link}"
             logger.info(f"Fetching {table_link}")
-            # Get table major/minor number from links
+            # From 1998 and before there are a bunch of letters in the file names
+            # in patterns that are probably parsable somehow, but for now we are
+            # just going to keep the original file names
             match = table_link_pattern.search(table_link)
-            # this is actually always first
-            is_rse = match.group(1)
-            is_rse = f"-{str.lower(is_rse)}" if is_rse != "" else ""
-            major_num = match.group(2)
-            minor_num = match.group(3)
-            extension = match.group(4)
+            filename = match.group(1)
+            if int(year) > 1998:
+                # Get table major/minor number from links
 
-            # Download file
-            filename = (
-                f"eia-mecs-{year}-table-{major_num}-{minor_num}{is_rse}{extension}"
-            )
+                # this is actually always first
+                is_rse = match.group(1)
+                is_rse = match.group(1)
+                rse_map = {
+                    "": "",
+                    "d": "",
+                    "RSE": "-rse",
+                    "e": "-rse",
+                }
+                rse = rse_map[is_rse]
+                major_num = match.group(2)
+                minor_num = match.group(3)
+                extension = match.group(4)
+                # Download file
+                filename = (
+                    f"eia-mecs-{year}-table-{major_num}-{minor_num}{rse}{extension}"
+                )
             download_path = self.download_directory / filename
             await self.download_file(table_link, download_path)
             self.add_to_archive(
