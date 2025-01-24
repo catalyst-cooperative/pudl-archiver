@@ -68,7 +68,7 @@ class DoeLeadArchiver(AbstractDatasetArchiver):
         )
         if len(currentrelease_link) != 1:
             raise AssertionError(
-                f"We expect exactly one outgoing link to data.openei.org/submissions at {BASE_URL}, but we found: {currentrelease_link}"
+                f"We expect exactly one outgoing link to data.openei.org/submissions at {TOOL_URL}, but we found: {currentrelease_link}"
             )
         currentrelease_link = currentrelease_link.pop()
         currentrelease_doi = await self.get_hyperlinks(currentrelease_link, doi_link_pattern)
