@@ -44,30 +44,33 @@ class EiaMECSArchiver(AbstractDatasetArchiver):
             )
         elif int(year) == 1998:
             table_link_pattern = re.compile(
-                r"((d|e)\d{2}[a-z](\d{1,2})_(\d{1,2})(.xlsx|.xls))"
+                r"(d|e)\d{2}([a-z]\d{1,2})_(\d{1,2})(.xlsx|.xls)"
             )
         elif int(year) == 1994:
+            # These earlier years the pattern is functional but not actually that informative.
+            # so we will just use the original name by making the whole pattern a match
             table_link_pattern = re.compile(
                 r"((rse|)m\d{2}_(\d{2})([a-d]|)(.xlsx|.xls))"
             )
         elif int(year) == 1991:
-            table_link_pattern = re.compile(r"((rse|)mecs(\d{2})([a-z])(.xlsx|.xls))")
+            table_link_pattern = re.compile(r"((rse|)mecs(\d{2})([a-z]|)(.xlsx|.xls))")
 
         # Loop through all download links for tables
         for table_link in await self.get_hyperlinks(year_url, table_link_pattern):
             table_link = f"{year_url}/{table_link}"
             logger.info(f"Fetching {table_link}")
+            # We are going to rename the files in a standard format by extracting
+            # patterns from the table_link_pattern
             # From 1998 and before there are a bunch of letters in the file names
             # in patterns that are probably parsable somehow, but for now we are
             # just going to keep the original file names
             match = table_link_pattern.search(table_link)
             filename = match.group(1)
             if int(year) > 1998:
-                # Get table major/minor number from links
-
-                # this is actually always first
                 is_rse = match.group(1)
-                is_rse = match.group(1)
+                # there are several ways the they indicate that the files are
+                # "data" vs "rse". we will add this to the end of the file name
+                # but only for rse bc for many years data and the rse are together
                 rse_map = {
                     "": "",
                     "d": "",
@@ -78,7 +81,7 @@ class EiaMECSArchiver(AbstractDatasetArchiver):
                 major_num = match.group(2)
                 minor_num = match.group(3)
                 extension = match.group(4)
-                # Download file
+                # Download filename
                 filename = (
                     f"eia-mecs-{year}-table-{major_num}-{minor_num}{rse}{extension}"
                 )
