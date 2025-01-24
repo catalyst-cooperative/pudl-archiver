@@ -48,7 +48,7 @@ class EpaPcapArchiver(AbstractDatasetArchiver):
                 prefix = "https://www.epa.gov"
                 if not link.startswith("http"):
                     link = prefix + link
-                    await self.download_helper(link, zip_path, data_paths_in_archive)
+                await self.download_helper(link, zip_path, data_paths_in_archive)
 
         return ResourceInfo(
             local_path=zip_path,
