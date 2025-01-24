@@ -399,7 +399,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
     },
     "epapcap": {
-        "title": "EPA -- Priority Climate Action Plan",
+        "title": "EPA PCAP -- Priority Climate Action Plan",
         "path": "https://www.epa.gov/inflation-reduction-act/priority-climate-action-plan-directory",
         "description": (
             "EPA’s Priority Climate Action Plan (PCAP) Directory organizes data collected from 211 "
@@ -411,7 +411,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
             "disadvantaged communities (LIDACs), and other PCAP elements."
         ),
         "working_partitions": {},
-        "keywords": sorted({"emissions", "ghg", "epa", "pcap", "cprg", "emissions"}),
+        "keywords": sorted({"emissions", "ghg", "epa", "pcap", "cprg"}),
         "license_raw": LICENSES["us-govt"],
         "license_pudl": LICENSES["cc-by-4.0"],
         "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
