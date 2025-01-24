@@ -411,7 +411,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
             "disadvantaged communities (LIDACs), and other PCAP elements."
         ),
         "working_partitions": {},
-        "keywords": sorted({}),
+        "keywords": sorted({"emissions", "ghg", "epa", "pcap", "cprg", "emissions"}),
         "license_raw": LICENSES["us-govt"],
         "license_pudl": LICENSES["cc-by-4.0"],
         "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
