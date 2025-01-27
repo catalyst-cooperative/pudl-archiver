@@ -13,6 +13,17 @@ from pudl_archiver.frictionless import ZipLayout
 BASE_URL = "https://www.eia.gov/consumption/manufacturing/data"
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
+TABLE_LINK_PATTERNS = {
+    "recent": r"(RSE|)[Tt]able(\d{1,2}|\d{1.1})_(\d{1,2})(.xlsx|.xls)",
+    2002: r"(RSE|)[Tt]able(\d{1,2}).(\d{1,2})_\d{1,2}(.xlsx|.xls)",
+    # These earlier years the pattern is functional but not actually very informative.
+    # so we will just use the original name by making the whole pattern a match
+    1998: r"((d|e)\d{2}([a-z]\d{1,2})_(\d{1,2})(.xlsx|.xls))",
+    1994: r"((rse|)m\d{2}_(\d{2})([a-d]|)(.xlsx|.xls))",
+    1991: r"((rse|)mecs(\d{2})([a-z]|)(.xlsx|.xls))",
+}
+"""Dictionary of """
+
 
 class EiaMECSArchiver(AbstractDatasetArchiver):
     """EIA MECS archiver."""
@@ -34,26 +45,13 @@ class EiaMECSArchiver(AbstractDatasetArchiver):
         data_paths_in_archive = set()
         year_url = f"{BASE_URL}/{year}"
         zip_path = self.download_directory / f"eiamecs-{year}.zip"
-        if int(year) >= 2006:
-            table_link_pattern = re.compile(
-                r"(RSE|)[Tt]able(\d{1,2}|\d{1.1})_(\d{1,2})(.xlsx|.xls)"
-            )
-        elif int(year) == 2002:
-            table_link_pattern = re.compile(
-                r"(RSE|)[Tt]able(\d{1,2}).(\d{1,2})_\d{1,2}(.xlsx|.xls)"
-            )
-        elif int(year) == 1998:
-            table_link_pattern = re.compile(
-                r"(d|e)\d{2}([a-z]\d{1,2})_(\d{1,2})(.xlsx|.xls)"
-            )
-        elif int(year) == 1994:
-            # These earlier years the pattern is functional but not actually that informative.
-            # so we will just use the original name by making the whole pattern a match
-            table_link_pattern = re.compile(
-                r"((rse|)m\d{2}_(\d{2})([a-d]|)(.xlsx|.xls))"
-            )
-        elif int(year) == 1991:
-            table_link_pattern = re.compile(r"((rse|)mecs(\d{2})([a-z]|)(.xlsx|.xls))")
+        max_old_year = max(
+            [year for year in TABLE_LINK_PATTERNS if isinstance(year, int)]
+        )
+        if int(year) > max_old_year:
+            table_link_pattern = re.compile(TABLE_LINK_PATTERNS["recent"])
+        else:
+            table_link_pattern = re.compile(TABLE_LINK_PATTERNS[int(year)])
 
         # Loop through all download links for tables
         for table_link in await self.get_hyperlinks(year_url, table_link_pattern):
@@ -71,12 +69,7 @@ class EiaMECSArchiver(AbstractDatasetArchiver):
                 # there are several ways the they indicate that the files are
                 # "data" vs "rse". we will add this to the end of the file name
                 # but only for rse bc for many years data and the rse are together
-                rse_map = {
-                    "": "",
-                    "d": "",
-                    "RSE": "-rse",
-                    "e": "-rse",
-                }
+                rse_map = {"": "", "d": "", "RSE": "-rse", "e": "-rse"}
                 rse = rse_map[is_rse]
                 major_num = match.group(2)
                 minor_num = match.group(3)
