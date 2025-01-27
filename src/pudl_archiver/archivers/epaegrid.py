@@ -30,7 +30,7 @@ class EpaEgridArchiver(AbstractDatasetArchiver):
             year = int(match.group(1))
             years = years + [year]
             yield self.get_year_resource(
-                year, [BASE_URL, "https://www.epa.gov/egrid/egrid-pm25"], False
+                year, [BASE_URL, "https://www.epa.gov/egrid/egrid-pm25"]
             )
 
         recent_year = max(years) + 1
@@ -40,11 +40,9 @@ class EpaEgridArchiver(AbstractDatasetArchiver):
             "https://www.epa.gov/egrid/egrid-technical-guide",
             "https://www.epa.gov/egrid/egrid-pm25",
         ]
-        yield self.get_year_resource(recent_year, recent_urls, True)
+        yield self.get_year_resource(recent_year, recent_urls)
 
-    async def get_year_resource(
-        self, year: int, base_urls: list[str], is_recent: bool
-    ) -> ResourceInfo:
+    async def get_year_resource(self, year: int, base_urls: list[str]) -> ResourceInfo:
         """Download xlsx file."""
         zip_path = self.download_directory / f"epaegrid-{year}.zip"
         table_link_pattern = re.compile(
