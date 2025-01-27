@@ -22,13 +22,31 @@ TABLE_LINK_PATTERNS = {
     1994: r"((rse|)m\d{2}_(\d{2})([a-d]|)(.xlsx|.xls))",
     1991: r"((rse|)mecs(\d{2})([a-z]|)(.xlsx|.xls))",
 }
-"""Dictionary of """
+"""Dictionary of years or "latest" as keys and table link patterns as values.
+
+From 2006 and forward the link pattern is the same but all of the older years
+have bespoke table link patterns. The groups to match in the regex patterns
+will be used to rename the files for the archives. The order of those match
+groups indicate various things:
+
+* first group: whether the file contains only Relative Standard Errors (RSE)
+* second group: the major table number
+* third group: the minor table number
+* forth group: the file extension
+
+The years from 1998 and back have table link patterns that could be used in this
+same format with 4 match groups, but the major and minor table numbers are not
+actually stored in the file name. So for these older years we've turned the whole
+pattern into a group and use that (the original file name) as the stored name in
+the archive.
+"""
 
 
 class EiaMECSArchiver(AbstractDatasetArchiver):
     """EIA MECS archiver."""
 
     name = "eiamecs"
+    concurrency_limit = 5  # Number of files to concurrently download
 
     async def get_resources(self) -> ArchiveAwaitable:
         """Download EIA-MECS resources."""
