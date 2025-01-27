@@ -29,18 +29,18 @@ class EpaEgridArchiver(AbstractDatasetArchiver):
             match = link_pattern.search(link)
             year = int(match.group(1))
             years = years + [year]
-            yield self.get_year_resource(year, [BASE_URL], False)
+            yield self.get_year_resource(
+                year, [BASE_URL, "https://www.epa.gov/egrid/egrid-pm25"], False
+            )
 
         recent_year = max(years) + 1
         recent_urls = [
             "https://www.epa.gov/egrid/detailed-data",
             "https://www.epa.gov/egrid/summary-data",
             "https://www.epa.gov/egrid/egrid-technical-guide",
+            "https://www.epa.gov/egrid/egrid-pm25",
         ]
         yield self.get_year_resource(recent_year, recent_urls, True)
-
-        # TODO: add the PM files as their own separate zip
-        # https://www.epa.gov/egrid/egrid-pm25
 
     async def get_year_resource(
         self, year: int, base_urls: list[str], is_recent: bool
@@ -68,6 +68,24 @@ class EpaEgridArchiver(AbstractDatasetArchiver):
                 # Don't want to leave multiple giant CSVs on disk, so delete
                 # immediately after they're safely stored in the ZIP
                 download_path.unlink()
+        # there is one file with PM 2.5 data in it which says its for 2018-2022
+        # add this file to every one of the yearly zips
+        pm_combo_years = [2018, 2019, 2020, 2021]
+        if year in pm_combo_years:
+            link = "https://www.epa.gov/system/files/documents/2024-06/egrid-draft-pm-emissions.xlsx"
+            filename = f"epaegrid-{year}-pm-emissions.xlsx"
+            download_path = self.download_directory / filename
+            await self.download_file(link, download_path)
+            self.add_to_archive(
+                zip_path=zip_path,
+                filename=filename,
+                blob=download_path.open("rb"),
+            )
+            data_paths_in_archive.add(filename)
+            # Don't want to leave multiple giant CSVs on disk, so delete
+            # immediately after they're safely stored in the ZIP
+            download_path.unlink()
+
         return ResourceInfo(
             local_path=zip_path,
             partitions={"year": year},
