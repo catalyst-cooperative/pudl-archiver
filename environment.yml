@@ -4,7 +4,7 @@ channels:
   - conda-forge
 dependencies:
   # Used to set up the environment
-  - pip>=21,<25
+  - pip>=24
   - python>=3.12,<3.13
   - setuptools>=66
   # GDAL is a transitive dependency whose binaries must match those installed by the
