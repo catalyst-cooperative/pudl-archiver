@@ -20,8 +20,6 @@ Each partition includes:
   - AMI Counties
 """
 
-import re
-
 from pudl_archiver.archivers.classes import (
     AbstractDatasetArchiver,
     ArchiveAwaitable,
@@ -60,25 +58,25 @@ class DoeLeadArchiver(AbstractDatasetArchiver):
         # e.g.: https://data.openei.org/files/6219/DC-2022-LEAD-data.zip
         #       https://data.openei.org/files/6219/Data%20Dictionary%202022.xlsx
         #       https://data.openei.org/files/6219/LEAD%20Tool%20States%20List%202022.xlsx
-        data_link_pattern = re.compile(r"([^/]+(\d{4})(?:-LEAD-data.zip|.xlsx))")
-        """Regex for matching the data files in a release on the OEDI page. Captures the year, and supports both .zip and .xlsx file names."""
+        # data_link_pattern = re.compile(r"([^/]+(\d{4})(?:-LEAD-data.zip|.xlsx))")
+        # """Regex for matching the data files in a release on the OEDI page. Captures the year, and supports both .zip and .xlsx file names."""
 
-        for year, doi in YEARS_DOIS.items():
-            self.logger.info(f"Processing DOE LEAD raw data release for {year}: {doi}")
-            filenames_links = {}
-            for data_link in await self.get_hyperlinks(doi, data_link_pattern):
-                matches = data_link_pattern.search(data_link)
-                if not matches:
-                    continue
-                link_year = int(matches.group(2))
-                if link_year != year:
-                    raise AssertionError(
-                        f"We expect all files at {doi} to be for {year}, but we found: {link_year} from {data_link}"
-                    )
-                filenames_links[matches.group(1)] = data_link
-            if filenames_links:
-                self.logger.info(f"Downloading: {year}, {len(filenames_links)} items")
-                yield self.get_year_resource(filenames_links, year)
+        # for year, doi in YEARS_DOIS.items():
+        #     self.logger.info(f"Processing DOE LEAD raw data release for {year}: {doi}")
+        #     filenames_links = {}
+        #     for data_link in await self.get_hyperlinks(doi, data_link_pattern):
+        #         matches = data_link_pattern.search(data_link)
+        #         if not matches:
+        #             continue
+        #         link_year = int(matches.group(2))
+        #         if link_year != year:
+        #             raise AssertionError(
+        #                 f"We expect all files at {doi} to be for {year}, but we found: {link_year} from {data_link}"
+        #             )
+        #         filenames_links[matches.group(1)] = data_link
+        #     if filenames_links:
+        #         self.logger.info(f"Downloading: {year}, {len(filenames_links)} items")
+        #         yield self.get_year_resource(filenames_links, year)
 
         # Download LEAD methodology PDF and other metadata separately
         metadata_links = {
@@ -130,7 +128,7 @@ class DoeLeadArchiver(AbstractDatasetArchiver):
         """
         self.logger.info(f"Downloading {link}")
         download_path = self.download_directory / filename
-        await self.download_file(link, download_path)
+        await self.download_file(url=link, file_path=download_path, headers=HEADERS)
 
         return ResourceInfo(
             local_path=download_path,
