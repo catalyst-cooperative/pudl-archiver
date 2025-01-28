@@ -80,6 +80,14 @@ class DoeLeadArchiver(AbstractDatasetArchiver):
                 self.logger.info(f"Downloading: {year}, {len(filenames_links)} items")
                 yield self.get_year_resource(filenames_links, year)
 
+        # Download LEAD methodology PDF and other metadata separately
+        metadata_links = {
+            "lead-methodology-122024.pdf": "https://www.energy.gov/sites/default/files/2024-12/lead-methodology_122024.pdf",
+            "lead-tool-factsheet-072624.pdf": "https://www.energy.gov/sites/default/files/2024-07/lead-tool-factsheet_072624.pdf",
+        }
+        for filename, link in metadata_links.items():
+            yield self.get_metadata_resource(filename=filename, link=link)
+
     async def get_year_resource(self, links: dict[str, str], year: int) -> ResourceInfo:
         """Download all available data for a year.
 
@@ -109,4 +117,22 @@ class DoeLeadArchiver(AbstractDatasetArchiver):
             local_path=zip_path,
             partitions={"year": year},
             layout=ZipLayout(file_paths=data_paths_in_archive),
+        )
+
+    async def get_metadata_resource(self, filename: str, link: str) -> ResourceInfo:
+        """Download metadata resource.
+
+        Resulting resource contains one PDF file with metadata about the LEAD dataset.
+
+        Args:
+            links: filename->URL mapping for files to download
+            year: the year we're downloading data for
+        """
+        self.logger.info(f"Downloading {link}")
+        download_path = self.download_directory / filename
+        await self.download_file(link, download_path)
+
+        return ResourceInfo(
+            local_path=download_path,
+            partitions={},
         )
