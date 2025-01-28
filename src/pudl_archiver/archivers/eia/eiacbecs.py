@@ -2,6 +2,7 @@
 
 import logging
 import re
+from pathlib import Path
 from urllib.parse import urljoin
 
 from pudl_archiver.archivers.classes import (
@@ -47,7 +48,7 @@ class EiaCbecsArchiver(AbstractDatasetArchiver):
                 file_url = urljoin(year_url, link)
                 download_path = self.download_directory / filename
                 await self.download_file(file_url, download_path)
-                with open(download_path, "rb") as f:
+                with Path.open(download_path, "rb") as f:
                     first_bytpes = f.read(20)
                     if b"html" in first_bytpes.lower().strip():
                         logger.warning(
