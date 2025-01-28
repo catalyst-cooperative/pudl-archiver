@@ -22,7 +22,7 @@ def parse_main(args=None):
         "--datasets",
         nargs="*",
         help="Name of the Zenodo deposition.",
-        choices=list(ARCHIVERS.keys()),
+        choices=sorted(ARCHIVERS.keys()),
     )
     parser.add_argument(
         "--only-years",
