@@ -29,7 +29,9 @@ from pudl_archiver.archivers.classes import (
 )
 from pudl_archiver.frictionless import ZipLayout
 
-TOOL_URL = "https://www.energy.gov/scep/low-income-energy-affordability-data-lead-tool"
+# This site is no longer online as of 01/28/2025.
+# TOOL_URL = "https://www.energy.gov/scep/low-income-energy-affordability-data-lead-tool"
+
 YEARS_DOIS = {
     2022: "https://doi.org/10.25984/2504170",
     2018: "https://doi.org/10.25984/1784729",
@@ -48,43 +50,21 @@ class DoeLeadArchiver(AbstractDatasetArchiver):
     async def get_resources(self) -> ArchiveAwaitable:
         """Download DOE LEAD resources.
 
-        The DOE LEAD Tool doesn't provide direct access to the raw data, but instead links to the current raw data release hosted on OEDI. It does not provide links to past data releases. So, we hard-code the DOIs for all known releases, archive those, but also check the DOE LEAD Tool page to see if there's a new release we don't know about yet.
+        The DOE LEAD Tool is down as of 01/28/2025. It didn't provide direct access
+        to the raw data, but instead linked to the current raw data release hosted on
+        OEDI. It did not provide links to past data releases. So, we hard-code the
+        DOIs for all known releases and archive those. Based on the removal of the main
+        page, it's safe to assume this won't be updated any time soon. If it is, we'll
+        need to manually update the DOIs.
         """
-        # e.g.: https://data.openei.org/submissions/6219
-        currentrelease_link_pattern = re.compile(r"data\.openei\.org/submissions")
-        """Regex for matching the current raw data release on the DOE LEAD Tool page"""
-
-        doi_link_pattern = re.compile(r"https://doi.org")
-        """Regex for matching the DOI of the OEDI submission"""
-
         # e.g.: https://data.openei.org/files/6219/DC-2022-LEAD-data.zip
         #       https://data.openei.org/files/6219/Data%20Dictionary%202022.xlsx
         #       https://data.openei.org/files/6219/LEAD%20Tool%20States%20List%202022.xlsx
         data_link_pattern = re.compile(r"([^/]+(\d{4})(?:-LEAD-data.zip|.xlsx))")
         """Regex for matching the data files in a release on the OEDI page. Captures the year, and supports both .zip and .xlsx file names."""
 
-        currentrelease_link = await self.get_hyperlinks(
-            TOOL_URL, currentrelease_link_pattern, headers=HEADERS
-        )
-        if len(currentrelease_link) != 1:
-            raise AssertionError(
-                f"We expect exactly one outgoing link to data.openei.org/submissions at {TOOL_URL}, but we found: {currentrelease_link}"
-            )
-        currentrelease_link = currentrelease_link.pop()
-        currentrelease_doi = await self.get_hyperlinks(
-            currentrelease_link, doi_link_pattern
-        )
-        if len(currentrelease_doi) != 1:
-            raise AssertionError(
-                f"We expect exactly one DOI link at {currentrelease_link}, but we found: {currentrelease_doi}"
-            )
-        currentrelease_doi = currentrelease_doi.pop()
-
-        currentrelease_found = False
         for year, doi in YEARS_DOIS.items():
             self.logger.info(f"Processing DOE LEAD raw data release for {year}: {doi}")
-            if doi == currentrelease_doi:
-                currentrelease_found = True
             filenames_links = {}
             for data_link in await self.get_hyperlinks(doi, data_link_pattern):
                 matches = data_link_pattern.search(data_link)
@@ -99,10 +79,6 @@ class DoeLeadArchiver(AbstractDatasetArchiver):
             if filenames_links:
                 self.logger.info(f"Downloading: {year}, {len(filenames_links)} items")
                 yield self.get_year_resource(filenames_links, year)
-        if not currentrelease_found:
-            raise AssertionError(
-                f"New DOE LEAD raw data release detected at {currentrelease_doi}. Update the archiver to process it."
-            )
 
     async def get_year_resource(self, links: dict[str, str], year: int) -> ResourceInfo:
         """Download all available data for a year.
