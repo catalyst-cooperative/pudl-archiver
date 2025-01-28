@@ -8,7 +8,8 @@ doeiraec:
   production_doi: 10.5281/zenodo.14757121
   sandbox_doi: 10.5072/zenodo.157934
 doelead:
-  #production_doi: 10.5281/zenodo.14757121
+  production_doi: 10.5281/zenodo.14758684
+  # sandbox_doi: TODO once server 413 error resolves
 eia176:
   production_doi: 10.5281/zenodo.7682357
   sandbox_doi: 10.5072/zenodo.3158
