@@ -1,4 +1,4 @@
-"""Download DoE IRA Energy Community data.
+"""Download DOE IRA Energy Community data.
 
 Note that because there are only four links, a registration wall and a tangle of
 information on the webpage, we directly connect links to partitions in the metadata. We
@@ -21,19 +21,19 @@ class DOEIRAECArchiver(AbstractDatasetArchiver):
         """Download DOE IRA Energy Community resources."""
         link_dict = {
             "https://edx.netl.doe.gov/resource/13454403-ef6b-479b-b720-d5e3eaefbb91/download": [
-                "msa-nonmsa-fossil-fuel-employment-energy-community-status",
+                "msa-nonmsa-fossil-fuel-employment-status",
                 2024,
             ],
             "https://edx.netl.doe.gov/resource/4006c9da-f99c-4731-97b2-633cc1578994/download": [
-                "coal-closures-energy-communities",
+                "coal-closures",
                 2024,
             ],
             "https://edx.netl.doe.gov/resource/b736a14f-12a7-4b9f-8f6d-236aa3a84867/download": [
-                "msa-nonmsa-fossil-fuel-employment-energy-community-status",
+                "msa-nonmsa-fossil-fuel-employment-status",
                 2023,
             ],
             "https://edx.netl.doe.gov/resource/28a8eb09-619e-49e5-8ae3-6ddd3969e845/download": [
-                "coal-closures-energy-communities",
+                "coal-closures",
                 2023,
             ],
         }
