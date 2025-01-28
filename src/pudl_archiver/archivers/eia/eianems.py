@@ -1,7 +1,6 @@
 """Download EIA NEMS Github respository."""
 
 import logging
-import re
 from pathlib import Path
 
 from pudl_archiver.archivers.classes import (
@@ -20,21 +19,16 @@ class EiaNEMSArchiver(AbstractDatasetArchiver):
 
     async def get_resources(self) -> ArchiveAwaitable:
         """Download EPA CAMD to EIA crosswalk resources."""
+        # TODO: Once #538 merges consider grabbing these hyperlinks from the releases page
+        # ("https://github.com/EIAgov/NEMS/releases") dynamically. They can't be grabbed by
+        # get_hyperlinks() currently. They will still need to be manually mapped to the year
+        # of AEO data that they correspond to, but this would let us check for new releases.
         crosswalk_urls = {
             "https://github.com/EIAgov/NEMS/archive/refs/tags/Initial-GitHub-Release.zip": 2023,
         }
 
-        pattern = re.compile(r"\.zip$")  # Grab the zip, not the tar.gz of each release
-
-        for link in await self.get_hyperlinks(
-            "https://github.com/EIAgov/NEMS/releases", pattern
-        ):
-            if link in crosswalk_urls:
-                yield self.get_year_resource(year=crosswalk_urls[link], link=link)
-            else:
-                raise AssertionError(
-                    "There's a new NEMS release! Map it to a year of AEO data to successfully archive all NEMS releases."
-                )
+        for link in crosswalk_urls:
+            yield self.get_year_resource(year=crosswalk_urls[link], link=link)
 
     async def get_year_resource(self, year: int, link: str) -> tuple[Path, dict]:
         """Download entire repo as a zipfile from github from a tagged release.
