@@ -10,7 +10,7 @@ on:
         required: true
         type: string
       sandbox:
-        description: "Run archiver on the sandbox server?"
+        description: "Initialize a new archive on the Zenodo sandbox server?"
         default: true
         required: true
         type: boolean
