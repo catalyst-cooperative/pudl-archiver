@@ -28,7 +28,7 @@ class EpaEgridArchiver(AbstractDatasetArchiver):
         for link in await self.get_hyperlinks(BASE_URL, link_pattern):
             match = link_pattern.search(link)
             year = int(match.group(1))
-            years = years + [year]
+            years += [year]
             yield self.get_year_resource(
                 year, [BASE_URL, "https://www.epa.gov/egrid/egrid-pm25"]
             )
