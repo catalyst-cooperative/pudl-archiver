@@ -49,7 +49,7 @@ class _HyperlinkExtractor(HTMLParser):
 
     def __init__(self):
         """Construct parser."""
-        self.hyperlinks = dict()
+        self.hyperlinks = {}
         self.current_hyperlink = None
         super().__init__()
 
