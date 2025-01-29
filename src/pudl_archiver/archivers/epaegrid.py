@@ -66,7 +66,7 @@ class EpaEgridArchiver(AbstractDatasetArchiver):
         """Download all files pertaining to an eGRID year."""
         zip_path = self.download_directory / f"epaegrid-{year}.zip"
         table_link_pattern = re.compile(
-            rf"egrid{year}_([a-z,_\d]*)(.xlsx|.pdf|.txt)", re.IGNORECASE
+            rf"egrid{year}(?:_|-)([a-z,_\d,-]*)(.xlsx|.pdf|.txt)$", re.IGNORECASE
         )
         data_paths_in_archive = set()
         for base_url in base_urls:
@@ -74,7 +74,7 @@ class EpaEgridArchiver(AbstractDatasetArchiver):
                 match = table_link_pattern.search(link)
                 # TODO: this setup leaves in all the _rev# _r# _r#_# and _{date}
                 # in this table name. It would be ideal to remove this all together
-                table = match.group(1).replace("_", "-")
+                table = match.group(1).replace("_", "-").lower().strip()
                 file_extension = match.group(2)
                 filename = f"epaegrid-{year}-{table}{file_extension}"
                 await self._download_add_unlink(link, filename, zip_path)
@@ -90,6 +90,7 @@ class EpaEgridArchiver(AbstractDatasetArchiver):
         # There are two special case links on the PM 2.5 page that don't adhere to a
         # clear pattern. so we'll hardcode how to grab them.
         pm_special_year_links = {
+            2020: "https://www.epa.gov/system/files/documents/2022-12/eGRID2020%20DRAFT%20PM%20Memo.pdf",
             2019: "https://www.epa.gov/system/files/documents/2023-01/DRAFT%202019%20PM%20Memo.pdf",
             2018: "https://www.epa.gov/sites/default/files/2020-07/documents/draft_egrid_pm_white_paper_7-20-20.pdf",
         }
