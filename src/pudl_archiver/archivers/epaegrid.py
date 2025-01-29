@@ -29,9 +29,10 @@ class EpaEgridArchiver(AbstractDatasetArchiver):
             match = link_pattern.search(link)
             year = int(match.group(1))
             years += [year]
-            yield self.get_year_resource(
-                year, [BASE_URL, "https://www.epa.gov/egrid/egrid-pm25"]
-            )
+            if self.valid_year(year):
+                yield self.get_year_resource(
+                    year, [BASE_URL, "https://www.epa.gov/egrid/egrid-pm25"]
+                )
 
         recent_year = max(years) + 1
         recent_urls = [
@@ -40,7 +41,8 @@ class EpaEgridArchiver(AbstractDatasetArchiver):
             "https://www.epa.gov/egrid/egrid-technical-guide",
             "https://www.epa.gov/egrid/egrid-pm25",
         ]
-        yield self.get_year_resource(recent_year, recent_urls)
+        if self.valid_year(recent_year):
+            yield self.get_year_resource(recent_year, recent_urls)
 
     async def _download_add_unlink(self, link: str, filename: str, zip_path: str):
         """Download the file, add it to an zip file in the archive and unlink.
