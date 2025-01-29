@@ -52,9 +52,9 @@ epacamd_eia:
 epacems:
   production_doi: 10.5281/zenodo.10233185
   sandbox_doi: 10.5072/zenodo.12943
-# epaegrid:
-# production_doi: #TODO: add once published
-# sandbox_doi: # TODO: add once published
+epaegrid:
+  production_doi: 10.5281/zenodo.14767235
+  sandbox_doi: 10.5072/zenodo.159996
 epapcap:
   production_doi: 10.5281/zenodo.14757598
   #sandbox_doi: # Update!!

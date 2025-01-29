@@ -16,7 +16,6 @@ class EpaEgridArchiver(AbstractDatasetArchiver):
     """EPA eGrid archiver."""
 
     name = "epaegrid"
-    # concurrency_limit = 1  # Number of files to concurrently download
 
     async def get_resources(self) -> ArchiveAwaitable:
         """Download EPA eGrid resources."""
