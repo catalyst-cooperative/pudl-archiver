@@ -34,12 +34,16 @@ class EiaCbecsArchiver(AbstractDatasetArchiver):
         """Download all excel tables for a year."""
         data_paths_in_archive = set()
         zip_path = self.download_directory / f"eiacbecs-{year}.zip"
-        data_views = ["characteristics", "consumption"]
-        for view in data_views:
+        pattern = rf"{year}(?:.*)/([a-z,\d]{{1,5}})(.xls|.xlsx|.pdf)$"
+        data_view_patterns = {
+            "characteristics": re.compile(pattern),
+            "consumption": re.compile(pattern),
+            "mircodata": re.compile(
+                rf"{year}/(?:xls|pdf|csv)/(.*)(.xls|.xlsx|.pdf|.csv)$"
+            ),
+        }
+        for view, table_link_pattern in data_view_patterns.items():
             year_url = f"{BASE_URL}{year}/index.php?view={view}"
-            table_link_pattern = re.compile(
-                rf"{year}(?:.*)/([a-z,\d]{{1,5}})(.xls|.xlsx|.pdf)$"
-            )
             for link in await self.get_hyperlinks(year_url, table_link_pattern):
                 match = table_link_pattern.search(link)
                 unique_id = match.group(1)
