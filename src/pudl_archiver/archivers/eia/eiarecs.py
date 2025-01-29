@@ -78,21 +78,12 @@ class EiaRECSArchiver(AbstractDatasetArchiver):
                 logger.info(f"Fetching {table_link}")
                 # Get table major/minor number from links
                 match = table_link_pattern.search(table_link)
-                # We've gotta do a bit of wrangling to get the output filename
-                # to match the url somewhat
-                n_groups = len(match.groups())
-                output_filename = f"eia-recs-{year}-{pattern_dict['prefix']}"
-                if n_groups == 1:
-                    output_filename += "-" + match.group(1).lower().replace(" ", "_")
-                else:
-                    major_num, minor_num = (
-                        match.group(1),
-                        match.group(2),
-                    )
-                    output_filename += f"-{major_num}-{minor_num}"
-                if n_groups == 3 and match.group(3) != "":
-                    output_filename += "-" + match.group(3)
-                output_filename += ".xlsx"
+                matched_metadata = (
+                    "-".join(g for g in match.groups() if g).replace(" ", "_").lower()
+                )
+                output_filename = (
+                    f"eia-recs-{year}-{pattern_dict['prefix']}-{matched_metadata}.xlsx"
+                )
 
                 # Download file
                 download_path = self.download_directory / output_filename
