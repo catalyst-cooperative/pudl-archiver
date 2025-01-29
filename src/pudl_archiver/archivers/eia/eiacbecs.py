@@ -69,6 +69,18 @@ class EiaCbecsArchiver(AbstractDatasetArchiver):
                         # Don't want to leave multiple giant CSVs on disk, so delete
                         # immediately after they're safely stored in the ZIP
                         download_path.unlink()
+        # Check if all of the views found any links
+        year_has_all_views: dict[str, bool] = {
+            view: any(fn for fn in data_paths_in_archive if view in fn)
+            for view in data_view_patterns
+        }
+        views_without_files = [
+            view for (view, has_files) in year_has_all_views.items() if not has_files
+        ]
+        if views_without_files:
+            raise AssertionError(
+                f"We expect all years of EIA CBECS to have some data from all four views, but we found these views without files: {views_without_files}"
+            )
 
         return ResourceInfo(
             local_path=zip_path,
