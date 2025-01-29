@@ -53,7 +53,7 @@ class EpaEgridArchiver(AbstractDatasetArchiver):
             for link in await self.get_hyperlinks(base_url, table_link_pattern):
                 match = table_link_pattern.search(link)
                 table = match.group(1)
-                file_extension = match.group(2)
+                file_extension = match.group(2).replace("_", "-")
                 filename = f"epaegrid-{year}-{table}{file_extension}"
                 download_path = self.download_directory / filename
                 await self.download_file(link, download_path)
