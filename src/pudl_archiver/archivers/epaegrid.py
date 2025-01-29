@@ -63,7 +63,7 @@ class EpaEgridArchiver(AbstractDatasetArchiver):
         download_path.unlink()
 
     async def get_year_resource(self, year: int, base_urls: list[str]) -> ResourceInfo:
-        """Download xlsx file."""
+        """Download all files pertaining to an eGRID year."""
         zip_path = self.download_directory / f"epaegrid-{year}.zip"
         table_link_pattern = re.compile(
             rf"egrid{year}_([a-z,_\d]*)(.xlsx|.pdf|.txt)", re.IGNORECASE
@@ -72,6 +72,8 @@ class EpaEgridArchiver(AbstractDatasetArchiver):
         for base_url in base_urls:
             for link in await self.get_hyperlinks(base_url, table_link_pattern):
                 match = table_link_pattern.search(link)
+                # TODO: this setup leaves in all the _rev# _r# _r#_# and _{date}
+                # in this table name. It would be ideal to remove this all together
                 table = match.group(1).replace("_", "-")
                 file_extension = match.group(2)
                 filename = f"epaegrid-{year}-{table}{file_extension}"
