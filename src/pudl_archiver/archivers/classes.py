@@ -296,7 +296,7 @@ class AbstractDatasetArchiver(ABC):
             hyperlinks = {
                 link: name
                 for link, name in hyperlinks.items()
-                if filter_pattern.search(name)
+                if filter_pattern.search(name) or filter_pattern.search(link)
             }
 
         # Warn if no links are found
