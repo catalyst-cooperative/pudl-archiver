@@ -208,6 +208,27 @@ class AbstractDatasetArchiver(ABC):
                 archive=archive, filename=filename, data=blob.read()
             )
 
+    async def download_add_to_archive_and_unlink(
+        self, url: str, filename: str, zip_path: Path
+    ):
+        """Download a file, add it to an zip file in and archive and unlink.
+
+        Little helper function that combines three common steps often repeated together:
+        * :meth:`download_file`
+        * :meth:`add_to_archive`
+        * :meth:`Path.unlink`
+        """
+        download_path = self.download_directory / filename
+        await self.download_file(url, download_path)
+        self.add_to_archive(
+            zip_path=zip_path,
+            filename=filename,
+            blob=download_path.open("rb"),
+        )
+        # Don't want to leave multiple files on disk, so delete
+        # immediately after they're safely stored in the ZIP
+        download_path.unlink()
+
     async def get_json(self, url: str, **kwargs) -> dict[str, str]:
         """Get a JSON and return it as a dictionary."""
         response = await retry_async(self.session.get, args=[url], kwargs=kwargs)
