@@ -25,6 +25,11 @@ def parse_main(args=None):
         choices=sorted(ARCHIVERS.keys()),
     )
     parser.add_argument(
+        "--list",
+        action="store_true",
+        help="List all available archivers.",
+    )
+    parser.add_argument(
         "--only-years",
         nargs="*",
         help="Years to download data for. Supported datasets: censusdp1tract, censuspep, "
@@ -96,6 +101,12 @@ async def archiver_entry(args=None):
     log_format = "%(asctime)s [%(levelname)8s] %(name)s:%(lineno)s %(message)s"
     coloredlogs.install(fmt=log_format, level=logging.INFO, logger=logger)
     args = parse_main(args)
+
+    if args.list:
+        for name in sorted(ARCHIVERS.keys()):
+            print(name)
+        return
+
     datasets = args.datasets
     if args.all:
         datasets = ARCHIVERS.keys()
