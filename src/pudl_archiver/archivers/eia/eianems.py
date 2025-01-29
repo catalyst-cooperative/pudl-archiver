@@ -23,12 +23,12 @@ class EiaNEMSArchiver(AbstractDatasetArchiver):
         # ("https://github.com/EIAgov/NEMS/releases") dynamically. They can't be grabbed by
         # get_hyperlinks() currently. They will still need to be manually mapped to the year
         # of AEO data that they correspond to, but this would let us check for new releases.
-        crosswalk_urls = {
+        nems_urls = {
             "https://github.com/EIAgov/NEMS/archive/refs/tags/Initial-GitHub-Release.zip": 2023,
         }
 
-        for link in crosswalk_urls:
-            yield self.get_year_resource(year=crosswalk_urls[link], link=link)
+        for link in nems_urls:
+            yield self.get_year_resource(year=nems_urls[link], link=link)
 
     async def get_year_resource(self, year: int, link: str) -> tuple[Path, dict]:
         """Download entire repo as a zipfile from github from a tagged release.
