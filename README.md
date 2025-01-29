@@ -67,9 +67,8 @@ pudl_archiver --datasets {list_of_datasources}
 
 This command will download the latest available data and create archives for each
 requested datasource requested. The supported datasources include `censusdp1tract`,
-`eia_bulk_elec`, `eia176`, `eia191`, `eia757a`,`eia860`, `eia860m`, `eia861`, `eia923`,
-`eia930`, `eiaaeo`, `eiawater`, `epacems`, `epacamd_eia`, `ferc1`, `ferc2`, `ferc6`,
-`ferc60`, `ferc714`, `nrelatb`, `phmsagas`, `mshamines`.
+`eia_bulk_elec`, `eia176`, `eia191`, and many more; see the full list with
+`pudl_archiver --list`.
 
 There are also five optional flags available:
 
