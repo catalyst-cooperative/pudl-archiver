@@ -31,22 +31,34 @@ class EiaCbecsArchiver(AbstractDatasetArchiver):
             yield self.get_year_resources(year)
 
     async def get_year_resources(self, year: int) -> list[ResourceInfo]:
-        """Download all excel tables for a year."""
+        """Download all files from all views for a year."""
         data_paths_in_archive = set()
         zip_path = self.download_directory / f"eiacbecs-{year}.zip"
-        pattern = rf"{year}(?:.*)/([a-z,\d]{{1,5}})(.xls|.xlsx|.pdf)$"
+        pattern = rf"(?:{year}|archive)(?:.*)/([a-z,\d]{{1,8}})(.xls|.xlsx|.pdf)$"
         data_view_patterns = {
             "characteristics": re.compile(pattern),
             "consumption": re.compile(pattern),
             "mircodata": re.compile(
-                rf"{year}/(?:xls|pdf|csv)/(.*)(.xls|.xlsx|.pdf|.csv)$"
+                rf"(?:{year}/|archive/|)(?:xls|pdf|csv)/(.*)(.xls|.xlsx|.pdf|.csv)$"
+            ),
+            # the most recent cbecs doesn't a year or archive in the methodology links
+            # BUT there are almost always pdf files from 2018 that get caught up in
+            # these scrapers if we don't include year or archive. so we have a special
+            # 2018 pattern
+            "methodology": re.compile(
+                rf"(?:{year}|archive/pubs)(?:/pdf|)/(.*)(.pdf$)"
+                if year != "2018"
+                else r"/consumption/commercial(?:/data/2018|)/pdf/(.*)(.pdf)$"
             ),
         }
+
         for view, table_link_pattern in data_view_patterns.items():
             year_url = f"{BASE_URL}{year}/index.php?view={view}"
             for link in await self.get_hyperlinks(year_url, table_link_pattern):
                 match = table_link_pattern.search(link)
-                unique_id = match.group(1)
+                unique_id = (
+                    match.group(1).replace("_", "-").replace(" ", "-").lower().strip()
+                )
                 file_extension = match.group(2)
                 filename = f"eiacbecs-{year}-{view}-{unique_id}{file_extension}"
                 file_url = urljoin(year_url, link)
@@ -66,7 +78,7 @@ class EiaCbecsArchiver(AbstractDatasetArchiver):
                             blob=download_path.open("rb"),
                         )
                         data_paths_in_archive.add(filename)
-                        # Don't want to leave multiple giant CSVs on disk, so delete
+                        # Don't want to leave multiple files on disk, so delete
                         # immediately after they're safely stored in the ZIP
                         download_path.unlink()
         # Check if all of the views found any links
@@ -79,7 +91,8 @@ class EiaCbecsArchiver(AbstractDatasetArchiver):
         ]
         if views_without_files:
             raise AssertionError(
-                f"We expect all years of EIA CBECS to have some data from all four views, but we found these views without files: {views_without_files}"
+                "We expect all years of EIA CBECS to have some data from all four "
+                f"views, but we found these views without files for {year}: {views_without_files}"
             )
 
         return ResourceInfo(
