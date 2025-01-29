@@ -13,7 +13,7 @@ from pudl_archiver.frictionless import ZipLayout
 BASE_URL = "https://www.eia.gov/consumption/manufacturing/data"
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
-TABLE_LINK_PATTERNS = {
+TABLE_LINK_PATTERNS: dict[str | int, str] = {
     "recent": r"(RSE|)[Tt]able(\d{1,2}|\d{1.1})_(\d{1,2})(.xlsx|.xls)",
     2002: r"(RSE|)[Tt]able(\d{1,2}).(\d{1,2})_\d{1,2}(.xlsx|.xls)",
     # These earlier years the pattern is functional but not actually very informative.
@@ -22,7 +22,7 @@ TABLE_LINK_PATTERNS = {
     1994: r"((rse|)m\d{2}_(\d{2})([a-d]|)(.xlsx|.xls))",
     1991: r"((rse|)mecs(\d{2})([a-z]|)(.xlsx|.xls))",
 }
-"""Dictionary of years or "latest" as keys and table link patterns as values.
+"""Dictionary of years or "recent" as keys and table link patterns as values.
 
 From 2006 and forward the link pattern is the same but all of the older years
 have bespoke table link patterns. The groups to match in the regex patterns
@@ -55,7 +55,8 @@ class EiaMECSArchiver(AbstractDatasetArchiver):
         for link in await self.get_hyperlinks(years_url, year_link_pattern):
             match = year_link_pattern.search(link)
             year = match.groups()[1]
-            yield self.get_year_resources(year)
+            if self.valid_year(year):
+                yield self.get_year_resources(year)
 
     async def get_year_resources(self, year: int) -> list[ResourceInfo]:
         """Download all excel tables for a year."""
