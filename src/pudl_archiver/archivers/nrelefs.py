@@ -7,6 +7,7 @@ from pudl_archiver.archivers.classes import (
     ArchiveAwaitable,
     ResourceInfo,
 )
+from pudl_archiver.frictionless import ZipLayout
 
 # Main page
 # https://www.nrel.gov/analysis/electrification-futures.html
@@ -30,10 +31,8 @@ class NrelEFSArchiver(AbstractDatasetArchiver):
         The main page links to a series of PDFs as well as data.nrel.gov and data.openei.org webpages
         containing associated data for each report.
         """
-        data_link_pattern = re.compile(
-            r"https:\/\/data.nrel.gov\/submissions\/|https:\/\/data.openei.org\/submissions\/"
-        )
-        # Regex for matching the two pages containing data for a study on the NREL EFS page.
+        data_link_pattern = re.compile(r"data.nrel.gov\/submissions\/")
+        # Regex for matching the page containing data for a study on the NREL EFS page.
 
         pdf_pattern = re.compile(r"\/docs\/fy(\d{2})osti\/\w*.pdf")
         # Regex for matching a PDF on the page
@@ -111,10 +110,29 @@ class NrelEFSArchiver(AbstractDatasetArchiver):
 
         # For each data link found on the page, iterate through and download files
         for link in await self.get_hyperlinks(BASE_URL, data_link_pattern):
-            yield self.get_version_resource(link=link)
+            data_pattern = re.compile(
+                r"files\/([\w\/]*)\/([\w \-%]*)(.zip|.xlsx|.gzip|.csv.gzip)$"
+            )
+            for data_link in await self.get_hyperlinks(link, data_pattern):
+                matches = data_pattern.search(data_link)
+                if not matches:
+                    continue
+                yield self.get_version_resource(data_link=data_link, matches=matches)
+
+        # Finally, get data from the DSGrid Data Lake
+        # Zip each
+        dsgrid_dict = {
+            "dsgrid-site-energy-state-hourly": "https://data.openei.org/s3_viewer?bucket=oedi-data-lake&prefix=dsgrid-2018-efs%2Fdsgrid_site_energy_state_hourly%2F",
+            "raw-complete": "https://data.openei.org/s3_viewer?bucket=oedi-data-lake&prefix=dsgrid-2018-efs%2Fraw_complete%2F",
+            "state-hourly-residuals": "https://data.openei.org/s3_viewer?bucket=oedi-data-lake&prefix=dsgrid-2018-efs%2Fstate_hourly_residuals%2F",
+        }
+        for zip_filename, link in dsgrid_dict.items():
+            yield self.get_dsgrid_resource(zip_filename=zip_filename, link=link)
 
     async def get_version_resource(
-        self, links: dict[str, str], year: int
+        self,
+        data_link: str,
+        matches: re.Match,
     ) -> ResourceInfo:
         """Download all available data for a given page of EFS data.
 
@@ -122,29 +140,37 @@ class NrelEFSArchiver(AbstractDatasetArchiver):
 
         Args:
             links: filename->URL mapping for files to download
-            year: the year we're downloading data for
         """
-        # host = "https://data.openei.org"
-        # zip_path = self.download_directory / f"doelead-{year}.zip"
-        # data_paths_in_archive = set()
-        # for filename, link in sorted(links.items()):
-        #     self.logger.info(f"Downloading {link}")
-        #     download_path = self.download_directory / filename
-        #     await self.download_file(f"{host}{link}", download_path)
-        #     self.add_to_archive(
-        #         zip_path=zip_path,
-        #         filename=filename,
-        #         blob=download_path.open("rb"),
-        #     )
-        #     data_paths_in_archive.add(filename)
-        #     # Don't want to leave multiple giant files on disk, so delete
-        #     # immediately after they're safely stored in the ZIP
-        #     download_path.unlink()
-        # return ResourceInfo(
-        #     local_path=zip_path,
-        #     partitions={"year": year},
-        #     layout=ZipLayout(file_paths=data_paths_in_archive),
-        # )
+        # Grab file name and extension
+        filename = matches.group(2)
+        file_ext = matches.group(3)
+
+        # Reformat filename
+        filename = filename.lower().replace("_", "-")
+        filename = re.sub(
+            "[^a-zA-Z0-9 -]+", "", filename
+        ).strip()  # Remove all non-word, digit space or - characters
+        filename = re.sub(r"[\s-]+", "-", filename)
+        filename = re.sub(
+            r"^efs-", "", filename
+        )  # We add this back with an nrel header
+
+        download_path = self.download_directory / f"nrelefs-{filename}{file_ext}"
+
+        if file_ext == ".zip" or ".gzip" in file_ext:
+            await self.download_zipfile(url=data_link, zip_path=download_path)
+
+        else:
+            await self.download_file(url=data_link, file_path=download_path)
+
+        return ResourceInfo(
+            local_path=download_path,
+            partitions={
+                "document_type": "data",
+                "data_file": filename,
+                "report_number": 0,
+            },  # TO DO!
+        )
 
     async def get_pdf_resource(
         self, final_filename: str, link: str, partitions: dict[str, str | int]
@@ -164,4 +190,28 @@ class NrelEFSArchiver(AbstractDatasetArchiver):
         return ResourceInfo(
             local_path=download_path,
             partitions=partitions,
+        )
+
+    async def get_dsgrid_resource(self, zip_filename: str, link: str) -> ResourceInfo:
+        """Download DSGRID resources into one zipped file.
+
+        Resulting resource contains many .dgrid files in one zip file.
+
+        Args:
+            filename: the name of the final zipfile
+            link: URL where the files to download are found
+        """
+        data_paths_in_archive = set()
+        zipfile_path = self.download_directory / f"nrelefs-{zip_filename}.zip"
+        dsg_pattern = re.compile(r"[\w]*.dsg$")
+        dsg_file_links = await self.get_hyperlinks(link, dsg_pattern)
+        for link, filename in dsg_file_links.items():
+            await self.download_add_to_archive_and_unlink(
+                url=link, filename=filename, zip_path=zipfile_path
+            )
+            data_paths_in_archive.add(filename)
+        return ResourceInfo(
+            local_path=zipfile_path,
+            partitions={"document_type": "data", "data_file": zip_filename},
+            layout=ZipLayout(file_paths=data_paths_in_archive),
         )
