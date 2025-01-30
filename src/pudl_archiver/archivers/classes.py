@@ -284,7 +284,6 @@ class AbstractDatasetArchiver(ABC):
             headers: Additional headers to send in the GET request.
         """
         # Parse web page to get all hyperlinks
-        parser = _HyperlinkExtractor()
 
         response = await retry_async(
             self.session.get,
@@ -295,6 +294,25 @@ class AbstractDatasetArchiver(ABC):
             },
         )
         text = await retry_async(response.text)
+        return self.get_hyperlinks_from_text(text, filter_pattern)
+
+    def get_hyperlinks_from_text(
+        self,
+        text: str,
+        filter_pattern: typing.Pattern | None = None,
+    ) -> list[str]:
+        """Return all hyperlinks from HTML text.
+
+        This is a helper-helper function to perform very basic HTML-parsing functionality.
+        It extracts all hyperlinks from an HTML text, and returns those that match
+        a specified pattern. This means it can find all hyperlinks that look like
+        a download link to a single data resource.
+
+        Args:
+            text: text containing HTML.
+            filter_pattern: If present, only return links that contain pattern.
+        """
+        parser = _HyperlinkExtractor()
         parser.feed(text)
 
         # Filter to those that match filter_pattern
@@ -311,7 +329,7 @@ class AbstractDatasetArchiver(ABC):
         if not hyperlinks:
             self.logger.warning(
                 f"The archiver couldn't find any hyperlinks{('that match: ' + filter_pattern.pattern) if filter_pattern else ''}."
-                f"Make sure your filter_pattern is correct, check if the structure of the {url} page changed, or if you are missing HTTP headers."
+                f"Make sure your filter_pattern is correct, and check if the structure of the page is not what you expect it to be."
             )
 
         return hyperlinks
