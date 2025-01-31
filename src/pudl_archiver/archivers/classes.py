@@ -49,15 +49,31 @@ class _HyperlinkExtractor(HTMLParser):
 
     def __init__(self):
         """Construct parser."""
-        self.hyperlinks = set()
+        self.hyperlinks = {}
+        self.current_hyperlink = None
         super().__init__()
 
     def handle_starttag(self, tag, attrs):
         """Filter hyperlink tags and return href attribute."""
-        if tag == "a":
-            for attr, val in attrs:
-                if attr == "href":
-                    self.hyperlinks.add(val)
+        url_attrs = ["href", "src", "action", "data-url", "poster"]
+
+        for attr, val in attrs:
+            if attr in url_attrs:
+                self.current_hyperlink = val
+                if self.current_hyperlink not in self.hyperlinks:
+                    # By default, set the name identical to the hyperlink
+                    self.hyperlinks[self.current_hyperlink] = self.current_hyperlink
+                break
+
+    def handle_data(self, data):
+        """Capture text content and associate it with the current URL."""
+        if self.current_hyperlink and data.strip():
+            # If data is present, replace the hyperlink name
+            self.hyperlinks[self.current_hyperlink] = data.strip()
+
+    def handle_endtag(self, tag):
+        """Reset the current URL after processing the content of the tag."""
+        self.current_hyperlink = None
 
 
 async def _download_file(
@@ -275,8 +291,13 @@ class AbstractDatasetArchiver(ABC):
 
         # Filter to those that match filter_pattern
         hyperlinks = parser.hyperlinks
+
         if filter_pattern:
-            hyperlinks = {link for link in hyperlinks if filter_pattern.search(link)}
+            hyperlinks = {
+                link: name
+                for link, name in hyperlinks.items()
+                if filter_pattern.search(name) or filter_pattern.search(link)
+            }
 
         # Warn if no links are found
         if not hyperlinks:
