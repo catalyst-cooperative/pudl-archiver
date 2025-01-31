@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from pudl.metadata.constants import CONTRIBUTORS, LICENSES, KEYWORDS
+from pudl.metadata.constants import CONTRIBUTORS, LICENSES
 
 # To add a new contributor, follow the following format to add an entry to the
 # ADDL_CONTRIBUTORS dictionary below formatted like this:
