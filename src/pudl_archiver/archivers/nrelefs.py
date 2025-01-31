@@ -7,7 +7,6 @@ from pudl_archiver.archivers.classes import (
     ArchiveAwaitable,
     ResourceInfo,
 )
-from pudl_archiver.frictionless import ZipLayout
 
 # Main page
 # https://www.nrel.gov/analysis/electrification-futures.html
@@ -165,7 +164,7 @@ class NrelEFSArchiver(AbstractDatasetArchiver):
                     file_ext = matches.group(3)
 
                     # Reformat filename
-                    filename = filename.lower().replace("_", "-")
+                    filename = filename.lower().replace("_", "-").replace("%20", "-")
                     filename = re.sub(
                         "[^a-zA-Z0-9 -]+", "", filename
                     ).strip()  # Remove all non-word, digit space or - characters
@@ -202,5 +201,5 @@ class NrelEFSArchiver(AbstractDatasetArchiver):
         return ResourceInfo(
             local_path=zipfile_path,
             partitions={"version": version},
-            layout=ZipLayout(file_paths=data_paths_in_archive),
+            # layout=ZipLayout(file_paths=data_paths_in_archive),
         )
