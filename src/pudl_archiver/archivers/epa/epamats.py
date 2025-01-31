@@ -113,7 +113,7 @@ class EpaMatsArchiver(AbstractDatasetArchiver):
             year: the year we're downloading data for
             files: the files we've associated with this year.
         """
-        zip_path = self.download_directory / f"epacems-{year}.zip"
+        zip_path = self.download_directory / f"epamats-{year}.zip"
         data_paths_in_archive = set()
         for file in files:
             url = self.base_url + file.s3_path
