@@ -46,7 +46,7 @@ class EiaCbecsArchiver(AbstractDatasetArchiver):
             # we'd pick up some of the 2018 pdf files that are on the right hand side
             # of these pages
             "microdata": re.compile(
-                rf"(?:{year}/|archive/)(?:xls|pdf|csv)/(.*)(.xls|.xlsx|.pdf|.csv|.exe|.zip)$"
+                rf"(?:{year}/|archive/)(?:xls|pdf|csv|sas)/(.*)(.xls|.xlsx|.pdf|.csv|.exe|.zip)$"
                 if year not in ["2003", "1999"]
                 else r"^(?:csv|pdf)/(.*)(.csv|.pdf)$"
             ),
