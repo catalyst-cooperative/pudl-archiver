@@ -34,12 +34,21 @@ class EiaCbecsArchiver(AbstractDatasetArchiver):
         """Download all files from all views for a year."""
         data_paths_in_archive = set()
         zip_path = self.download_directory / f"eiacbecs-{year}.zip"
-        pattern = rf"(?:{year}|archive)(?:.*)/([a-z,\d]{{1,8}})(.xls|.xlsx|.pdf)$"
+        char_and_cons_pattern = (
+            rf"(?:{year}|archive)(?:.*)/([a-z,\d]{{1,8}})(.xls|.xlsx|.pdf)$"
+        )
         data_view_patterns = {
-            "characteristics": re.compile(pattern),
-            "consumption": re.compile(pattern),
-            "mircodata": re.compile(
-                rf"(?:{year}/|archive/|)(?:xls|pdf|csv)/(.*)(.xls|.xlsx|.pdf|.csv)$"
+            "characteristics": re.compile(char_and_cons_pattern),
+            "consumption": re.compile(char_and_cons_pattern),
+            # some of the mircodata links are like csv/file01.csv which doesn't include
+            # the year or archive. instead of adding a null option for that first group
+            # we add a whole new pattern for these two years because if we don't
+            # we'd pick up some of the 2018 pdf files that are on the right hand side
+            # of these pages
+            "microdata": re.compile(
+                rf"(?:{year}/|archive/)(?:xls|pdf|csv)/(.*)(.xls|.xlsx|.pdf|.csv|.exe|.zip)$"
+                if year not in ["2003", "1999"]
+                else r"^(?:csv|pdf)/(.*)(.csv|.pdf)$"
             ),
             # the most recent cbecs doesn't a year or archive in the methodology links
             # BUT there are almost always pdf files from 2018 that get caught up in
