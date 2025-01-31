@@ -416,4 +416,27 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         "license_pudl": LICENSES["cc-by-4.0"],
         "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
     },
+    "nrelefs": {
+        "title": "NREL EFS -- Electrification Futures Study",
+        "path": "https://www.nrel.gov/analysis/electrification-futures.html",
+        "description": (
+            "The Electrification Futures Study (EFS) is a multi-year study conducted by NREL "
+            "and its research partners—Electric Power Research Institute, Evolved Energy Research, "
+            "Lawrence Berkeley National Laboratory, Northern Arizona University, and Oak Ridge National "
+            "Laboratory. EFS used multiple analytic tools and models to develop and assess "
+            "electrification scenarios designed to quantify potential energy, economic, "
+            "and environmental impacts to the U.S. power system and broader economy. There are six reports "
+            "comprising the EFS, with the final report released in May 2021."
+        ),
+        "working_partitions": {
+            "report_number": set(range(1, 7)),
+            "document_type": ["data", "technical_report", "presentation"],
+        },
+        "keywords": sorted(
+            {"doe", "lead", "low income", "energy affordability", "energy burden"}
+        ),
+        "license_raw": LICENSES["us-govt"],
+        "license_pudl": LICENSES["cc-by-4.0"],
+        "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
+    },
 }
