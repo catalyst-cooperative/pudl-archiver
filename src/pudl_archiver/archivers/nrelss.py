@@ -112,7 +112,7 @@ class NrelStandardScenariosArchiver(AbstractDatasetArchiver):
                 uuid=project_uuid,
                 file_ids=[
                     (f["id"], f"NRELSS {project_year}  {f['scenario']}  {f['location_type']}.csv".replace(" ","_"))
-                    for f in file_list["files"] if f["file_type"] == "CSV"
+                    for f in file_list["files"] if (f["file_type"] == "CSV" or project_year == 2020)
                 ],
                 year=project_year
             )
@@ -129,7 +129,7 @@ class NrelStandardScenariosArchiver(AbstractDatasetArchiver):
         zip_path = self.download_directory / f"{self.name}-{year}.zip"
         data_paths_in_archive = set()
         # report
-        self.logger.info(f"Downloading report {report[0]} from {report[1]}")
+        self.logger.info(f"Downloading report {year} {report[0]} from {report[1]}")
         download_path = self.download_directory / report[0]
         await self.download_file(report[1], download_path)
         self.add_to_archive(
@@ -143,7 +143,7 @@ class NrelStandardScenariosArchiver(AbstractDatasetArchiver):
         download_path.unlink()
         
         for file_id,filename in file_ids:
-            self.logger.info(f"Downloading file {file_id} {uuid}")
+            self.logger.info(f"Downloading file {year} {file_id} {uuid}")
 #             file_resp = await retry_async(
 #                 self.session.post,
 #                 ["https://scenarioviewer.nrel.gov/api/download/"],
