@@ -261,7 +261,7 @@ class AbstractDatasetArchiver(ABC):
         filter_pattern: typing.Pattern | None = None,
         verify: bool = True,
         headers: dict | None = None,
-    ) -> list[str]:
+    ) -> dict[str, str]:
         """Return all hyperlinks from a specific web page.
 
         This is a helper function to perform very basic web-scraping functionality.
