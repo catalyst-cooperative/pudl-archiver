@@ -44,6 +44,33 @@ class NrelAtbArchiver(AbstractDatasetArchiver):
             if self.valid_year(year):
                 yield self.get_transportation_resources(year, "transportation")
 
+    def clean_excel_filename(self, excel_url, year, atb_type):
+        """Clean excel filename.
+
+        We standardize the names to have this general structure:
+        * nrelatb-{year}-{atb_type}-{cleaned up file name w/ extension}
+
+        We attempt to convert all the spaces and other delimiters in the name
+        to snakecase. We also remove the year and "ATB" or the full name in
+        there.
+        """
+        og_filename = (
+            excel_url.split("/")[-1]
+            .lower()
+            .strip()
+            .replace(" ", "-")
+            .replace("_", "-")
+            .replace("(", "-")
+            .replace(").", ".")
+            .replace(f"{year}-", "")
+            .replace(f"{atb_type}-", "")
+            .replace("atb-", "")
+            .replace("%20", "-")
+            .replace("annual-technology-baseline-", "")
+        )
+        excel_filename = f"nrelatb-{year}-{atb_type}-{og_filename}"
+        return excel_filename
+
     async def get_year_resource(
         self, year: int, atb_type: Literal["electricity"]
     ) -> tuple[Path, dict]:
@@ -57,7 +84,7 @@ class NrelAtbArchiver(AbstractDatasetArchiver):
             parquet_url, parquet_filename, zip_path
         )
         data_paths_in_archive.add(parquet_filename)
-
+        # now get the excel/csv stuff
         year_to_excel_url = {
             2024: f"https://atb.nrel.gov/{atb_type}/{year}/data",
             2023: f"https://atb.nrel.gov/{atb_type}/{year}/data",
@@ -68,21 +95,8 @@ class NrelAtbArchiver(AbstractDatasetArchiver):
         }
         year_excel_url = year_to_excel_url[year]
         link_pattern = re.compile(r"(.*)(.xlsx|.xlsm|.csv)$")
-
         for excel_url in await self.get_hyperlinks(year_excel_url, link_pattern):
-            og_filename = (
-                excel_url.split("/")[-1]
-                .lower()
-                .strip()
-                .replace(" ", "-")
-                .replace("_", "-")
-                .replace(f"{year}-", "")
-                .replace(f"{atb_type}-", "")
-                .replace("atb-", "")
-                .replace("%20", "-")
-                .replace("annual-technology-baseline-", "")
-            )
-            excel_filename = f"nrelatb-{year}-{atb_type}-{og_filename}"
+            excel_filename = self.clean_excel_filename(excel_url, year, atb_type)
             excel_url = urljoin(year_excel_url, excel_url)
             await self.download_add_to_archive_and_unlink(
                 excel_url, excel_filename, zip_path
@@ -102,7 +116,7 @@ class NrelAtbArchiver(AbstractDatasetArchiver):
         zip_path = self.download_directory / f"nrelatb-{year}-{atb_type}.zip"
         data_paths_in_archive = set()
 
-        async def _clean_and_download_wow(parquet_file, parquet_dir):
+        async def _clean_and_download_parquet(parquet_file, parquet_dir):
             parquet_filename = (
                 parquet_file.split("/")[-1]
                 .lower()
@@ -122,7 +136,7 @@ class NrelAtbArchiver(AbstractDatasetArchiver):
         for parquet_dir in await self.get_hyperlinks(year_parquet_url, dir_pattern):
             parquet_dir = urljoin(year_parquet_url, parquet_dir)
             for parquet_file in await self.get_hyperlinks(parquet_dir, parquet_pattern):
-                await _clean_and_download_wow(parquet_file, parquet_dir)
+                await _clean_and_download_parquet(parquet_file, parquet_dir)
                 data_paths_in_archive.add(parquet_file)
 
             if not data_paths_in_archive:
@@ -133,8 +147,21 @@ class NrelAtbArchiver(AbstractDatasetArchiver):
                     for parquet_file in await self.get_hyperlinks(
                         parquet_dir_rlly, parquet_pattern
                     ):
-                        await _clean_and_download_wow(parquet_file, parquet_dir_rlly)
+                        await _clean_and_download_parquet(
+                            parquet_file, parquet_dir_rlly
+                        )
                         data_paths_in_archive.add(parquet_file)
+
+        # now for the excel/csv files
+        year_excel_url = f"https://atb.nrel.gov/{atb_type}/{year}/data"
+        link_pattern = re.compile(r"(.*)(.xlsx|.xlsm|.csv)$")
+        for excel_url in await self.get_hyperlinks(year_excel_url, link_pattern):
+            excel_filename = self.clean_excel_filename(excel_url, year, atb_type)
+            excel_url = urljoin(year_excel_url, excel_url)
+            await self.download_add_to_archive_and_unlink(
+                excel_url, excel_filename, zip_path
+            )
+            data_paths_in_archive.add(excel_filename)
 
         return ResourceInfo(
             local_path=zip_path,
