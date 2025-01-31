@@ -1,23 +1,24 @@
 """Download NREL Standard Scenarios data."""
 
-import aiohttp
-from contextlib import nullcontext
 import io
-from pathlib import Path
 import re
+from contextlib import nullcontext
+from pathlib import Path
+
+import aiohttp
 
 from pudl_archiver.archivers.classes import (
     AbstractDatasetArchiver,
     ArchiveAwaitable,
     ResourceInfo,
 )
-from pudl_archiver.frictionless import ZipLayout
 from pudl_archiver.utils import retry_async
 
 # The citation field for Standard Scenarios 2021 is blank, but they linked to the
 # 2021 report from the description of one of the other available projects, so we're
 # able to hard-code it for now:
 REPORT_2021 = "https://www.nrel.gov/docs/fy22osti/80641.pdf"
+
 
 async def _download_file_post(
     session: aiohttp.ClientSession, url: str, file: Path | io.BytesIO, **kwargs
@@ -26,6 +27,7 @@ async def _download_file_post(
         with file.open("wb") if isinstance(file, Path) else nullcontext(file) as f:
             async for chunk in response.content.iter_chunked(1024):
                 f.write(chunk)
+
 
 class NrelStandardScenariosArchiver(AbstractDatasetArchiver):
     """NREL Standard Scenarios archiver."""
@@ -36,7 +38,7 @@ class NrelStandardScenariosArchiver(AbstractDatasetArchiver):
         """Download NREL Standard Scenarios resources."""
 
         async def post_to_json(url, **kwargs):
-            resp = await retry_async(self.session.post, [url], kwargs={"data":kwargs})
+            resp = await retry_async(self.session.post, [url], kwargs={"data": kwargs})
             return await retry_async(resp.json)
 
         project_year_pattern = re.compile(r"Standard Scenarios (?P<year>\d{4})")
@@ -45,7 +47,9 @@ class NrelStandardScenariosArchiver(AbstractDatasetArchiver):
         )
         filename_pattern = re.compile(r"/([^/?]*/.csv)")
 
-        project_records = await self.get_json("https://scenarioviewer.nrel.gov/api/projects/")
+        project_records = await self.get_json(
+            "https://scenarioviewer.nrel.gov/api/projects/"
+        )
         for scenario_project in (
             p for p in project_records if p["name"].startswith("Standard Scenarios")
         ):
@@ -74,7 +78,7 @@ class NrelStandardScenariosArchiver(AbstractDatasetArchiver):
                     f"We expect all years except 2021 to have a citation with a link to the report, but {project_year} does not:"
                     f"{scenario_project}"
                 )
-                    
+
             file_list = await post_to_json(
                 "https://scenarioviewer.nrel.gov/api/file-list/",
                 project_uuid=project_uuid,
@@ -84,15 +88,23 @@ class NrelStandardScenariosArchiver(AbstractDatasetArchiver):
                 uuid=project_uuid,
                 file_ids=[
                     (
-                        f["id"], 
-                        f"NRELSS {project_year}  {f['scenario']}  {f['location_type']}.{f['file_type']}".replace(" ","_").replace("%","pct").replace(",","").lower()
+                        f["id"],
+                        f"NRELSS {project_year}  {f['scenario']}  {f['location_type']}.{f['file_type']}".replace(
+                            " ", "_"
+                        )
+                        .replace("%", "pct")
+                        .replace(",", "")
+                        .lower(),
                     )
-                    for f in file_list["files"] if (f["file_type"] == "CSV" or project_year == 2020)
+                    for f in file_list["files"]
+                    if (f["file_type"] == "CSV" or project_year == 2020)
                 ],
-                year=project_year
+                year=project_year,
             )
 
-    async def get_year_resource(self, report, uuid, file_ids, year: int) -> ResourceInfo:
+    async def get_year_resource(
+        self, report, uuid, file_ids, year: int
+    ) -> ResourceInfo:
         """Download all available data for a year.
 
         Resulting resource contains one pdf of the scenario report, and a set of CSVs for different scenarios and geo levels.
@@ -116,14 +128,18 @@ class NrelStandardScenariosArchiver(AbstractDatasetArchiver):
         # Don't want to leave multiple giant files on disk, so delete
         # immediately after they're safely stored in the ZIP
         download_path.unlink()
-        
-        for file_id,filename in file_ids:
+
+        for file_id, filename in file_ids:
             self.logger.info(f"Downloading file {year} {file_id} {uuid}")
             download_path = self.download_directory / filename
             await retry_async(
-                _download_file_post, 
-                [self.session, "https://scenarioviewer.nrel.gov/api/download/", download_path],
-                kwargs={"data":{"project_uuid": uuid, "file_ids": file_id}}
+                _download_file_post,
+                [
+                    self.session,
+                    "https://scenarioviewer.nrel.gov/api/download/",
+                    download_path,
+                ],
+                kwargs={"data": {"project_uuid": uuid, "file_ids": file_id}},
             )
             self.add_to_archive(
                 zip_path=zip_path,
@@ -137,5 +153,5 @@ class NrelStandardScenariosArchiver(AbstractDatasetArchiver):
         return ResourceInfo(
             local_path=zip_path,
             partitions={"years": year},
-            #layout=ZipLayout(file_paths=data_paths_in_archive), # can't use ZipLayout bc these CSVs have a multi-row header and pandas throws a tantrum
+            # layout=ZipLayout(file_paths=data_paths_in_archive), # can't use ZipLayout bc these CSVs have a multi-row header and pandas throws a tantrum
         )
