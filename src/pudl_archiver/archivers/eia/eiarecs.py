@@ -4,6 +4,7 @@ import logging
 import re
 from dataclasses import dataclass
 from io import BytesIO
+from pathlib import Path
 from urllib.parse import urljoin
 
 from pudl_archiver.archivers.classes import (
@@ -14,6 +15,8 @@ from pudl_archiver.archivers.classes import (
 from pudl_archiver.frictionless import ZipLayout
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
+
+BASE_URL = "https://www.eia.gov/consumption/residential/data/"
 
 
 @dataclass
@@ -179,6 +182,8 @@ class EiaRECSArchiver(AbstractDatasetArchiver):
         """Download EIA-RECS resources."""
         for year in [2020, 2015, 2009]:
             yield self.get_year_resources(year)
+        for year in [2005, 2001, 1997, 1993]:
+            yield self.get_old_year_resources(year)
 
     def __is_html_file(self, fileobj: BytesIO) -> bool:
         header = fileobj.read(30).lower().strip()
@@ -229,3 +234,79 @@ class EiaRECSArchiver(AbstractDatasetArchiver):
             )
         )
         return tables
+
+    async def get_old_year_resources(self, year: int) -> list[ResourceInfo]:
+        """Download all files from all views for a year."""
+        data_paths_in_archive = set()
+        zip_path = self.download_directory / f"eiarecs-{year}.zip"
+        download_url_base = f"/consumption/residential/data/{year}"
+        data_view_patterns = {
+            "characteristics": re.compile(
+                rf"((hc/(?:xls|pdf))|(^pdf|housing-characteristics)|{download_url_base})/(.*)(.xls|.pdf)",
+                re.IGNORECASE,
+            ),
+            "consumption": re.compile(
+                rf"^((c&e|{download_url_base})/(?:xls|pdf)|pdf/consumption-expenditures)/(.*)(.xls|.pdf)",
+                re.IGNORECASE,
+            ),
+            "microdata": re.compile(
+                rf"(^mdatfiles|^layoutfiles|^pdf|^txt|^{download_url_base}|{year})/(.*)(.csv|.pdf|.txt)$",
+                re.IGNORECASE,
+            ),
+        }
+
+        for view, table_link_pattern in data_view_patterns.items():
+            year_url = f"{BASE_URL}{year}/index.php?view={view}"
+            for link in await self.get_hyperlinks(year_url, table_link_pattern):
+                unique_id_and_file_extension = (
+                    link.split("/")[-1]
+                    .lower()
+                    .strip()
+                    .replace(" ", "-")
+                    .replace("_", "-")
+                    .replace(f"{year}", "")
+                )
+                filename = f"eiacbecs-{year}-{view}-{unique_id_and_file_extension}"
+                file_url = urljoin(year_url, link)
+                download_path = self.download_directory / filename
+                await self.download_file(file_url, download_path)
+                # there are a small-ish handful of files who's links redirect to the main
+                # cbecs page. presumably its a broken link. we want to skip those files,
+                # so we are going to check to see if the doctype of the bytes of the file
+                # are html. if so we move on, otherwise add to the archive
+                with Path.open(download_path, "rb") as f:
+                    first_bytes = f.read(20)
+                    if b"html" in first_bytes.lower().strip():
+                        self.logger.warning(
+                            f"Skipping {file_url} because it appears to be a redirect/html page."
+                        )
+                        pass
+                    else:
+                        self.add_to_archive(
+                            zip_path=zip_path,
+                            filename=filename,
+                            blob=download_path.open("rb"),
+                        )
+                        data_paths_in_archive.add(filename)
+                        # Don't want to leave multiple files on disk, so delete
+                        # immediately after they're safely stored in the ZIP
+                        download_path.unlink()
+        # Check if all of the views found any links
+        year_has_all_views: dict[str, bool] = {
+            view: any(fn for fn in data_paths_in_archive if view in fn)
+            for view in data_view_patterns
+        }
+        views_without_files = [
+            view for (view, has_files) in year_has_all_views.items() if not has_files
+        ]
+        if views_without_files:
+            raise AssertionError(
+                "We expect all years of EIA CBECS to have some data from all four "
+                f"views, but we found these views without files for {year}: {views_without_files}"
+            )
+
+        return ResourceInfo(
+            local_path=zip_path,
+            partitions={"year": year},
+            layout=ZipLayout(file_paths=data_paths_in_archive),
+        )
