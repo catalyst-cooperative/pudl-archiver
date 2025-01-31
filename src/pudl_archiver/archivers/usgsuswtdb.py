@@ -22,7 +22,9 @@ class UsgsUswtdbArchiver(AbstractDatasetArchiver):
     async def get_resources(self) -> ArchiveAwaitable:
         """Download USWTDB resources."""
         link_pattern = re.compile(r"uswtdb_v(\d+)_(\d+)(?:_(\d+))?_(\d{8})\.zip")
+        logger.info(f"Searching {BASE_URL} for hyperlinks matching {link_pattern}")
         for link in await self.get_hyperlinks(BASE_URL, link_pattern):
+            logger.info(f"Found link: {link}")
             matches = link_pattern.search(link)
             if not matches:
                 continue
