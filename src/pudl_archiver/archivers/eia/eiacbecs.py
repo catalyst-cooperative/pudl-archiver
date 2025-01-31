@@ -74,7 +74,7 @@ class EiaCbecsArchiver(AbstractDatasetArchiver):
                 download_path = self.download_directory / filename
                 await self.download_file(file_url, download_path)
                 with Path.open(download_path, "rb") as f:
-                    first_bytpes = f.read(20)
+                    first_bytes = f.read(20)
                     if b"html" in first_bytpes.lower().strip():
                         logger.warning(
                             f"Skipping {file_url} because it appears to be a redirect/html page."
