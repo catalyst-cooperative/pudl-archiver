@@ -95,8 +95,8 @@ usgsuspvdb:
   production_doi: 10.5281/zenodo.14736285
   sandbox_doi: 10.5072/zenodo.157776
 usgsuswtdb:
-  production_doi: 10.5281/zenodo.14783215
-  sandbox_doi: 10.5072/zenodo.161236
+  production_doi: 10.5281/zenodo.14783214
+  sandbox_doi: 10.5072/zenodo.161235
 vcerare:
   production_doi: 10.5281/zenodo.13937522
   sandbox_doi: 10.5072/zenodo.118136
