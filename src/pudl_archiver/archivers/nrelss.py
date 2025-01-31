@@ -111,7 +111,10 @@ class NrelStandardScenariosArchiver(AbstractDatasetArchiver):
                 report=(f"{m.group('fy')}_{m.group('number')}", report_link),
                 uuid=project_uuid,
                 file_ids=[
-                    (f["id"], f"NRELSS {project_year}  {f['scenario']}  {f['location_type']}.{f['file_type']}".replace(" ","_").lower())
+                    (
+                        f["id"], 
+                        f"NRELSS {project_year}  {f['scenario']}  {f['location_type']}.{f['file_type']}".replace(" ","_").replace("%","pct").replace(",","").lower()
+                    )
                     for f in file_list["files"] if (f["file_type"] == "CSV" or project_year == 2020)
                 ],
                 year=project_year
