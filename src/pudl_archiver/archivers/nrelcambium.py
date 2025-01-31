@@ -91,7 +91,6 @@ class NrelCambiumArchiver(AbstractDatasetArchiver):
                         .lower(),
                     )
                     for f in file_list["files"]
-                    if (f["file_type"] == "CSV" or project_year == 2020)
                 ],
                 year=project_year,
             )
