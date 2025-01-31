@@ -1,5 +1,6 @@
 """Download USGS USWTDB data."""
 
+import logging
 import re
 
 from pudl_archiver.archivers.classes import (
@@ -7,6 +8,8 @@ from pudl_archiver.archivers.classes import (
     ArchiveAwaitable,
     ResourceInfo,
 )
+
+logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 BASE_URL = "https://www.sciencebase.gov/catalog/item/5e99a01082ce172707f6fd2a"
 
@@ -35,6 +38,7 @@ class UsgsUswtdbArchiver(AbstractDatasetArchiver):
         # Append hyperlink to base URL to get URL of file
         url = f"{BASE_URL}/{link}"
         download_path = self.download_directory / f"usgsuswtdb-{year_month}.zip"
+        logger.info(f"Attempting to download {url} to {download_path}")
         await self.download_zipfile(url, download_path)
 
         return ResourceInfo(
