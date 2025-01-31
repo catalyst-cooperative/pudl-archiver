@@ -79,190 +79,128 @@ class NrelEFSArchiver(AbstractDatasetArchiver):
         # For each version, yield a method that will produce one zipfile containing
         # all the files for the method
         for version, links in version_dict.items():
-            yield get_version_resource(
+            yield self.get_version_resource(
                 version=version, links=links, pdf_links=pdf_links
             )
 
-        data_link_pattern = re.compile(r"data.nrel.gov\/submissions\/")
-        # Regex for matching the page containing data for a study on the NREL EFS page.
+    async def get_version_resource(
+        self,
+        version: str,
+        links: list[str],
+        pdf_links: list[dict[str, str]],
+    ) -> ResourceInfo:
+        """Download all available data for a given version of an EFS study.
 
-        # Regex for matching a PDF on the page
+        Resulting resource contains one zip file of all PDFs, .zip, .xlsx, .gzip, .csv.gzip
+        for a given version of the EFS studies. We handle the DS Grid specially because
+        the file
 
-        # From the main page, grab all the PDFs
+        Args:
+            version: shorthand name for the given version
+            links: a list of links that contain data for this version.
+            pdf_links: a list of all PDF links found on the EFS homepage, with the title
+                of the link. We use this to rename the PDFs to something more informative
+                than the original file title.
+        """
+        # Set up zipfile name and list of files in zip
+        zipfile_path = self.download_directory / f"nrelefs-{version}.zip"
+        data_paths_in_archive = set()
 
-        for link, filename in pdf_links.items():
-            # Flow through workflow to identify the version of the PDF,
-            # the final filename
+        # Compile pattern for all datasets on data.nrel.gov
+        data_pattern = re.compile(
+            r"files\/([\w\/]*)\/([\w \-%]*)(.zip|.xlsx|.gzip|.csv.gzip)$"
+        )
 
-            # Clean up file name
-            self.logger.info(f"Downloading {link}")
-            filename = (
-                filename.lower()
-                .replace("\n", "")
-                .replace("electrification futures study:", "")
-            )
-            filename = re.sub(
-                "[^a-zA-Z0-9 -]+", "", filename
-            ).strip()  # Remove all non-word, digit space or - characters
-            filename = re.sub(r"\s+", "-", filename)  # Replace 1+ space with a dash
-
-            # Map technical reports to versions
-            technical_report_version_map = {
-                "operational-analysis-of-us-power-systems-with-increased-electrification-and-demand-side-flexibility": 6,
-                "scenarios-of-power-system-evolution-and-infrastructure-development-for-the-united-states": 5,
-                "methodological-approaches-for-assessing-long-term-power-system-impacts-of-end-use-electrificatio": 4,
-                "the-demand-side-grid-dsgrid-model-documentation": 3,
-                "scenarios-of-electric-technology-adoption-and-power-consumption-for-the-united-states": 2,
-                "end-use-electric-technology-cost-and-performance-projections-through-2050": 1,
-            }
-
-            if filename in technical_report_version_map:
-                final_filename = f"nrelefs-{filename}.pdf"
-                partitions = {
-                    "report_number": technical_report_version_map[filename],
-                    "document_type": "technical_report",
-                }
-
-            # Map "presentation slides" to version based on URL
-            elif filename == "presentation-slides":
-                link_to_version = {
-                    "/docs/fy21osti/80167.pdf": 6,
-                    "/docs/fy21osti/78783.pdf": 5,
-                    "/docs/fy18osti/72096.pdf": 2,
-                }
-
-                report_number = link_to_version[link]
-                final_filename = f"nrelefs-{str(report_number)}-{filename}.pdf"
-                partitions = {
-                    "report_number": report_number,
-                    "document_type": "presentation",
-                }
-
-            # Handle 2 special cases
-            elif (
-                filename
-                == "electrification-of-industry-summary-of-efs-industrial-sector-analysis"
-            ):
-                final_filename = f"nrelefs-{filename}.pdf"
-                partitions = {
-                    "report_number": 2,
-                    "document_type": "industrial_sector_presentation",
-                }
-
-            elif filename == "the-demand-side-grid-dsgrid-model":
-                final_filename = f"nrelefs-{filename}.pdf"
-                partitions = {"report_number": 3, "document_type": "presentation"}
-
-            # Ignore a few other PDF links on the page that aren't from the EFS
-            else:
-                self.logger.warn(f"Found {filename} at {link} but didn't download.")
-                continue
-            yield self.get_pdf_resource(final_filename, link, partitions)
-
-        # For each data link found on the page, iterate through and download files
-        for link in await self.get_hyperlinks(BASE_URL, data_link_pattern):
-            data_pattern = re.compile(
-                r"files\/([\w\/]*)\/([\w \-%]*)(.zip|.xlsx|.gzip|.csv.gzip)$"
-            )
-            for data_link in await self.get_hyperlinks(link, data_pattern):
-                matches = data_pattern.search(data_link)
-                if not matches:
-                    continue
-                yield self.get_version_resource(data_link=data_link, matches=matches)
-
-        # Finally, get data from the DSGrid Data Lake
-        # Zip each
+        # Compile dictionary and regex pattern for DSGrid special case
         dsgrid_dict = {
             "dsgrid-site-energy-state-hourly": "https://data.openei.org/s3_viewer?bucket=oedi-data-lake&prefix=dsgrid-2018-efs%2Fdsgrid_site_energy_state_hourly%2F",
             "raw-complete": "https://data.openei.org/s3_viewer?bucket=oedi-data-lake&prefix=dsgrid-2018-efs%2Fraw_complete%2F",
             "state-hourly-residuals": "https://data.openei.org/s3_viewer?bucket=oedi-data-lake&prefix=dsgrid-2018-efs%2Fstate_hourly_residuals%2F",
         }
-        for zip_filename, link in dsgrid_dict.items():
-            yield self.get_dsgrid_resource(zip_filename=zip_filename, link=link)
-
-    async def get_version_resource(
-        self,
-        data_link: str,
-        matches: re.Match,
-    ) -> ResourceInfo:
-        """Download all available data for a given page of EFS data.
-
-        Resulting resource contains one zip file of CSVs per state/territory, plus a handful of .xlsx dictionary and geocoding files.
-
-        Args:
-            links: filename->URL mapping for files to download
-        """
-        # Grab file name and extension
-        filename = matches.group(2)
-        file_ext = matches.group(3)
-
-        # Reformat filename
-        filename = filename.lower().replace("_", "-")
-        filename = re.sub(
-            "[^a-zA-Z0-9 -]+", "", filename
-        ).strip()  # Remove all non-word, digit space or - characters
-        filename = re.sub(r"[\s-]+", "-", filename)
-        filename = re.sub(
-            r"^efs-", "", filename
-        )  # We add this back with an nrel header
-
-        download_path = self.download_directory / f"nrelefs-{filename}{file_ext}"
-
-        if file_ext == ".zip" or ".gzip" in file_ext:
-            await self.download_zipfile(url=data_link, zip_path=download_path)
-
-        else:
-            await self.download_file(url=data_link, file_path=download_path)
-
-        return ResourceInfo(
-            local_path=download_path,
-            partitions={
-                "document_type": "data",
-                "data_file": filename,
-                "report_number": 0,
-            },  # TO DO!
-        )
-
-    async def get_pdf_resource(
-        self, final_filename: str, link: str, partitions: dict[str, str | int]
-    ) -> ResourceInfo:
-        """Download PDF resource.
-
-        Resulting resource contains one PDF file with information about the EFS dataset.
-
-        Args:
-            link: filename->URL mapping for files to download
-            filename: the name of the file on the NREL EFS webpage
-            partitions: partitions for downloaded file
-        """
-        download_path = self.download_directory / final_filename
-        full_link = f"https://www.nrel.gov/{link}"
-        await self.download_file(url=full_link, file_path=download_path)
-        return ResourceInfo(
-            local_path=download_path,
-            partitions=partitions,
-        )
-
-    async def get_dsgrid_resource(self, zip_filename: str, link: str) -> ResourceInfo:
-        """Download DSGRID resources into one zipped file.
-
-        Resulting resource contains many .dgrid files in one zip file.
-
-        Args:
-            filename: the name of the final zipfile
-            link: URL where the files to download are found
-        """
-        data_paths_in_archive = set()
-        zipfile_path = self.download_directory / f"nrelefs-{zip_filename}.zip"
         dsg_pattern = re.compile(r"[\w]*.dsg$")
-        dsg_file_links = await self.get_hyperlinks(link, dsg_pattern)
-        for link, filename in dsg_file_links.items():
-            await self.download_add_to_archive_and_unlink(
-                url=link, filename=filename, zip_path=zipfile_path
-            )
-            data_paths_in_archive.add(filename)
+
+        for link in links:
+            # First, get all the PDFs
+            if link.endswith(".pdf"):
+                matching_pdf_link = [key for key in pdf_links if key in link]
+                # Get the corresponding filename from pdf_links
+                if matching_pdf_link:
+                    link_key = matching_pdf_link.pop()
+                    filename = pdf_links[link_key]  # TODO: Debug this
+                    # Clean the filename to name the PDF something more informative than
+                    # the link name
+                    self.logger.info(f"Downloading {link}")
+                    filename = (
+                        filename.lower()
+                        .replace("\n", "")
+                        .replace("electrification futures study:", "")
+                    )
+                    filename = re.sub(
+                        "[^a-zA-Z0-9 -]+", "", filename
+                    ).strip()  # Remove all non-word, digit space or - characters
+                    filename = re.sub(
+                        r"\s+", "-", filename
+                    )  # Replace 1+ space with a dash
+                    filename = f"nrelefs-{version}-{filename}.pdf"
+                    await self.download_add_to_archive_and_unlink(
+                        url=link, filename=filename, zip_path=zipfile_path
+                    )
+                    data_paths_in_archive.add(filename)
+                else:
+                    # Alert us to expected but missing PDF links.
+                    raise AssertionError(
+                        f"Expected PDF link {link} but this wasn't found in {BASE_URL}. Has the home page changed?"
+                    )
+
+            # Next, get all the data files from data.nrel.gov
+            elif "data.nrel.gov/submissions/" in link:
+                self.logger.info(f"Downloading data files from {link}.")
+                data_links = await self.get_hyperlinks(link, data_pattern)
+                for data_link, filename in data_links.items():
+                    matches = data_pattern.search(data_link)
+                    if not matches:
+                        continue
+                    # Grab file name and extension
+                    filename = matches.group(2)
+                    file_ext = matches.group(3)
+
+                    # Reformat filename
+                    filename = filename.lower().replace("_", "-")
+                    filename = re.sub(
+                        "[^a-zA-Z0-9 -]+", "", filename
+                    ).strip()  # Remove all non-word, digit space or - characters
+                    filename = re.sub(r"[\s-]+", "-", filename)
+                    filename = re.sub(
+                        r"^efs-", "", filename
+                    )  # We add this back with an nrel header
+                    filename = f"nrelefs-{version}-{filename}{file_ext}"
+                    self.logger.info(
+                        f"Downloading {data_link} as {filename} to {zipfile_path}."
+                    )
+                    await self.download_add_to_archive_and_unlink(
+                        url=data_link, filename=filename, zip_path=zipfile_path
+                    )
+                    data_paths_in_archive.add(filename)
+
+            elif "data.openei.org" in link:  # Finally, handle DSGrid data
+                self.logger.info("Downloading DSGrid data files.")
+                # Iterate through each type of DSGrid data and download
+                for data_type, dsg_link in dsgrid_dict.items():
+                    dsg_file_links = await self.get_hyperlinks(dsg_link, dsg_pattern)
+                    for dsg_link, filename in dsg_file_links.items():
+                        filename = filename.replace("_", "-")
+                        filename = f"nrelesg-{data_type}-{filename}"
+                        await self.download_add_to_archive_and_unlink(
+                            url=dsg_link, filename=filename, zip_path=zipfile_path
+                        )
+                        data_paths_in_archive.add(filename)
+
+            else:
+                # Raise error for mysterious other links
+                raise AssertionError(f"Unexpected format for link {link} in {version}.")
+
         return ResourceInfo(
             local_path=zipfile_path,
-            partitions={"document_type": "data", "data_file": zip_filename},
+            partitions={"version": version},
             layout=ZipLayout(file_paths=data_paths_in_archive),
         )
