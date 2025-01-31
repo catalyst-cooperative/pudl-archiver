@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from pudl.metadata.constants import CONTRIBUTORS, LICENSES
+from pudl.metadata.constants import CONTRIBUTORS, KEYWORDS, LICENSES
 
 # To add a new contributor, follow the following format to add an entry to the
 # ADDL_CONTRIBUTORS dictionary below formatted like this:
@@ -448,6 +448,41 @@ NON_PUDL_SOURCES: dict[str, Any] = {
                 "nrel",
                 "standard scenarios",
             }  # + KEYWORDS["us_govt"] + KEYWORDS["electricity"]
+        ),
+        "license_raw": LICENSES["cc-by-4.0"],
+        "license_pudl": LICENSES["cc-by-4.0"],
+    },
+    "nrelcambium": {
+        "title": "NREL Cambium",
+        "path": "https://www.nrel.gov/analysis/cambium.html",
+        "description": (
+            """Cambium datasets contain modeled hourly data for a range of possible futures of the U.S. electricity sector through 2050, with metrics designed to be useful for forward-looking analysis and decision support.
+
+Cambium is annually updated and expands on the metrics reported in NREL’s Standard Scenarios—another annually released set of projections of how the U.S. electric sector could evolve across a suite of potential futures.
+
+In its fourth annual edition, the 2023 Cambium datasets have been updated to reflect changes in technology, market, and policy as well as improvements to the underlying models.
+
+The 2023 Cambium release includes three products:
+
+The full 2023 Cambium datasets available for viewing and downloading through NREL’s Scenario Viewer;
+A workbook meant to facilitate the use of Cambium’s long-run marginal emission rate metrics;
+An NREL report describing the scenarios, defining metrics and methods, describing major changes since the last release, and discussing intended uses and limitations of the dataset."""
+        ),
+        "source_file_dict": {
+            "source_format": "CSV",
+        },
+        "working_partitions": {
+            "years": list(range(2020, 2024)),
+        },
+        "contributors": [
+            CONTRIBUTORS["catalyst-cooperative"],
+        ],
+        "keywords": sorted(
+            {
+                "nrel",
+                "cambium",
+            }
+            | set(KEYWORDS["us_govt"] + KEYWORDS["electricity"])
         ),
         "license_raw": LICENSES["cc-by-4.0"],
         "license_pudl": LICENSES["cc-by-4.0"],
