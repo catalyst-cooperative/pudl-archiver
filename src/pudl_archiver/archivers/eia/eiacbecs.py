@@ -1,6 +1,5 @@
 """Archive EIA  Commercial Buildings Energy Consumption Survey (CBECS)."""
 
-import logging
 import re
 from pathlib import Path
 from urllib.parse import urljoin
@@ -13,7 +12,6 @@ from pudl_archiver.archivers.classes import (
 from pudl_archiver.frictionless import ZipLayout
 
 BASE_URL = "https://www.eia.gov/consumption/commercial/data/"
-logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 
 class EiaCbecsArchiver(AbstractDatasetArchiver):
@@ -23,11 +21,18 @@ class EiaCbecsArchiver(AbstractDatasetArchiver):
 
     async def get_resources(self) -> ArchiveAwaitable:
         """Download EIA-CBECS resources."""
+        # we use this link and pattern to determine which years of CBECS data exists,
+        # but these base year links are only a portion of the view links so we
+        # construct the full links within get_year_resources
         link_pattern = re.compile(r"commercial/data/(\d{4})/$", re.IGNORECASE)
-
         for link in await self.get_hyperlinks(BASE_URL, link_pattern):
             match = link_pattern.search(link)
             year = match.group(1)
+            if int(year) > 2018:
+                raise self.logger.warning(
+                    f"There is a new year of data: {year}! This will almost certainly "
+                    "require some updating of this archive."
+                )
             yield self.get_year_resources(year)
 
     async def get_year_resources(self, year: int) -> list[ResourceInfo]:
@@ -73,10 +78,14 @@ class EiaCbecsArchiver(AbstractDatasetArchiver):
                 file_url = urljoin(year_url, link)
                 download_path = self.download_directory / filename
                 await self.download_file(file_url, download_path)
+                # there are a small-ish handful of files who's links redirect to the main
+                # cbecs page. presumably its a broken link. we want to skip those files,
+                # so we are going to check to see if the doctype of the bytes of the file
+                # are html. if so we move on, otherwise add to the archive
                 with Path.open(download_path, "rb") as f:
                     first_bytes = f.read(20)
-                    if b"html" in first_bytpes.lower().strip():
-                        logger.warning(
+                    if b"html" in first_bytes.lower().strip():
+                        self.logger.warning(
                             f"Skipping {file_url} because it appears to be a redirect/html page."
                         )
                         pass
