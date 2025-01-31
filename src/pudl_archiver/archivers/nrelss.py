@@ -79,34 +79,6 @@ class NrelStandardScenariosArchiver(AbstractDatasetArchiver):
                 "https://scenarioviewer.nrel.gov/api/file-list/",
                 project_uuid=project_uuid,
             )
-            # for file_record in (
-#                 
-#             ):
-#                 file_resp = await retry_async(
-#                     self.session.post,
-#                     ["https://scenarioviewer.nrel.gov/api/download/"],
-#                     kwargs={
-#                         "data":{"project_uuid": project_uuid, "file_ids": file_record["id"]},
-#                         "kwargs":{"allow_redirects":False}},
-#                 )
-#                 file_headers = file_resp.headers
-#                 download_filename = f"{file_record['location_type']}.csv"
-# 
-#                 if "Location" not in file_headers:
-#                     for h in file_headers:
-#                         print(f"{h}: {file_headers[h]}")
-#                 m = filename_pattern.search(file_headers["Location"])
-#                 if m:
-#                     download_filename = m.groups(1)
-#                 else:
-#                     # this will give us e.g.
-#                     # (for 2023-2024) "ALL Transmission Capacities.csv" "ALL States.csv"
-#                     # (for previous years) "Electrification Nations.csv" "High Natural Gas Prices States.csv"
-#                     download_filename = (
-#                         f"{file_record['scenario']} {file_record['location_type']}.csv"
-#                     )
-# 
-#                 download_links[download_filename] = file_headers["Location"]
             yield self.get_year_resource(
                 report=(f"{m.group('fy')}_{m.group('number')}", report_link),
                 uuid=project_uuid,
@@ -147,20 +119,12 @@ class NrelStandardScenariosArchiver(AbstractDatasetArchiver):
         
         for file_id,filename in file_ids:
             self.logger.info(f"Downloading file {year} {file_id} {uuid}")
-#             file_resp = await retry_async(
-#                 self.session.post,
-#                 ["https://scenarioviewer.nrel.gov/api/download/"],
-#                 kwargs={
-#                     "data":{"project_uuid": project_uuid, "file_ids": file_record["id"]},
-#                     "kwargs":{"allow_redirects":False}},
-#             )
             download_path = self.download_directory / filename
             await retry_async(
                 _download_file_post, 
                 [self.session, "https://scenarioviewer.nrel.gov/api/download/", download_path],
                 kwargs={"data":{"project_uuid": uuid, "file_ids": file_id}}
             )
-#             await self.download_file(link, download_path)
             self.add_to_archive(
                 zip_path=zip_path,
                 filename=filename,
@@ -173,5 +137,5 @@ class NrelStandardScenariosArchiver(AbstractDatasetArchiver):
         return ResourceInfo(
             local_path=zip_path,
             partitions={"years": year},
-            layout=ZipLayout(file_paths=data_paths_in_archive),
+            #layout=ZipLayout(file_paths=data_paths_in_archive), # can't use ZipLayout bc these CSVs have a multi-row header and pandas throws a tantrum
         )
