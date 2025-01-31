@@ -19,6 +19,7 @@ class UsgsUswtdbArchiver(AbstractDatasetArchiver):
     """USGS USWTDB archiver."""
 
     name = "usgsuswtdb"
+    fail_on_data_continuity = False
 
     async def get_resources(self) -> ArchiveAwaitable:
         """Download USWTDB resources."""
