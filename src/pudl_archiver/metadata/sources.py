@@ -2,11 +2,7 @@
 
 from typing import Any
 
-<<<<<<< HEAD
-from pudl.metadata.constants import CONTRIBUTORS, LICENSES
-=======
 from pudl.metadata.constants import CONTRIBUTORS, KEYWORDS, LICENSES
->>>>>>> e1e1a4b (add source for nrel cambium)
 
 # To add a new contributor, follow the following format to add an entry to the
 # ADDL_CONTRIBUTORS dictionary below formatted like this:
