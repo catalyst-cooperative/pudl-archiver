@@ -2,6 +2,7 @@
 
 import logging
 import re
+from urllib.parse import urlparse
 
 from pudl_archiver.archivers.classes import (
     AbstractDatasetArchiver,
@@ -23,9 +24,10 @@ class UsgsUswtdbArchiver(AbstractDatasetArchiver):
         """Download USWTDB resources."""
         link_pattern = re.compile(r"uswtdb_v(\d+)_(\d+)(?:_(\d+))?_(\d{8})\.zip")
         logger.info(f"Searching {BASE_URL} for hyperlinks matching {link_pattern}")
-        for link in await self.get_hyperlinks(BASE_URL, link_pattern):
-            logger.info(f"Found link: {link}")
-            matches = link_pattern.search(link)
+        data_links = await self.get_hyperlinks(BASE_URL, link_pattern)
+        for link, name in data_links.items():
+            logger.info(f"Found link: {link}, name: {name}")
+            matches = link_pattern.search(name)
             if not matches:
                 continue
 
@@ -38,7 +40,8 @@ class UsgsUswtdbArchiver(AbstractDatasetArchiver):
     async def get_year_month_resource(self, link: str, year_month: str) -> ResourceInfo:
         """Download zip file."""
         # Append hyperlink to base URL to get URL of file
-        url = f"{BASE_URL}/{link}"
+        parsed_url = urlparse(BASE_URL)
+        url = f"{parsed_url.scheme}://{parsed_url.netloc}{link}"
         download_path = self.download_directory / f"usgsuswtdb-{year_month}.zip"
         logger.info(f"Attempting to download {url} to {download_path}")
         await self.download_zipfile(url, download_path)
