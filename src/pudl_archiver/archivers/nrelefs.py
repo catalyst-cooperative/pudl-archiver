@@ -31,14 +31,65 @@ class NrelEFSArchiver(AbstractDatasetArchiver):
         The main page links to a series of PDFs as well as data.nrel.gov and data.openei.org webpages
         containing associated data for each report.
         """
+        # Hard-code a dictionary of each version of the study, with a short-hand
+        # description of the report as the key and the links to all data and reports
+        # in the version as the values. This was last published in 2021 so we don't
+        # expect these to change.
+
+        version_dict = {
+            "cost-and-performance": [
+                "https://www.nrel.gov/docs/fy18osti/70485.pdf",
+                "https://data.nrel.gov/submissions/93",
+                "https://data.nrel.gov/submissions/78",
+            ],
+            "demand-side-scenarios": [
+                "https://www.nrel.gov/docs/fy18osti/71500.pdf",
+                "https://www.nrel.gov/docs/fy18osti/72096.pdf",
+                "https://www.nrel.gov/docs/fy18osti/72311.pdf",
+                "https://data.nrel.gov/submissions/90",
+                "https://data.nrel.gov/submissions/92",
+            ],
+            "dsgrid-model": [
+                "https://www.nrel.gov/docs/fy18osti/71492.pdf",
+                "https://www.nrel.gov/docs/fy18osti/72388.pdf",
+                "https://data.openei.org/submissions/4130",
+            ],
+            "load-profiles": [
+                "https://www.nrel.gov/docs/fy20osti/73336.pdf",
+                "https://data.nrel.gov/submissions/126",
+                "https://data.nrel.gov/submissions/127",
+            ],
+            "supply-side-scenarios": [
+                "https://www.nrel.gov/docs/fy21osti/72330.pdf",
+                "https://www.nrel.gov/docs/fy21osti/78783.pdf",
+                "https://data.nrel.gov/submissions/157",
+            ],
+            "detailed-grid-simulations": [
+                "https://www.nrel.gov/docs/fy21osti/79094.pdf",
+                "https://www.nrel.gov/docs/fy21osti/80167.pdf",
+            ],
+        }
+
+        # Though we hardcode the links above, we also grab the PDFs links from the page
+        # in order to get information about the name ascribed to the link to make it
+        # easier to label each PDF something informative
+        pdf_pattern = re.compile(r"\/docs\/fy(\d{2})osti\/\w*.pdf")
+        pdf_links = await self.get_hyperlinks(BASE_URL, pdf_pattern)
+
+        # For each version, yield a method that will produce one zipfile containing
+        # all the files for the method
+        for version, links in version_dict.items():
+            yield get_version_resource(
+                version=version, links=links, pdf_links=pdf_links
+            )
+
         data_link_pattern = re.compile(r"data.nrel.gov\/submissions\/")
         # Regex for matching the page containing data for a study on the NREL EFS page.
 
-        pdf_pattern = re.compile(r"\/docs\/fy(\d{2})osti\/\w*.pdf")
         # Regex for matching a PDF on the page
 
         # From the main page, grab all the PDFs
-        pdf_links = await self.get_hyperlinks(BASE_URL, pdf_pattern)
+
         for link, filename in pdf_links.items():
             # Flow through workflow to identify the version of the PDF,
             # the final filename
