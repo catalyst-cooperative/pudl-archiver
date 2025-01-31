@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from pudl.metadata.constants import CONTRIBUTORS, LICENSES
+from pudl.metadata.constants import CONTRIBUTORS, LICENSES, KEYWORDS
 
 # To add a new contributor, follow the following format to add an entry to the
 # ADDL_CONTRIBUTORS dictionary below formatted like this:
@@ -447,7 +447,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
             {
                 "nrel",
                 "standard scenarios",
-            }
+            } #+ KEYWORDS["us_govt"] + KEYWORDS["electricity"]
         ),
         "license_raw": LICENSES["cc-by-4.0"],
         "license_pudl": LICENSES["cc-by-4.0"],

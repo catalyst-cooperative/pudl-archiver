@@ -25,16 +25,16 @@ class NrelStandardScenariosArchiver(AbstractDatasetArchiver):
         """Download NREL Standard Scenarios resources."""
 
         async def post_to_json(url, **kwargs):
-            resp = await retry_async(self.session.post, [url], data=kwargs)
+            resp = await retry_async(self.session.post, [url], kwargs={"data":kwargs})
             return await retry_async(resp.json)
 
         project_year_pattern = re.compile(r"Standard Scenarios (?P<year>\d{4})")
         report_url_pattern = re.compile(
-            r"http://www.nrel.gov/docs/(?P<fy>fy\d{2}osti)/(?P<number>\d{5}\.pdf)"
+            r"https://www.nrel.gov/docs/(?P<fy>fy\d{2}osti)/(?P<number>\d{5}\.pdf)"
         )
         filename_pattern = re.compile(r"/([^/?]*/.csv)")
 
-        project_records = self.get_json("https://scenarioviewer.nrel.gov/api/projects/")
+        project_records = await self.get_json("https://scenarioviewer.nrel.gov/api/projects/")
         for scenario_project in (
             p for p in project_records if p["name"].startswith("Standard Scenarios")
         ):
@@ -47,7 +47,14 @@ class NrelStandardScenariosArchiver(AbstractDatasetArchiver):
             if scenario_project["citation"]:
                 report_link = self.get_hyperlinks_from_text(
                     scenario_project["citation"], report_url_pattern
-                ).pop()
+                )
+                if report_link:
+                    report_link = report_link.pop()
+                else:
+                    raise AssertionError(
+                        f"We expect all years except 2021 to have a citation with a link to the report, but {project_year} does not:"
+                        f"{scenario_project}"
+                    )
             elif project_year == 2021:
                 report_link = REPORT_2021
             m = report_url_pattern.search(report_link)
@@ -57,7 +64,7 @@ class NrelStandardScenariosArchiver(AbstractDatasetArchiver):
                     f"{scenario_project}"
                 )
             download_links = {f"{m.group('fy')}_{m.group('number')}": report_link}
-            file_list = post_to_json(
+            file_list = await post_to_json(
                 "https://scenarioviewer.nrel.gov/api/file-list/",
                 project_uuid=project_uuid,
             )
@@ -67,11 +74,16 @@ class NrelStandardScenariosArchiver(AbstractDatasetArchiver):
                 file_resp = await retry_async(
                     self.session.post,
                     ["https://scenarioviewer.nrel.gov/api/download/"],
-                    data={"project_uuid": project_uuid, "file_ids": file_record["id"]},
+                    kwargs={
+                        "data":{"project_uuid": project_uuid, "file_ids": file_record["id"]},
+                        "kwargs":{"allow_redirects":False}},
                 )
-                file_headers = file_resp.headers()
+                file_headers = file_resp.headers
                 download_filename = f"{file_record['location_type']}.csv"
 
+                if "Location" not in file_headers:
+                    for h in file_headers:
+                        print(f"{h}: {file_headers[h]}")
                 m = filename_pattern.search(file_headers["Location"])
                 if m:
                     download_filename = m.groups(1)
