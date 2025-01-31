@@ -76,6 +76,29 @@ class NrelAtbArchiver(AbstractDatasetArchiver):
         excel_filename = f"nrelatb-{year}-{atb_type}-{og_filename}"
         return excel_filename
 
+    async def compile_parquet_urls(
+        self, parquet_urls: list[str], url_to_check, year, atb_type
+    ):
+        """Recursively search within directories to find parquet files."""
+        dir_pattern_str = r"%2F$"
+        parquet_pattern_str = (
+            rf"^{PARQUET_FILE_BASE_URL}{atb_type}/parquet/{year}/(.*).parquet$"
+        )
+
+        either_pattern = re.compile(
+            rf"({parquet_pattern_str})|({dir_pattern_str})", re.IGNORECASE
+        )
+        for link in await self.get_hyperlinks(url_to_check, either_pattern):
+            link = urljoin(url_to_check, link)
+            if link.endswith("%2F"):
+                # this is a directory... so we want to go deeper
+                print(f"run this function recursively with: {link}")
+                await self.compile_parquet_urls(parquet_urls, link, year, atb_type)
+            elif link.endswith(".parquet"):
+                print(f"add this link to parquet files: {link}")
+                parquet_urls += [link]
+        return parquet_urls
+
     async def get_year_electricity_resources(
         self, year: int, atb_type: Literal["electricity"]
     ) -> tuple[Path, dict]:
@@ -137,29 +160,24 @@ class NrelAtbArchiver(AbstractDatasetArchiver):
             await self.download_add_to_archive_and_unlink(url, filename, zip_path)
 
         year_parquet_url = f"{PARQUET_BASE_URL}{atb_type}%2Fparquet%2F{year}%2F"
-        parquet_pattern = re.compile(
-            rf"^{PARQUET_FILE_BASE_URL}{atb_type}/parquet/{year}/(.*).parquet$"
-        )
-        dir_pattern = re.compile(r"%2F$")
         # TODO: convert this to a recursive function
-        for parquet_dir in await self.get_hyperlinks(year_parquet_url, dir_pattern):
-            parquet_dir = urljoin(year_parquet_url, parquet_dir)
-            for parquet_file in await self.get_hyperlinks(parquet_dir, parquet_pattern):
-                await _clean_and_download_parquet(parquet_file, parquet_dir)
-                data_paths_in_archive.add(parquet_file)
-
-            if not data_paths_in_archive:
-                for parquet_dir_rlly in await self.get_hyperlinks(
-                    parquet_dir, dir_pattern
-                ):
-                    parquet_dir_rlly = urljoin(parquet_dir, parquet_dir_rlly)
-                    for parquet_file in await self.get_hyperlinks(
-                        parquet_dir_rlly, parquet_pattern
-                    ):
-                        await _clean_and_download_parquet(
-                            parquet_file, parquet_dir_rlly
-                        )
-                        data_paths_in_archive.add(parquet_file)
+        parquet_urls = []
+        parquet_urls = await self.compile_parquet_urls(
+            parquet_urls, year_parquet_url, year, atb_type
+        )
+        for parquet_url in parquet_urls:
+            parquet_filename = (
+                parquet_url.split("/")[-1]
+                .lower()
+                .strip()
+                .replace(" ", "-")
+                .replace("_", "-")
+            )
+            parquet_filename = f"nrelatb-{year}-{atb_type}-{parquet_filename}"
+            await self.download_add_to_archive_and_unlink(
+                parquet_url, parquet_filename, zip_path
+            )
+            data_paths_in_archive.add(parquet_filename)
 
         # now for the excel/csv files
         year_excel_url = f"https://atb.nrel.gov/{atb_type}/{year}/data"
