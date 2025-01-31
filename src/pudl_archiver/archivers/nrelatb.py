@@ -141,8 +141,7 @@ class NrelAtbArchiver(AbstractDatasetArchiver):
             rf"^{PARQUET_FILE_BASE_URL}{atb_type}/parquet/{year}/(.*).parquet$"
         )
         dir_pattern = re.compile(r"%2F$")
-        # given a url run these two patterns:
-        # if its a directory
+        # TODO: convert this to a recursive function
         for parquet_dir in await self.get_hyperlinks(year_parquet_url, dir_pattern):
             parquet_dir = urljoin(year_parquet_url, parquet_dir)
             for parquet_file in await self.get_hyperlinks(parquet_dir, parquet_pattern):
