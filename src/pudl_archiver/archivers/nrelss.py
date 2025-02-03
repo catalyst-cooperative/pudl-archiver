@@ -1,11 +1,6 @@
 """Download NREL Standard Scenarios data."""
 
-import io
 import re
-from contextlib import nullcontext
-from pathlib import Path
-
-import aiohttp
 
 from pudl_archiver.archivers.classes import (
     AbstractDatasetArchiver,
@@ -14,144 +9,181 @@ from pudl_archiver.archivers.classes import (
 )
 from pudl_archiver.utils import retry_async
 
-# The citation field for Standard Scenarios 2021 is blank, but they linked to the
-# 2021 report from the description of one of the other available projects, so we're
-# able to hard-code it for now:
-REPORT_2021 = "https://www.nrel.gov/docs/fy22osti/80641.pdf"
+API_URL_PROJECTS_LIST = "https://scenarioviewer.nrel.gov/api/projects/"
+API_URL_FILE_LIST = "https://scenarioviewer.nrel.gov/api/file-list/"
+API_URL_FILE_DOWNLOAD = "https://scenarioviewer.nrel.gov/api/download/"
+
+REPORT_URL_PATTERN = re.compile(
+    r"https://www.nrel.gov/docs/(?P<fy>fy\d{2}osti)/(?P<number>\d{5}\.pdf)"
+)
 
 
-async def _download_file_post(
-    session: aiohttp.ClientSession, url: str, file: Path | io.BytesIO, **kwargs
-):
-    async with session.post(url, **kwargs) as response:
-        with file.open("wb") if isinstance(file, Path) else nullcontext(file) as f:
-            async for chunk in response.content.iter_chunked(1024):
-                f.write(chunk)
+class AbstractNrelScenarioArchiver(AbstractDatasetArchiver):
+    """Base class for archiving projects from the NREL Scenario Viewer."""
 
+    project_year_pattern: re.Pattern
+    project_startswith: str
+    report_section: str
+    file_naming_order: tuple[str]
 
-class NrelStandardScenariosArchiver(AbstractDatasetArchiver):
-    """NREL Standard Scenarios archiver."""
+    def handle_report_link_exceptions(self, project_year: str) -> str:
+        """Provide hard-coded exceptions for years where the normal report URL locator doesn't work."""
+        return ""
 
-    name = "nrelss"
-
-    async def get_resources(self) -> ArchiveAwaitable:
-        """Download NREL Standard Scenarios resources."""
-
-        async def post_to_json(url, **kwargs):
-            resp = await retry_async(self.session.post, [url], kwargs={"data": kwargs})
-            return await retry_async(resp.json)
-
-        project_year_pattern = re.compile(r"Standard Scenarios (?P<year>\d{4})")
-        report_url_pattern = re.compile(
-            r"https://www.nrel.gov/docs/(?P<fy>fy\d{2}osti)/(?P<number>\d{5}\.pdf)"
-        )
-        filename_pattern = re.compile(r"/([^/?]*/.csv)")
-
-        project_records = await self.get_json(
-            "https://scenarioviewer.nrel.gov/api/projects/"
-        )
-        for scenario_project in (
-            p for p in project_records if p["name"].startswith("Standard Scenarios")
-        ):
-            project_uuid = scenario_project["uuid"]
-            m = project_year_pattern.search(scenario_project["name"])
-            if not m:
-                continue
-            project_year = int(m.group("year"))
-
-            if scenario_project["citation"]:
-                report_link = self.get_hyperlinks_from_text(
-                    scenario_project["citation"], report_url_pattern
-                )
-                if report_link:
-                    report_link = report_link.pop()
-                else:
-                    raise AssertionError(
-                        f"We expect all years except 2021 to have a citation with a link to the report, but {project_year} does not:"
-                        f"{scenario_project}"
-                    )
-            elif project_year == 2021:
-                report_link = REPORT_2021
-            m = report_url_pattern.search(report_link)
-            if not m:
-                raise AssertionError(
-                    f"We expect all years except 2021 to have a citation with a link to the report, but {project_year} does not:"
-                    f"{scenario_project}"
-                )
-
-            file_list = await post_to_json(
-                "https://scenarioviewer.nrel.gov/api/file-list/",
-                project_uuid=project_uuid,
-            )
-            yield self.get_year_resource(
-                report=(f"{m.group('fy')}_{m.group('number')}", report_link),
-                uuid=project_uuid,
-                file_ids=[
-                    (
-                        f["id"],
-                        f"NRELSS {project_year}  {f['scenario']}  {f['location_type']}.{f['file_type']}".replace(
-                            " ", "_"
-                        )
-                        .replace("%", "pct")
-                        .replace(",", "")
-                        .lower(),
-                    )
-                    for f in file_list["files"]
-                    if (f["file_type"] == "CSV" or project_year == 2020)
-                ],
-                year=project_year,
-            )
-
-    async def get_year_resource(
-        self, report, uuid, file_ids, year: int
-    ) -> ResourceInfo:
-        """Download all available data for a year.
-
-        Resulting resource contains one pdf of the scenario report, and a set of CSVs for different scenarios and geo levels.
+    async def collect_project_info(
+        self, scenario_project: dict
+    ) -> tuple[str, int, list, list]:
+        """Gather all the information needed to download a single project.
 
         Args:
-            links: filename->URL mapping for files to download
-            year: the year we're downloading data for
+            scenario_project: dictionary representing a single project, as extracted from /api/projects/ JSON
+
+        Returns:
+            Tuple of:
+                - Project UUID
+                - Project year
+                - List of (filename, url) pairs for PDF reports
+                - List of (filename, id) pairs for files
+        """
+        project_uuid = scenario_project["uuid"]
+        m = self.project_year_pattern.search(scenario_project["name"])
+        if not m:
+            return (False,) * 3
+        project_year = int(m.group("year"))
+
+        report_links = self.get_hyperlinks_from_text(
+            scenario_project[self.report_section], REPORT_URL_PATTERN
+        )
+        if not report_links:
+            report_links = {self.handle_report_link_exceptions(project_year)}
+        if not report_links:
+            raise AssertionError(
+                f"We expect all projects to have a {self.report_section} with a link to the report PDF, but {project_year} does not:\n"
+                f"{scenario_project}"
+            )
+        report_data = []
+        for report_link in report_links:
+            m = REPORT_URL_PATTERN.search(report_link)
+            if not m:
+                raise AssertionError(
+                    f"Bad report link {report_link} found in {scenario_project['name']} {project_uuid}: {scenario_project}"
+                )
+            report_data.append((f"{m.group('fy')}_{m.group('number')}", report_link))
+
+        file_list_resp = await retry_async(
+            self.session.post,
+            [API_URL_FILE_LIST],
+            kwargs={"data": {"project_uuid": project_uuid}},
+        )
+        file_list = await retry_async(file_list_resp.json)
+
+        return (
+            project_uuid,
+            project_year,
+            report_data,
+            [
+                (
+                    f"{self.name.upper()} {project_year}  {'  '.join(f[x] for x in self.file_naming_order)}.{f['file_type']}".replace(
+                        " ", "_"
+                    )
+                    .replace("%", "pct")
+                    .replace(",", "")
+                    .lower(),
+                    f["id"],
+                )
+                for f in file_list["files"]
+            ],
+        )
+
+    async def get_resources(self) -> ArchiveAwaitable:
+        """Download NREL Scenario resources.
+
+        Basic flow:
+            1. Fetch the list of projects. The scenario viewer includes Standard scenarios, Cambium scenarios, and a few other types, so we filter down using the project name.
+            2. Pull out metadata for matching projects: uuid, year, and links to any PDF reports. PDF report URLs are not provided in a dedicated field in the project response, but are part of an HTML value for the description or citation in the project. Sometimes this field is simply blank, and we need to use a hard-coded exception.
+            3. Fetch the list of data files for the project, and construct a well-ordered filename for each.
+            4. Download and package all files for the project, and yield its ResourceInfo.
+        """
+        project_records = await self.get_json(API_URL_PROJECTS_LIST)
+        for scenario_project in (
+            p for p in project_records if p["name"].startswith(self.project_startswith)
+        ):
+            (
+                project_uuid,
+                project_year,
+                report_data,
+                file_ids,
+            ) = await self.collect_project_info(scenario_project)
+            if project_uuid:
+                yield self.get_project_resource(
+                    uuid=project_uuid,
+                    year=project_year,
+                    reports=report_data,
+                    file_ids=file_ids,
+                )
+
+    async def get_project_resource(
+        self,
+        uuid: str,
+        year: int,
+        reports: list[tuple[str, str]],
+        file_ids: list[tuple[str, str]],
+    ) -> ResourceInfo:
+        """Download all available data for a project.
+
+        Resulting resource contains PDFs of the scenario report(s), and a set of CSVs or ZIPs for different slices.
+
+        Args:
+            uuid: identifier for the project
+            year: the year of the project
+            reports: list of (filename, url) pairs for PDF scenario reports included with the project
+            file_ids: list of (filename, id) pairs for files in the project
         """
         zip_path = self.download_directory / f"{self.name}-{year}.zip"
-        data_paths_in_archive = set()
-        # report
-        self.logger.info(f"Downloading report {year} {report[0]} from {report[1]}")
-        download_path = self.download_directory / report[0]
-        await self.download_file(report[1], download_path)
-        self.add_to_archive(
-            zip_path=zip_path,
-            filename=report[0],
-            blob=download_path.open("rb"),
-        )
-        data_paths_in_archive.add(report[0])
-        # Don't want to leave multiple giant files on disk, so delete
-        # immediately after they're safely stored in the ZIP
-        download_path.unlink()
 
-        for file_id, filename in file_ids:
+        # reports: direct URL
+        for filename, url in reports:
+            self.logger.info(f"Downloading report {year} {filename} {uuid} from {url}")
+            self.download_add_to_archive_and_unlink(url, filename, zip_path)
+
+        # files: API call
+        for filename, file_id in file_ids:
             self.logger.info(f"Downloading file {year} {file_id} {uuid}")
             download_path = self.download_directory / filename
-            await retry_async(
-                _download_file_post,
-                [
-                    self.session,
-                    "https://scenarioviewer.nrel.gov/api/download/",
-                    download_path,
-                ],
-                kwargs={"data": {"project_uuid": uuid, "file_ids": file_id}},
+            await self.download_file(
+                API_URL_FILE_DOWNLOAD,
+                download_path,
+                data={"project_uuid": uuid, "file_ids": file_id},
             )
             self.add_to_archive(
                 zip_path=zip_path,
                 filename=filename,
                 blob=download_path.open("rb"),
             )
-            data_paths_in_archive.add(filename)
             # Don't want to leave multiple giant files on disk, so delete
             # immediately after they're safely stored in the ZIP
             download_path.unlink()
+
         return ResourceInfo(
             local_path=zip_path,
             partitions={"years": year},
-            # layout=ZipLayout(file_paths=data_paths_in_archive), # can't use ZipLayout bc these CSVs have a multi-row header and pandas throws a tantrum
         )
+
+
+class NrelStandardScenariosArchiver(AbstractNrelScenarioArchiver):
+    """NREL Standard Scenarios archiver."""
+
+    name = "nrelss"
+    project_year_pattern = re.compile(r"Standard Scenarios (?P<year>\d{4})")
+    project_startswith = "Standard Scenarios"
+    report_section = "citation"
+    file_naming_order = ("scenario", "location_type")
+
+    def handle_report_link_exceptions(self, project_year):
+        """Hard-coded exception for project year 2021."""
+        if project_year == 2021:
+            # The citation field for Standard Scenarios 2021 is blank, but they linked to the
+            # 2021 report from the description of one of the other available projects, so we're
+            # able to hard-code it for now:
+            return "https://www.nrel.gov/docs/fy22osti/80641.pdf"
+        return ""

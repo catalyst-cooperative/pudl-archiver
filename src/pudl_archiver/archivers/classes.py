@@ -78,9 +78,12 @@ class _HyperlinkExtractor(HTMLParser):
 
 
 async def _download_file(
-    session: aiohttp.ClientSession, url: str, file: Path | io.BytesIO, **kwargs
+    session: aiohttp.ClientSession, url: str, file: Path | io.BytesIO, post: bool=False, **kwargs
 ):
-    async with session.get(url, **kwargs) as response:
+    method = session.get
+    if post: 
+        method = session.post
+    async with method(url, **kwargs) as response:
         with file.open("wb") if isinstance(file, Path) else nullcontext(file) as f:
             async for chunk in response.content.iter_chunked(1024):
                 f.write(chunk)
@@ -181,7 +184,7 @@ class AbstractDatasetArchiver(ABC):
         # If it makes it here that means it couldn't download a valid zipfile
         raise RuntimeError(f"Failed to download valid zipfile from {url}")
 
-    async def download_file(self, url: str, file_path: Path | io.BytesIO, **kwargs):
+    async def download_file(self, url: str, file_path: Path | io.BytesIO, post: bool=False, **kwargs):
         """Download a file using async session manager.
 
         Args:
@@ -189,7 +192,7 @@ class AbstractDatasetArchiver(ABC):
             file_path: Local path to write file to disk or bytes object to save file in memory.
             kwargs: Key word args to pass to retry_async.
         """
-        await retry_async(_download_file, [self.session, url, file_path], kwargs)
+        await retry_async(_download_file, [self.session, url, file_path, post], kwargs)
 
     async def download_and_zip_file(
         self, url: str, filename: str, zip_path: Path, **kwargs
