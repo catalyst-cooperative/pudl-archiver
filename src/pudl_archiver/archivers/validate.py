@@ -286,8 +286,14 @@ def _validate_file_type(path: Path, buffer: BytesIO) -> bool:
 
     if extension == ".zip":
         if zipfile.is_zipfile(buffer):
-            zip_test = zipfile.ZipFile(buffer).testzip()
-            return zip_test is None  # None if no error
+            try:
+                zip_test = zipfile.ZipFile(buffer).testzip()
+                return zip_test is None  # None if no error
+            except NotImplementedError:
+                logger.warn(
+                    f"File {path} has a type of zip compression that isn't supported for validation."
+                )
+                return True
         return False
 
     if extension == ".xml" or extension == ".xbrl" or extension == ".xsd":
