@@ -88,7 +88,11 @@ class NrelEFSArchiver(AbstractDatasetArchiver):
             )
 
         # Let us know what links we aren't grabbing.
-        links_not_downloaded = [link for link in pdf_links if link not in version_dict]
+        links_not_downloaded = [
+            f"https://www.nrel.gov{link}"
+            for link in pdf_links
+            if link not in version_dict
+        ]
         self.logger.warn(
             f"Not downloading the following additional PDFs linked from the mainpage: {links_not_downloaded}"
         )
@@ -197,7 +201,7 @@ class NrelEFSArchiver(AbstractDatasetArchiver):
                 # Iterate through each type of DSGrid data and download
                 for data_type in dsgrid_list:
                     # Construct download link from data type
-                    dsg_link = f"https://data.openei.org/s3_viewer?bucket=oedi-data-lake&prefix=dsgrid-2018-efs%2F{data_type}%2F"
+                    dsg_link = f"https://data.openei.org/s3_viewer?bucket=oedi-data-lake&prefix=dsgrid-2018-efs%2F{data_type.replace('-', '_')}%2F"
                     dsg_file_links = await self.get_hyperlinks(dsg_link, dsg_pattern)
                     for dsg_link, filename in dsg_file_links.items():
                         filename = filename.replace("_", "-")
