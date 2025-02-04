@@ -1,6 +1,5 @@
 """Download EPAMATS data."""
 
-import datetime
 import json
 import logging
 import os
@@ -8,49 +7,17 @@ from collections.abc import Iterable
 from itertools import groupby
 
 import requests
-from pydantic import BaseModel, ValidationError
-from pydantic.alias_generators import to_camel
+from pydantic import ValidationError
 
 from pudl_archiver.archivers.classes import (
     AbstractDatasetArchiver,
     ArchiveAwaitable,
     ResourceInfo,
 )
+from pudl_archiver.archivers.epa.epacems import BulkFile
 from pudl_archiver.frictionless import ZipLayout
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
-
-
-class BulkFile(BaseModel):
-    """Data transfer object from EPA.
-
-    See https://www.epa.gov/power-sector/cam-api-portal#/swagger/camd-services
-    for details.
-    """
-
-    class Metadata(BaseModel):
-        """Metadata about a specific file."""
-
-        year: int
-        quarter: int
-        data_type: str
-        data_sub_type: str
-
-        class Config:  # noqa: D106
-            alias_generator = to_camel
-            populate_by_name = True
-
-    filename: str
-    s3_path: str
-    bytes: int  # noqa: A003
-    mega_bytes: float
-    giga_bytes: float
-    last_updated: datetime.datetime
-    metadata: Metadata
-
-    class Config:  # noqa: D106
-        alias_generator = to_camel
-        populate_by_name = True
 
 
 class EpaMatsArchiver(AbstractDatasetArchiver):
@@ -74,7 +41,7 @@ class EpaMatsArchiver(AbstractDatasetArchiver):
                 continue
 
     async def get_resources(self) -> ArchiveAwaitable:
-        """Download EPA CEMS resources."""
+        """Download EPA MATS resources."""
         file_list = requests.get(
             "https://api.epa.gov/easey/camd-services/bulk-files",
             params=self.parameters,
@@ -82,7 +49,7 @@ class EpaMatsArchiver(AbstractDatasetArchiver):
         )
         if file_list.status_code != 200:
             raise AssertionError(
-                f"EPACEMS API request did not succeed: {file_list.status_code}"
+                f"EPA MATS API request did not succeed: {file_list.status_code}"
             )
         resjson = file_list.content.decode("utf8").replace("'", '"')
         file_list.close()  # Close connection.
