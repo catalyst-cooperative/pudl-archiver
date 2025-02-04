@@ -119,18 +119,6 @@ class NrelAtbArchiver(AbstractDatasetArchiver):
         zip_path = self.download_directory / f"nrelatb-{year}-{atb_type}.zip"
         data_paths_in_archive = set()
 
-        async def _clean_and_download_parquet(parquet_file, parquet_dir):
-            parquet_filename = (
-                parquet_file.split("/")[-1]
-                .lower()
-                .strip()
-                .replace(" ", "-")
-                .replace("_", "-")
-            )
-            filename = f"nrelatb-{year}-{atb_type}-{parquet_filename}"
-            url = urljoin(parquet_dir, parquet_file)
-            await self.download_add_to_archive_and_unlink(url, filename, zip_path)
-
         year_parquet_url = f"{PARQUET_BASE_URL}{atb_type}%2Fparquet%2F{year}%2F"
         parquet_urls = []
         parquet_urls = await self.compile_parquet_urls(
