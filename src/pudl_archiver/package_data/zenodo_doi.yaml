@@ -61,6 +61,9 @@ epacems:
 epaegrid:
   production_doi: 10.5281/zenodo.14767235
   sandbox_doi: 10.5072/zenodo.159996
+epamats:
+  production_doi: 10.5281/zenodo.14783043
+  sandbox_doi: 10.5072/zenodo.162020
 epapcap:
   production_doi: 10.5281/zenodo.14757598
   #sandbox_doi: # Update!!

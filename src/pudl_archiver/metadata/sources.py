@@ -340,7 +340,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
     },
     "epamats": {
-        "title": "EPA -- Mercury and Air Toxics Standards",
+        "title": "EPA MATS -- Mercury and Air Toxics Standards",
         "path": "https://www.epa.gov/stationary-sources-air-pollution/mercury-and-air-toxics-standards",
         "description": (
             "The EPA Mercury and Air Toxics Standards (MATS) dataset provides detailed information on emissions "
@@ -356,31 +356,6 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         ),
         "working_partitions": {
             "years": [
-                1990,
-                1991,
-                1992,
-                1993,
-                1994,
-                1995,
-                1996,
-                1997,
-                1998,
-                1999,
-                2000,
-                2001,
-                2002,
-                2003,
-                2004,
-                2005,
-                2006,
-                2007,
-                2008,
-                2009,
-                2010,
-                2011,
-                2012,
-                2013,
-                2014,
                 2015,
                 2016,
                 2017,
@@ -390,7 +365,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
                 2021,
                 2022,
             ]
-        },  # not 100% sure on years
+        },
         "keywords": sorted(
             {"mercury", "toxics", "standards", "air", "environment", "epa"}
         ),
