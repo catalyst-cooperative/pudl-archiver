@@ -144,8 +144,13 @@ class DepositionMetadata(BaseModel):
             )
         else:
             # Otherwise, specify that data was archived from the data_source.path
-            # and can be found there.
-            title = f"PUDL Raw {data_source.title}"
+            # and can be found there. Only include PUDL Raw if this dataset does
+            # indeed wind up in PUDL.
+            title = (
+                f"PUDL Raw {data_source.title}"
+                if data_source_id in SOURCES
+                else f"{data_source.title}"
+            )
             description = (
                 f"<p>{data_source.description} Archived from \n"
                 f'<a href="{data_source.path}">{data_source.path}</a></p>'

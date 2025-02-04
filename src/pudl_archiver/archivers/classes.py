@@ -49,15 +49,31 @@ class _HyperlinkExtractor(HTMLParser):
 
     def __init__(self):
         """Construct parser."""
-        self.hyperlinks = set()
+        self.hyperlinks = {}
+        self.current_hyperlink = None
         super().__init__()
 
     def handle_starttag(self, tag, attrs):
         """Filter hyperlink tags and return href attribute."""
-        if tag == "a":
-            for attr, val in attrs:
-                if attr == "href":
-                    self.hyperlinks.add(val)
+        url_attrs = ["href", "src", "action", "data-url", "poster"]
+
+        for attr, val in attrs:
+            if attr in url_attrs:
+                self.current_hyperlink = val
+                if self.current_hyperlink not in self.hyperlinks:
+                    # By default, set the name identical to the hyperlink
+                    self.hyperlinks[self.current_hyperlink] = self.current_hyperlink
+                break
+
+    def handle_data(self, data):
+        """Capture text content and associate it with the current URL."""
+        if self.current_hyperlink and data.strip():
+            # If data is present, replace the hyperlink name
+            self.hyperlinks[self.current_hyperlink] = data.strip()
+
+    def handle_endtag(self, tag):
+        """Reset the current URL after processing the content of the tag."""
+        self.current_hyperlink = None
 
 
 async def _download_file(
@@ -208,6 +224,27 @@ class AbstractDatasetArchiver(ABC):
                 archive=archive, filename=filename, data=blob.read()
             )
 
+    async def download_add_to_archive_and_unlink(
+        self, url: str, filename: str, zip_path: Path
+    ):
+        """Download a file, add it to an zip file in and archive and unlink.
+
+        Little helper function that combines three common steps often repeated together:
+        * :meth:`download_file`
+        * :meth:`add_to_archive`
+        * :meth:`Path.unlink`
+        """
+        download_path = self.download_directory / filename
+        await self.download_file(url, download_path)
+        self.add_to_archive(
+            zip_path=zip_path,
+            filename=filename,
+            blob=download_path.open("rb"),
+        )
+        # Don't want to leave multiple files on disk, so delete
+        # immediately after they're safely stored in the ZIP
+        download_path.unlink()
+
     async def get_json(self, url: str, **kwargs) -> dict[str, str]:
         """Get a JSON and return it as a dictionary."""
         response = await retry_async(self.session.get, args=[url], kwargs=kwargs)
@@ -223,6 +260,7 @@ class AbstractDatasetArchiver(ABC):
         url: str,
         filter_pattern: typing.Pattern | None = None,
         verify: bool = True,
+        headers: dict | None = None,
     ) -> list[str]:
         """Return all hyperlinks from a specific web page.
 
@@ -235,26 +273,37 @@ class AbstractDatasetArchiver(ABC):
             url: URL of web page.
             filter_pattern: If present, only return links that contain pattern.
             verify: Verify ssl certificate (EPACEMS https source has bad certificate).
+            headers: Additional headers to send in the GET request.
         """
         # Parse web page to get all hyperlinks
         parser = _HyperlinkExtractor()
 
         response = await retry_async(
-            self.session.get, args=[url], kwargs={"ssl": verify}
+            self.session.get,
+            args=[url],
+            kwargs={
+                "ssl": verify,
+                **({"headers": headers} if headers is not None else {}),
+            },
         )
         text = await retry_async(response.text)
         parser.feed(text)
 
         # Filter to those that match filter_pattern
         hyperlinks = parser.hyperlinks
+
         if filter_pattern:
-            hyperlinks = {link for link in hyperlinks if filter_pattern.search(link)}
+            hyperlinks = {
+                link: name
+                for link, name in hyperlinks.items()
+                if filter_pattern.search(name) or filter_pattern.search(link)
+            }
 
         # Warn if no links are found
         if not hyperlinks:
             self.logger.warning(
-                f"The archiver couldn't find any hyperlinks that match {filter_pattern}."
-                f"Make sure your filter_pattern is correct or if the structure of the {url} page changed."
+                f"The archiver couldn't find any hyperlinks{('that match: ' + filter_pattern.pattern) if filter_pattern else ''}."
+                f"Make sure your filter_pattern is correct, check if the structure of the {url} page changed, or if you are missing HTTP headers."
             )
 
         return hyperlinks
