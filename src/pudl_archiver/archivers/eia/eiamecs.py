@@ -10,6 +10,7 @@ from pudl_archiver.archivers.classes import (
 )
 from pudl_archiver.frictionless import ZipLayout
 
+HEADERS = {"User-Agent": "Mozilla/5.0 Catalyst/2025 Cooperative/2025"}
 BASE_URL = "https://www.eia.gov/consumption/manufacturing/data"
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
@@ -98,7 +99,7 @@ class EiaMECSArchiver(AbstractDatasetArchiver):
                     f"eia-mecs-{year}-table-{major_num}-{minor_num}{rse}{extension}"
                 )
             download_path = self.download_directory / filename
-            await self.download_file(table_link, download_path)
+            await self.download_file(table_link, download_path, headers=HEADERS)
             self.add_to_archive(
                 zip_path=zip_path,
                 filename=filename,
