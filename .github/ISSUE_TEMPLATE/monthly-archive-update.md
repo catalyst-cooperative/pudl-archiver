@@ -15,6 +15,8 @@ See the job run logs and results [here]({{ env.RUN_URL }}).
 For each of the following archives, find the run status in the Github archiver run. If validation tests pass, manually review the archive and publish. If no changes detected, delete the draft. If changes are detected, manually review the archive following the guidelines in step 3 of `README.md`, then publish the new version. Then check the box here to confirm publication status, adding a note on the status (e.g., "v1 published", "no changes detected, draft deleted"):
 
 ```[tasklist]
+- [ ] doeiraec
+- [ ] doelead
 - [ ] eia176
 - [ ] eia191
 - [ ] eia757a
@@ -24,10 +26,17 @@ For each of the following archives, find the run status in the Github archiver r
 - [ ] eia923
 - [ ] eia930
 - [ ] eiaaeo
+- [ ] eiacbecs
+- [ ] eiamecs
+- [ ] eianems
+- [ ] eiarecs
 - [ ] eiawater
 - [ ] eia_bulk_elec
 - [ ] epacamd_eia
+- [ ] epacems
+- [ ] epaegrid
 - [ ] epamats
+- [ ] epapcap
 - [ ] ferc1
 - [ ] ferc2
 - [ ] ferc6
@@ -36,9 +45,14 @@ For each of the following archives, find the run status in the Github archiver r
 - [ ] gridpathratoolkit
 - [ ] mshamines
 - [ ] nrelatb
+- [ ] nrelcambium
+- [ ] nrelefs
+- [ ] nrelss
+- [ ] nrelsts
 - [ ] phmsagas
+- [ ] usgsuspvdb
+- [ ] usgswtdb
 - [ ] vcerare
-- [ ] epacems
 ```
 
 # Validation failures
