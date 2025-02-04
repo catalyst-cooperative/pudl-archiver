@@ -29,11 +29,13 @@ For each of the following archives, find the run status in the Github archiver r
 - [ ] eiacbecs
 - [ ] eiamecs
 - [ ] eianems
+- [ ] eiarecs
 - [ ] eiawater
 - [ ] eia_bulk_elec
 - [ ] epacamd_eia
 - [ ] epacems
 - [ ] epaegrid
+- [ ] epamats
 - [ ] epapcap
 - [ ] ferc1
 - [ ] ferc2
@@ -43,10 +45,14 @@ For each of the following archives, find the run status in the Github archiver r
 - [ ] gridpathratoolkit
 - [ ] mshamines
 - [ ] nrelatb
+- [ ] nrelcambium
+- [ ] nrelefs
+- [ ] nrelss
+- [ ] nrelsts
 - [ ] phmsagas
 - [ ] usgsuspvdb
+- [ ] usgswtdb
 - [ ] vcerare
-
 ```
 
 # Validation failures
