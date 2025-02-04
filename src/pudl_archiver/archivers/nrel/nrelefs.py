@@ -1,4 +1,11 @@
-"""Download NREL Electrification Futures Study data."""
+"""Download NREL Electrification Futures Study data.
+
+The EFS data is composed of 6 reports, each with technical reports, data files
+and occasionally other files. The reports are linked on the main page, while data
+is contained on other websites that are linked to from the main page. The reports
+were released over the span of a few years, and we bundle files associated with
+each report into one zip file in this archive.
+"""
 
 import re
 
@@ -7,16 +14,14 @@ from pudl_archiver.archivers.classes import (
     ArchiveAwaitable,
     ResourceInfo,
 )
+from pudl_archiver.archivers.validate import ZipLayout
 
-# Main page
-# https://www.nrel.gov/analysis/electrification-futures.html
-
-# Grab all data sites with the following formats
-# https://data.nrel.gov/submissions/90
-# https://data.openei.org/submissions/4130
-
-# Also grab all PDFs on the main page
+# Main page contains PDF links and links to other pages
 BASE_URL = "https://www.nrel.gov/analysis/electrification-futures.html"
+
+# Data is also contained on sites with the following formats
+# https://data.nrel.gov/submissions/##
+# https://data.openei.org/submissions/##
 
 
 class NrelEFSArchiver(AbstractDatasetArchiver):
@@ -70,7 +75,7 @@ class NrelEFSArchiver(AbstractDatasetArchiver):
         }
 
         # Though we hardcode the links above, we also grab the PDFs links from the page
-        # in order to get information about the name ascribed to the link to make it
+        # in order to get the filename associated with the link. This makes it
         # easier to label each PDF something informative
         pdf_pattern = re.compile(r"\/docs\/fy(\d{2})osti\/\w*.pdf")
         pdf_links = await self.get_hyperlinks(BASE_URL, pdf_pattern)
@@ -82,6 +87,12 @@ class NrelEFSArchiver(AbstractDatasetArchiver):
                 version=version, links=links, pdf_links=pdf_links
             )
 
+        # Let us know what links we aren't grabbing.
+        links_not_downloaded = [link for link in pdf_links if link not in version_dict]
+        self.logger.warn(
+            f"Not downloading the following additional PDFs linked from the mainpage: {links_not_downloaded}"
+        )
+
     async def get_version_resource(
         self,
         version: str,
@@ -90,9 +101,9 @@ class NrelEFSArchiver(AbstractDatasetArchiver):
     ) -> ResourceInfo:
         """Download all available data for a given version of an EFS study.
 
-        Resulting resource contains one zip file of all PDFs, .zip, .xlsx, .gzip, .csv.gzip
-        for a given version of the EFS studies. We handle the DS Grid specially because
-        the file
+        Resulting resource contains one zip file of all PDFs, .zip, .xlsx, .gzip, and
+        .csv.gzip files for a given version of the EFS studies. We handle the DS Grid
+        specially because the data is hosted on an S3 viewer with a nested file structure.
 
         Args:
             version: shorthand name for the given version
@@ -110,12 +121,12 @@ class NrelEFSArchiver(AbstractDatasetArchiver):
             r"files\/([\w\/]*)\/([\w \-%]*)(.zip|.xlsx|.gzip|.csv.gzip)$"
         )
 
-        # Compile dictionary and regex pattern for DSGrid special case
-        dsgrid_dict = {
-            "dsgrid-site-energy-state-hourly": "https://data.openei.org/s3_viewer?bucket=oedi-data-lake&prefix=dsgrid-2018-efs%2Fdsgrid_site_energy_state_hourly%2F",
-            "raw-complete": "https://data.openei.org/s3_viewer?bucket=oedi-data-lake&prefix=dsgrid-2018-efs%2Fraw_complete%2F",
-            "state-hourly-residuals": "https://data.openei.org/s3_viewer?bucket=oedi-data-lake&prefix=dsgrid-2018-efs%2Fstate_hourly_residuals%2F",
-        }
+        # Compile list of sub-folders and and regex pattern for DSGrid special case
+        dsgrid_list = [
+            "dsgrid-site-energy-state-hourly",
+            "raw-complete",
+            "state-hourly-residuals",
+        ]
         dsg_pattern = re.compile(r"[\w]*.dsg$")
 
         for link in links:
@@ -184,7 +195,9 @@ class NrelEFSArchiver(AbstractDatasetArchiver):
             elif "data.openei.org" in link:  # Finally, handle DSGrid data
                 self.logger.info("Downloading DSGrid data files.")
                 # Iterate through each type of DSGrid data and download
-                for data_type, dsg_link in dsgrid_dict.items():
+                for data_type in dsgrid_list:
+                    # Construct download link from data type
+                    dsg_link = f"https://data.openei.org/s3_viewer?bucket=oedi-data-lake&prefix=dsgrid-2018-efs%2F{data_type}%2F"
                     dsg_file_links = await self.get_hyperlinks(dsg_link, dsg_pattern)
                     for dsg_link, filename in dsg_file_links.items():
                         filename = filename.replace("_", "-")
@@ -195,11 +208,11 @@ class NrelEFSArchiver(AbstractDatasetArchiver):
                         data_paths_in_archive.add(filename)
 
             else:
-                # Raise error for mysterious other links
+                # Raise error for mysterious other links in dictionary.
                 raise AssertionError(f"Unexpected format for link {link} in {version}.")
 
         return ResourceInfo(
             local_path=zipfile_path,
             partitions={"version": version},
-            # layout=ZipLayout(file_paths=data_paths_in_archive),
+            layout=ZipLayout(file_paths=data_paths_in_archive),
         )
