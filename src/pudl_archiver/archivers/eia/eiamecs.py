@@ -2,6 +2,7 @@
 
 import logging
 import re
+from pathlib import Path
 
 from pudl_archiver.archivers.classes import (
     AbstractDatasetArchiver,
@@ -100,15 +101,27 @@ class EiaMECSArchiver(AbstractDatasetArchiver):
                 )
             download_path = self.download_directory / filename
             await self.download_file(table_link, download_path, headers=HEADERS)
-            self.add_to_archive(
-                zip_path=zip_path,
-                filename=filename,
-                blob=download_path.open("rb"),
-            )
-            data_paths_in_archive.add(filename)
-            # Don't want to leave multiple giant CSVs on disk, so delete
-            # immediately after they're safely stored in the ZIP
-            download_path.unlink()
+            # there are a small-ish handful of files who's links redirect to the main
+            # cbecs page. presumably its a broken link. we want to skip those files,
+            # so we are going to check to see if the doctype of the bytes of the file
+            # are html. if so we move on, otherwise add to the archive
+            with Path.open(download_path, "rb") as f:
+                first_bytes = f.read(20)
+                if b"html" in first_bytes.lower().strip():
+                    self.logger.warning(
+                        f"Skipping {table_link} because it appears to be a redirect/html page."
+                    )
+                    pass
+                else:
+                    self.add_to_archive(
+                        zip_path=zip_path,
+                        filename=filename,
+                        blob=download_path.open("rb"),
+                    )
+                    data_paths_in_archive.add(filename)
+                    # Don't want to leave multiple files on disk, so delete
+                    # immediately after they're safely stored in the ZIP
+                    download_path.unlink()
 
         resource_info = ResourceInfo(
             local_path=zip_path,
