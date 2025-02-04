@@ -2,10 +2,13 @@
 
 import logging
 import re
+from collections import defaultdict
 from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
+
+import bs4
 
 from pudl_archiver.archivers.classes import (
     AbstractDatasetArchiver,
@@ -13,300 +16,265 @@ from pudl_archiver.archivers.classes import (
     ResourceInfo,
 )
 from pudl_archiver.frictionless import ZipLayout
+from pudl_archiver.utils import retry_async
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 BASE_URL = "https://www.eia.gov/consumption/residential/data/"
 
 
-@dataclass
-class LinkSet:
-    """Information a set of links in one tab of the RECS viewer.
-
-    See https://www.eia.gov/consumption/residential/data/2020/.
-    """
+@dataclass(frozen=True)
+class TabInfo:
+    """Information needed to archive the links in a tab."""
 
     url: str
-    short_name: str
-    extension: str
-    pattern: re.Pattern
-    skip_if_html: bool = True
-
-
-def _url_for(year: int, view: str):
-    """Get the URL for a specific RECS year/tab combo."""
-    return (
-        f"https://www.eia.gov/consumption/residential/data/{year}/index.php?view={view}"
-    )
-
-
-# Each year, each tab's format changes. Rather than have complicated regexes that capture everything, just have lots of simple regexes
-YEAR_LINK_SETS = {
-    2020: {
-        "housing_characteristics": LinkSet(
-            url=_url_for(year=2020, view="characteristics"),
-            short_name="hc",
-            pattern=re.compile(r"HC (\d{1,2}\.\d{1,2})\.xlsx"),
-            extension="xlsx",
-        ),
-        "consumption & expenditures": LinkSet(
-            url=_url_for(year=2020, view="consumption"),
-            short_name="ce",
-            pattern=re.compile(r"ce(\d\.\d{1,2}[a-z]?)\.xlsx"),
-            extension="xlsx",
-        ),
-        "state data (housing characteristics)": LinkSet(
-            url=_url_for(year=2020, view="state"),
-            short_name="state-hc",
-            pattern=re.compile(r"State (.*)\.xlsx"),
-            extension="xlsx",
-        ),
-        "state data (consumption & expenditures)": LinkSet(
-            url=_url_for(year=2020, view="state"),
-            short_name="state-ce",
-            pattern=re.compile(r"ce(\d\.\d{1,2}\..*)\.xlsx"),
-            extension="xlsx",
-        ),
-        "microdata": LinkSet(
-            url=_url_for(year=2020, view="microdata"),
-            short_name="microdata",
-            pattern=re.compile(r"(recs.*public.*)\.csv"),
-            extension="csv",
-        ),
-        "microdata-codebook": LinkSet(
-            url=_url_for(year=2020, view="microdata"),
-            short_name="microdata",
-            pattern=re.compile(r"(RECS 2020 Codebook.*v.)\.xlsx"),
-            extension="xlsx",
-        ),
-        "methodology": LinkSet(
-            url=_url_for(year=2020, view="methodology"),
-            short_name="methodology",
-            pattern=re.compile(r"pdf/(.+)\.pdf"),
-            extension="pdf",
-        ),
-        "methodology-forms": LinkSet(
-            url="https://www.eia.gov/survey/#eia-457",
-            short_name="methodology",
-            pattern=re.compile(r"eia_457/archive/2020_(.+)\.pdf"),
-            extension="pdf",
-        ),
-    },
-    2015: {
-        "housing_characteristics": LinkSet(
-            url=_url_for(year=2015, view="characteristics"),
-            short_name="hc",
-            pattern=re.compile(r"hc(\d{1,2}\.\d{1,2})\.xlsx"),
-            extension="xlsx",
-        ),
-        "consumption & expenditures": LinkSet(
-            url=_url_for(year=2015, view="consumption"),
-            short_name="ce",
-            pattern=re.compile(r"ce(\d\.\d{1,2}[a-z]?)\.xlsx"),
-            extension="xlsx",
-        ),
-        "microdata": LinkSet(
-            url=_url_for(year=2015, view="microdata"),
-            short_name="microdata",
-            pattern=re.compile(r"(recs.*public.*)\.csv"),
-            extension="csv",
-        ),
-        "microdata-codebook": LinkSet(
-            url=_url_for(year=2015, view="microdata"),
-            short_name="microdata",
-            pattern=re.compile(r"(codebook.*)\.xlsx"),
-            extension="xlsx",
-        ),
-        "methodology": LinkSet(
-            url=_url_for(year=2015, view="methodology"),
-            short_name="methodology",
-            pattern=re.compile(r"/consumption/residential/reports/2015/(.+)(\.php)?"),
-            extension="html",
-            skip_if_html=False,
-        ),
-        "methodology-forms": LinkSet(
-            url="https://www.eia.gov/survey/#eia-457",
-            short_name="methodology",
-            pattern=re.compile(r"eia_457/archive/2015_(.+)\.pdf"),
-            extension="pdf",
-        ),
-    },
-    2009: {
-        "housing_characteristics": LinkSet(
-            url=_url_for(year=2009, view="characteristics"),
-            short_name="hc",
-            pattern=re.compile(r"hc(\d{1,2}\.\d{1,2})\.xlsx"),
-            extension="xlsx",
-        ),
-        "consumption & expenditures": LinkSet(
-            url=_url_for(year=2009, view="consumption"),
-            short_name="ce",
-            pattern=re.compile(r"ce(\d\.\d{1,2}[a-z]?)\.xlsx"),
-            extension="xlsx",
-        ),
-        "microdata": LinkSet(
-            url=_url_for(year=2009, view="microdata"),
-            short_name="microdata",
-            pattern=re.compile(r"csv/(.*)\.csv"),
-            extension="csv",
-        ),
-        "microdata-codebook": LinkSet(
-            url=_url_for(year=2009, view="microdata"),
-            short_name="microdata",
-            pattern=re.compile(r"(codebook.*)\.xlsx"),
-            extension="xlsx",
-        ),
-        "methodology": LinkSet(
-            url=_url_for(year=2009, view="methodology"),
-            short_name="methodology",
-            pattern=re.compile(r"/consumption/residential/reports/2015/(.+)(\.php)?"),
-            extension="html",
-            skip_if_html=False,
-        ),
-        "methodology-forms": LinkSet(
-            url="https://www.eia.gov/survey/#eia-457",
-            short_name="methodology",
-            pattern=re.compile(r"eia_457/archive/2009 (.+)\.pdf"),
-            extension="pdf",
-        ),
-    },
-}
+    name: str
+    year: int
 
 
 class EiaRECSArchiver(AbstractDatasetArchiver):
     """EIA RECS archiver."""
 
     name = "eiarecs"
+    base_url = "https://www.eia.gov/consumption/residential/data/2020/"
+
+    async def __get_soup(self, url: str) -> bs4.BeautifulSoup:
+        """Get a BeautifulSoup instance for a URL using our existing session."""
+        response = await retry_async(self.session.get, args=[url])
+        # TODO 2025-02-03: for some reason, lxml fails to grab the closing div
+        # tag for tab content - so we use html.parser, which is slower.
+        return bs4.BeautifulSoup(await response.text(), "html.parser")
 
     async def get_resources(self) -> ArchiveAwaitable:
-        """Download EIA-RECS resources."""
-        for year in [2020, 2015, 2009]:
-            yield self.get_year_resources(year)
-        for year in [2005, 2001, 1997, 1993]:
-            yield self.get_old_year_resources(year)
+        """Download EIA-RECS resources.
+
+        Looks in the "data" dropdown in the navbar for links to each year.
+        """
+        soup = await self.__get_soup(self.base_url)
+        years = soup.select("div.subnav div.dat_block a")
+        numbered_years = [y for y in years if y.text.strip().lower() != "previous"]
+
+        for year in numbered_years:
+            if self.valid_year(year.text.strip()):
+                yield self.__get_year_resources(
+                    url=urljoin(self.base_url, year["href"]),
+                    year=int(year.text.strip()),
+                )
+
+    async def __get_year_resources(self, url: str, year: int) -> ResourceInfo:
+        """Download all data files for a year.
+
+        Finds links to all available tabs, then dispatches each tab to a
+        handler, which downloads content from the tabs and adds it to the
+        year's zip archive.
+
+        Tab handlers are mostly the same for each tab across the years, but
+        there is an ability to add exceptions when necessary.
+
+        Each year's actual forms are also archived - these are mostly not
+        linked from the tabs themselves, so we go to the main survey page and
+        download them there.
+
+        Args:
+            url: a string that represents the base page for this year
+            year: the actual year number we are archiving
+
+        Returns:
+            ResourceInfo: information about this year's zip file & its contents.
+        """
+        self.logger.info(f"Starting {year}")
+
+        tab_infos = await self.__select_tabs(url)
+
+        # most tabs for most years can be handled the same way
+        tab_handlers = {
+            "housing-characteristics": defaultdict(lambda: self.__get_tab_links),
+            "consumption-expenditures": defaultdict(lambda: self.__get_tab_links),
+            "microdata": defaultdict(lambda: self.__get_tab_html_and_links),
+            "methodology": defaultdict(lambda: self.__get_tab_html_and_links),
+            "state-data": defaultdict(lambda: self.__get_tab_links),
+        }
+
+        # Add the exceptions - skip the 2009 and 2015 methodology sections for now
+        tab_handlers["methodology"][2015] = self.__skip
+        tab_handlers["methodology"][2009] = self.__skip
+
+        zip_path = self.download_directory / f"eia-recs-{year}.zip"
+        paths_within_archive = []
+        for tab in tab_infos:
+            paths_within_archive += await tab_handlers[tab.name][tab.year](
+                tab_info=tab, zip_path=zip_path
+            )
+
+        self.logger.info(f"Looking for original forms for {year}")
+        original_forms_within_archive = await self.__get_original_forms(year, zip_path)
+
+        self.logger.info(f"Got original forms for {year}, returning ResourceInfo list.")
+        return ResourceInfo(
+            local_path=zip_path,
+            partitions={"year": year},
+            layout=ZipLayout(
+                file_paths=paths_within_archive + original_forms_within_archive
+            ),
+        )
+
+    async def __add_links_to_archive(
+        self, url_paths: dict[str, str], zip_path: Path
+    ) -> list[str]:
+        """Download and add link contents to a zipfile.
+
+        Skips links that lead to HTML content since these are usually broken links.
+
+        Args:
+            url_paths: mapping from URLs to the filenames we want them to have
+                in the zip.
+            zip_path: path to the archive
+
+        Returns:
+            list[str]: the filepaths, relative to the archive root, that we
+                just added.
+        """
+        data_paths_in_archive = []
+        for link, output_filename in url_paths.items():
+            download_path = self.download_directory / output_filename
+            logger.debug(f"Fetching {link} to {download_path}")
+            await self.download_file(link, download_path, timeout=120)
+            with download_path.open("rb") as f:
+                # TODO 2025-02-04: check html-ness against the suffix... if we
+                # have a php/html/cfm/etc. we probably actually *do* want the
+                # html file.
+                if self.__is_html_file(f):
+                    logger.info(f"{link} was HTML file - skipping.")
+                    continue
+                self.add_to_archive(
+                    zip_path=zip_path,
+                    filename=output_filename,
+                    blob=f,
+                )
+                logger.debug(f"Added {link} to {zip_path} as {output_filename}")
+                data_paths_in_archive.append(output_filename)
+            download_path.unlink()
+        return data_paths_in_archive
+
+    async def __get_tab_links(self, tab_info: TabInfo, zip_path: Path) -> list[str]:
+        """Get the data files for a single tab."""
+        soup = await self.__get_soup(tab_info.url)
+        links_in_tab = soup.select("div.tab-contentbox a[href]")
+        log_scope = f"{tab_info.year}:{tab_info.name}"
+        self.logger.info(f"{log_scope}: Found {len(links_in_tab)} links")
+
+        links_filtered = [
+            link
+            for link in links_in_tab
+            if not (
+                "mailto" in link["href"].lower() or "all tables" in link.text.lower()
+            )
+        ]
+
+        self.logger.info(f"{log_scope}: Found {len(links_filtered)} relevant links")
+
+        resolved_links = [
+            urljoin(tab_info.url, link["href"]) for link in links_filtered
+        ]
+        links_with_filenames = {
+            link: f"eia-recs-{tab_info.year}-{tab_info.name}-{self.__get_filename_from_link(link)}"
+            for link in resolved_links
+        }
+
+        data_paths = await self.__add_links_to_archive(
+            links_with_filenames, zip_path=zip_path
+        )
+
+        self.logger.info(
+            f"{log_scope}: Added {len(links_with_filenames)} links to archive"
+        )
+
+        return data_paths
+
+    async def __get_tab_html_and_links(
+        self, tab_info: TabInfo, zip_path: Path
+    ) -> list[str]:
+        """Get the data files in the tab, *and* get the tab content itself."""
+        log_scope = f"{tab_info.year}:{tab_info.name}"
+        self.logger.info(f"{log_scope}: Getting links in tab")
+        links = await self.__get_tab_links(tab_info=tab_info, zip_path=zip_path)
+        self.logger.info(f"{log_scope}: Got {len(links)} links")
+
+        soup = await self.__get_soup(tab_info.url)
+        tab_content = soup.select_one("div.tab-contentbox")
+        self.logger.info(f"{log_scope}: Got {len(tab_content)} bytes of tab content")
+        html = soup.new_tag("html")
+        body = soup.new_tag("body")
+        html.append(body)
+        body.append(tab_content)
+        # TODO 2025-02-03: consider using some sort of html-to-pdf converter here.
+        # use html-sanitizer or something before feeding it into pdf.
+
+        filename = f"eia-recs-{tab_info.year}-{tab_info.name}-tab-contents.html"
+        self.add_to_archive(
+            zip_path=zip_path,
+            filename=filename,
+            blob=BytesIO(html.prettify().encode("utf-8")),
+        )
+        self.logger.info(f"{log_scope}: Added html to {zip_path} under {filename}")
+        return links + [filename]
+
+    async def __get_original_forms(self, year: int, zip_path: Path) -> list[str]:
+        """Get the survey forms that were used to collect the data.
+
+        These are all on the same page, which is different from the yearly RECS
+        archive pages, so we do this separately from all the tab content above.
+        """
+        forms_url = "https://www.eia.gov/survey/"
+        soup = await self.__get_soup(forms_url)
+        all_links = soup.select("#eia-457 div.expand-collapse-content a[href]")
+        links_filtered = [
+            link for link in all_links if f"/archive/{year}" in link["href"]
+        ]
+
+        resolved_links = [urljoin(forms_url, link["href"]) for link in links_filtered]
+
+        links_with_filenames = {
+            link: f"eia-recs-{year}-form-{self.__get_filename_from_link(link)}"
+            for link in resolved_links
+        }
+
+        return await self.__add_links_to_archive(
+            links_with_filenames, zip_path=zip_path
+        )
+
+    def __get_filename_from_link(self, url: str) -> str:
+        filepath = Path(urlparse(url).path)
+        stem = re.sub(r"\W+", "-", filepath.stem)
+        return f"{stem}{filepath.suffix}".lower()
 
     def __is_html_file(self, fileobj: BytesIO) -> bool:
+        """Check the first 30 bytes of a file to see if there's an HTML header hiding in there."""
+        fileobj.seek(0)
         header = fileobj.read(30).lower().strip()
         fileobj.seek(0)
         return b"<!doctype html" in header
 
-    async def get_year_resources(self, year: int) -> list[ResourceInfo]:
-        """Download all excel tables for a year."""
-        # Loop through all download links for tables
-        tables = []
-        zip_path = self.download_directory / f"eia-recs-{year}.zip"
-        data_paths_in_archive = set()
-        # Loop through different categories of data (all .xlsx)
-        link_sets = YEAR_LINK_SETS[year]
-        for link_set in link_sets.values():
-            for table_link in await self.get_hyperlinks(link_set.url, link_set.pattern):
-                table_link = urljoin(link_set.url, table_link).strip("/")
-                logger.info(f"Fetching {table_link}")
-                match = link_set.pattern.search(table_link)
-                matched_filename = (
-                    match.group(1)
-                    .replace(".", "-")
-                    .replace(" ", "_")
-                    .replace("/", "-")
-                    .lower()
+    async def __select_tabs(self, url: str) -> set[TabInfo]:
+        """Get the clickable tab links from the EIA RECS page layout."""
+
+        async def get_unselected_tabs(url):
+            soup = await self.__get_soup(url)
+            unselected_tabs = soup.select("#tab-container a")
+            year = int(re.search(r"\d{4}", url)[0])
+            return {
+                TabInfo(
+                    url=urljoin(url, tab["href"]),
+                    name=re.sub(r"\W+", "-", tab.text.strip()).lower(),
+                    year=year,
                 )
-                output_filename = f"eia-recs-{year}-{link_set.short_name}-{matched_filename}.{link_set.extension}"
+                for tab in unselected_tabs
+            }
 
-                # Download file
-                download_path = self.download_directory / output_filename
-                await self.download_file(table_link, download_path)
-                with download_path.open("rb") as f:
-                    if link_set.skip_if_html and self.__is_html_file(f):
-                        continue
-                    self.add_to_archive(
-                        zip_path=zip_path,
-                        filename=output_filename,
-                        blob=f,
-                    )
-                data_paths_in_archive.add(output_filename)
-                download_path.unlink()
+        first_unselected_tabs = await get_unselected_tabs(url)
+        another_tab_url = next(iter(first_unselected_tabs)).url
+        next_unselected_tabs = await get_unselected_tabs(another_tab_url)
+        return first_unselected_tabs.union(next_unselected_tabs)
 
-        tables.append(
-            ResourceInfo(
-                local_path=zip_path,
-                partitions={"year": year},
-                layout=ZipLayout(file_paths=data_paths_in_archive),
-            )
-        )
-        return tables
-
-    async def get_old_year_resources(self, year: int) -> list[ResourceInfo]:
-        """Download all files from all views for a year."""
-        data_paths_in_archive = set()
-        zip_path = self.download_directory / f"eiarecs-{year}.zip"
-        download_url_base = f"/consumption/residential/data/{year}"
-        data_view_patterns = {
-            "characteristics": re.compile(
-                rf"((hc/(?:xls|pdf))|(^pdf|housing-characteristics)|{download_url_base})/(.*)(.xls|.pdf)",
-                re.IGNORECASE,
-            ),
-            "consumption": re.compile(
-                rf"^((c&e|{download_url_base})/(?:xls|pdf)|pdf/consumption-expenditures)/(.*)(.xls|.pdf)",
-                re.IGNORECASE,
-            ),
-            "microdata": re.compile(
-                rf"(^mdatfiles|^layoutfiles|^pdf|^txt|^{download_url_base}|{year})/(.*)(.csv|.pdf|.txt)$",
-                re.IGNORECASE,
-            ),
-        }
-
-        for view, table_link_pattern in data_view_patterns.items():
-            year_url = f"{BASE_URL}{year}/index.php?view={view}"
-            for link in await self.get_hyperlinks(year_url, table_link_pattern):
-                unique_id_and_file_extension = (
-                    link.split("/")[-1]
-                    .lower()
-                    .strip()
-                    .replace(" ", "-")
-                    .replace("_", "-")
-                    .replace(f"{year}", "")
-                )
-                filename = f"eiacbecs-{year}-{view}-{unique_id_and_file_extension}"
-                file_url = urljoin(year_url, link)
-                download_path = self.download_directory / filename
-                await self.download_file(file_url, download_path)
-                # there are a small-ish handful of files who's links redirect to the main
-                # cbecs page. presumably its a broken link. we want to skip those files,
-                # so we are going to check to see if the doctype of the bytes of the file
-                # are html. if so we move on, otherwise add to the archive
-                with Path.open(download_path, "rb") as f:
-                    first_bytes = f.read(20)
-                    if b"html" in first_bytes.lower().strip():
-                        self.logger.warning(
-                            f"Skipping {file_url} because it appears to be a redirect/html page."
-                        )
-                        pass
-                    else:
-                        self.add_to_archive(
-                            zip_path=zip_path,
-                            filename=filename,
-                            blob=download_path.open("rb"),
-                        )
-                        data_paths_in_archive.add(filename)
-                        # Don't want to leave multiple files on disk, so delete
-                        # immediately after they're safely stored in the ZIP
-                        download_path.unlink()
-        # Check if all of the views found any links
-        year_has_all_views: dict[str, bool] = {
-            view: any(fn for fn in data_paths_in_archive if view in fn)
-            for view in data_view_patterns
-        }
-        views_without_files = [
-            view for (view, has_files) in year_has_all_views.items() if not has_files
-        ]
-        if views_without_files:
-            raise AssertionError(
-                "We expect all years of EIA CBECS to have some data from all four "
-                f"views, but we found these views without files for {year}: {views_without_files}"
-            )
-
-        return ResourceInfo(
-            local_path=zip_path,
-            partitions={"year": year},
-            layout=ZipLayout(file_paths=data_paths_in_archive),
-        )
+    async def __skip(self, **kwargs) -> list[str]:
+        return []

@@ -293,11 +293,25 @@ def _validate_file_type(path: Path, buffer: BytesIO) -> bool:
     if extension == ".xml" or extension == ".xbrl" or extension == ".xsd":
         return _validate_xml(buffer)
 
+    if extension == ".pdf":
+        header = buffer.read(5)
+        buffer.seek(0)
+        return header.startswith(b"%PDF-")
+
     if extension == ".parquet":
         return _validate_parquet(buffer)
 
     if extension == ".csv":
         return _validate_csv(buffer)
+
+    if extension == ".xls":
+        header = buffer.read(8)
+        buffer.seek(0)
+        # magic bytes for old-school xls file
+        return header.hex() == "d0cf11e0a1b11ae1"
+
+    if extension == ".txt":
+        return _validate_text(buffer)
 
     logger.warning(f"No validations defined for files of type: {extension} - {path}")
     return True
@@ -326,3 +340,18 @@ def _validate_parquet(buffer: BytesIO) -> bool:
         return True
     except (pa.lib.ArrowInvalid, pa.lib.ArrowException):
         return False
+
+
+def _validate_text(buffer: BytesIO) -> bool:
+    """Try decoding as UTF-8, then as Latin-1."""
+    sample = buffer.read(1_000_000)
+    buffer.seek(0)
+    try:
+        sample.decode(encoding="utf-8")
+        return True
+    except UnicodeDecodeError:
+        try:
+            sample.decode(encoding="latin-1")
+            return True
+        except UnicodeDecodeError:
+            return False
