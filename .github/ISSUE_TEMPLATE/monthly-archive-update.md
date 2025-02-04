@@ -27,6 +27,7 @@ For each of the following archives, find the run status in the Github archiver r
 - [ ] eiawater
 - [ ] eia_bulk_elec
 - [ ] epacamd_eia
+- [ ] epamats
 - [ ] ferc1
 - [ ] ferc2
 - [ ] ferc6
