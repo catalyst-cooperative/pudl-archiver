@@ -27,7 +27,8 @@ class EpaMatsArchiver(AbstractDatasetArchiver):
     allowed_file_rel_diff = 0.35  # Set higher tolerance than standard
 
     base_url = "https://api.epa.gov/easey/bulk-files/"
-    parameters = {"api_key": os.environ.get("EPACEMS_API_KEY")}  # Set to API key
+    # Set API key to CEMS key - CEMS and MATS come from the same API
+    parameters = {"api_key": os.environ.get("EPACEMS_API_KEY")} 
 
     def __filter_for_complete_metadata(
         self, files_responses: list[dict]
