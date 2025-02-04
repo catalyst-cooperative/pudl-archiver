@@ -24,7 +24,6 @@ class EpaMatsArchiver(AbstractDatasetArchiver):
     """EPA MATS archiver."""
 
     name = "epamats"
-    concurrency_limit = 2  # Number of files to concurrently download
     allowed_file_rel_diff = 0.35  # Set higher tolerance than standard
 
     base_url = "https://api.epa.gov/easey/bulk-files/"
