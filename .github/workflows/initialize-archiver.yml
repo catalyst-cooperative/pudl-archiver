@@ -9,11 +9,13 @@ on:
         default: ""
         required: true
         type: string
-      sandbox:
-        description: "Initialize a new archive on the Zenodo sandbox server?"
-        default: true
+      server:
+        description: "Which Zenodo server would you like to run on?"
+        options:
+          - sandbox
+          - production
         required: true
-        type: boolean
+        type: choice
 
 jobs:
   archive-run:
@@ -63,7 +65,7 @@ jobs:
           EPACEMS_API_KEY: ${{ secrets.EPACEMS_API_KEY }}
           ZENODO_TOKEN_UPLOAD: ${{ secrets.ZENODO_TOKEN_UPLOAD }}
           ZENODO_TOKEN_PUBLISH: ${{ secrets.ZENODO_TOKEN_PUBLISH }}
-        if: ${{ inputs.sandbox == false }}
+        if: ${{ inputs.server == 'production' }}
         run: |
           pudl_archiver --datasets ${{ matrix.dataset }} --initialize --summary-file ${{ matrix.dataset }}_run_summary.json --clobber-unchanged
 
@@ -72,7 +74,7 @@ jobs:
           ZENODO_SANDBOX_TOKEN_UPLOAD: ${{ secrets.ZENODO_SANDBOX_TOKEN_UPLOAD }}
           ZENODO_SANDBOX_TOKEN_PUBLISH: ${{ secrets.ZENODO_SANDBOX_TOKEN_PUBLISH }}
           EPACEMS_API_KEY: ${{ secrets.EPACEMS_API_KEY }}
-        if: ${{ inputs.sandbox == true }}
+        if: ${{ inputs.server == 'sandbox' }}
         run: |
           pudl_archiver --datasets ${{ matrix.dataset }} --initialize --sandbox --summary-file ${{ matrix.dataset }}_run_summary.json --clobber-unchanged
 
