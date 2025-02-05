@@ -5,7 +5,6 @@ the Creative Commons Attribution 4.0 International license (CC-BY-4.0). It is ar
 from files stored in the private sources.catalyst.coop bucket.
 """
 
-import logging
 import re
 from pathlib import Path
 
@@ -16,8 +15,6 @@ from pudl_archiver.archivers.classes import (
     ArchiveAwaitable,
     ResourceInfo,
 )
-
-logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 
 class VCERAREArchiver(AbstractDatasetArchiver):
@@ -46,7 +43,7 @@ class VCERAREArchiver(AbstractDatasetArchiver):
         file_name = blob.name.replace(f"{self.name}/", "")
         path_to_file = self.download_directory / file_name
         # Download blob to local file
-        logger.info(f"Downloading {blob.name} to {path_to_file}")
+        self.logger.info(f"Downloading {blob.name} to {path_to_file}")
         blob.download_to_filename(path_to_file)
 
         # Set up partitions:
