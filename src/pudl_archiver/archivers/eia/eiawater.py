@@ -1,6 +1,5 @@
 """Download EIA Thermal Cooling Water data."""
 
-import logging
 import re
 from pathlib import Path
 
@@ -10,7 +9,6 @@ from pudl_archiver.archivers.classes import (
     ResourceInfo,
 )
 
-logger = logging.getLogger(f"catalystcoop.{__name__}")
 BASE_URL = "https://www.eia.gov/electricity/data/water"
 
 

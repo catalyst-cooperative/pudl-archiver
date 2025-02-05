@@ -1,6 +1,5 @@
 """Shared methods for data from EIA Natural Gas Quarterly Viewer (NGQV)."""
 
-import logging
 import zipfile
 from collections.abc import Iterable
 
@@ -15,8 +14,6 @@ from pudl_archiver.archivers.classes import (
 )
 from pudl_archiver.frictionless import ZipLayout
 from pudl_archiver.utils import add_to_archive_stable_hash
-
-logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 
 class EIANaturalGasData(BaseModel):
@@ -87,7 +84,7 @@ class EiaNGQVArchiver(AbstractDatasetArchiver):
 
         download_url = self.base_url + f"/{dataset.code}/data/{year}/{year}/ICA/Name"
 
-        logger.info(f"Retrieving data for {year}")
+        self.logger.info(f"Retrieving data for {year}")
         json_response = await self.get_json(download_url)
         dataframe = pd.DataFrame.from_dict(json_response["data"], orient="columns")
 
