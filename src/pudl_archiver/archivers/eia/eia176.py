@@ -19,7 +19,6 @@ from pudl_archiver.archivers.eia.naturalgas import EiaNGQVArchiver
 from pudl_archiver.frictionless import ZipLayout
 from pudl_archiver.utils import add_to_archive_stable_hash
 
-
 USER_AGENTS = [
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:77.0) Gecko/20100101 Firefox/77.0",
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:107.0) Gecko/20100101 Firefox/107.0",
