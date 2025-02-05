@@ -1,6 +1,5 @@
 """Download EIA NEMS Github respository."""
 
-import logging
 from pathlib import Path
 
 from pudl_archiver.archivers.classes import (
@@ -8,8 +7,6 @@ from pudl_archiver.archivers.classes import (
     ArchiveAwaitable,
     ResourceInfo,
 )
-
-logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 
 class EiaNEMSArchiver(AbstractDatasetArchiver):

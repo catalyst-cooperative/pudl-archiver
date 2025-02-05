@@ -6,7 +6,6 @@ portal, and then manually download subsets of data from all item codes for all y
 """
 
 import asyncio
-import logging
 import random
 import zipfile
 
@@ -20,7 +19,6 @@ from pudl_archiver.archivers.eia.naturalgas import EiaNGQVArchiver
 from pudl_archiver.frictionless import ZipLayout
 from pudl_archiver.utils import add_to_archive_stable_hash
 
-logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 USER_AGENTS = [
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:77.0) Gecko/20100101 Firefox/77.0",
@@ -39,7 +37,7 @@ class Eia176Archiver(EiaNGQVArchiver):
 
     async def get_items(self, url: str = items_url) -> list[str]:
         """Get list of item codes from EIA NQGV portal."""
-        logger.info("Getting list of items in Form 176.")
+        self.logger.info("Getting list of items in Form 176.")
         items_response = await self.get_json(url)
         items_list = [item["item"] for item in items_response]
         return items_list
@@ -78,7 +76,7 @@ class Eia176Archiver(EiaNGQVArchiver):
 
         for i in range(0, len(items_list), 20):
             rand = random.randint(0, 2)  # noqa: S311
-            logger.debug(f"Getting items {i}-{i + 20} of data for {year}")
+            self.logger.debug(f"Getting items {i}-{i + 20} of data for {year}")
             # Chunk items list into 20 to avoid error message
             download_url = self.data_url + f"{year}/{year}/ICA/Name/"
             items = items_list[i : i + 20]
@@ -100,14 +98,16 @@ class Eia176Archiver(EiaNGQVArchiver):
                 )
             await asyncio.sleep(5)  # Add sleep to prevent user-agent blocks
 
-        logger.info(f"Compiling data for {year}")
+        self.logger.info(f"Compiling data for {year}")
         dataframe = pd.concat(dataframes)
 
         # Rename columns. Instead of using year for value column, rename "value"
         column_dict = {
-            item["field"]: str(item["headerName"]).lower()
-            if str(item["headerName"]).lower() != year
-            else "value"
+            item["field"]: (
+                str(item["headerName"]).lower()
+                if str(item["headerName"]).lower() != year
+                else "value"
+            )
             for item in json_response["columns"]
         }
         dataframe = dataframe.rename(columns=column_dict).sort_values(

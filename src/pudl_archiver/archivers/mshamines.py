@@ -1,6 +1,5 @@
 """Download MSHA data."""
 
-import logging
 import re
 from pathlib import Path
 
@@ -9,8 +8,6 @@ from pudl_archiver.archivers.classes import (
     ArchiveAwaitable,
     ResourceInfo,
 )
-
-logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 URL_BASE = "https://arlweb.msha.gov/OpenGovernmentData/"
 EXT_BASE = "OGIMSHA.asp"
@@ -75,7 +72,7 @@ class MshaArchiver(AbstractDatasetArchiver):
         links = [link.split("/")[-1] for link in links]
         full_links = [URL_BASE + "DataSets/" + link for link in links]
 
-        logger.debug(full_links)
+        self.logger.debug(full_links)
 
         if any(item not in list(set(MSHA_DATASETS.values())) for item in full_links):
             # If a link to a new dataset is found, raise error.
