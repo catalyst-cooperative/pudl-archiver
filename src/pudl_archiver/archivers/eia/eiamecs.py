@@ -1,6 +1,5 @@
 """Archive EIA Manufacturing Energy Consumption Survey (MECS)."""
 
-import logging
 import re
 from pathlib import Path
 
@@ -13,7 +12,6 @@ from pudl_archiver.frictionless import ZipLayout
 
 HEADERS = {"User-Agent": "Mozilla/5.0 Catalyst/2025 Cooperative/2025"}
 BASE_URL = "https://www.eia.gov/consumption/manufacturing/data"
-logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 TABLE_LINK_PATTERNS: dict[str | int, str] = {
     "recent": r"(RSE|)[Tt]able(\d{1,2}|\d{1.1})_(\d{1,2})(.xlsx|.xls)",
@@ -62,7 +60,7 @@ class EiaMECSArchiver(AbstractDatasetArchiver):
 
     async def get_year_resources(self, year: int) -> list[ResourceInfo]:
         """Download all excel tables for a year."""
-        logger.info(f"Attempting to find resources for: {year}")
+        self.logger.info(f"Attempting to find resources for: {year}")
         data_paths_in_archive = set()
         year_url = f"{BASE_URL}/{year}"
         zip_path = self.download_directory / f"eiamecs-{year}.zip"
@@ -76,8 +74,10 @@ class EiaMECSArchiver(AbstractDatasetArchiver):
 
         # Loop through all download links for tables
         for table_link in await self.get_hyperlinks(year_url, table_link_pattern):
-            table_link = f"{year_url}/{table_link}"
-            logger.info(f"Fetching {table_link}")
+            # strip bc there is at least one file which has a space at the end of
+            # the href link
+            table_link = f"{year_url}/{table_link}".strip()
+            self.logger.info(f"Fetching {table_link}")
             # We are going to rename the files in a standard format by extracting
             # patterns from the table_link_pattern
             # From 1998 and before there are a bunch of letters in the file names
@@ -102,7 +102,7 @@ class EiaMECSArchiver(AbstractDatasetArchiver):
             download_path = self.download_directory / filename
             await self.download_file(table_link, download_path, headers=HEADERS)
             # there are a small-ish handful of files who's links redirect to the main
-            # cbecs page. presumably its a broken link. we want to skip those files,
+            # mecs page. presumably its a broken link. we want to skip those files,
             # so we are going to check to see if the doctype of the bytes of the file
             # are html. if so we move on, otherwise add to the archive
             with Path.open(download_path, "rb") as f:
