@@ -1,6 +1,5 @@
 """Archive EIA Manufacturing Energy Consumption Survey (MECS)."""
 
-import logging
 import re
 
 from pudl_archiver.archivers.classes import (
@@ -11,7 +10,6 @@ from pudl_archiver.archivers.classes import (
 from pudl_archiver.frictionless import ZipLayout
 
 BASE_URL = "https://www.eia.gov/consumption/manufacturing/data"
-logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 TABLE_LINK_PATTERNS: dict[str | int, str] = {
     "recent": r"(RSE|)[Tt]able(\d{1,2}|\d{1.1})_(\d{1,2})(.xlsx|.xls)",
@@ -60,7 +58,7 @@ class EiaMECSArchiver(AbstractDatasetArchiver):
 
     async def get_year_resources(self, year: int) -> list[ResourceInfo]:
         """Download all excel tables for a year."""
-        logger.info(f"Attempting to find resources for: {year}")
+        self.logger.info(f"Attempting to find resources for: {year}")
         data_paths_in_archive = set()
         year_url = f"{BASE_URL}/{year}"
         zip_path = self.download_directory / f"eiamecs-{year}.zip"
@@ -75,7 +73,7 @@ class EiaMECSArchiver(AbstractDatasetArchiver):
         # Loop through all download links for tables
         for table_link in await self.get_hyperlinks(year_url, table_link_pattern):
             table_link = f"{year_url}/{table_link}"
-            logger.info(f"Fetching {table_link}")
+            self.logger.info(f"Fetching {table_link}")
             # We are going to rename the files in a standard format by extracting
             # patterns from the table_link_pattern
             # From 1998 and before there are a bunch of letters in the file names

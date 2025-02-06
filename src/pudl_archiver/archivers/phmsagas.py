@@ -1,6 +1,5 @@
 """Download PHMSHA data."""
 
-import logging
 import re
 import typing
 from pathlib import Path
@@ -11,8 +10,6 @@ from pudl_archiver.archivers.classes import (
     ArchiveAwaitable,
     ResourceInfo,
 )
-
-logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 BASE_URL = "https://www.phmsa.dot.gov/data-and-statistics/pipeline/gas-distribution-gas-gathering-gas-transmission-hazardous-liquids"
 
@@ -75,7 +72,7 @@ class PhmsaGasArchiver(AbstractDatasetArchiver):
         form = "_".join(filename.lower().split("_")[0:-2])
 
         if form not in PHMSA_FORMS:
-            logger.warning(f"New form type found: {form}.")
+            self.logger.warning(f"New form type found: {form}.")
 
         download_path = self.download_directory / f"{self.name}_{filename}.zip"
         await self.download_zipfile(url, download_path)
