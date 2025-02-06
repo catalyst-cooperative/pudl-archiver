@@ -1,7 +1,6 @@
 """Download EPAMATS data."""
 
 import json
-import logging
 import os
 from collections.abc import Iterable
 from itertools import groupby
@@ -16,8 +15,6 @@ from pudl_archiver.archivers.classes import (
 )
 from pudl_archiver.archivers.epa.epacems import BulkFile
 from pudl_archiver.frictionless import ZipLayout
-
-logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 
 class EpaMatsArchiver(AbstractDatasetArchiver):
@@ -62,8 +59,8 @@ class EpaMatsArchiver(AbstractDatasetArchiver):
             and (file.metadata.quarter in {1, 2, 3, 4})
             and self.valid_year(file.metadata.year)
         ]
-        logger.info(f"Downloading {len(quarterly_emissions_files)} total files.")
-        logger.debug(f"File info: {quarterly_emissions_files}")
+        self.logger.info(f"Downloading {len(quarterly_emissions_files)} total files.")
+        self.logger.debug(f"File info: {quarterly_emissions_files}")
         files_by_year = groupby(
             sorted(quarterly_emissions_files, key=lambda bf: bf.metadata.year),
             lambda bf: bf.metadata.year,
@@ -87,7 +84,7 @@ class EpaMatsArchiver(AbstractDatasetArchiver):
             quarter = file.metadata.quarter
 
             # Useful to debug at download time-outs.
-            logger.info(f"Downloading {year} Q{quarter} EPA MATS data from {url}.")
+            self.logger.info(f"Downloading {year} Q{quarter} EPA MATS data from {url}.")
 
             filename = f"epamats-{year}q{quarter}.csv"
             file_path = self.download_directory / filename
