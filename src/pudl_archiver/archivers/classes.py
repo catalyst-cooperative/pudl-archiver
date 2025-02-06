@@ -14,6 +14,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 
 import aiohttp
+import bs4
 import pandas as pd
 
 from pudl_archiver.archivers import validate
@@ -128,6 +129,13 @@ class AbstractDatasetArchiver(ABC):
         # Create logger
         self.logger = logging.getLogger(f"catalystcoop.{__name__}")
         self.logger.info(f"Archiving {self.name}")
+
+    async def get_soup(self, url: str) -> bs4.BeautifulSoup:
+        """Get a BeautifulSoup instance for a URL using our existing session."""
+        response = await retry_async(self.session.get, args=[url])
+        # TODO 2025-02-03: for some reason, lxml fails to grab the closing div
+        # tag for tab content - so we use html.parser, which is slower.
+        return bs4.BeautifulSoup(await response.text(), "html.parser")
 
     @abstractmethod
     def get_resources(self) -> ArchiveAwaitable:

@@ -12,7 +12,7 @@ import pyarrow as pa
 from pydantic import BaseModel
 
 from pudl_archiver.frictionless import DataPackage, Resource, ZipLayout
-from pudl_archiver.utils import Url
+from pudl_archiver.utils import Url, is_html_file
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
@@ -277,7 +277,7 @@ def _process_resource_diffs(
     return [*changed_resources, *created_resources, *deleted_resources]
 
 
-def _validate_file_type(path: Path, buffer: BytesIO) -> bool:
+def _validate_file_type(path: Path, buffer: BytesIO) -> bool:  # noqa:C901
     """Check that file appears valid based on extension."""
     extension = path.suffix
 
@@ -309,6 +309,9 @@ def _validate_file_type(path: Path, buffer: BytesIO) -> bool:
         buffer.seek(0)
         # magic bytes for old-school xls file
         return header.hex() == "d0cf11e0a1b11ae1"
+
+    if extension == ".html":
+        return is_html_file(buffer)
 
     if extension == ".txt":
         return _validate_text(buffer)

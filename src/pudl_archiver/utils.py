@@ -6,6 +6,7 @@ import typing
 import zipfile
 from collections.abc import Awaitable, Callable
 from hashlib import md5
+from io import BytesIO
 from pathlib import Path
 
 import aiohttp
@@ -145,3 +146,11 @@ def compute_md5(file_path: UPath) -> str:
             hash_md5.update(chunk)
 
     return hash_md5.hexdigest()
+
+
+def is_html_file(fileobj: BytesIO) -> bool:
+    """Check the first 30 bytes of a file to see if there's an HTML header hiding in there."""
+    fileobj.seek(0)
+    header = fileobj.read(30).lower().strip()
+    fileobj.seek(0)
+    return b"<!doctype html" in header
