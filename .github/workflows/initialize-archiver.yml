@@ -11,7 +11,7 @@ on:
         type: string
       server:
         description: "Which Zenodo server would you like to run on?"
-        default: 'sandbox'
+        default: "sandbox"
         options:
           - sandbox
           - production
