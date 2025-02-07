@@ -47,4 +47,4 @@ class EpaCamdEiaArchiver(AbstractDatasetArchiver):
         download_path = self.download_directory / "epacamd_eia_2018.zip"
         await self.download_zipfile(url, download_path)
 
-        return ResourceInfo(local_path=download_path, partitions={"year": "2018"})
+        return ResourceInfo(local_path=download_path, partitions={"year": 2018})
