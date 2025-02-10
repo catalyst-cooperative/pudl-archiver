@@ -41,37 +41,60 @@ class NrelEFSArchiver(AbstractDatasetArchiver):
         # expect these to change.
 
         version_dict = {
-            "cost-and-performance": [
-                "https://www.nrel.gov/docs/fy18osti/70485.pdf",
-                "https://data.nrel.gov/submissions/93",
-                "https://data.nrel.gov/submissions/78",
-            ],
-            "demand-side-scenarios": [
-                "https://www.nrel.gov/docs/fy18osti/71500.pdf",
-                "https://www.nrel.gov/docs/fy18osti/72096.pdf",
-                "https://www.nrel.gov/docs/fy18osti/72311.pdf",
-                "https://data.nrel.gov/submissions/90",
-                "https://data.nrel.gov/submissions/92",
-            ],
-            "dsgrid-model": [
-                "https://www.nrel.gov/docs/fy18osti/71492.pdf",
-                "https://www.nrel.gov/docs/fy18osti/72388.pdf",
-                "https://data.openei.org/submissions/4130",
-            ],
-            "load-profiles": [
-                "https://www.nrel.gov/docs/fy20osti/73336.pdf",
-                "https://data.nrel.gov/submissions/126",
-                "https://data.nrel.gov/submissions/127",
-            ],
-            "supply-side-scenarios": [
-                "https://www.nrel.gov/docs/fy21osti/72330.pdf",
-                "https://www.nrel.gov/docs/fy21osti/78783.pdf",
-                "https://data.nrel.gov/submissions/157",
-            ],
-            "detailed-grid-simulations": [
-                "https://www.nrel.gov/docs/fy21osti/79094.pdf",
-                "https://www.nrel.gov/docs/fy21osti/80167.pdf",
-            ],
+            "cost-and-performance": {
+                "pdf_links": ["https://www.nrel.gov/docs/fy18osti/70485.pdf"],
+                "nrel_data_links": [
+                    "https://data.nrel.gov/submissions/93",
+                    "https://data.nrel.gov/submissions/78",
+                ],
+                "oedi_data_links": [],
+            },
+            "demand-side-scenarios": {
+                "pdf_links": [
+                    "https://www.nrel.gov/docs/fy18osti/71500.pdf",
+                    "https://www.nrel.gov/docs/fy18osti/72096.pdf",
+                    "https://www.nrel.gov/docs/fy18osti/72311.pdf",
+                ],
+                "nrel_data_links": [
+                    "https://data.nrel.gov/submissions/90",
+                    "https://data.nrel.gov/submissions/92",
+                ],
+                "oedi_data_links": [],
+            },
+            "dsgrid-model": {
+                "pdf_links": [
+                    "https://www.nrel.gov/docs/fy18osti/71492.pdf",
+                    "https://www.nrel.gov/docs/fy18osti/72388.pdf",
+                ],
+                "nrel_data_links": [],
+                "oedi_data_links": ["https://data.openei.org/submissions/4130"],
+            },
+            "load-profiles": {
+                "pdf_links": ["https://www.nrel.gov/docs/fy20osti/73336.pdf"],
+                "nrel_data_links": [
+                    "https://data.nrel.gov/submissions/126",
+                    "https://data.nrel.gov/submissions/127",
+                ],
+                "oedi_data_links": [],
+            },
+            "supply-side-scenarios": {
+                "pdf_links": [
+                    "https://www.nrel.gov/docs/fy21osti/72330.pdf",
+                    "https://www.nrel.gov/docs/fy21osti/78783.pdf",
+                ],
+                "nrel_data_links": [
+                    "https://data.nrel.gov/submissions/157",
+                ],
+                "oedi_data_links": [],
+            },
+            "detailed-grid-simulations": {
+                "pdf_links": [
+                    "https://www.nrel.gov/docs/fy21osti/79094.pdf",
+                    "https://www.nrel.gov/docs/fy21osti/80167.pdf",
+                ],
+                "nrel_data_links": [],
+                "oedi_data_links": [],
+            },
         }
 
         # Though we hardcode the links above, we also grab the PDFs links from the page
@@ -133,87 +156,88 @@ class NrelEFSArchiver(AbstractDatasetArchiver):
         ]
         dsg_pattern = re.compile(r"[\w]*.dsg$")
 
-        for link in links:
-            # First, get all the PDFs
-            if link.endswith(".pdf"):
-                matching_pdf_link = [key for key in pdf_links if key in link]
-                # Get the corresponding filename from pdf_links
-                if matching_pdf_link:
-                    link_key = matching_pdf_link.pop()
-                    filename = pdf_links[link_key]  # TODO: Debug this
-                    # Clean the filename to name the PDF something more informative than
-                    # the link name
-                    self.logger.info(f"Downloading {link}")
-                    filename = (
-                        filename.lower()
-                        .replace("\n", "")
-                        .replace("electrification futures study:", "")
-                    )
-                    filename = re.sub(
-                        "[^a-zA-Z0-9 -]+", "", filename
-                    ).strip()  # Remove all non-word, digit space or - characters
-                    filename = re.sub(
-                        r"\s+", "-", filename
-                    )  # Replace 1+ space with a dash
-                    filename = f"nrelefs-{version}-{filename}.pdf"
-                    await self.download_add_to_archive_and_unlink(
-                        url=link, filename=filename, zip_path=zipfile_path
-                    )
-                    data_paths_in_archive.add(filename)
-                else:
-                    # Alert us to expected but missing PDF links.
-                    raise AssertionError(
-                        f"Expected PDF link {link} but this wasn't found in {BASE_URL}. Has the home page changed?"
-                    )
-
-            # Next, get all the data files from data.nrel.gov
-            elif "data.nrel.gov/submissions/" in link:
-                self.logger.info(f"Downloading data files from {link}.")
-                data_links = await self.get_hyperlinks(link, data_pattern)
-                for data_link, filename in data_links.items():
-                    matches = data_pattern.search(data_link)
-                    if not matches:
-                        continue
-                    # Grab file name and extension
-                    filename = matches.group(2)
-                    file_ext = matches.group(3)
-
-                    # Reformat filename
-                    filename = filename.lower().replace("_", "-").replace("%20", "-")
-                    filename = re.sub(
-                        "[^a-zA-Z0-9 -]+", "", filename
-                    ).strip()  # Remove all non-word, digit space or - characters
-                    filename = re.sub(r"[\s-]+", "-", filename)
-                    filename = re.sub(
-                        r"^efs-", "", filename
-                    )  # We add this back with an nrel header
-                    filename = f"nrelefs-{version}-{filename}{file_ext}"
-                    self.logger.info(
-                        f"Downloading {data_link} as {filename} to {zipfile_path}."
-                    )
-                    await self.download_add_to_archive_and_unlink(
-                        url=data_link, filename=filename, zip_path=zipfile_path
-                    )
-                    data_paths_in_archive.add(filename)
-
-            elif "data.openei.org" in link:  # Finally, handle DSGrid data
-                self.logger.info("Downloading DSGrid data files.")
-                # Iterate through each type of DSGrid data and download
-                for data_type in dsgrid_list:
-                    # Construct download link from data type
-                    dsg_link = f"https://data.openei.org/s3_viewer?bucket=oedi-data-lake&prefix=dsgrid-2018-efs%2F{data_type.replace('-', '_')}%2F"
-                    dsg_file_links = await self.get_hyperlinks(dsg_link, dsg_pattern)
-                    for dsg_link, filename in dsg_file_links.items():
-                        filename = filename.replace("_", "-")
-                        filename = f"nrelesg-{data_type}-{filename}"
-                        await self.download_add_to_archive_and_unlink(
-                            url=dsg_link, filename=filename, zip_path=zipfile_path
-                        )
-                        data_paths_in_archive.add(filename)
-
+        # First, get all the PDFs
+        for link in links["pdf_links"]:
+            matching_pdf_link = [key for key in pdf_links if key in link]
+            # Get the corresponding filename from pdf_links
+            if matching_pdf_link:
+                link_key = matching_pdf_link.pop()
+                filename = pdf_links[link_key]
+                # Clean the filename to name the PDF something more informative than
+                # the link name
+                self.logger.info(f"Downloading {link}")
+                filename = (
+                    filename.lower()
+                    .replace("\n", "")
+                    .replace("electrification futures study:", "")
+                )
+                filename = re.sub(
+                    "[^a-zA-Z0-9-]+", "", filename
+                ).strip()  # Remove all non-word, digit space or - characters
+                filename = re.sub(r"\s+", "-", filename)  # Replace 1+ space with a dash
+                filename = f"nrelefs-{version}-{filename}.pdf"
+                await self.download_add_to_archive_and_unlink(
+                    url=link, filename=filename, zip_path=zipfile_path
+                )
+                data_paths_in_archive.add(filename)
             else:
-                # Raise error for mysterious other links in dictionary.
-                raise AssertionError(f"Unexpected format for link {link} in {version}.")
+                # Alert us to expected but missing PDF links.
+                raise AssertionError(
+                    f"Expected PDF link {link} but this wasn't found in {BASE_URL}. Has the home page changed?"
+                )
+
+        # Next, get all the data files from data.nrel.gov
+        for link in links["nrel_data_links"]:
+            self.logger.info(f"Downloading data files from {link}.")
+            data_links = await self.get_hyperlinks(link, data_pattern)
+            for data_link, filename in data_links.items():
+                matches = data_pattern.search(data_link)
+                if not matches:
+                    continue
+                # Grab file name and extension
+                filename = matches.group(2)
+                file_ext = matches.group(3)
+
+                # Reformat filename
+                filename = filename.lower().replace("_", "-").replace("%20", "-")
+                filename = re.sub(
+                    "[^a-zA-Z0-9 -]+", "", filename
+                ).strip()  # Remove all non-word, digit space or - characters
+                filename = re.sub(r"[\s-]+", "-", filename)
+                filename = re.sub(
+                    r"^efs-", "", filename
+                )  # We add this back with an nrel header
+                filename = f"nrelefs-{version}-{filename}{file_ext}"
+                self.logger.info(
+                    f"Downloading {data_link} as {filename} to {zipfile_path}."
+                )
+                await self.download_add_to_archive_and_unlink(
+                    url=data_link, filename=filename, zip_path=zipfile_path
+                )
+                data_paths_in_archive.add(filename)
+
+        # Next, get all the data files from data.nrel.gov
+        for link in links["oedi_data_links"]:
+            self.logger.info("Downloading DSGrid data files.")
+            # Iterate through each type of DSGrid data and download
+            for data_type in dsgrid_list:
+                # Construct download link from data type
+                dsg_link = f"https://data.openei.org/s3_viewer?bucket=oedi-data-lake&prefix=dsgrid-2018-efs%2F{data_type.replace('-', '_')}%2F"
+                dsg_file_links = await self.get_hyperlinks(dsg_link, dsg_pattern)
+                for dsg_link, filename in dsg_file_links.items():
+                    filename = filename.replace("_", "-")
+                    filename = f"nrelesg-{data_type}-{filename}"
+                    await self.download_add_to_archive_and_unlink(
+                        url=dsg_link, filename=filename, zip_path=zipfile_path
+                    )
+                    data_paths_in_archive.add(filename)
+
+        if any(
+            key not in ["pdf_links", "nrel_data_links", "oedi_data_links"]
+            for key in links
+        ):
+            # Raise error for mysterious other links in dictionary.
+            raise AssertionError(f"Unexpected format for links {links} in {version}.")
 
         return ResourceInfo(
             local_path=zipfile_path,
