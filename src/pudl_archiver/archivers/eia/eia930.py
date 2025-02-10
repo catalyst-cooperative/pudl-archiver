@@ -1,6 +1,5 @@
 """Download EIA-930 data."""
 
-import logging
 from pathlib import Path
 
 import pandas as pd
@@ -14,8 +13,6 @@ from pudl_archiver.frictionless import ZipLayout
 
 BASE_URL = "https://www.eia.gov/electricity/gridmonitor/sixMonthFiles/"
 FILE_LIST_URL = "https://www.eia.gov/electricity/gridmonitor/sixMonthFiles/EIA930_File_List_Meta.csv"
-
-logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 
 class Eia930Archiver(AbstractDatasetArchiver):
@@ -47,7 +44,7 @@ class Eia930Archiver(AbstractDatasetArchiver):
         self, file_list: pd.DataFrame, year=int, half_year=int
     ) -> tuple[Path, dict]:
         """Download zip file of all files in year."""
-        logger.debug(f"Downloading data for {year}half{half_year}.")
+        self.logger.debug(f"Downloading data for {year}half{half_year}.")
         zip_path = self.download_directory / f"eia930-{year}half{half_year}.zip"
         data_paths_in_archive = set()
         period_files = file_list[
