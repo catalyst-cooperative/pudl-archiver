@@ -172,7 +172,7 @@ class NrelEFSArchiver(AbstractDatasetArchiver):
                     .replace("electrification futures study:", "")
                 )
                 filename = re.sub(
-                    "[^a-zA-Z0-9-]+", "", filename
+                    "[^a-zA-Z0-9 -]+", "", filename
                 ).strip()  # Remove all non-word, digit space or - characters
                 filename = re.sub(r"\s+", "-", filename)  # Replace 1+ space with a dash
                 filename = f"nrelefs-{version}-{filename}.pdf"
