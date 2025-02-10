@@ -93,6 +93,9 @@ mshamines:
 nrelatb:
   production_doi: 10.5281/zenodo.10839267
   sandbox_doi: 10.5072/zenodo.38192
+nrelefs:
+  production_doi: 10.5281/zenodo.14782873
+  #sandbox_doi: TODO: Still having sandbox server problems, skipping for now.
 phmsagas:
   production_doi: 10.5281/zenodo.7683351
   sandbox_doi: 10.5072/zenodo.45279
