@@ -107,7 +107,7 @@ class NrelSitingArchiver(AbstractDatasetArchiver):
             if filename == "87843.pdf":
                 filename = f"{dataset_name}-technical-report.pdf"
 
-            self.logger.debug(f"Downloading {link} to {filename} for {zip_path}.")
+            self.logger.info(f"Downloading {link} to {filename} for {zip_path}.")
             await self.download_add_to_archive_and_unlink(
                 url=link, filename=filename, zip_path=zip_path
             )
