@@ -14,8 +14,8 @@ HEADERS = {"User-Agent": "Mozilla/5.0 Catalyst/2025 Cooperative/2025"}
 BASE_URL = "https://www.eia.gov/consumption/manufacturing/data"
 
 TABLE_LINK_PATTERNS: dict[str | int, str] = {
-    "recent": r"(RSE|)[Tt]able(\d{1,2}|\d{1.1})_(\d{1,2})(.xlsx|.xls)",
-    2002: r"(RSE|)[Tt]able(\d{1,2}).(\d{1,2})_\d{1,2}(.xlsx|.xls)",
+    "recent": r"(rse|)table(\d{1,2}|\d{1.1})_(\d{1,2})(.xlsx|.xls)",
+    2002: r"(rse|)table(\d{1,2}).(\d{1,2})_\d{1,2}(.xlsx|.xls)",
     # These earlier years the pattern is functional but not actually very informative.
     # so we will just use the original name by making the whole pattern a match
     1998: r"((d|e)\d{2}([a-z]\d{1,2})_(\d{1,2})(.xlsx|.xls))",
@@ -68,7 +68,9 @@ class EiaMECSArchiver(AbstractDatasetArchiver):
             [year for year in TABLE_LINK_PATTERNS if isinstance(year, int)]
         )
         if int(year) > max_old_year:
-            table_link_pattern = re.compile(TABLE_LINK_PATTERNS["recent"])
+            table_link_pattern = re.compile(
+                TABLE_LINK_PATTERNS["recent"], re.IGNORECASE
+            )
         else:
             table_link_pattern = re.compile(
                 TABLE_LINK_PATTERNS[int(year)], re.IGNORECASE
