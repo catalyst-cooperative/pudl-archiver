@@ -35,6 +35,12 @@ class AbstractNrelScenarioArchiver(AbstractDatasetArchiver):
     ) -> tuple[str, int, list, list]:
         """Gather all the information needed to download a single project.
 
+        We collect:
+        - The project UUID, which is used for future API calls
+        - The project year, which is used for branch logic and file naming
+        - Any PDF reports that accompany the data. PDF report URLs are not provided in a dedicated field in the project response, but are part of an HTML value for the description or citation in the project. Sometimes this field is simply blank, and we need to use a hard-coded exception.
+        - A list of data files. The fetching machinery for data files does not provide great filenames, so we construct a well-ordered filename for each programmatically.
+
         Args:
             scenario_project: dictionary representing a single project, as extracted from /api/projects/ JSON
 
@@ -100,9 +106,8 @@ class AbstractNrelScenarioArchiver(AbstractDatasetArchiver):
 
         Basic flow:
             1. Fetch the list of projects. The scenario viewer includes Standard scenarios, Cambium scenarios, and a few other types, so we filter down using the project name.
-            2. Pull out metadata for matching projects: uuid, year, and links to any PDF reports. PDF report URLs are not provided in a dedicated field in the project response, but are part of an HTML value for the description or citation in the project. Sometimes this field is simply blank, and we need to use a hard-coded exception.
-            3. Fetch the list of data files for the project, and construct a well-ordered filename for each.
-            4. Download and package all files for the project, and yield its ResourceInfo.
+            2. Pull out metadata for matching projects: uuid, year, links to any PDF reports, and data files.
+            3. Download and package all files for the project, and yield its ResourceInfo.
         """
         project_records = await self.get_json(API_URL_PROJECTS_LIST)
         for scenario_project in (
