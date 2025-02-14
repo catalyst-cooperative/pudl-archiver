@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from pudl.metadata.constants import CONTRIBUTORS, LICENSES
+from pudl.metadata.constants import CONTRIBUTORS, KEYWORDS, LICENSES
 
 # To add a new contributor, follow the following format to add an entry to the
 # ADDL_CONTRIBUTORS dictionary below formatted like this:
@@ -418,18 +418,18 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         "title": "NREL Standard Scenarios",
         "path": "https://www.nrel.gov/analysis/standard-scenarios.html",
         "description": (
-            "NREL's Standard Scenarios are a suite of forward-looking scenarios of the U.S."
-            "power sector that are updated annually to support and inform energy analysis."
-            "The Standard Scenarios are simulated using the Regional Energy Deployment System"
-            "and Distributed Generation Market Demand Model capacity expansion models and are"
-            "updated each year to provide timely information regarding power sector evolution."
-            "The scenarios have been designed to capture a range of possible power system"
-            "futures and consider a variety of factors from high vehicle electrification to"
-            "major cost declines for electricity generation technologies (e.g., using cost"
-            "inputs from the Annual Technology Baseline)."
-            "For select scenarios, the models are run using the PLEXOS software and the"
-            "Cambium tool that assembles structured data sets of hourly cost, emissions, and"
-            "operational data for modeled futures. Results are available using the Scenario"
+            "NREL's Standard Scenarios are a suite of forward-looking scenarios of the U.S. "
+            "power sector that are updated annually to support and inform energy analysis. "
+            "The Standard Scenarios are simulated using the Regional Energy Deployment System "
+            "and Distributed Generation Market Demand Model capacity expansion models and are "
+            "updated each year to provide timely information regarding power sector evolution. "
+            "The scenarios have been designed to capture a range of possible power system "
+            "futures and consider a variety of factors from high vehicle electrification to "
+            "major cost declines for electricity generation technologies (e.g., using cost "
+            "inputs from the Annual Technology Baseline). "
+            "For select scenarios, the models are run using the PLEXOS software and the "
+            "Cambium tool that assembles structured data sets of hourly cost, emissions, and "
+            "operational data for modeled futures. Results are available using the Scenario "
             "Viewer and Data Downloader."
         ),
         "source_file_dict": {
@@ -442,12 +442,14 @@ NON_PUDL_SOURCES: dict[str, Any] = {
             CONTRIBUTORS["catalyst-cooperative"],
         ],
         "keywords": sorted(
-            {
-                "nrel",
-                "standard scenarios",
-            }
-            | KEYWORDS["us_govt"]
-            | KEYWORDS["electricity"]
+            set(
+                [
+                    "nrel",
+                    "standard scenarios",
+                ]
+                + KEYWORDS["us_govt"]
+                + KEYWORDS["electricity"]
+            )
         ),
         "license_raw": LICENSES["cc-by-4.0"],
         "license_pudl": LICENSES["cc-by-4.0"],
