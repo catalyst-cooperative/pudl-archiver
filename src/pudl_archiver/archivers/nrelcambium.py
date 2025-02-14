@@ -15,12 +15,12 @@ from pudl_archiver.archivers.nrelss import (
 from pudl_archiver.utils import retry_async
 
 
-class NrelCambiumArchiver(AbstractNrelScenarioArchiver):
-    """NREL Cambium archiver."""
+class AbstractNrelCambiumArchiver(AbstractNrelScenarioArchiver):
+    """Base class for NREL Cambium archivers."""
 
-    name = "nrelcambium"
+    project_year: int
     project_year_pattern = re.compile(r"Cambium (?P<year>\d{4})")
-    project_startswith = "Cambium 2022"
+    project_startswith = "Cambium "
     report_section = "long_description"
     file_naming_order = ("scenario", "metric", "time_resolution", "location_type")
 
@@ -36,7 +36,9 @@ class NrelCambiumArchiver(AbstractNrelScenarioArchiver):
         """
         project_records = await self.get_json(API_URL_PROJECTS_LIST)
         scenario_project = [
-            p for p in project_records if p["name"].startswith(self.project_startswith)
+            p
+            for p in project_records
+            if p["name"].startswith(f"{self.project_startswith}{self.project_year}")
         ]
         assert len(scenario_project) == 1
         scenario_project = scenario_project.pop()
@@ -77,3 +79,31 @@ class NrelCambiumArchiver(AbstractNrelScenarioArchiver):
             local_path=download_path,
             partitions={},
         )
+
+
+class NrelCambium2020Archiver(AbstractNrelCambiumArchiver):
+    """NREL Cambium archiver for 2020."""
+
+    name = "nrelcambium2020"
+    project_year = 2020
+
+
+class NrelCambium2021Archiver(AbstractNrelCambiumArchiver):
+    """NREL Cambium archiver for 2021."""
+
+    name = "nrelcambium2021"
+    project_year = 2021
+
+
+class NrelCambium2022Archiver(AbstractNrelCambiumArchiver):
+    """NREL Cambium archiver for 2022."""
+
+    name = "nrelcambium2022"
+    project_year = 2022
+
+
+class NrelCambium2023Archiver(AbstractNrelCambiumArchiver):
+    """NREL Cambium archiver for 2023."""
+
+    name = "nrelcambium2023"
+    project_year = 2023
