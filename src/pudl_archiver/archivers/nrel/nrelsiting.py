@@ -2,6 +2,9 @@
 
 import re
 
+from pydantic import BaseModel
+from pydantic.alias_generators import to_camel
+
 from pudl_archiver.archivers.classes import (
     AbstractDatasetArchiver,
     ArchiveAwaitable,
@@ -11,36 +14,74 @@ from pudl_archiver.archivers.classes import (
 from pudl_archiver.frictionless import ZipLayout
 
 
+class NrelAPIData(BaseModel):
+    """Data transfer object from NREL API."""
+
+    class Submission(BaseModel):
+        """Metadata about a specific dataset."""
+
+        submission_name: str
+        xdr_id: int
+        num_resources: int
+        file_count: int
+        status: str
+        # There are a few other fields that we don't parse here
+        # e.g., update date formatted in unix timestamps. We could
+        # revisit this in the future.
+
+        class Config:  # noqa: D106
+            alias_generator = to_camel
+            populate_by_name = True
+
+    result: bool
+    num_submissions: int
+    num_resources: int
+    num_files: int
+    size_of_files: int
+    stati: dict[str, int]
+    submissions: list[Submission]
+
+    class Config:  # noqa: D106
+        alias_generator = to_camel
+        populate_by_name = True
+
+
 class NrelSitingArchiver(AbstractDatasetArchiver):
     """NREL Siting Lab Data archiver."""
 
     name: str = "nrelsiting"
     base_url: str = "https://data.openei.org/siting_lab"
+    concurrency_limit = 2  # The server can get a bit cranky, so let's be nice.
 
     async def get_resources(self) -> ArchiveAwaitable:
         """Using data IDs, iterate and download all NREL Siting Lab files."""
-        # The links on the table are hidden through Javascript. However,
-        # the IDs are exposed on this JS file, which links each dataset ID to an image.
-        # Rather than using Selenium, we can use this file to identify the links for all
-        # datasets hosted through the siting lab.
+        # The links on the table are hidden through Javascript. However, we can hit
+        # the API to get a dictionary containing metadata on each of the datasets
+        # associated with the Siting Lab.
         url = "https://data.openei.org/api"
         data = {
-            "action": "getSubmissionStatistics",
+            "action": "getSubmissionStatistics",  # Get high-level data about the submissions
             "format": "json",
-            "s": "siting_lab",
+            "s": "siting_lab",  # The name of the lab's data we want
         }
         response = await retry_async(
             self.session.post, args=[url], kwargs={"data": data}
         )
+        # This returns a data dictionary containing metadata on
+        # the number of submissions, files, the ID (xdrId) of the dataset
+        # that corresponds to the Open EI link, the name, description and more.
         data_dict = await response.json()
+        data_dict = NrelAPIData(**data_dict)
 
         self.logger.info(
-            f"Downloading data for {data_dict['numSubmissions']} datasets. {data_dict['numFiles']} files ({data_dict['sizeOfFiles'] / 1e-9} GB)."
+            f"Downloading data for {data_dict.num_submissions} datasets. {data_dict.num_files} files ({data_dict.size_of_files / 1e-9} GB)."
         )
-        for item in data_dict["submissions"]:
-            yield self.get_siting_resources(item)
+        for dataset in data_dict.submissions:
+            yield self.get_siting_resources(dataset=dataset)
 
-    async def download_nrel_data(self, dataset_id: str, dataset_link: str) -> set:
+    async def compile_nrel_download_links(
+        self, dataset_id: str, dataset_link: str
+    ) -> set:
         """For a given NREL dataset link, grab all PDFs and data links from the page."""
         # There are many file types here, so we match using the more general link pattern
         # e.g., https://data.openei.org/files/6121/nexrad_4km.tif
@@ -62,15 +103,15 @@ class NrelSitingArchiver(AbstractDatasetArchiver):
         download_links.update(pdf_download_links)
         return download_links
 
-    async def get_siting_resources(self, dataset_dict: dict[str, str | int | list]):
+    async def get_siting_resources(self, dataset: NrelAPIData.Submission):
         """Download all files for a siting resource."""
-        dataset_id = dataset_dict["xdrId"]
+        dataset_id = dataset.xdr_id
 
         dataset_link = f"https://data.openei.org/submissions/{dataset_id}"
         self.logger.info(f"Downloading files from {dataset_link}")
 
         # Create zipfile name from dataset name
-        title = dataset_dict["submissionName"]
+        title = dataset.submission_name
         dataset_name = title.lower().strip()
         dataset_name = re.sub(
             r"([^a-zA-Z0-9 ])", "", dataset_name
@@ -81,7 +122,7 @@ class NrelSitingArchiver(AbstractDatasetArchiver):
         data_paths_in_archive = set()
 
         # First, get all the links from the page itself
-        data_links = await self.download_nrel_data(
+        data_links = await self.compile_nrel_download_links(
             dataset_id=dataset_id, dataset_link=dataset_link
         )
 
