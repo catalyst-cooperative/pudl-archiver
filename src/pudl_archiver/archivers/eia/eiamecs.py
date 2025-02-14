@@ -1,6 +1,7 @@
 """Archive EIA Manufacturing Energy Consumption Survey (MECS)."""
 
 import re
+from pathlib import Path
 
 from pudl_archiver.archivers.classes import (
     AbstractDatasetArchiver,
@@ -9,11 +10,12 @@ from pudl_archiver.archivers.classes import (
 )
 from pudl_archiver.frictionless import ZipLayout
 
+HEADERS = {"User-Agent": "Mozilla/5.0 Catalyst/2025 Cooperative/2025"}
 BASE_URL = "https://www.eia.gov/consumption/manufacturing/data"
 
 TABLE_LINK_PATTERNS: dict[str | int, str] = {
-    "recent": r"(RSE|)[Tt]able(\d{1,2}|\d{1.1})_(\d{1,2})(.xlsx|.xls)",
-    2002: r"(RSE|)[Tt]able(\d{1,2}).(\d{1,2})_\d{1,2}(.xlsx|.xls)",
+    "recent": r"(rse|)table(\d{1,2}|\d{1.1})_(\d{1,2})(.xlsx|.xls)",
+    2002: r"(rse|)table(\d{1,2}).(\d{1,2})_\d{1,2}(.xlsx|.xls)",
     # These earlier years the pattern is functional but not actually very informative.
     # so we will just use the original name by making the whole pattern a match
     1998: r"((d|e)\d{2}([a-z]\d{1,2})_(\d{1,2})(.xlsx|.xls))",
@@ -66,13 +68,19 @@ class EiaMECSArchiver(AbstractDatasetArchiver):
             [year for year in TABLE_LINK_PATTERNS if isinstance(year, int)]
         )
         if int(year) > max_old_year:
-            table_link_pattern = re.compile(TABLE_LINK_PATTERNS["recent"])
+            table_link_pattern = re.compile(
+                TABLE_LINK_PATTERNS["recent"], re.IGNORECASE
+            )
         else:
-            table_link_pattern = re.compile(TABLE_LINK_PATTERNS[int(year)])
+            table_link_pattern = re.compile(
+                TABLE_LINK_PATTERNS[int(year)], re.IGNORECASE
+            )
 
         # Loop through all download links for tables
         for table_link in await self.get_hyperlinks(year_url, table_link_pattern):
-            table_link = f"{year_url}/{table_link}"
+            # strip bc there is at least one file which has a space at the end of
+            # the href link
+            table_link = f"{year_url}/{table_link}".strip()
             self.logger.info(f"Fetching {table_link}")
             # We are going to rename the files in a standard format by extracting
             # patterns from the table_link_pattern
@@ -86,7 +94,7 @@ class EiaMECSArchiver(AbstractDatasetArchiver):
                 # there are several ways the they indicate that the files are
                 # "data" vs "rse". we will add this to the end of the file name
                 # but only for rse bc for many years data and the rse are together
-                rse_map = {"": "", "d": "", "RSE": "-rse", "e": "-rse"}
+                rse_map = {"": "", "d": "", "RSE": "-rse", "rse": "-rse", "e": "-rse"}
                 rse = rse_map[is_rse]
                 major_num = match.group(2)
                 minor_num = match.group(3)
@@ -96,16 +104,28 @@ class EiaMECSArchiver(AbstractDatasetArchiver):
                     f"eia-mecs-{year}-table-{major_num}-{minor_num}{rse}{extension}"
                 )
             download_path = self.download_directory / filename
-            await self.download_file(table_link, download_path)
-            self.add_to_archive(
-                zip_path=zip_path,
-                filename=filename,
-                blob=download_path.open("rb"),
-            )
-            data_paths_in_archive.add(filename)
-            # Don't want to leave multiple giant CSVs on disk, so delete
-            # immediately after they're safely stored in the ZIP
-            download_path.unlink()
+            await self.download_file(table_link, download_path, headers=HEADERS)
+            # there are a small-ish handful of files who's links redirect to the main
+            # mecs page. presumably its a broken link. we want to skip those files,
+            # so we are going to check to see if the doctype of the bytes of the file
+            # are html. if so we move on, otherwise add to the archive
+            with Path.open(download_path, "rb") as f:
+                first_bytes = f.read(20)
+                if b"html" in first_bytes.lower().strip():
+                    self.logger.warning(
+                        f"Skipping {table_link} because it appears to be a redirect/html page."
+                    )
+                    pass
+                else:
+                    self.add_to_archive(
+                        zip_path=zip_path,
+                        filename=filename,
+                        blob=download_path.open("rb"),
+                    )
+                    data_paths_in_archive.add(filename)
+                    # Don't want to leave multiple files on disk, so delete
+                    # immediately after they're safely stored in the ZIP
+                    download_path.unlink()
 
         resource_info = ResourceInfo(
             local_path=zip_path,
