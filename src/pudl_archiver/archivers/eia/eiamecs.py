@@ -70,7 +70,9 @@ class EiaMECSArchiver(AbstractDatasetArchiver):
         if int(year) > max_old_year:
             table_link_pattern = re.compile(TABLE_LINK_PATTERNS["recent"])
         else:
-            table_link_pattern = re.compile(TABLE_LINK_PATTERNS[int(year)])
+            table_link_pattern = re.compile(
+                TABLE_LINK_PATTERNS[int(year)], re.IGNORECASE
+            )
 
         # Loop through all download links for tables
         for table_link in await self.get_hyperlinks(year_url, table_link_pattern):
@@ -90,7 +92,7 @@ class EiaMECSArchiver(AbstractDatasetArchiver):
                 # there are several ways the they indicate that the files are
                 # "data" vs "rse". we will add this to the end of the file name
                 # but only for rse bc for many years data and the rse are together
-                rse_map = {"": "", "d": "", "RSE": "-rse", "e": "-rse"}
+                rse_map = {"": "", "d": "", "RSE": "-rse", "rse": "-rse", "e": "-rse"}
                 rse = rse_map[is_rse]
                 major_num = match.group(2)
                 minor_num = match.group(3)
