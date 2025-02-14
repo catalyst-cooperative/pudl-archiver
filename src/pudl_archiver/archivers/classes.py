@@ -78,10 +78,14 @@ class _HyperlinkExtractor(HTMLParser):
 
 
 async def _download_file(
-    session: aiohttp.ClientSession, url: str, file: Path | io.BytesIO, post: bool=False, **kwargs
+    session: aiohttp.ClientSession,
+    url: str,
+    file: Path | io.BytesIO,
+    post: bool = False,
+    **kwargs,
 ):
     method = session.get
-    if post: 
+    if post:
         method = session.post
     async with method(url, **kwargs) as response:
         with file.open("wb") if isinstance(file, Path) else nullcontext(file) as f:
@@ -184,7 +188,9 @@ class AbstractDatasetArchiver(ABC):
         # If it makes it here that means it couldn't download a valid zipfile
         raise RuntimeError(f"Failed to download valid zipfile from {url}")
 
-    async def download_file(self, url: str, file_path: Path | io.BytesIO, post: bool=False, **kwargs):
+    async def download_file(
+        self, url: str, file_path: Path | io.BytesIO, post: bool = False, **kwargs
+    ):
         """Download a file using async session manager.
 
         Args:
