@@ -465,14 +465,40 @@ class ZenodoAPIClient(DepositorAPIClient):
         """
         concept_doi = self.doi(dataset_id)
         concept_rec_id = concept_doi.split(".")[2]
-        record = Record(
-            **await self._request(
-                "GET",
-                f"{self.api_root}/records/{concept_rec_id}",
-                headers=self.auth_write,
-                log_label=f"Get latest record for {concept_doi}",
+        try:
+            record = Record(
+                **await self._request(
+                    "GET",
+                    f"{self.api_root}/records/{concept_rec_id}",
+                    headers=self.auth_write,
+                    log_label=f"Get latest record for {concept_doi}",
+                )
             )
-        )
+        except ZenodoClientError as e:
+            # Recurring bug as of Feb 2025.
+            # Sometimes, Zenodo marks the concept DOI as deleted, preventing us from
+            # updating archives. To get around this, we can use the fact that the very
+            # first record of an archive is the concept DOI + 1. Zenodo provides a /latest
+            # endpoint that redirects to the latest version in a repository, so we can
+            # hack our way to the latest version through this alternative path.
+            if e.message == "The record has been deleted." and e.status == 410:
+                logger.warn(
+                    f"Got Zenodo concept record deletion error: {e.message}. Attempting alternate method to get latest record."
+                )
+                first_version_id = str(
+                    int(concept_rec_id) + 1
+                )  # First record is one larger than the concept DOI
+                record = Record(
+                    **await self._request(
+                        "GET",
+                        f"{self.api_root}/records/{first_version_id}/versions/latest",
+                        headers=self.auth_write,
+                        log_label=f"Get latest record for {first_version_id}",
+                    )
+                )
+            else:
+                raise e
+
         return await self.get_deposition_by_id(record.id_)
 
     async def get_deposition_by_id(self, rec_id: int) -> Deposition:
