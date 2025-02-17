@@ -182,7 +182,7 @@ class AbstractNrelScenarioArchiver(AbstractDatasetArchiver):
         # reports: direct URL
         for filename, url in reports:
             self.logger.info(f"Downloading report {year} {filename} {uuid} from {url}")
-            self.download_add_to_archive_and_unlink(url, filename, zip_path)
+            await self.download_add_to_archive_and_unlink(url, filename, zip_path)
 
         # files: API call
         for filename, file_id in file_ids:
@@ -191,6 +191,7 @@ class AbstractNrelScenarioArchiver(AbstractDatasetArchiver):
             await self.download_file(
                 API_URL_FILE_DOWNLOAD,
                 download_path,
+                post=True,
                 data={"project_uuid": uuid, "file_ids": file_id},
             )
             self.add_to_archive(
