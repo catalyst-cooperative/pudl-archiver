@@ -84,9 +84,7 @@ async def _download_file(
     post: bool = False,
     **kwargs,
 ):
-    method = session.get
-    if post:
-        method = session.post
+    method = session.post if post else session.get
     async with method(url, **kwargs) as response:
         with file.open("wb") if isinstance(file, Path) else nullcontext(file) as f:
             async for chunk in response.content.iter_chunked(1024):
@@ -262,9 +260,11 @@ class AbstractDatasetArchiver(ABC):
         # immediately after they're safely stored in the ZIP
         download_path.unlink()
 
-    async def get_json(self, url: str, **kwargs) -> dict[str, str]:
+    async def get_json(self, url: str, post: bool = False, **kwargs) -> dict[str, str]:
         """Get a JSON and return it as a dictionary."""
-        response = await retry_async(self.session.get, args=[url], kwargs=kwargs)
+        response = await retry_async(
+            self.session.post if post else self.session.get, args=[url], kwargs=kwargs
+        )
         response_bytes = await retry_async(response.read)
         try:
             json_obj = json.loads(response_bytes.decode("utf-8"))
@@ -303,12 +303,13 @@ class AbstractDatasetArchiver(ABC):
             },
         )
         text = await retry_async(response.text)
-        return self.get_hyperlinks_from_text(text, filter_pattern)
+        return self.get_hyperlinks_from_text(text, filter_pattern, url)
 
     def get_hyperlinks_from_text(
         self,
         text: str,
         filter_pattern: typing.Pattern | None = None,
+        context: str = "text",
     ) -> list[str]:
         """Return all hyperlinks from HTML text.
 
@@ -320,6 +321,7 @@ class AbstractDatasetArchiver(ABC):
         Args:
             text: text containing HTML.
             filter_pattern: If present, only return links that contain pattern.
+            context: String used in error messages to describe what text was being searched.
         """
         parser = _HyperlinkExtractor()
         parser.feed(text)
@@ -337,7 +339,7 @@ class AbstractDatasetArchiver(ABC):
         # Warn if no links are found
         if not hyperlinks:
             self.logger.warning(
-                f"The archiver couldn't find any hyperlinks{('that match: ' + filter_pattern.pattern) if filter_pattern else ''}."
+                f"In {context}: the archiver couldn't find any hyperlinks {('that match: ' + filter_pattern.pattern) if filter_pattern else ''}."
                 f"Make sure your filter_pattern is correct, and check if the structure of the page is not what you expect it to be."
             )
 
