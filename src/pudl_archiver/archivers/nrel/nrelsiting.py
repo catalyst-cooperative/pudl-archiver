@@ -134,7 +134,7 @@ class NrelSitingArchiver(AbstractDatasetArchiver):
         # For each additional dataset linked, iterate through the same process
         for link in links:
             additional_dataset_id = link.split("/")[-1]
-            additional_data_paths_in_archive = await self.download_nrel_data(
+            additional_data_paths_in_archive = await self.compile_nrel_download_links(
                 dataset_id=additional_dataset_id, dataset_link=link
             )
             data_links.update(additional_data_paths_in_archive)
