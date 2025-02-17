@@ -78,9 +78,14 @@ class _HyperlinkExtractor(HTMLParser):
 
 
 async def _download_file(
-    session: aiohttp.ClientSession, url: str, file: Path | io.BytesIO, **kwargs
+    session: aiohttp.ClientSession,
+    url: str,
+    file: Path | io.BytesIO,
+    post: bool = False,
+    **kwargs,
 ):
-    async with session.get(url, **kwargs) as response:
+    method = session.post if post else session.get
+    async with method(url, **kwargs) as response:
         with file.open("wb") if isinstance(file, Path) else nullcontext(file) as f:
             async for chunk in response.content.iter_chunked(1024):
                 f.write(chunk)
@@ -181,7 +186,9 @@ class AbstractDatasetArchiver(ABC):
         # If it makes it here that means it couldn't download a valid zipfile
         raise RuntimeError(f"Failed to download valid zipfile from {url}")
 
-    async def download_file(self, url: str, file_path: Path | io.BytesIO, **kwargs):
+    async def download_file(
+        self, url: str, file_path: Path | io.BytesIO, post: bool = False, **kwargs
+    ):
         """Download a file using async session manager.
 
         Args:
@@ -189,7 +196,7 @@ class AbstractDatasetArchiver(ABC):
             file_path: Local path to write file to disk or bytes object to save file in memory.
             kwargs: Key word args to pass to retry_async.
         """
-        await retry_async(_download_file, [self.session, url, file_path], kwargs)
+        await retry_async(_download_file, [self.session, url, file_path, post], kwargs)
 
     async def download_and_zip_file(
         self, url: str, filename: str, zip_path: Path, **kwargs
@@ -253,9 +260,11 @@ class AbstractDatasetArchiver(ABC):
         # immediately after they're safely stored in the ZIP
         download_path.unlink()
 
-    async def get_json(self, url: str, **kwargs) -> dict[str, str]:
+    async def get_json(self, url: str, post: bool = False, **kwargs) -> dict[str, str]:
         """Get a JSON and return it as a dictionary."""
-        response = await retry_async(self.session.get, args=[url], kwargs=kwargs)
+        response = await retry_async(
+            self.session.post if post else self.session.get, args=[url], kwargs=kwargs
+        )
         response_bytes = await retry_async(response.read)
         try:
             json_obj = json.loads(response_bytes.decode("utf-8"))
@@ -284,7 +293,6 @@ class AbstractDatasetArchiver(ABC):
             headers: Additional headers to send in the GET request.
         """
         # Parse web page to get all hyperlinks
-        parser = _HyperlinkExtractor()
 
         response = await retry_async(
             self.session.get,
@@ -295,6 +303,27 @@ class AbstractDatasetArchiver(ABC):
             },
         )
         text = await retry_async(response.text)
+        return self.get_hyperlinks_from_text(text, filter_pattern, url)
+
+    def get_hyperlinks_from_text(
+        self,
+        text: str,
+        filter_pattern: typing.Pattern | None = None,
+        context: str = "text",
+    ) -> list[str]:
+        """Return all hyperlinks from HTML text.
+
+        This is a helper-helper function to perform very basic HTML-parsing functionality.
+        It extracts all hyperlinks from an HTML text, and returns those that match
+        a specified pattern. This means it can find all hyperlinks that look like
+        a download link to a single data resource.
+
+        Args:
+            text: text containing HTML.
+            filter_pattern: If present, only return links that contain pattern.
+            context: String used in error messages to describe what text was being searched.
+        """
+        parser = _HyperlinkExtractor()
         parser.feed(text)
 
         # Filter to those that match filter_pattern
@@ -310,8 +339,8 @@ class AbstractDatasetArchiver(ABC):
         # Warn if no links are found
         if not hyperlinks:
             self.logger.warning(
-                f"The archiver couldn't find any hyperlinks{('that match: ' + filter_pattern.pattern) if filter_pattern else ''}."
-                f"Make sure your filter_pattern is correct, check if the structure of the {url} page changed, or if you are missing HTTP headers."
+                f"In {context}: the archiver couldn't find any hyperlinks {('that match: ' + filter_pattern.pattern) if filter_pattern else ''}."
+                f"Make sure your filter_pattern is correct, and check if the structure of the page is not what you expect it to be."
             )
 
         return hyperlinks
