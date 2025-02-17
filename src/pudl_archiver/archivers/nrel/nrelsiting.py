@@ -1,5 +1,6 @@
 """Download data from the NREL siting lab data."""
 
+import asyncio
 import re
 
 from pydantic import BaseModel
@@ -51,7 +52,7 @@ class NrelSitingArchiver(AbstractDatasetArchiver):
 
     name: str = "nrelsiting"
     base_url: str = "https://data.openei.org/siting_lab"
-    concurrency_limit = 2  # The server can get a bit cranky, so let's be nice.
+    concurrency_limit = 1  # The server can get a bit cranky, so let's be nice.
 
     async def get_resources(self) -> ArchiveAwaitable:
         """Using data IDs, iterate and download all NREL Siting Lab files."""
@@ -74,7 +75,7 @@ class NrelSitingArchiver(AbstractDatasetArchiver):
         data_dict = NrelAPIData(**data_dict)
 
         self.logger.info(
-            f"Downloading data for {data_dict.num_submissions} datasets. {data_dict.num_files} files ({data_dict.size_of_files / 1e-9} GB)."
+            f"Downloading data for {data_dict.num_submissions} datasets. {data_dict.num_files} files ({data_dict.size_of_files * 1e-9} GB)."
         )
         for dataset in data_dict.submissions:
             yield self.get_siting_resources(dataset=dataset)
@@ -108,7 +109,6 @@ class NrelSitingArchiver(AbstractDatasetArchiver):
         dataset_id = dataset.xdr_id
 
         dataset_link = f"https://data.openei.org/submissions/{dataset_id}"
-        self.logger.info(f"Downloading files from {dataset_link}")
 
         # Create zipfile name from dataset name
         title = dataset.submission_name
@@ -140,7 +140,12 @@ class NrelSitingArchiver(AbstractDatasetArchiver):
             data_links.update(additional_data_paths_in_archive)
 
         # For each link we've collected, download it and add it to the zipfile
-        for link in set(data_links):  # Use set to handle duplication
+        data_links = set(data_links)  # Use set to handle duplication
+        self.logger.info(
+            f"{dataset.submission_name}: Downloading {len(data_links)} files associated with {dataset_link}"
+        )
+
+        for link in data_links:
             filename = link.split("/")[-1]
             # This file shows up in multiple datasets,
             # causing collision when they run concurrently. Rename it
@@ -153,6 +158,7 @@ class NrelSitingArchiver(AbstractDatasetArchiver):
                 url=link, filename=filename, zip_path=zip_path
             )
             data_paths_in_archive.add(filename)
+            await asyncio.sleep(10)  # Attempt to reduce server throttling
 
         return ResourceInfo(
             local_path=zip_path,
