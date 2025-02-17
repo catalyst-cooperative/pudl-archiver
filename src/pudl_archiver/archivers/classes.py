@@ -321,6 +321,7 @@ class AbstractDatasetArchiver(ABC):
         Args:
             text: text containing HTML.
             filter_pattern: If present, only return links that contain pattern.
+            context: String used in error messages to describe what text was being searched.
         """
         parser = _HyperlinkExtractor()
         parser.feed(text)
