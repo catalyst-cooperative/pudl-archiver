@@ -84,9 +84,7 @@ async def _download_file(
     post: bool = False,
     **kwargs,
 ):
-    method = session.get
-    if post:
-        method = session.post
+    method = session.post if post else session.get
     async with method(url, **kwargs) as response:
         with file.open("wb") if isinstance(file, Path) else nullcontext(file) as f:
             async for chunk in response.content.iter_chunked(1024):
@@ -337,7 +335,7 @@ class AbstractDatasetArchiver(ABC):
         # Warn if no links are found
         if not hyperlinks:
             self.logger.warning(
-                f"The archiver couldn't find any hyperlinks{('that match: ' + filter_pattern.pattern) if filter_pattern else ''}."
+                f"The archiver couldn't find any hyperlinks {('that match: ' + filter_pattern.pattern) if filter_pattern else ''}."
                 f"Make sure your filter_pattern is correct, and check if the structure of the page is not what you expect it to be."
             )
 
