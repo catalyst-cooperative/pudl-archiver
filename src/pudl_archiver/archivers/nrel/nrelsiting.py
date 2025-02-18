@@ -136,7 +136,7 @@ class NrelSitingArchiver(AbstractDatasetArchiver):
         )
         data_paths_in_archive.add(filename)
 
-        # First, get all the links from the page itself
+        # Next, get all the links from the page itself
         data_links = await self.compile_nrel_download_links(
             dataset_id=dataset_id, dataset_link=dataset_link
         )
