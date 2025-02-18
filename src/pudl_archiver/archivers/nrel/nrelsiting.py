@@ -2,6 +2,7 @@
 
 import asyncio
 import re
+from io import BytesIO
 
 from pydantic import BaseModel
 from pydantic.alias_generators import to_camel
@@ -116,6 +117,24 @@ class NrelSitingArchiver(AbstractDatasetArchiver):
 
         zip_path = self.download_directory / f"nrelsiting-{dataset_name}.zip"
         data_paths_in_archive = set()
+
+        # First, get dataset description from abstract class using bs4
+        # Save to text file alongside other documentation
+        soup = await self.get_soup(dataset_link)
+        description = soup.select_one(".abstract")
+        # Add the link we archived from to the description.
+        description = (
+            description.text
+            + f"\n\nThis data was archived from {dataset_link} by Catalyst Cooperative."
+        )
+        description_bytes = description.encode("utf-8")
+        filename = f"{dataset_name}-description.txt"
+        self.add_to_archive(
+            zip_path=zip_path,
+            filename=filename,
+            blob=BytesIO(description_bytes),
+        )
+        data_paths_in_archive.add(filename)
 
         # First, get all the links from the page itself
         data_links = await self.compile_nrel_download_links(
