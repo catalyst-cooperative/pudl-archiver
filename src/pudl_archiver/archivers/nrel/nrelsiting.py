@@ -10,7 +10,6 @@ from pudl_archiver.archivers.classes import (
     AbstractDatasetArchiver,
     ArchiveAwaitable,
     ResourceInfo,
-    retry_async,
 )
 from pudl_archiver.frictionless import ZipLayout
 
@@ -65,13 +64,10 @@ class NrelSitingArchiver(AbstractDatasetArchiver):
             "format": "json",
             "s": "siting_lab",  # The name of the lab's data we want
         }
-        response = await retry_async(
-            self.session.post, args=[url], kwargs={"data": data}
-        )
+        data_dict = await self.get_json(url=url, post=True, data=data)
         # This returns a data dictionary containing metadata on
         # the number of submissions, files, the ID (xdrId) of the dataset
         # that corresponds to the Open EI link, the name, description and more.
-        data_dict = await response.json()
         data_dict = NrelAPIData(**data_dict)
 
         self.logger.info(
