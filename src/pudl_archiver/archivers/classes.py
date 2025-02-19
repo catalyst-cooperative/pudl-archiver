@@ -362,7 +362,7 @@ class AbstractDatasetArchiver(ABC):
         # Check for any files only in baseline_datapackage
         missing_files = baseline_resources - new_resources
 
-        notes = None
+        notes = []
         if len(missing_files) > 0:
             notes = [
                 f"The following files would be deleted by new archive version: {missing_files}"
@@ -382,7 +382,7 @@ class AbstractDatasetArchiver(ABC):
         new_datapackage: DataPackage,
     ) -> validate.DatasetUniversalValidation:
         """Check if any one file's size has changed by |>allowed_file_rel_diff|."""
-        notes = None
+        notes = []
         if baseline_datapackage is None:
             too_changed_files = False  # No files to compare to
         else:
@@ -434,7 +434,7 @@ class AbstractDatasetArchiver(ABC):
         new_datapackage: DataPackage,
     ) -> validate.DatasetUniversalValidation:
         """Check if a dataset's overall size has changed by more than |>allowed_dataset_rel_diff|."""
-        notes = None
+        notes = []
 
         if baseline_datapackage is None:
             dataset_size_change = 0.0  # No change in size if no baseline
@@ -466,7 +466,7 @@ class AbstractDatasetArchiver(ABC):
     ) -> validate.DatasetUniversalValidation:
         """Check that the archived data partitions are continuous and unique."""
         success = True
-        note = None
+        note = []
         partition_to_test = []
         dataset_partitions = []
 
