@@ -89,6 +89,7 @@ async def _download_file(
         with file.open("wb") if isinstance(file, Path) else nullcontext(file) as f:
             async for chunk in response.content.iter_chunked(1024):
                 f.write(chunk)
+        return response.status
 
 
 class AbstractDatasetArchiver(ABC):
@@ -188,15 +189,19 @@ class AbstractDatasetArchiver(ABC):
 
     async def download_file(
         self, url: str, file_path: Path | io.BytesIO, post: bool = False, **kwargs
-    ):
+    ) -> int:
         """Download a file using async session manager.
 
         Args:
             url: URL to file to download.
             file_path: Local path to write file to disk or bytes object to save file in memory.
             kwargs: Key word args to pass to retry_async.
+
+        Returns: status of the HTTP response written to file_path
         """
-        await retry_async(_download_file, [self.session, url, file_path, post], kwargs)
+        return await retry_async(
+            _download_file, [self.session, url, file_path, post], kwargs
+        )
 
     async def download_and_zip_file(
         self, url: str, filename: str, zip_path: Path, **kwargs
