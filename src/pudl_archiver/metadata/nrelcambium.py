@@ -6,7 +6,8 @@ from pudl.metadata.constants import CONTRIBUTORS, KEYWORDS, LICENSES
 def nrel_cambium_generator(year):
     """Generate metadata dictionaries for NREL Cambium.
 
-    NREL Cambium datasets are too large to group together under a "years" partition, but otherwise share metadata.
+    NREL Cambium datasets are too large to group together under a "years" partition, but
+    otherwise share metadata.
     """
     return {
         "title": f"NREL Cambium {year}",
@@ -29,11 +30,14 @@ NREL reports describing the scenarios, defining metrics and methods, describing 
             CONTRIBUTORS["catalyst-cooperative"],
         ],
         "keywords": sorted(
-            {
-                "nrel",
-                "cambium",
-            }
-            | set(KEYWORDS["us_govt"] + KEYWORDS["electricity"])
+            set(
+                [
+                    "nrel",
+                    "cambium",
+                ]
+                + KEYWORDS["us_govt"]
+                + KEYWORDS["electricity"]
+            )
         ),
         "license_raw": LICENSES["cc-by-4.0"],
         "license_pudl": LICENSES["cc-by-4.0"],
