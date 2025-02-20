@@ -119,7 +119,7 @@ class AbstractNrelCambiumArchiver(AbstractNrelScenarioArchiver):
 
             for s3url_tries in range(5):
                 self.logger.info(
-                    f"Downloading file {i + 1} of {len(partition_file_ids)} {filename} {file_id} {uuid}{('; S3 link refresh #' + s3url_tries) if s3url_tries > 0 else ''}"
+                    f"Downloading file {i + 1} of {len(partition_file_ids)} {filename} {file_id} {uuid}{('; S3 link refresh #' + str(s3url_tries)) if s3url_tries > 0 else ''}"
                 )
 
                 # aiohttp.session.post somehow does not permit you to specify
