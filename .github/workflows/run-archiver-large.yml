@@ -1,5 +1,5 @@
 ---
-name: run-archiver-cambium
+name: run-archiver-large
 
 on:
   workflow_dispatch:
