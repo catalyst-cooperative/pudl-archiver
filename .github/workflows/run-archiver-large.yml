@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       datasets:
-        description: 'Comma-separated list of datasets to archive (e.g., `"nrelcambium2020","nrelcambium2023"`).'
+        description: 'Comma-separated list of datasets to archive (e.g., `"nrelcambium2021","nrelcambium2022"`).'
         default: ""
         required: true
         type: string
