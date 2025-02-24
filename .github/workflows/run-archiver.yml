@@ -6,7 +6,7 @@ on:
     inputs:
       datasets:
         description: 'Comma-separated list of datasets to archive (e.g., "ferc2","ferc6").'
-        default: '"doeiraec","doelead","eia176","eia191","eia757a","eia860","eia860m","eia861","eia923","eia930","eiaaeo","eiacbecs","eiamecs","eianems","eiarecs","eiawater","eia_bulk_elec","epacamd_eia","epacems","epaegrid","epamats","epapcap","ferc1","ferc2","ferc6","ferc60","ferc714","gridpathratoolkit","mshamines","nrelatb","nrelefs","phmsagas","usgsuspvdb","usgsuswtdb","vcerare"'
+        default: '"doeiraec","doelead","eia176","eia191","eia757a","eia860","eia860m","eia861","eia923","eia930","eiaaeo","eiacbecs","eiamecs","eianems","eiarecs","eiawater","eia_bulk_elec","epacamd_eia","epacems","epaegrid","epamats","epapcap","ferc1","ferc2","ferc6","ferc60","ferc714","gridpathratoolkit","mshamines","nrelatb","nrelefs","nrelsiting","phmsagas","usgsuspvdb","usgsuswtdb","vcerare"'
         required: true
         type: string
       create_github_issue:
@@ -26,7 +26,7 @@ jobs:
     strategy:
       matrix:
         # Note that we can't pass global env variables to the matrix, so we manually reproduce the list of datasets here.
-        dataset: ${{ fromJSON(format('[{0}]', inputs.datasets || '"doeiraec","doelead","eia176","eia191","eia757a","eia860","eia860m","eia861","eia923","eia930","eiaaeo","eiacbecs","eiamecs","eianems","eiarecs","eiawater","eia_bulk_elec","epacamd_eia","epacems","epaegrid","epamats","epapcap","ferc1","ferc2","ferc6","ferc60","ferc714","gridpathratoolkit","mshamines","nrelatb","nrelefs","phmsagas","usgsuspvdb","usgsuswtdb","vcerare"' )) }}
+        dataset: ${{ fromJSON(format('[{0}]', inputs.datasets || '"doeiraec","doelead","eia176","eia191","eia757a","eia860","eia860m","eia861","eia923","eia930","eiaaeo","eiacbecs","eiamecs","eianems","eiarecs","eiawater","eia_bulk_elec","epacamd_eia","epacems","epaegrid","epamats","epapcap","ferc1","ferc2","ferc6","ferc60","ferc714","gridpathratoolkit","mshamines","nrelatb","nrelefs","nrelsiting","phmsagas","usgsuspvdb","usgsuswtdb","vcerare"' )) }}
       fail-fast: false
     runs-on: ubuntu-latest
     permissions:
