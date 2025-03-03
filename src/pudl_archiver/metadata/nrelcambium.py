@@ -13,14 +13,14 @@ def nrel_cambium_generator(year):
         "title": f"NREL Cambium {year}",
         "path": "https://www.nrel.gov/analysis/cambium.html",
         "description": (
-            f"""Cambium datasets contain modeled hourly data for a range of possible futures of the U.S. electricity sector, with metrics designed to be useful for forward-looking analysis and decision support.
+            f"""Cambium datasets contain modeled hourly data for a range of possible futures of the U.S. electricity sector, with metrics designed to be useful for forward-looking analysis and decision support.\n\n
 
-Cambium is annually updated and expands on the metrics reported in NREL’s Standard Scenarios—another annually released set of projections of how the U.S. electric sector could evolve across a suite of potential futures.
+Cambium is annually updated and expands on the metrics reported in NREL’s Standard Scenarios—another annually released set of projections of how the U.S. electric sector could evolve across a suite of potential futures.\n\n
 
-The {year} Cambium release includes two products:
+The {year} Cambium release includes two products:\n\n
 
-The full {year} Cambium datasets;
-NREL reports describing the scenarios, defining metrics and methods, describing major changes since the last release, and discussing intended uses and limitations of the dataset."""
+(1) The full {year} Cambium datasets;\n
+(2) NREL reports describing the scenarios, defining metrics and methods, describing major changes since the last release, and discussing intended uses and limitations of the dataset."""
         ),
         "source_file_dict": {
             "source_format": "CSV",
