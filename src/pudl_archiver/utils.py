@@ -48,7 +48,8 @@ async def retry_async(
     if kwargs is None:
         kwargs = {}
     last_failure_s = time()
-    max_delay_s = retry_base_s * 2**retry_count
+    # ten minutes (the timeout threshold) plus our max retry delay
+    max_delay_s = (10 * 60) + retry_base_s * 2**retry_count
     try_count = 0
     while try_count < retry_count:  # noqa: RET503
         try_count += 1
