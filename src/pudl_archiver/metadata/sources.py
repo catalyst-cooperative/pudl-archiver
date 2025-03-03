@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from pudl.metadata.constants import CONTRIBUTORS, LICENSES
+from pudl.metadata.constants import CONTRIBUTORS, KEYWORDS, LICENSES
 
 # To add a new contributor, follow the following format to add an entry to the
 # ADDL_CONTRIBUTORS dictionary below formatted like this:
@@ -340,7 +340,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
     },
     "epamats": {
-        "title": "EPA -- Mercury and Air Toxics Standards",
+        "title": "EPA MATS -- Mercury and Air Toxics Standards",
         "path": "https://www.epa.gov/stationary-sources-air-pollution/mercury-and-air-toxics-standards",
         "description": (
             "The EPA Mercury and Air Toxics Standards (MATS) dataset provides detailed information on emissions "
@@ -356,31 +356,6 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         ),
         "working_partitions": {
             "years": [
-                1990,
-                1991,
-                1992,
-                1993,
-                1994,
-                1995,
-                1996,
-                1997,
-                1998,
-                1999,
-                2000,
-                2001,
-                2002,
-                2003,
-                2004,
-                2005,
-                2006,
-                2007,
-                2008,
-                2009,
-                2010,
-                2011,
-                2012,
-                2013,
-                2014,
                 2015,
                 2016,
                 2017,
@@ -390,7 +365,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
                 2021,
                 2022,
             ]
-        },  # not 100% sure on years
+        },
         "keywords": sorted(
             {"mercury", "toxics", "standards", "air", "environment", "epa"}
         ),
@@ -416,6 +391,69 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         "license_pudl": LICENSES["cc-by-4.0"],
         "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
     },
+    "nrelefs": {
+        "title": "NREL EFS -- Electrification Futures Study",
+        "path": "https://www.nrel.gov/analysis/electrification-futures.html",
+        "description": (
+            "The Electrification Futures Study (EFS) is a multi-year study conducted by NREL "
+            "and its research partners—Electric Power Research Institute, Evolved Energy Research, "
+            "Lawrence Berkeley National Laboratory, Northern Arizona University, and Oak Ridge National "
+            "Laboratory. EFS used multiple analytic tools and models to develop and assess "
+            "electrification scenarios designed to quantify potential energy, economic, "
+            "and environmental impacts to the U.S. power system and broader economy. There are six reports "
+            "comprising the EFS, with the final report released in May 2021."
+        ),
+        "working_partitions": {
+            "report_number": set(range(1, 7)),
+            "document_type": ["data", "technical_report", "presentation"],
+        },
+        "keywords": sorted(
+            {"doe", "lead", "low income", "energy affordability", "energy burden"}
+        ),
+        "license_raw": LICENSES["us-govt"],
+        "license_pudl": LICENSES["cc-by-4.0"],
+        "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
+    },
+    "nrelss": {
+        "title": "NREL Standard Scenarios",
+        "path": "https://www.nrel.gov/analysis/standard-scenarios.html",
+        "description": (
+            "NREL's Standard Scenarios are a suite of forward-looking scenarios of the U.S. "
+            "power sector that are updated annually to support and inform energy analysis. "
+            "The Standard Scenarios are simulated using the Regional Energy Deployment System "
+            "and Distributed Generation Market Demand Model capacity expansion models and are "
+            "updated each year to provide timely information regarding power sector evolution. "
+            "The scenarios have been designed to capture a range of possible power system "
+            "futures and consider a variety of factors from high vehicle electrification to "
+            "major cost declines for electricity generation technologies (e.g., using cost "
+            "inputs from the Annual Technology Baseline). "
+            "For select scenarios, the models are run using the PLEXOS software and the "
+            "Cambium tool that assembles structured data sets of hourly cost, emissions, and "
+            "operational data for modeled futures. Results are available using the Scenario "
+            "Viewer and Data Downloader."
+        ),
+        "source_file_dict": {
+            "source_format": "CSV",
+        },
+        "working_partitions": {
+            "years": list(range(2016, 2025)),
+        },
+        "contributors": [
+            CONTRIBUTORS["catalyst-cooperative"],
+        ],
+        "keywords": sorted(
+            set(
+                [
+                    "nrel",
+                    "standard scenarios",
+                ]
+                + KEYWORDS["us_govt"]
+                + KEYWORDS["electricity"]
+            )
+        ),
+        "license_raw": LICENSES["cc-by-4.0"],
+        "license_pudl": LICENSES["cc-by-4.0"],
+    },
     "nrelsts": {
         "title": "NREL STS -- Sharing the Sun Community Solar Project Data",
         "path": "https://data.nrel.gov/submissions/244",
@@ -431,5 +469,4 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         "license_raw": LICENSES["us-govt"],
         "license_pudl": LICENSES["cc-by-4.0"],
         "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
-    },
 }

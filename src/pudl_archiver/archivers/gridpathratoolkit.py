@@ -4,7 +4,6 @@ This dataset was produced by Moment Energy Insights (now Sylvan Energy Analytics
 It is archived from files stored in the private sources.catalyst.coop bucket.
 """
 
-import logging
 import zipfile
 from pathlib import Path
 
@@ -17,8 +16,6 @@ from pudl_archiver.archivers.classes import (
 )
 from pudl_archiver.frictionless import ZipLayout
 from pudl_archiver.utils import add_to_archive_stable_hash
-
-logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 
 class GridPathRAToolkitArchiver(AbstractDatasetArchiver):
@@ -84,7 +81,7 @@ class GridPathRAToolkitArchiver(AbstractDatasetArchiver):
             # Download blob to local file
             # We download the entire zipfile to avoid having to authenticate using
             # a second GCS library, since GCS doesn't support fsspec file paths.
-            logger.info(f"Downloading {blob.name} to {path_to_file}")
+            self.logger.info(f"Downloading {blob.name} to {path_to_file}")
 
             blob.download_to_filename(path_to_file)
 
@@ -121,7 +118,7 @@ class GridPathRAToolkitArchiver(AbstractDatasetArchiver):
                     continue
 
                 # Download all files locally
-                logger.info(f"Downloading {blob.name} to {final_zipfile_name}")
+                self.logger.info(f"Downloading {blob.name} to {final_zipfile_name}")
                 string = blob.download_as_string()
                 add_to_archive_stable_hash(
                     archive=archive, filename=Path(blob.name).name, data=string

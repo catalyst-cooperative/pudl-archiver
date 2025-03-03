@@ -14,6 +14,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 
 import aiohttp
+import bs4
 import pandas as pd
 
 from pudl_archiver.archivers import validate
@@ -49,21 +50,42 @@ class _HyperlinkExtractor(HTMLParser):
 
     def __init__(self):
         """Construct parser."""
-        self.hyperlinks = set()
+        self.hyperlinks = {}
+        self.current_hyperlink = None
         super().__init__()
 
     def handle_starttag(self, tag, attrs):
         """Filter hyperlink tags and return href attribute."""
-        if tag == "a":
-            for attr, val in attrs:
-                if attr == "href":
-                    self.hyperlinks.add(val)
+        url_attrs = ["href", "src", "action", "data-url", "poster"]
+
+        for attr, val in attrs:
+            if attr in url_attrs:
+                self.current_hyperlink = val
+                if self.current_hyperlink not in self.hyperlinks:
+                    # By default, set the name identical to the hyperlink
+                    self.hyperlinks[self.current_hyperlink] = self.current_hyperlink
+                break
+
+    def handle_data(self, data):
+        """Capture text content and associate it with the current URL."""
+        if self.current_hyperlink and data.strip():
+            # If data is present, replace the hyperlink name
+            self.hyperlinks[self.current_hyperlink] = data.strip()
+
+    def handle_endtag(self, tag):
+        """Reset the current URL after processing the content of the tag."""
+        self.current_hyperlink = None
 
 
 async def _download_file(
-    session: aiohttp.ClientSession, url: str, file: Path | io.BytesIO, **kwargs
+    session: aiohttp.ClientSession,
+    url: str,
+    file: Path | io.BytesIO,
+    post: bool = False,
+    **kwargs,
 ):
-    async with session.get(url, **kwargs) as response:
+    method = session.post if post else session.get
+    async with method(url, **kwargs) as response:
         with file.open("wb") if isinstance(file, Path) else nullcontext(file) as f:
             async for chunk in response.content.iter_chunked(1024):
                 f.write(chunk)
@@ -113,6 +135,13 @@ class AbstractDatasetArchiver(ABC):
         self.logger = logging.getLogger(f"catalystcoop.{__name__}")
         self.logger.info(f"Archiving {self.name}")
 
+    async def get_soup(self, url: str) -> bs4.BeautifulSoup:
+        """Get a BeautifulSoup instance for a URL using our existing session."""
+        response = await retry_async(self.session.get, args=[url])
+        # TODO 2025-02-03: for some reason, lxml fails to grab the closing div
+        # tag for tab content - so we use html.parser, which is slower.
+        return bs4.BeautifulSoup(await response.text(), "html.parser")
+
     @abstractmethod
     def get_resources(self) -> ArchiveAwaitable:
         """Abstract method that each data source must implement to download all resources.
@@ -157,7 +186,9 @@ class AbstractDatasetArchiver(ABC):
         # If it makes it here that means it couldn't download a valid zipfile
         raise RuntimeError(f"Failed to download valid zipfile from {url}")
 
-    async def download_file(self, url: str, file_path: Path | io.BytesIO, **kwargs):
+    async def download_file(
+        self, url: str, file_path: Path | io.BytesIO, post: bool = False, **kwargs
+    ):
         """Download a file using async session manager.
 
         Args:
@@ -165,7 +196,7 @@ class AbstractDatasetArchiver(ABC):
             file_path: Local path to write file to disk or bytes object to save file in memory.
             kwargs: Key word args to pass to retry_async.
         """
-        await retry_async(_download_file, [self.session, url, file_path], kwargs)
+        await retry_async(_download_file, [self.session, url, file_path, post], kwargs)
 
     async def download_and_zip_file(
         self, url: str, filename: str, zip_path: Path, **kwargs
@@ -229,9 +260,11 @@ class AbstractDatasetArchiver(ABC):
         # immediately after they're safely stored in the ZIP
         download_path.unlink()
 
-    async def get_json(self, url: str, **kwargs) -> dict[str, str]:
+    async def get_json(self, url: str, post: bool = False, **kwargs) -> dict[str, str]:
         """Get a JSON and return it as a dictionary."""
-        response = await retry_async(self.session.get, args=[url], kwargs=kwargs)
+        response = await retry_async(
+            self.session.post if post else self.session.get, args=[url], kwargs=kwargs
+        )
         response_bytes = await retry_async(response.read)
         try:
             json_obj = json.loads(response_bytes.decode("utf-8"))
@@ -245,7 +278,7 @@ class AbstractDatasetArchiver(ABC):
         filter_pattern: typing.Pattern | None = None,
         verify: bool = True,
         headers: dict | None = None,
-    ) -> list[str]:
+    ) -> dict[str, str]:
         """Return all hyperlinks from a specific web page.
 
         This is a helper function to perform very basic web-scraping functionality.
@@ -260,7 +293,6 @@ class AbstractDatasetArchiver(ABC):
             headers: Additional headers to send in the GET request.
         """
         # Parse web page to get all hyperlinks
-        parser = _HyperlinkExtractor()
 
         response = await retry_async(
             self.session.get,
@@ -271,18 +303,44 @@ class AbstractDatasetArchiver(ABC):
             },
         )
         text = await retry_async(response.text)
+        return self.get_hyperlinks_from_text(text, filter_pattern, url)
+
+    def get_hyperlinks_from_text(
+        self,
+        text: str,
+        filter_pattern: typing.Pattern | None = None,
+        context: str = "text",
+    ) -> list[str]:
+        """Return all hyperlinks from HTML text.
+
+        This is a helper-helper function to perform very basic HTML-parsing functionality.
+        It extracts all hyperlinks from an HTML text, and returns those that match
+        a specified pattern. This means it can find all hyperlinks that look like
+        a download link to a single data resource.
+
+        Args:
+            text: text containing HTML.
+            filter_pattern: If present, only return links that contain pattern.
+            context: String used in error messages to describe what text was being searched.
+        """
+        parser = _HyperlinkExtractor()
         parser.feed(text)
 
         # Filter to those that match filter_pattern
         hyperlinks = parser.hyperlinks
+
         if filter_pattern:
-            hyperlinks = {link for link in hyperlinks if filter_pattern.search(link)}
+            hyperlinks = {
+                link: name
+                for link, name in hyperlinks.items()
+                if filter_pattern.search(name) or filter_pattern.search(link)
+            }
 
         # Warn if no links are found
         if not hyperlinks:
             self.logger.warning(
-                f"The archiver couldn't find any hyperlinks{('that match: ' + filter_pattern.pattern) if filter_pattern else ''}."
-                f"Make sure your filter_pattern is correct, check if the structure of the {url} page changed, or if you are missing HTTP headers."
+                f"In {context}: the archiver couldn't find any hyperlinks {('that match: ' + filter_pattern.pattern) if filter_pattern else ''}."
+                f"Make sure your filter_pattern is correct, and check if the structure of the page is not what you expect it to be."
             )
 
         return hyperlinks

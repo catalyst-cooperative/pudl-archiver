@@ -6,6 +6,7 @@ requires-python = ">=3.12,<3.13"
 
 dependencies = [
     "arelle-release>=2.29,<2.37",
+    "beautifulsoup4>=4.12.3,<5",
     "catalystcoop.pudl @ git+https://github.com/catalyst-cooperative/pudl.git",
     "coloredlogs>=14",
     "dask>=2024",
@@ -42,8 +43,8 @@ dev = [
 docs = [
     "doc8>=1.1,<1.2",  # Ensures clean documentation formatting
     "furo>=2022.4.7",
-    "sphinx>=7,<8.1.4",  # The default Python documentation engine
-    "sphinx-autoapi>=3,<3.5",  # Generates documentation from docstrings
+    "sphinx>=7,<8.2.2",  # The default Python documentation engine
+    "sphinx-autoapi>=3,<3.7",  # Generates documentation from docstrings
     "sphinx-issues>=1.2,<5.1",  # Allows references to GitHub issues
 ]
 

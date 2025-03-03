@@ -1,64 +1,31 @@
-"""Download EPACEMS data."""
+"""Download EPAMATS data."""
 
-import datetime
 import json
 import os
 from collections.abc import Iterable
 from itertools import groupby
 
 import requests
-from pydantic import BaseModel, ValidationError
-from pydantic.alias_generators import to_camel
+from pydantic import ValidationError
 
 from pudl_archiver.archivers.classes import (
     AbstractDatasetArchiver,
     ArchiveAwaitable,
     ResourceInfo,
 )
+from pudl_archiver.archivers.epa.epacems import BulkFile
 from pudl_archiver.frictionless import ZipLayout
 
 
-class BulkFile(BaseModel):
-    """Data transfer object from EPA.
+class EpaMatsArchiver(AbstractDatasetArchiver):
+    """EPA MATS archiver."""
 
-    See https://www.epa.gov/power-sector/cam-api-portal#/swagger/camd-services
-    for details.
-    """
-
-    class Metadata(BaseModel):
-        """Metadata about a specific file."""
-
-        year: int
-        quarter: int
-        data_type: str
-        data_sub_type: str
-
-        class Config:  # noqa: D106
-            alias_generator = to_camel
-            populate_by_name = True
-
-    filename: str
-    s3_path: str
-    bytes: int  # noqa: A003
-    mega_bytes: float
-    giga_bytes: float
-    last_updated: datetime.datetime
-    metadata: Metadata
-
-    class Config:  # noqa: D106
-        alias_generator = to_camel
-        populate_by_name = True
-
-
-class EpaCemsArchiver(AbstractDatasetArchiver):
-    """EPA CEMS archiver."""
-
-    name = "epacems"
-    concurrency_limit = 2  # Number of files to concurrently download
+    name = "epamats"
     allowed_file_rel_diff = 0.35  # Set higher tolerance than standard
 
     base_url = "https://api.epa.gov/easey/bulk-files/"
-    parameters = {"api_key": os.environ.get("EPACEMS_API_KEY")}  # Set to API key
+    # Set API key to CEMS key - CEMS and MATS come from the same API
+    parameters = {"api_key": os.environ.get("EPACEMS_API_KEY")}
 
     def __filter_for_complete_metadata(
         self, files_responses: list[dict]
@@ -71,7 +38,7 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
                 continue
 
     async def get_resources(self) -> ArchiveAwaitable:
-        """Download EPA CEMS resources."""
+        """Download EPA MATS resources."""
         file_list = requests.get(
             "https://api.epa.gov/easey/camd-services/bulk-files",
             params=self.parameters,
@@ -79,7 +46,7 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
         )
         if file_list.status_code != 200:
             raise AssertionError(
-                f"EPACEMS API request did not succeed: {file_list.status_code}"
+                f"EPA MATS API request did not succeed: {file_list.status_code}"
             )
         resjson = file_list.content.decode("utf8").replace("'", '"')
         file_list.close()  # Close connection.
@@ -87,7 +54,7 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
         quarterly_emissions_files = [
             file
             for file in bulk_files
-            if (file.metadata.data_type == "Emissions")
+            if (file.metadata.data_type == "Mercury and Air Toxics Emissions (MATS)")
             and (file.metadata.data_sub_type == "Hourly")
             and (file.metadata.quarter in {1, 2, 3, 4})
             and self.valid_year(file.metadata.year)
@@ -110,16 +77,16 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
             year: the year we're downloading data for
             files: the files we've associated with this year.
         """
-        zip_path = self.download_directory / f"epacems-{year}.zip"
+        zip_path = self.download_directory / f"epamats-{year}.zip"
         data_paths_in_archive = set()
         for file in files:
             url = self.base_url + file.s3_path
             quarter = file.metadata.quarter
 
             # Useful to debug at download time-outs.
-            self.logger.info(f"Downloading {year} Q{quarter} EPACEMS data from {url}.")
+            self.logger.info(f"Downloading {year} Q{quarter} EPA MATS data from {url}.")
 
-            filename = f"epacems-{year}q{quarter}.csv"
+            filename = f"epamats-{year}q{quarter}.csv"
             file_path = self.download_directory / filename
             await self.download_file(url=url, file_path=file_path)
             self.add_to_archive(
