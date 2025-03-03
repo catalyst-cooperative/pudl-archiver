@@ -153,4 +153,4 @@ def is_html_file(fileobj: BytesIO) -> bool:
     fileobj.seek(0)
     header = fileobj.read(30).lower().strip()
     fileobj.seek(0)
-    return b"<!doctype html" in header
+    return (b"<!doctype html" in header) or (b"<html" in header)
