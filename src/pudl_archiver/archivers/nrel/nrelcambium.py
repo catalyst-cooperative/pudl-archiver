@@ -7,7 +7,7 @@ from pudl_archiver.archivers.classes import (
     ArchiveAwaitable,
     ResourceInfo,
 )
-from pudl_archiver.archivers.nrelss import (
+from pudl_archiver.archivers.nrel.nrelss import (
     API_URL_FILE_DOWNLOAD,
     API_URL_PROJECTS_LIST,
     AbstractNrelScenarioArchiver,
