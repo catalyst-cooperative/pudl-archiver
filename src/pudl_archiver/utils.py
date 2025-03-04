@@ -8,6 +8,7 @@ from collections.abc import Awaitable, Callable
 from hashlib import md5
 from io import BytesIO
 from pathlib import Path
+from time import time
 
 import aiohttp
 from pydantic import AnyUrl, BaseModel
@@ -46,7 +47,12 @@ async def retry_async(
         args = []
     if kwargs is None:
         kwargs = {}
-    for try_count in range(1, retry_count + 1):  # noqa: RET503
+    last_failure_s = time()
+    # ten minutes (the timeout threshold) plus our max retry delay
+    max_delay_s = (10 * 60) + retry_base_s * 2**retry_count
+    try_count = 0
+    while try_count < retry_count:  # noqa: RET503
+        try_count += 1
         # try count is 1 indexed for logging clarity
         coro = async_func(*args, **kwargs)
         try:
@@ -54,6 +60,10 @@ async def retry_async(
         except retry_on as e:
             if try_count == retry_count:
                 raise e
+            current_failure_s = time()
+            if (current_failure_s - last_failure_s) > max_delay_s:
+                try_count = 1
+            last_failure_s = current_failure_s
             retry_delay_s = retry_base_s * 2 ** (try_count - 1)
             logger.info(
                 f"Error while executing {coro} (try #{try_count}, retry in {retry_delay_s}s): {type(e)} - {e}"
