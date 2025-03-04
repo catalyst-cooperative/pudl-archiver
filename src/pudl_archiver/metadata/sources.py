@@ -416,6 +416,34 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         "license_pudl": LICENSES["cc-by-4.0"],
         "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
     },
+    "nrelsiting": {
+        "title": "NREL Renewable Energy Siting Lab Data",
+        "path": "https://data.openei.org/siting_lab",
+        "description": (
+            "This repository contains all data produced by the NREL Renewable Energy Siting Lab. "
+            "The Siting Lab offers information on solar energy siting regulations and zoning ordinances, "
+            "as well as supply curve data. Documentation particular to each dataset can be found in the "
+            "relevant dataset zipfile."
+        ),
+        "working_partitions": {},
+        "keywords": sorted(
+            {
+                "nrel",
+                "siting",
+                "supply curves",
+                "pv",
+                "solar",
+                "wind",
+                "ordinances",
+                "setbacks",
+                "nexrad",
+                "moratoriums",
+            }
+        ),
+        "license_raw": LICENSES["us-govt"],
+        "license_pudl": LICENSES["cc-by-4.0"],
+        "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
+    },
     "nrelss": {
         "title": "NREL Standard Scenarios",
         "path": "https://www.nrel.gov/analysis/standard-scenarios.html",
