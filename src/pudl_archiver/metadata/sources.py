@@ -4,6 +4,8 @@ from typing import Any
 
 from pudl.metadata.constants import CONTRIBUTORS, KEYWORDS, LICENSES
 
+from pudl_archiver.metadata.nrelcambium import nrel_cambium_generator
+
 # To add a new contributor, follow the following format to add an entry to the
 # ADDL_CONTRIBUTORS dictionary below formatted like this:
 #     "name-shorthand": {
@@ -470,4 +472,4 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         "license_pudl": LICENSES["cc-by-4.0"],
         "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
     },
-}
+} | {f"nrelcambium{year}": nrel_cambium_generator(year) for year in range(2020, 2024)}

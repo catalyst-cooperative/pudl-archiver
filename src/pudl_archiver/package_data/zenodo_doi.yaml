@@ -93,6 +93,14 @@ mshamines:
 nrelatb:
   production_doi: 10.5281/zenodo.10839267
   sandbox_doi: 10.5072/zenodo.38192
+nrelcambium2020:
+  production_doi: 10.5281/zenodo.14907940
+nrelcambium2021:
+  production_doi: 10.5281/zenodo.14920246
+nrelcambium2022:
+  production_doi: 10.5281/zenodo.14920258
+nrelcambium2023:
+  production_doi: 10.5281/zenodo.14907942
 nrelefs:
   production_doi: 10.5281/zenodo.14782873
   #sandbox_doi: TODO: Still having sandbox server problems, skipping for now.
