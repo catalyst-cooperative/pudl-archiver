@@ -24,9 +24,7 @@ class ValidationTestResult(BaseModel):
     description: str
     required_for_run_success: bool = True
     success: bool
-    notes: list[str] | None = (
-        None  # Optional note to provide details like why test failed
-    )
+    notes: list[str] = []  # Optional note to provide details like why test failed
 
     # Flag to allow ignoring tests that pass to avoid cluttering the summary
     always_serialize_in_summary: bool = True
@@ -52,6 +50,7 @@ def validate_filetype(
         required_for_run_success=required_for_run_success,
         resource_name=path,
         success=_validate_file_type(path, BytesIO(path.read_bytes())),
+        notes=[path.name],
     )
 
 
@@ -65,6 +64,7 @@ def validate_file_not_empty(
         required_for_run_success=required_for_run_success,
         resource_name=path,
         success=path.stat().st_size > 0,
+        notes=[path.name],
     )
 
 

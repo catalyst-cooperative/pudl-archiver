@@ -51,7 +51,7 @@ def _format_failures(summary: dict) -> list[dict]:
             validation_test["required_for_run_success"]
         ):
             test_failures = ". ".join(
-                [validation_test["name"], ". ".join(validation_test["notes"])]
+                [validation_test["name"]] + validation_test["notes"]
             )  # Flatten list of lists
 
     if test_failures:
