@@ -39,11 +39,12 @@ class CensusPepArchiver(AbstractDatasetArchiver):
             # before 2017, the files are xls. after that its xlsx
             link_pattern = re.compile(rf"all-geocodes-v{year}.(xlsx|xls)")
             file_names = await self.get_hyperlinks(link_url, link_pattern)
+            self.logger.info(file_names)
             if len(file_names) != 1:
                 raise AssertionError(
                     f"We expected exactly one link for {year}, but we found: {file_names}"
                 )
-            file_name = file_names.pop()
+            file_name = list(file_names)[0]
         elif year == 2000:
             link_url = f"{BASE_URL}/1990-2000"
             file_name = "90s-fips.txt"
