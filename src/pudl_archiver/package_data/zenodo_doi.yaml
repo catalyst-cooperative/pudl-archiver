@@ -9,7 +9,7 @@ doeiraec:
   sandbox_doi: 10.5072/zenodo.157934
 doelead:
   production_doi: 10.5281/zenodo.14758684
-  # sandbox_doi: TODO once server 413 error resolves
+  sandbox_doi: 10.5072/zenodo.180519
 eia176:
   production_doi: 10.5281/zenodo.7682357
   sandbox_doi: 10.5072/zenodo.3158
@@ -47,7 +47,7 @@ eia_bulk_elec:
   sandbox_doi: 10.5072/zenodo.2356
 eianems:
   production_doi: 10.5281/zenodo.14767206
-  # sandbox_doi: TODO once server 413 error resolves
+  sandbox_doi: 10.5072/zenodo.180515
 eiamecs:
   production_doi: 10.5281/zenodo.14749820
   sandbox_doi: 10.5072/zenodo.158873
@@ -68,7 +68,7 @@ epamats:
   sandbox_doi: 10.5072/zenodo.162020
 epapcap:
   production_doi: 10.5281/zenodo.14757598
-  #sandbox_doi: # Update!!
+  sandbox_doi: 10.5072/zenodo.180521
 ferc1:
   production_doi: 10.5281/zenodo.4127043
   sandbox_doi: 10.5072/zenodo.3267
@@ -103,10 +103,10 @@ nrelcambium2023:
   production_doi: 10.5281/zenodo.14907942
 nrelefs:
   production_doi: 10.5281/zenodo.14782873
-  sandbox_doi: 10.5072/zenodo.165948
+  sandbox_doi: 10.5072/zenodo.180507
 nrelsiting:
   production_doi: 10.5281/zenodo.14888356
-  #sandbox_doi:
+  sandbox_doi: 10.5072/zenodo.165948
 nrelss:
   production_doi: 10.5281/zenodo.14783184
   sandbox_doi: 10.5072/zenodo.161179
