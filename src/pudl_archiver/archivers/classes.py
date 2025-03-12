@@ -89,6 +89,7 @@ async def _download_file(
         with file.open("wb") if isinstance(file, Path) else nullcontext(file) as f:
             async for chunk in response.content.iter_chunked(1024):
                 f.write(chunk)
+        return response.status
 
 
 class AbstractDatasetArchiver(ABC):
@@ -188,15 +189,19 @@ class AbstractDatasetArchiver(ABC):
 
     async def download_file(
         self, url: str, file_path: Path | io.BytesIO, post: bool = False, **kwargs
-    ):
+    ) -> int:
         """Download a file using async session manager.
 
         Args:
             url: URL to file to download.
             file_path: Local path to write file to disk or bytes object to save file in memory.
             kwargs: Key word args to pass to retry_async.
+
+        Returns: status of the HTTP response written to file_path
         """
-        await retry_async(_download_file, [self.session, url, file_path, post], kwargs)
+        return await retry_async(
+            _download_file, [self.session, url, file_path, post], kwargs
+        )
 
     async def download_and_zip_file(
         self, url: str, filename: str, zip_path: Path, **kwargs
@@ -362,7 +367,7 @@ class AbstractDatasetArchiver(ABC):
         # Check for any files only in baseline_datapackage
         missing_files = baseline_resources - new_resources
 
-        notes = None
+        notes = []
         if len(missing_files) > 0:
             notes = [
                 f"The following files would be deleted by new archive version: {missing_files}"
@@ -382,7 +387,7 @@ class AbstractDatasetArchiver(ABC):
         new_datapackage: DataPackage,
     ) -> validate.DatasetUniversalValidation:
         """Check if any one file's size has changed by |>allowed_file_rel_diff|."""
-        notes = None
+        notes = []
         if baseline_datapackage is None:
             too_changed_files = False  # No files to compare to
         else:
@@ -434,7 +439,7 @@ class AbstractDatasetArchiver(ABC):
         new_datapackage: DataPackage,
     ) -> validate.DatasetUniversalValidation:
         """Check if a dataset's overall size has changed by more than |>allowed_dataset_rel_diff|."""
-        notes = None
+        notes = []
 
         if baseline_datapackage is None:
             dataset_size_change = 0.0  # No change in size if no baseline
@@ -466,7 +471,7 @@ class AbstractDatasetArchiver(ABC):
     ) -> validate.DatasetUniversalValidation:
         """Check that the archived data partitions are continuous and unique."""
         success = True
-        note = None
+        note = []
         partition_to_test = []
         dataset_partitions = []
 

@@ -117,6 +117,8 @@ class AbstractNrelScenarioArchiver(AbstractDatasetArchiver):
                     # fields of the file entry in self.file_naming_order order, e.g.,
                     # nrelss_2016__cooling_water_restrictions__nations.csv
                     # nrelcambium_2021__mid_case_95_by_2035__all__tod__balancing_areas.zip
+                    # Double-underscore here is reused in Cambium to get fields back out,
+                    # so if that needs to change, update in Cambium as well.
                     (
                         f"{self.name} {project_year}  {'  '.join(f[x] for x in self.file_naming_order)}.{f['file_type']}"
                     )
