@@ -7,7 +7,7 @@ from pudl_archiver.archivers.classes import (
     ArchiveAwaitable,
     ResourceInfo,
 )
-from pudl_archiver.archivers.nrelss import (
+from pudl_archiver.archivers.nrel.nrelss import (
     API_URL_FILE_DOWNLOAD,
     API_URL_PROJECTS_LIST,
     AbstractNrelScenarioArchiver,
@@ -75,7 +75,6 @@ class AbstractNrelCambiumArchiver(AbstractNrelScenarioArchiver):
             report_data,
             file_ids,
         ) = await self.collect_project_info(scenario_project)
-        assert project_uuid
         for filename, url in report_data:
             yield self.get_report_resource(filename, url)
         file_ids_by_partition = defaultdict(list)
@@ -113,7 +112,7 @@ class AbstractNrelCambiumArchiver(AbstractNrelScenarioArchiver):
         have saved an xml file (containing an error message) instead of the zip file we
         expect. When that happens, we have to go fetch a new S3 link and try again.
         """
-        zip_path = self.download_directory / f"Cambium_{year}_{partition}.zip"
+        zip_path = self.download_directory / f"{self.name}_{partition}.zip"
         for i, (filename, file_id) in enumerate(partition_file_ids):
             download_path = self.download_directory / filename
 
@@ -144,7 +143,7 @@ class AbstractNrelCambiumArchiver(AbstractNrelScenarioArchiver):
                     redirect.headers["Location"],
                     download_path,
                 )
-                if status < 400:
+                if status == 200:
                     # we got a good file; break out of the loop and add it to the archive
                     break
             else:

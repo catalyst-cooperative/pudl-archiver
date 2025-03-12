@@ -89,6 +89,14 @@ class EiaCbecsArchiver(AbstractDatasetArchiver):
                             f"Skipping {file_url} because it appears to be a redirect/html page."
                         )
                         pass
+                    elif (
+                        filename == "eiacbecs-2003-consumption-e09a.pdf"
+                        and first_bytes == b""
+                    ):
+                        self.logger.warning(
+                            f"Skipping {file_url} because it is empty (as expected)"
+                        )
+                        continue
                     else:
                         self.add_to_archive(
                             zip_path=zip_path,

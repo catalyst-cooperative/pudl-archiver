@@ -1,19 +1,22 @@
 ---
-name: run-archiver-cambium
+name: run-archiver-large
 
 on:
   workflow_dispatch:
     inputs:
       datasets:
-        description: 'Comma-separated list of datasets to archive (e.g., `"nrelcambium2020","nrelcambium2023"`).'
+        description: 'Comma-separated list of datasets to archive (e.g., `"nrelcambium2021","nrelcambium2022"`).'
         default: ""
         required: true
         type: string
-      create_github_issue:
-        description: "Create a Github issue from this run?"
-        default: false
+      server:
+        description: "Which Zenodo server would you like to run on?"
+        default: "sandbox"
+        options:
+          - sandbox
+          - production
         required: true
-        type: boolean
+        type: choice
 
 jobs:
   archive-run:
@@ -23,7 +26,7 @@ jobs:
     strategy:
       matrix:
         # Note that we can't pass global env variables to the matrix, so we manually reproduce the list of datasets here.
-        dataset: ${{ fromJSON(format('[{0}]', inputs.datasets || '"nrelcambium2020","nrelcambium2021","nrelcambium2022","nrelcambium2023"' )) }}
+        dataset: ${{ fromJSON(format('[{0}]', inputs.datasets)) }}
       fail-fast: false
     runs-on: ubuntu-latest-4core
     permissions:
@@ -58,15 +61,23 @@ jobs:
           conda config --show
           printenv | sort
 
-      - name: Run archiver for ${{ matrix.dataset }}
+      - name: Initialize production archive for ${{ matrix.dataset }}
+        env:
+          EPACEMS_API_KEY: ${{ secrets.EPACEMS_API_KEY }}
+          ZENODO_TOKEN_UPLOAD: ${{ secrets.ZENODO_TOKEN_UPLOAD }}
+          ZENODO_TOKEN_PUBLISH: ${{ secrets.ZENODO_TOKEN_PUBLISH }}
+        if: ${{ inputs.server == 'production' }}
+        run: |
+          pudl_archiver --datasets ${{ matrix.dataset }} --initialize --summary-file ${{ matrix.dataset }}_run_summary.json --clobber-unchanged
+
+      - name: Initialize sandbox archive for ${{ matrix.dataset }}
         env:
           ZENODO_SANDBOX_TOKEN_UPLOAD: ${{ secrets.ZENODO_SANDBOX_TOKEN_UPLOAD }}
           ZENODO_SANDBOX_TOKEN_PUBLISH: ${{ secrets.ZENODO_SANDBOX_TOKEN_PUBLISH }}
           EPACEMS_API_KEY: ${{ secrets.EPACEMS_API_KEY }}
-          ZENODO_TOKEN_UPLOAD: ${{ secrets.ZENODO_TOKEN_UPLOAD }}
-          ZENODO_TOKEN_PUBLISH: ${{ secrets.ZENODO_TOKEN_PUBLISH }}
+        if: ${{ inputs.server == 'sandbox' }}
         run: |
-          pudl_archiver --datasets ${{ matrix.dataset }} --summary-file ${{ matrix.dataset }}_run_summary.json --clobber-unchanged
+          pudl_archiver --datasets ${{ matrix.dataset }} --initialize --sandbox --summary-file ${{ matrix.dataset }}_run_summary.json --clobber-unchanged
 
       - name: Upload run summaries
         if: always()
@@ -105,24 +116,6 @@ jobs:
           method: chat.postMessage
           token: ${{ secrets.PUDL_DEPLOY_SLACK_TOKEN }}
           payload: |
-            text: "PUDL data archive run complete."
+            text: "Created new archiver(s)."
             blocks: ${{ steps.all_summaries.outputs.SLACK_PAYLOAD }}
             channel: "C03FHB9N0PQ"
-
-  make-github-issue:
-    # If event is a scheduled run on the first of the month or a workflow run where an issue
-    # is requested, create an issue. Do not create issues for weekly Monday runs to avoid
-    # having to manually close them for now, given the goal of publishing archives monthly.
-    if: ${{ always() && ((github.event_name == 'schedule' && github.event.schedule == '21 8 1 * *') || inputs.create_github_issue == true) }}
-    runs-on: ubuntu-latest
-    needs:
-      - archive-run
-    steps:
-      - uses: actions/checkout@v4
-      - name: Create an issue
-        uses: JasonEtco/create-an-issue@v2.9.2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        with:
-          filename: .github/ISSUE_TEMPLATE/monthly-archive-update.md

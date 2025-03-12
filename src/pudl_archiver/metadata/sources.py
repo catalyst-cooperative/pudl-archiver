@@ -484,8 +484,20 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         "license_raw": LICENSES["cc-by-4.0"],
         "license_pudl": LICENSES["cc-by-4.0"],
     },
-    "nrelcambium2020": nrel_cambium_generator(2020),
-    "nrelcambium2021": nrel_cambium_generator(2021),
-    "nrelcambium2022": nrel_cambium_generator(2022),
-    "nrelcambium2023": nrel_cambium_generator(2023),
-}
+    "nrelsts": {
+        "title": "NREL STS -- Sharing the Sun Community Solar Project Data",
+        "path": "https://data.nrel.gov/submissions/244",
+        "description": (
+            "The NREL Sharing the Sun Community Solar Project Data "
+            "represents a list of community solar projects, as well as the "
+            "low-income (LI) and low- and moderate-income (LMI) provisions "
+            "for both complete and pending projects identified through various "
+            "sources. The dataset is updated multiple times per year."
+        ),
+        "working_partitions": {},
+        "keywords": sorted({"solar", "nrel", "community"}),
+        "license_raw": LICENSES["us-govt"],
+        "license_pudl": LICENSES["cc-by-4.0"],
+        "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
+    },
+} | {f"nrelcambium{year}": nrel_cambium_generator(year) for year in range(2020, 2024)}
