@@ -152,11 +152,7 @@ class EiaRECSArchiver(AbstractDatasetArchiver):
         self.logger.info(f"{log_scope}: Found {len(links_in_tab)} links")
 
         links_filtered = [
-            link
-            for link in links_in_tab
-            if not (
-                "mailto" in link["href"].lower() or "all tables" in link.text.lower()
-            )
+            link for link in links_in_tab if "mailto" not in link["href"].lower()
         ]
 
         self.logger.info(f"{log_scope}: Found {len(links_filtered)} relevant links")
