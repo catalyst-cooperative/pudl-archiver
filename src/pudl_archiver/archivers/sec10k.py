@@ -18,8 +18,14 @@ TABLE_NAME_MAP = {
 }
 
 
-def _year_quarters_from_dataframe(df: pd.DataFrame) -> dict:
-    return {"year_quarters": set(df["year_quarter"].unique())}
+def _date_partitions_from_dataframe(df: pd.DataFrame) -> dict:
+    if "year_quarter" in df.columns:
+        return {"years": df["year_quarter"].str[:4].astype("int32").unique().tolist()}
+    if "report_year" in df.columns:
+        return {"years": df["report_year"].unique().tolist()}
+    raise RuntimeError(
+        "DataFrame must have a 'year_quarter' or 'report_year' to extract date partitions."
+    )
 
 
 class Sec10kArchiver(AbstractDatasetArchiver):
@@ -40,11 +46,8 @@ class Sec10kArchiver(AbstractDatasetArchiver):
         dt = deltalake.DeltaTable(table_url, version=self.deltalake_version)
         df = dt.to_pandas()
         df.to_parquet(download_path)
-        date_parts = {}
-        if delta_name != "out_sec10k__parents_and_subsidiaries":
-            date_parts = _year_quarters_from_dataframe(df)
 
         return ResourceInfo(
             local_path=download_path,
-            partitions={"table_name": raw_name} | date_parts,
+            partitions={"table_name": raw_name} | _date_partitions_from_dataframe(df),
         )
