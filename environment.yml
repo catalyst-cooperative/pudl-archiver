@@ -4,9 +4,9 @@ channels:
   - conda-forge
 dependencies:
   # Used to set up the environment
-  - pip>=24
+  - pip>=25
   - python>=3.12,<3.13
-  - setuptools>=66
+  - setuptools>=75
   # GDAL is a transitive dependency whose binaries must match those installed by the
   # pudl-dev conda environment, so we also install it with conda here.
   # TODO: once we break the archiver repo's dependency on pudl we should remove this.
