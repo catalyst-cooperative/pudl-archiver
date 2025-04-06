@@ -37,5 +37,5 @@ class Sec10kArchiver(AbstractDatasetArchiver):
 
         return ResourceInfo(
             local_path=download_path,
-            partitions={"table_name": raw_name},
+            partitions={"table": raw_name},
         )
