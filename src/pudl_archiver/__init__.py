@@ -115,7 +115,7 @@ async def archive_datasets(
 
     if run_settings.summary_file is not None:
         run_summaries = [
-            result.dict()
+            result.model_dump()
             for _, [result, published] in results
             if not isinstance(result, BaseException)
         ]
