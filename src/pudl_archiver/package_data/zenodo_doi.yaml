@@ -116,6 +116,9 @@ nrelsts:
 phmsagas:
   production_doi: 10.5281/zenodo.7683351
   sandbox_doi: 10.5072/zenodo.45279
+sec10k:
+  production_doi: 10.5281/zenodo.15161693
+  sandbox_doi: 10.5072/zenodo.194705
 usgsuspvdb:
   production_doi: 10.5281/zenodo.14736285
   sandbox_doi: 10.5072/zenodo.157776
