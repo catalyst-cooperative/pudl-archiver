@@ -49,6 +49,7 @@ For each of the following archives, find the run status in the Github archiver r
 - [ ] nrelss
 - [ ] nrelsts
 - [ ] phmsagas
+- [ ] sec10k
 - [ ] usgsuspvdb
 - [ ] usgswtdb
 - [ ] vcerare

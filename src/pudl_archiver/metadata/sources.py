@@ -4,6 +4,8 @@ from typing import Any
 
 from pudl.metadata.constants import CONTRIBUTORS, KEYWORDS, LICENSES
 
+from pudl_archiver.metadata.nrelcambium import nrel_cambium_generator
+
 # To add a new contributor, follow the following format to add an entry to the
 # ADDL_CONTRIBUTORS dictionary below formatted like this:
 #     "name-shorthand": {
@@ -414,6 +416,34 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         "license_pudl": LICENSES["cc-by-4.0"],
         "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
     },
+    "nrelsiting": {
+        "title": "NREL Renewable Energy Siting Lab Data",
+        "path": "https://data.openei.org/siting_lab",
+        "description": (
+            "This repository contains all data produced by the NREL Renewable Energy Siting Lab. "
+            "The Siting Lab offers information on solar energy siting regulations and zoning ordinances, "
+            "as well as supply curve data. Documentation particular to each dataset can be found in the "
+            "relevant dataset zipfile."
+        ),
+        "working_partitions": {},
+        "keywords": sorted(
+            {
+                "nrel",
+                "siting",
+                "supply curves",
+                "pv",
+                "solar",
+                "wind",
+                "ordinances",
+                "setbacks",
+                "nexrad",
+                "moratoriums",
+            }
+        ),
+        "license_raw": LICENSES["us-govt"],
+        "license_pudl": LICENSES["cc-by-4.0"],
+        "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
+    },
     "nrelss": {
         "title": "NREL Standard Scenarios",
         "path": "https://www.nrel.gov/analysis/standard-scenarios.html",
@@ -470,4 +500,4 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         "license_pudl": LICENSES["cc-by-4.0"],
         "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
     },
-}
+} | {f"nrelcambium{year}": nrel_cambium_generator(year) for year in range(2020, 2024)}

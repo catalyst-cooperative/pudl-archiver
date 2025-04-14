@@ -31,12 +31,19 @@ def all_archivers():
 
     def all_subclasses(cls):
         """If a subclass has subclasses, include them in the list. Remove intermediaries."""
-        subclasses = set(cls.__subclasses__())
-        for c in subclasses.copy():
+        subclasses = set()
+        queue = set(cls.__subclasses__())
+        rejected = set()
+        while queue:
+            c = queue.pop()
+            if c in rejected:
+                continue
             subsubclasses = set(c.__subclasses__())
             if subsubclasses:
-                subclasses.remove(c)
-                subclasses = subclasses.union(subsubclasses)
+                rejected.add(c)
+                queue = queue.union(subsubclasses)
+            else:
+                subclasses.add(c)
         return subclasses
 
     return all_subclasses(AbstractDatasetArchiver)
@@ -108,7 +115,7 @@ async def archive_datasets(
 
     if run_settings.summary_file is not None:
         run_summaries = [
-            result.dict()
+            result.model_dump()
             for _, [result, published] in results
             if not isinstance(result, BaseException)
         ]

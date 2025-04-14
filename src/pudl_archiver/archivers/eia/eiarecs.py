@@ -6,6 +6,8 @@ from io import BytesIO
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
 
+import bs4
+
 from pudl_archiver.archivers.classes import (
     AbstractDatasetArchiver,
     ArchiveAwaitable,
@@ -150,11 +152,7 @@ class EiaRECSArchiver(AbstractDatasetArchiver):
         self.logger.info(f"{log_scope}: Found {len(links_in_tab)} links")
 
         links_filtered = [
-            link
-            for link in links_in_tab
-            if not (
-                "mailto" in link["href"].lower() or "all tables" in link.text.lower()
-            )
+            link for link in links_in_tab if "mailto" not in link["href"].lower()
         ]
 
         self.logger.info(f"{log_scope}: Found {len(links_filtered)} relevant links")
@@ -200,9 +198,15 @@ class EiaRECSArchiver(AbstractDatasetArchiver):
 
         soup = await self.get_soup(tab_info.url)
         tab_content = soup.select_one("div.tab-contentbox")
+        assert tab_content, (
+            "Expected div.tab-contentbox in {tab_info.url} but found none"
+        )
         self.logger.info(f"{log_scope}: Got {len(tab_content)} bytes of tab content")
-        html = soup.new_tag("html")
-        body = soup.new_tag("body")
+        doc = bs4.BeautifulSoup()
+        doc.append(bs4.Doctype("html"))
+        html = doc.new_tag("html")
+        doc.append(html)
+        body = doc.new_tag("body")
         html.append(body)
         body.append(tab_content)
         # TODO 2025-02-03: consider using some sort of html-to-pdf converter here.
@@ -212,7 +216,7 @@ class EiaRECSArchiver(AbstractDatasetArchiver):
         self.add_to_archive(
             zip_path=zip_path,
             filename=filename,
-            blob=BytesIO(html.prettify().encode("utf-8")),
+            blob=BytesIO(doc.prettify().encode("utf-8")),
         )
         self.logger.info(f"{log_scope}: Added html to {zip_path} under {filename}")
         return links + [filename]
