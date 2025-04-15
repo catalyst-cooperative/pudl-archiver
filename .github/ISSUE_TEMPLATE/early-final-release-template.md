@@ -2,7 +2,7 @@
 name: Early and final release archive updates
 about: Template for publishing early/final release EIA archives.
 title: Publish {{ date | date('MMMM Do YYYY') }} archives
-labels: automation, zenodo
+labels: archive-update, zenodo
 assignees: e-belfer
 
 ---
