@@ -2,7 +2,7 @@
 name: Monthly archive update
 about: Template for publishing monthly archives.
 title: Publish {{ date | date('MMMM Do YYYY') }} archives
-labels: automation, zenodo
+labels: archive-update, zenodo
 assignees: e-belfer
 
 ---
@@ -44,7 +44,6 @@ For each of the following archives, find the run status in the Github archiver r
 - [ ] gridpathratoolkit
 - [ ] mshamines
 - [ ] nrelatb
-- [ ] nrelcambium
 - [ ] nrelefs
 - [ ] nrelss
 - [ ] nrelsts

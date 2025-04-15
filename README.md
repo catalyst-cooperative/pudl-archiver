@@ -363,9 +363,12 @@ Once your PR has been approved, it's time for your archive to make its debut!
 - Rerun the archiver without the `--sandbox` flag to create a draft production archive
 - Review the archive using the guidelines in Step 5.
 - Once published, submit the archive to the Catalyst Cooperative community.
-- Add the concept DOIs for the published sandbox and production to
+- Add the **concept DOIs** for the published sandbox and production to
 `/src/pudl_archiver/package_data/zenodo_doi.yaml`. These DOIs tell the archiver when a
 dataset already exists, making it possible to update existing archives with new data.
+This is the DOI listed after "Cite all versions? You can cite all versions by using the DOI"
+on the Zenodo webpage under the list of versions published. For a new archive,
+this should also be the record's DOI minus one.
 - If you implemented `self.valid_year()`, add your dataset manually to the list of datasets
 that support this feature in `src/pudl_archiver/cli.py` under the `--only-years` flag
 description.
