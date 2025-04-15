@@ -367,8 +367,8 @@ Once your PR has been approved, it's time for your archive to make its debut!
 `/src/pudl_archiver/package_data/zenodo_doi.yaml`. These DOIs tell the archiver when a
 dataset already exists, making it possible to update existing archives with new data.
 This is the DOI listed after "Cite all versions? You can cite all versions by using the DOI"
-on the Zenodo webpage under the list of versions published. For a new archive,
-this should also be the record's DOI minus one.
+on the Zenodo webpage under the list of versions published. For instance, our [archive of EIA Form 860
+](https://doi.org/10.5281/zenodo.4127026) has the concept DOI 10.5281/zenodo.4127026.
 - If you implemented `self.valid_year()`, add your dataset manually to the list of datasets
 that support this feature in `src/pudl_archiver/cli.py` under the `--only-years` flag
 description.
