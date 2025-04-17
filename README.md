@@ -190,7 +190,7 @@ the partitions you defined in step 1 (e.g., one file per year). The content of t
 method will vary depending on the format and accessibility of the dataset that you are
 archiving, but typically tends to follow one of the following patterns:
 
-- Yields an awaitable downloading a single known link (see `archivers.eia.eia_bulk_elec.py`)
+- Yields an awaitable downloading a single known link (see `archivers.census.censusdp1tract.py`)
 - Gets all of the links on a page, identifies relevant links using a regex pattern, and
 yields awaitables downloading each link on the page (see `archivers.eia.eia860.py` or
 `archivers.eia.eiamecs.py`). This relies on the frequently used `get_hyperlinks` method.

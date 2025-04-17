@@ -32,7 +32,7 @@ For each of the following archives, find the run status in the Github archiver r
 - [ ] eianems
 - [ ] eiarecs
 - [ ] eiawater
-- [ ] eia_bulk_elec
+- [ ] eia_bulk
 - [ ] epacamd_eia
 - [ ] epacems
 - [ ] epaegrid

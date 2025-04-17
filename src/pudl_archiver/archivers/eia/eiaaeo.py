@@ -18,8 +18,8 @@ class EiaAeoArchiver(AbstractDatasetArchiver):
 
     async def get_resources(self) -> ArchiveAwaitable:
         """Download EIA AEO resources."""
-        for year in range(2014, 2024):
-            if self.valid_year(year):
+        for year in range(2014, 2026):
+            if self.valid_year(year) and year != 2024:  # Skip missing year
                 yield self.get_year_resource(year)
 
     async def get_year_resource(self, year: int) -> tuple[Path, dict]:
