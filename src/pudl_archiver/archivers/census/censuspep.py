@@ -8,6 +8,7 @@ from pudl_archiver.archivers.classes import (
     ArchiveAwaitable,
     ResourceInfo,
 )
+from pudl_archiver.frictionless import ZipLayout
 
 BASE_URL = "https://www2.census.gov/programs-surveys/popest/geographies"
 
@@ -43,11 +44,15 @@ class CensusPepArchiver(AbstractDatasetArchiver):
                 raise AssertionError(
                     f"We expected exactly one link for {year}, but we found: {file_names}"
                 )
-            file_name = file_names.pop()
+            file_name = list(file_names)[0]
         elif year == 2000:
             link_url = f"{BASE_URL}/1990-2000"
             file_name = "90s-fips.txt"
         url = f"{link_url}/{file_name}"
         download_path = self.download_directory / f"{self.name}-{year}.zip"
         await self.download_and_zip_file(url, file_name, download_path)
-        return ResourceInfo(local_path=download_path, partitions={"year": year})
+        return ResourceInfo(
+            local_path=download_path,
+            partitions={"year": year},
+            layout=ZipLayout(file_paths={file_name}),
+        )
