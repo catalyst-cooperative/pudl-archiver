@@ -8,6 +8,7 @@ from pudl_archiver.archivers.classes import (
     ArchiveAwaitable,
     ResourceInfo,
 )
+from pudl_archiver.frictionless import ZipLayout
 
 BASE_URL = "https://www2.census.gov/programs-surveys/popest/geographies"
 
@@ -39,7 +40,6 @@ class CensusPepArchiver(AbstractDatasetArchiver):
             # before 2017, the files are xls. after that its xlsx
             link_pattern = re.compile(rf"all-geocodes-v{year}.(xlsx|xls)")
             file_names = await self.get_hyperlinks(link_url, link_pattern)
-            self.logger.info(file_names)
             if len(file_names) != 1:
                 raise AssertionError(
                     f"We expected exactly one link for {year}, but we found: {file_names}"
@@ -51,4 +51,8 @@ class CensusPepArchiver(AbstractDatasetArchiver):
         url = f"{link_url}/{file_name}"
         download_path = self.download_directory / f"{self.name}-{year}.zip"
         await self.download_and_zip_file(url, file_name, download_path)
-        return ResourceInfo(local_path=download_path, partitions={"year": year})
+        return ResourceInfo(
+            local_path=download_path,
+            partitions={"year": year},
+            layout=ZipLayout(file_paths={file_name}),
+        )
