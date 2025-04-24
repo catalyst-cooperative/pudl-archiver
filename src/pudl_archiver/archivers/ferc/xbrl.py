@@ -360,7 +360,16 @@ async def archive_year(
         # Save snapshot of RSS feed
         with archive.open("rssfeed", "w") as f:
             logger.info("Writing rss feed metadata to archive.")
-            f.write(json.dumps(sorted(metadata), default=str, indent=2).encode("utf-8"))
+            f.write(
+                json.dumps(
+                    {
+                        filing_name: metadata[filing_name]
+                        for filing_name in sorted(metadata)
+                    },
+                    default=str,
+                    indent=2,
+                ).encode("utf-8")
+            )
 
     logger.info(f"Finished scraping ferc{form_number}-{year}.")
 

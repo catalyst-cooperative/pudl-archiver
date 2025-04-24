@@ -207,6 +207,13 @@ async def test_archive_year_metadata(tmpdir):
         archive.open("rssfeed") as f,
     ):
         assert (
-            json.dumps(sorted(expected_metadata), default=str, indent=2).encode()
+            json.dumps(
+                {
+                    filing_name: expected_metadata[filing_name]
+                    for filing_name in sorted(expected_metadata)
+                },
+                default=str,
+                indent=2,
+            ).encode()
             == f.read()
         )
