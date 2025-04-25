@@ -31,7 +31,12 @@ class Sec10kArchiver(AbstractDatasetArchiver):
         """Read configured version of table from deltalake on GCS and save parquet."""
         table_url = f"gs://model-outputs.catalyst.coop/sec10k/{delta_name}"
         download_path = self.download_directory / f"{raw_name}.parquet"
-        dt = deltalake.DeltaTable(table_url)
+        dt = deltalake.DeltaTable(
+            table_url,
+            storage_options={
+                "service_account_key": "pudl-sources@catalyst-cooperative-pudl.iam.gserviceaccount.com"
+            },
+        )
         df = dt.to_pandas()
         df.to_parquet(download_path)
 
