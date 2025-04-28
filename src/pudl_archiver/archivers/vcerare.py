@@ -22,11 +22,14 @@ class VCERAREArchiver(AbstractDatasetArchiver):
 
     name = "vcerare"
     bucket_name = "sources.catalyst.coop"
+    version = "v2"  # Version of the files to archive
 
     async def get_resources(self) -> ArchiveAwaitable:
         """Download VCE RARE resources."""
         bucket = storage.Client().get_bucket(self.bucket_name)
-        blobs = bucket.list_blobs(prefix=f"{self.name}/")  # Get all blobs in folder
+        blobs = bucket.list_blobs(
+            prefix=f"{self.name}/{self.version}"
+        )  # Get all blobs in folder
 
         for blob in blobs:
             # Skip the folder, which appears in this list
@@ -40,7 +43,7 @@ class VCERAREArchiver(AbstractDatasetArchiver):
         of zipped annual files that are named vcerare_{year}.zip.
         """
         # Remove folder name (identical to dataset name) and set download path
-        file_name = blob.name.replace(f"{self.name}/", "")
+        file_name = blob.name.replace(f"{self.name}/{self.version}/", "")
         path_to_file = self.download_directory / file_name
         # Download blob to local file
         self.logger.info(f"Downloading {blob.name} to {path_to_file}")
