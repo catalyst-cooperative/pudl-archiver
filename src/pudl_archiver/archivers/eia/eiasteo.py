@@ -95,9 +95,9 @@ class EiaSteoArchiver(AbstractDatasetArchiver):
 
         # Saving files by month will result in exceeding Zenodo's 100 file limit
         # so we zip all files by year.
-        steo_years = (
+        steo_years = {
             date[0:4] for date in STEO_ARCHIVE_DATES
-        )  # Get years from quarters
+        }  # Get years from quarters
         for year in steo_years:
             if self.valid_year(year):
                 yield self.get_year_resources(all_links=all_links, year=year)
@@ -122,10 +122,10 @@ class EiaSteoArchiver(AbstractDatasetArchiver):
             # Write a folder in the zipfile for each year_month
             links = all_links[all_links == year_month]
             self.logger.info(f"Downloading {len(links)} files from {year_month}.")
-            for link in links:
+            for link in links.keys():  # noqa: SIM118
                 file_url = urljoin(BASE_URL, link)
                 # Get filename from URL
-                filename = Path.name(urlparse(file_url).path)
+                filename = Path(urlparse(file_url).path).name
                 download_path = self.download_directory / filename
                 folder_path = f"{year_month}/{filename}"  # Put file in a folder for each year-month
                 await self.download_file(file_url, download_path)
