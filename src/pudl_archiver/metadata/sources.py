@@ -2,6 +2,7 @@
 
 from typing import Any
 
+import pandas as pd
 from pudl.metadata.constants import CONTRIBUTORS, KEYWORDS, LICENSES
 
 from pudl_archiver.metadata.nrelcambium import nrel_cambium_generator
@@ -148,6 +149,51 @@ NON_PUDL_SOURCES: dict[str, Any] = {
                 "energy",
                 "consumption",
             }
+        ),
+        "license_raw": LICENSES["us-govt"],
+        "license_pudl": LICENSES["cc-by-4.0"],
+        "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
+    },
+    "eiasteo": {
+        "title": "EIA STEO -- Short-Term Energy Outlook",
+        "path": "https://www.eia.gov/outlooks/steo/",
+        "description": (
+            "The Short Term Energy Outlook is a monthly report of the U.S. Energy "
+            "Information Administration with forecasts and history of energy production, "
+            "consumption, and trade for electricity, petroleum, natural gas, coal, "
+            "nuclear, and renewable sources."
+        ),
+        "working_partitions": {
+            "years": [
+                str(y)
+                for y in pd.period_range(
+                    start="1983-01", end=pd.to_datetime("today"), freq="Y"
+                )
+            ]
+        },
+        "keywords": sorted(
+            set(
+                KEYWORDS["eia"]
+                + [
+                    "short term energy outlook",
+                    "steo",
+                    "forecast",
+                    "projection",
+                    "united states",
+                    "production",
+                    "consumption",
+                    "trade",
+                    "electricity",
+                    "petroleum",
+                    "natural gas",
+                    "coal",
+                    "nuclear",
+                    "renewable",
+                    "hydroelectric",
+                    "wind",
+                    "solar",
+                ]
+            )
         ),
         "license_raw": LICENSES["us-govt"],
         "license_pudl": LICENSES["cc-by-4.0"],
