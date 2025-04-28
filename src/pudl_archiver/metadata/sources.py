@@ -164,8 +164,8 @@ NON_PUDL_SOURCES: dict[str, Any] = {
             "nuclear, and renewable sources."
         ),
         "working_partitions": {
-            "years": [
-                str(y)
+            "year": [
+                int(str(y))
                 for y in pd.period_range(
                     start="1983-01", end=pd.to_datetime("today"), freq="Y"
                 )
