@@ -51,7 +51,7 @@ class EiaSteoArchiver(AbstractDatasetArchiver):
     """EIA STEO archiver."""
 
     name = "eiasteo"
-    concurrency_limit = 5  # Be polite to the server.
+    concurrency_limit = 4  # Be polite to the server.
 
     async def get_resources(self) -> ArchiveAwaitable:
         """Download EIA STEO resources."""
@@ -92,7 +92,7 @@ class EiaSteoArchiver(AbstractDatasetArchiver):
         # Some of these are located at "/archives/" and others at
         # "/outlooks/archive/uncertainty/pdf/" so we make sure to grab anything
         # with an archive or archives folder in the URL that has the expected
-        # date format.
+        # date format abc00.
         year_month_regex = re.compile(
             r"^(?:[\w\/]*archives?[\w\/]*)\/([a-zA-Z]{3}\d{2})(?:\w*).(?:[a-zA-z]*)$"
         )
