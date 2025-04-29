@@ -165,7 +165,7 @@ class EiaSteoArchiver(AbstractDatasetArchiver):
         for year_month in sorted(year_month_partitions):
             # Write a folder in the zipfile for each year_month
             links = all_links[all_links == year_month]
-            self.logger.info(f"Downloading {len(links)} files from {year_month}.")
+            self.logger.debug(f"Downloading {len(links)} files from {year_month}.")
             for link in links.keys():  # noqa: SIM118
                 file_url = urljoin(BASE_URL, link)
                 # Get filename from URL
@@ -173,15 +173,26 @@ class EiaSteoArchiver(AbstractDatasetArchiver):
                 download_path = self.download_directory / filename
                 folder_path = f"{year_month}/{filename}"  # Put file in a folder for each year-month
                 await self.download_file(file_url, download_path)
-                self.add_to_archive(
-                    zip_path=zip_path,
-                    filename=folder_path,
-                    blob=download_path.open("rb"),
-                )
-                data_paths_in_archive.add(folder_path)
-                # Don't want to leave multiple files on disk, so delete
-                # immediately after they're safely stored in the ZIP
-                download_path.unlink()
+                # there is one file whose link redirects to a "file not found" webpage.
+                # so we are going to check to see if the doctype of the bytes of the file
+                # is html. if so we move on, otherwise add to the archive
+                with Path.open(download_path, "rb") as f:
+                    first_bytes = f.read(20)
+                    if b"html" in first_bytes.lower().strip():
+                        self.logger.warning(
+                            f"Skipping {file_url} because it appears to be a redirect/html page."
+                        )
+                        pass
+                    else:
+                        self.add_to_archive(
+                            zip_path=zip_path,
+                            filename=folder_path,
+                            blob=download_path.open("rb"),
+                        )
+                        data_paths_in_archive.add(folder_path)
+                        # Don't want to leave multiple files on disk, so delete
+                        # immediately after they're safely stored in the ZIP
+                        download_path.unlink()
 
         return ResourceInfo(
             local_path=zip_path,
