@@ -139,6 +139,7 @@ class AbstractDatasetArchiver(ABC):
     async def get_soup(self, url: str) -> bs4.BeautifulSoup:
         """Get a BeautifulSoup instance for a URL using our existing session."""
         response = await retry_async(self.session.get, args=[url])
+        response.raise_for_status()  # Raise for status codes not caught in retry.
         # TODO 2025-02-03: for some reason, lxml fails to grab the closing div
         # tag for tab content - so we use html.parser, which is slower.
         return bs4.BeautifulSoup(await response.text(), "html.parser")
