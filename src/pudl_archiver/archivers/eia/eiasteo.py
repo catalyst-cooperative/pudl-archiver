@@ -51,6 +51,7 @@ class EiaSteoArchiver(AbstractDatasetArchiver):
     """EIA STEO archiver."""
 
     name = "eiasteo"
+    concurrency_limit = 5  # Be polite to the server.
 
     async def get_resources(self) -> ArchiveAwaitable:
         """Download EIA STEO resources."""
@@ -65,7 +66,7 @@ class EiaSteoArchiver(AbstractDatasetArchiver):
             link
             for link in archival_soup.find_all("a", href=True)
             if (".pdf" in link["href"] or ".xls" in link["href"])
-            and ("archives" in link["href"])
+            and ("archive" in link["href"])
         ]
         # Create a dictionary mapping URLs to the corresponding year_month partition.
         # We use the href to get the file name rather than the description of the link
@@ -88,8 +89,12 @@ class EiaSteoArchiver(AbstractDatasetArchiver):
         }
         # All the other links can be parsed to map the filename to a year-month (e.g.,
         # sep09_filename.xls and sep09.pdf into 2009-09 partitions).
+        # Some of these are located at "/archives/" and others at
+        # "/outlooks/archive/uncertainty/pdf/" so we make sure to grab anything
+        # with an archive or archives folder in the URL that has the expected
+        # date format.
         year_month_regex = re.compile(
-            r"^archives\/([a-zA-Z]{3}\d{2})(?:\w*).(?:[a-zA-z]*)$"
+            r"^(?:[\w\/]*archives?[\w\/]*)\/([a-zA-Z]{3}\d{2})(?:\w*).(?:[a-zA-z]*)$"
         )
         monthly_archival_links = {
             link["href"]: pd.to_datetime(
