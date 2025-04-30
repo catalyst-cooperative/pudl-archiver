@@ -172,7 +172,13 @@ multiline-quotes = "double"
 
 [tool.pixi.workspace]
 channels = ["conda-forge"]
-platforms = ["linux-64"]
+platforms = [
+    "linux-64",
+    "osx-64",
+    "osx-arm64",
+    # The google-cloud-sdk conda package doesn't support Windows
+    # "win-64",
+]
 
 [tool.pixi.pypi-dependencies]
 pudl_archiver = { path = ".", editable = true }
@@ -188,3 +194,4 @@ pre-commit-install = "pre-commit install --install-hooks -t=pre-commit -t=pre-pu
 
 [tool.pixi.dependencies]
 gdal = ">=3.10.3,<4"
+psycopg2-binary = ">=2.9.9,<3"
