@@ -53,7 +53,7 @@ class EiaMECSArchiver(AbstractDatasetArchiver):
     async def get_resources(self) -> ArchiveAwaitable:
         """Download EIA-MECS resources."""
         years_url = "https://www.eia.gov/consumption/data.php#mfg"
-        year_link_pattern = re.compile(r"(manufacturing/data/)(\d{4})/$")
+        year_link_pattern = re.compile(r"(manufacturing\/data\/)(\d{4})\/$")
 
         links = await self.get_hyperlinks(years_url, year_link_pattern)
         links.update({"/consumption/manufacturing/data/1991/": "1991 data"})
