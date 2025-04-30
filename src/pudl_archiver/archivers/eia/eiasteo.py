@@ -182,7 +182,6 @@ class EiaSteoArchiver(AbstractDatasetArchiver):
                         self.logger.warning(
                             f"Skipping {file_url} because it appears to be a redirect/html page."
                         )
-                        pass
                     else:
                         self.add_to_archive(
                             zip_path=zip_path,
