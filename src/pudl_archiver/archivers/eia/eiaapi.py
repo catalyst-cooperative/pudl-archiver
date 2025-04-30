@@ -10,10 +10,10 @@ from pudl_archiver.archivers.classes import (
 )
 
 
-class EiaBulkFileArchiver(AbstractDatasetArchiver):
+class EiaApiFileArchiver(AbstractDatasetArchiver):
     """EIA bulk file archiver."""
 
-    name = "eia_bulk"
+    name = "eiaapi"
 
     async def get_resources(self) -> ArchiveAwaitable:
         """Download all EIA bulk API resources."""
@@ -30,7 +30,7 @@ class EiaBulkFileArchiver(AbstractDatasetArchiver):
 
     async def get_bulk_resource(self, dataset_name=str, url=str) -> tuple[Path, dict]:
         """Download bulk zip file."""
-        download_path = self.download_directory / f"eia-bulk-{dataset_name}.zip"
+        download_path = self.download_directory / f"eiaapi-{dataset_name}.zip"
         await self.download_zipfile(url, download_path)
 
         return ResourceInfo(
