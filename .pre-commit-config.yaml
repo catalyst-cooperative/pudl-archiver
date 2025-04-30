@@ -1,3 +1,4 @@
+exclude: (^.pixi/|.snap)
 repos:
   # Quick content checks based on grepping for python specific patterns:
   - repo: https://github.com/pre-commit/pygrep-hooks

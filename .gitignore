@@ -13,3 +13,7 @@ coverage.xml
 .hypothesis/*
 .vscode/*
 node_modules/*
+
+# pixi environments
+.pixi
+*.egg-info
