@@ -43,6 +43,7 @@ First, follow the [installation instructions](https://pixi.sh/latest/#installati
 Next, run:
 
 ```bash
+pixi run pre-commit install
 pixi shell
 ```
 
