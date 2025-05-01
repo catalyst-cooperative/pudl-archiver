@@ -34,9 +34,6 @@ jobs:
         uses: prefix-dev/setup-pixi@v0.8.8
         with:
           pixi-version: v0.8.8
-          cache: true
-          auth-host: prefix.dev
-          auth-token: ${{ secrets.PREFIX_DEV_TOKEN }}
         env:
           RUNNER_DEBUG: true
 
