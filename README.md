@@ -36,16 +36,23 @@ uploaded to Zenodo.
 
 ## Installation
 
-We recommend using `mamba` to create and manage your environment.
+We use `pixi` to create and manage the `pudl-archiver` development environment.
 
-Run:
+First, follow the [installation instructions](https://pixi.sh/latest/#installation) for your operating system.
+
+Next, run:
 
 ```bash
-mamba env create -f environment.yml
-mamba activate pudl-cataloger
+pixi shell
 ```
 
-## Setting up environment
+This will setup and activate the environment.
+
+> [!TIP]
+> Instead of `pixi shell`, you can also use `pixi run` to run the archiver code in
+> the correct Python environment (e.g., `pixi run pudl_archiver --dataset eiawater`).
+
+## Setting up the development environment
 
 API tokens are required to interact with Zenodo. There is one set of tokens for accessing
 the sandbox server, and one for the production server. The archiver tool expects these tokens
@@ -385,6 +392,24 @@ that we track validation failures and publish the latest release with our automa
 monthly archive run.
 
 ## Development
+
+### Updating the development environment
+
+To add a package to your pixi environment, simply run:
+
+```bash
+pixi add {package}
+pixi add --pypi {package} # To specify the package should be installed using pypi
+```
+
+Then, update your pixi.lock file using:
+```bash
+pixi update
+```
+
+See the [Pixi documentation](https://pixi.sh/v0.24.2/) for more information.
+
+### Using postman
 
 We only have one development specific tool, which is the Zenodo Postman collection in `/devtools`.
 This tool is used for testing and prototyping Zenodo API calls, it is not needed to use the archiver
