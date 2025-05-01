@@ -86,6 +86,7 @@ log_date_format = "%Y-%m-%d %H:%M:%S"
 log_cli = true
 log_cli_level = "INFO"
 doctest_optionflags = ["NORMALIZE_WHITESPACE", "IGNORE_EXCEPTION_DETAIL", "ELLIPSIS"]
+asyncio_mode = "auto"
 
 [tool.ruff]
 # Assume Python 3.12
@@ -191,6 +192,15 @@ tests = { features = ["tests"], solve-group = "default" }
 
 [tool.pixi.tasks]
 pre-commit-install = "pre-commit install --install-hooks -t=pre-commit -t=pre-push"
+ruff = "ruff check ./"
+pre-commit = "pre-commit run --all-files --show-diff-on-failure check-merge-conflict; pre-commit run --all-files --show-diff-on-failure check-yaml; pre-commit run --all-files --show-diff-on-failure check-case-conflict; pre-commit run --all-files --show-diff-on-failure debug-statements; pre-commit run --all-files --show-diff-on-failure name-tests-test"
+
+unit = "pytest --cov-append --cov=src/pudl_archiver --cov-report=xml --doctest-modules src/pudl_archiver tests/unit"
+integration = "pytest --cov-append --cov=src/pudl_archiver --cov-report=xml --doctest-modules src/pudl_archiver tests/integration"
+coverage = "coverage report --sort=cover"
+
+lint = [{task="ruff"}, {task="pre-commit"}]
+ci = [{task="lint"}, {task="unit"}, {task="integration"}, {task="coverage"}]
 
 [tool.pixi.dependencies]
 gdal = ">=3.10.3,<4"

@@ -4,7 +4,6 @@ import tempfile
 from pathlib import Path
 
 import pytest
-import pytest_asyncio
 from pudl.metadata.classes import DataSource
 from pudl.metadata.constants import LICENSES
 
@@ -13,7 +12,7 @@ from pudl_archiver.orchestrator import orchestrate_run
 from pudl_archiver.utils import RunSettings
 
 
-@pytest_asyncio.fixture()
+@pytest.fixture()
 def test_files():
     """Create files for testing in temporary directory."""
     file_data = {
