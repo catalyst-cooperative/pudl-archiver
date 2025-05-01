@@ -32,17 +32,14 @@ jobs:
 
       - name: Set up pixi
         uses: prefix-dev/setup-pixi@v0.8.8
-        with:
-          pixi-version: v0.8.8
-        env:
-          RUNNER_DEBUG: true
 
       - name: Run PyTest
         env:
           ZENODO_SANDBOX_TOKEN_PUBLISH: ${{ secrets.ZENODO_SANDBOX_TOKEN_PUBLISH }}
           ZENODO_SANDBOX_TOKEN_UPLOAD: ${{ secrets.ZENODO_SANDBOX_TOKEN_UPLOAD }}
           EPACEMS_API_KEY: ${{ secrets.EPACEMS_API_KEY }}
-        run: pixi run tox
+        run: |
+          pixi run tox
 
       - name: Upload test coverage report to CodeCov
         uses: codecov/codecov-action@v5
