@@ -6,9 +6,17 @@ on:
     inputs:
       datasets:
         description: 'Comma-separated list of datasets to archive (e.g., "ferc2","ferc6").'
-        default: '"censuspep","doeiraec","doelead","eia176","eia191","eia757a","eia860","eia860m","eia861","eia923","eia930","eiaaeo","eiacbecs","eiamecs","eianems","eiarecs","eiawater","eia_bulk_elec","epacamd_eia","epacems","epaegrid","epamats","epapcap","ferc1","ferc2","ferc6","ferc60","ferc714","gridpathratoolkit","mshamines","nrelatb","nrelefs","nrelsiting","nrelss","nrelsts","phmsagas","sec10k","usgsuspvdb","usgsuswtdb","vcerare"'
+        default: '"censuspep","doeiraec","doelead","eia176","eia191","eia757a","eia860","eia860m","eia861","eia923","eia930","eiaaeo","eiacbecs","eiamecs","eianems","eiarecs","eiasteo","eiawater","eia_bulk_elec","epacamd_eia","epacems","epaegrid","epamats","epapcap","ferc1","ferc2","ferc6","ferc60","ferc714","gridpathratoolkit","mshamines","nrelatb","nrelefs","nrelsiting","nrelss","nrelsts","phmsagas","sec10k","usgsuspvdb","usgsuswtdb","vcerare"'
         required: true
         type: string
+      server:
+        description: "Which Zenodo server would you like to run on?"
+        default: "sandbox"
+        options:
+          - sandbox
+          - production
+        required: true
+        type: choice
       create_github_issue:
         description: "Create a Github issue from this run?"
         default: false
@@ -26,7 +34,7 @@ jobs:
     strategy:
       matrix:
         # Note that we can't pass global env variables to the matrix, so we manually reproduce the list of datasets here.
-        dataset: ${{ fromJSON(format('[{0}]', inputs.datasets || '"doeiraec","doelead","eia176","eia191","eia757a","eia860","eia860m","eia861","eia923","eia930","eiaaeo","eiacbecs","eiamecs","eianems","eiarecs","eiawater","eia_bulk_elec","epacamd_eia","epacems","epaegrid","epamats","epapcap","ferc1","ferc2","ferc6","ferc60","ferc714","gridpathratoolkit","mshamines","nrelatb","nrelefs","nrelsiting","nrelss","nrelsts","phmsagas","sec10k","usgsuspvdb","usgsuswtdb","vcerare"' )) }}
+        dataset: ${{ fromJSON(format('[{0}]', inputs.datasets || '"censuspep","doeiraec","doelead","eia176","eia191","eia757a","eia860","eia860m","eia861","eia923","eia930","eiaaeo","eiacbecs","eiamecs","eianems","eiarecs","eiasteo","eiawater","eia_bulk_elec","epacamd_eia","epacems","epaegrid","epamats","epapcap","ferc1","ferc2","ferc6","ferc60","ferc714","gridpathratoolkit","mshamines","nrelatb","nrelefs","nrelsiting","nrelss","nrelsts","phmsagas","sec10k","usgsuspvdb","usgsuswtdb","vcerare"' )) }}
       fail-fast: false
     runs-on: ubuntu-latest
     permissions:
@@ -51,15 +59,27 @@ jobs:
           pixi info
           pixi list
 
-      - name: Run archiver for ${{ matrix.dataset }}
+      - name: Run production archiver for ${{ matrix.dataset }}
         env:
           ZENODO_SANDBOX_TOKEN_UPLOAD: ${{ secrets.ZENODO_SANDBOX_TOKEN_UPLOAD }}
           ZENODO_SANDBOX_TOKEN_PUBLISH: ${{ secrets.ZENODO_SANDBOX_TOKEN_PUBLISH }}
           EPACEMS_API_KEY: ${{ secrets.EPACEMS_API_KEY }}
           ZENODO_TOKEN_UPLOAD: ${{ secrets.ZENODO_TOKEN_UPLOAD }}
           ZENODO_TOKEN_PUBLISH: ${{ secrets.ZENODO_TOKEN_PUBLISH }}
+        if: ${{inputs.server == 'production' || github.event_name == 'schedule'}}
         run: |
           pixi run pudl_archiver --datasets ${{ matrix.dataset }} --summary-file ${{ matrix.dataset }}_run_summary.json --clobber-unchanged
+
+      - name: Run sandbox archiver for ${{ matrix.dataset }}
+        env:
+          ZENODO_SANDBOX_TOKEN_UPLOAD: ${{ secrets.ZENODO_SANDBOX_TOKEN_UPLOAD }}
+          ZENODO_SANDBOX_TOKEN_PUBLISH: ${{ secrets.ZENODO_SANDBOX_TOKEN_PUBLISH }}
+          EPACEMS_API_KEY: ${{ secrets.EPACEMS_API_KEY }}
+          ZENODO_TOKEN_UPLOAD: ${{ secrets.ZENODO_TOKEN_UPLOAD }}
+          ZENODO_TOKEN_PUBLISH: ${{ secrets.ZENODO_TOKEN_PUBLISH }}
+        if: ${{ inputs.server == 'sandbox' }}
+        run: |
+          pudl_archiver --datasets ${{ matrix.dataset }} --sandbox --summary-file ${{ matrix.dataset }}_run_summary.json --clobber-unchanged
 
       - name: Upload run summaries
         if: always()

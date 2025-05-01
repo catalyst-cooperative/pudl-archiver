@@ -60,7 +60,7 @@ class DoeLeadArchiver(AbstractDatasetArchiver):
         # e.g.: https://data.openei.org/files/6219/DC-2022-LEAD-data.zip
         #       https://data.openei.org/files/6219/Data%20Dictionary%202022.xlsx
         #       https://data.openei.org/files/6219/LEAD%20Tool%20States%20List%202022.xlsx
-        data_link_pattern = re.compile(r"([^/]+(\d{4})(?:-LEAD-data.zip|.xlsx))")
+        data_link_pattern = re.compile(r"([^\/]+(\d{4})(?:-LEAD-data.zip|.xlsx))")
         """Regex for matching the data files in a release on the OEDI page. Captures the year, and supports both .zip and .xlsx file names."""
 
         for year, doi in YEARS_DOIS.items():

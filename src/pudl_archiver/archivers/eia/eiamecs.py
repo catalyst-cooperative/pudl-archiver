@@ -14,7 +14,9 @@ HEADERS = {"User-Agent": "Mozilla/5.0 Catalyst/2025 Cooperative/2025"}
 BASE_URL = "https://www.eia.gov/consumption/manufacturing/data"
 
 TABLE_LINK_PATTERNS: dict[str | int, str] = {
-    "recent": r"(rse|)table(\d{1,2}|\d{1.1})_(\d{1,2})(.xlsx|.xls)",
+    # This includes a pattern for the standard recent data: e.g., Table1_1.xlsx or RSETable1_1.xls
+    # as well as a pattern for the preliminary tables: e.g., Table%201_5%20Preliminary_2022.xlsx
+    "recent": r"(rse|)table(?: |)(\d{1,2}|\d{1.1})_(\d{1,2})(?: preliminary_\d{4}|)(.xlsx|.xls)",
     2002: r"(rse|)table(\d{1,2}).(\d{1,2})_\d{1,2}(.xlsx|.xls)",
     # These earlier years the pattern is functional but not actually very informative.
     # so we will just use the original name by making the whole pattern a match
@@ -51,8 +53,32 @@ class EiaMECSArchiver(AbstractDatasetArchiver):
     async def get_resources(self) -> ArchiveAwaitable:
         """Download EIA-MECS resources."""
         years_url = "https://www.eia.gov/consumption/data.php#mfg"
-        year_link_pattern = re.compile(r"(manufacturing/data/)(\d{4})/$")
-        for link in await self.get_hyperlinks(years_url, year_link_pattern):
+        year_link_pattern = re.compile(r"(manufacturing\/data\/)(\d{4})\/$")
+
+        links = await self.get_hyperlinks(years_url, year_link_pattern)
+        links.update({"/consumption/manufacturing/data/1991/": "1991 data"})
+        expected_years = {
+            1991,
+            1994,
+            1998,
+            2002,
+            2006,
+            2010,
+            2014,
+            2018,
+            2022,
+        }  # Years of MECS data we expect
+        # If any of the years in the links differs from those we expect, raise an assertion error.
+        # A new year of data seems to correspond with burying the links of older datasets on the EIA MECS page,
+        # so we want to investigate this manually when it happens.
+        if not all(
+            any(str(year) in link for link in links.values()) for year in expected_years
+        ):
+            raise AssertionError(
+                f"Expected years {sorted(expected_years)}, found years {sorted(links.values())}"
+            )
+
+        for link in links:
             match = year_link_pattern.search(link)
             year = match.groups()[1]
             if self.valid_year(year):
@@ -75,9 +101,13 @@ class EiaMECSArchiver(AbstractDatasetArchiver):
             table_link_pattern = re.compile(
                 TABLE_LINK_PATTERNS[int(year)], re.IGNORECASE
             )
-
         # Loop through all download links for tables
-        for table_link in await self.get_hyperlinks(year_url, table_link_pattern):
+        links = await self.get_hyperlinks(year_url, table_link_pattern)
+        if not links:
+            raise AssertionError(
+                f"Expected to identify matching links in {year_url} but found none. Investigate this page!"
+            )
+        for table_link in links:
             # strip bc there is at least one file which has a space at the end of
             # the href link
             table_link = f"{year_url}/{table_link}".strip()
@@ -99,10 +129,12 @@ class EiaMECSArchiver(AbstractDatasetArchiver):
                 major_num = match.group(2)
                 minor_num = match.group(3)
                 extension = match.group(4)
-                # Download filename
-                filename = (
-                    f"eia-mecs-{year}-table-{major_num}-{minor_num}{rse}{extension}"
+                # If the file is preliminary, note this in the constructed file name
+                preliminary = (
+                    "-preliminary" if "preliminary" in match.string.lower() else ""
                 )
+                # Download filename
+                filename = f"eia-mecs-{year}-table-{major_num}-{minor_num}{rse}{preliminary}{extension}"
             download_path = self.download_directory / filename
             await self.download_file(table_link, download_path, headers=HEADERS)
             # there are a small-ish handful of files who's links redirect to the main
@@ -130,6 +162,6 @@ class EiaMECSArchiver(AbstractDatasetArchiver):
         resource_info = ResourceInfo(
             local_path=zip_path,
             partitions={"year": year},
-            layout=ZipLayout(file_paths=data_paths_in_archive),
+            layout=ZipLayout(file_paths=sorted(data_paths_in_archive)),
         )
         return resource_info
