@@ -32,6 +32,8 @@ jobs:
 
       - name: Set up pixi
         uses: prefix-dev/setup-pixi@v0.8.8
+        env:
+          RUNNER_DEBUG: true
         with:
           pixi-version: v0.8.8
           cache: true
