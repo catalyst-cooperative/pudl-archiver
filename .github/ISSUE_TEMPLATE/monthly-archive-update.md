@@ -27,13 +27,13 @@ For each of the following archives, find the run status in the Github archiver r
 - [ ] eia923
 - [ ] eia930
 - [ ] eiaaeo
+- [ ] eiaapi
 - [ ] eiacbecs
 - [ ] eiamecs
 - [ ] eianems
 - [ ] eiarecs
 - [ ] eiasteo
 - [ ] eiawater
-- [ ] eia_bulk_elec
 - [ ] epacamd_eia
 - [ ] epacems
 - [ ] epaegrid
