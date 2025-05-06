@@ -191,7 +191,7 @@ docs = { features = ["docs"], solve-group = "default" }
 tests = { features = ["tests"], solve-group = "default" }
 
 [tool.pixi.tasks]
-pre-commit-install = "pre-commit install --install-hooks -t=pre-commit -t=pre-push"
+pre-commit-install = "pre-commit install"
 ruff = "ruff check ./"
 pre-commit = "pre-commit run --all-files --show-diff-on-failure check-merge-conflict; pre-commit run --all-files --show-diff-on-failure check-yaml; pre-commit run --all-files --show-diff-on-failure check-case-conflict; pre-commit run --all-files --show-diff-on-failure debug-statements; pre-commit run --all-files --show-diff-on-failure name-tests-test"
 

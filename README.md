@@ -43,11 +43,11 @@ First, follow the [installation instructions](https://pixi.sh/latest/#installati
 Next, run:
 
 ```bash
-pixi run pre-commit install
+pixi run pre-commit-install
 pixi shell
 ```
 
-This will setup and activate the environment.
+This will setup and activate the environment, and install the pre-commit hooks.
 
 > [!TIP]
 > Instead of `pixi shell`, you can also use `pixi run` to run the archiver code in
