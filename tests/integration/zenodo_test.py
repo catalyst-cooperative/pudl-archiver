@@ -8,7 +8,6 @@ from pathlib import Path
 
 import aiohttp
 import pytest
-import pytest_asyncio
 import requests
 from dotenv import load_dotenv
 from pudl.metadata.classes import DataSource
@@ -59,14 +58,14 @@ def publish_key(dotenv):
     return os.environ["ZENODO_SANDBOX_TOKEN_PUBLISH"]
 
 
-@pytest_asyncio.fixture()
+@pytest.fixture()
 async def session():
     """Create async http session."""
     async with aiohttp.ClientSession(raise_for_status=False) as session:
         yield session
 
 
-@pytest_asyncio.fixture()
+@pytest.fixture()
 def test_files():
     """Create files for testing in temporary directory."""
     file_data = {

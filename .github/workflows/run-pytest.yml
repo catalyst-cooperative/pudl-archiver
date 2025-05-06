@@ -1,5 +1,5 @@
 ---
-name: tox-pytest
+name: run-pytest
 
 on:
   push:
@@ -30,24 +30,8 @@ jobs:
           workload_identity_provider: "projects/345950277072/locations/global/workloadIdentityPools/gh-actions-pool/providers/gh-actions-provider"
           service_account: "pudl-sources@catalyst-cooperative-pudl.iam.gserviceaccount.com"
 
-      - name: Install Conda environment using mamba
-        uses: mamba-org/setup-micromamba@v2
-        with:
-          environment-file: environment.yml
-          cache-environment: true
-          cache-environment-key: environment-${{ hashFiles('pyproject.toml') }}
-          condarc: |
-            channels:
-            - conda-forge
-            channel_priority: strict
-
-      - name: Log conda environnment information
-        run: |
-          conda info
-          conda list
-          conda config --show-sources
-          conda config --show
-          printenv | sort
+      - name: Set up pixi
+        uses: prefix-dev/setup-pixi@v0.8.8
 
       - name: Run PyTest
         env:
@@ -55,7 +39,7 @@ jobs:
           ZENODO_SANDBOX_TOKEN_UPLOAD: ${{ secrets.ZENODO_SANDBOX_TOKEN_UPLOAD }}
           EPACEMS_API_KEY: ${{ secrets.EPACEMS_API_KEY }}
         run: |
-          tox
+          pixi run -e tests ci
 
       - name: Upload test coverage report to CodeCov
         uses: codecov/codecov-action@v5

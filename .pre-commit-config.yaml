@@ -1,3 +1,4 @@
+exclude: (^.pixi/|.snap)
 repos:
   # Quick content checks based on grepping for python specific patterns:
   - repo: https://github.com/pre-commit/pygrep-hooks
@@ -26,7 +27,7 @@ repos:
   # Formatters: hooks that re-write Python and RST files
   #####################################################################################
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.11.7
+    rev: v0.11.8
     hooks:
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix]
