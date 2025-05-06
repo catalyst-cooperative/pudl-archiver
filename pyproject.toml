@@ -15,6 +15,7 @@ dependencies = [
     "frictionless>=5,<6",
     "pydantic>=2.7,<3",
     "python-dotenv~=1.1.0",
+    "pyyaml>=6.0,<7",
     "semantic_version>=2.8,<3",
     "tqdm>=4.64",
 ]
@@ -52,6 +53,7 @@ tests = [
     "coverage>=7,<7.9", # Lets us track what code is being tested
     "doc8>=1.1,<1.2", # Ensures clean documentation formatting
     "pre-commit>=4,<4.3", # Allow us to run pre-commit hooks in testing
+    "cfgv>=3.3.1,<4",
     "pydocstyle>=6,<6.4", # Style guidelines for Python documentation
     "pytest>=8,<8.4", # Our testing framework
     "pytest-asyncio>=0.20,<0.27", # Test async functions
@@ -84,6 +86,7 @@ log_date_format = "%Y-%m-%d %H:%M:%S"
 log_cli = true
 log_cli_level = "INFO"
 doctest_optionflags = ["NORMALIZE_WHITESPACE", "IGNORE_EXCEPTION_DETAIL", "ELLIPSIS"]
+asyncio_mode = "auto"
 
 [tool.ruff]
 # Assume Python 3.12
@@ -167,3 +170,38 @@ max-complexity = 10
 docstring-quotes = "double"
 inline-quotes = "double"
 multiline-quotes = "double"
+
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = [
+    "linux-64",
+    "osx-64",
+    "osx-arm64",
+    # The google-cloud-sdk conda package doesn't support Windows
+    # "win-64",
+]
+
+[tool.pixi.pypi-dependencies]
+pudl_archiver = { path = ".", editable = true }
+
+[tool.pixi.environments]
+default = { solve-group = "default" }
+dev = { features = ["dev"], solve-group = "default" }
+docs = { features = ["docs"], solve-group = "default" }
+tests = { features = ["tests"], solve-group = "default" }
+
+[tool.pixi.tasks]
+pre-commit-install = "pre-commit install"
+ruff = "ruff check ./"
+pre-commit = "pre-commit run --all-files --show-diff-on-failure check-merge-conflict; pre-commit run --all-files --show-diff-on-failure check-yaml; pre-commit run --all-files --show-diff-on-failure check-case-conflict; pre-commit run --all-files --show-diff-on-failure debug-statements; pre-commit run --all-files --show-diff-on-failure name-tests-test"
+
+unit = "pytest --cov-append --cov=src/pudl_archiver --cov-report=xml --doctest-modules src/pudl_archiver tests/unit"
+integration = "pytest --cov-append --cov=src/pudl_archiver --cov-report=xml --doctest-modules src/pudl_archiver tests/integration"
+coverage = "coverage report --sort=cover"
+
+lint = [{task="ruff"}, {task="pre-commit"}]
+ci = [{task="lint"}, {task="unit"}, {task="integration"}, {task="coverage"}]
+
+[tool.pixi.dependencies]
+gdal = ">=3.10.3,<4"
+psycopg2-binary = ">=2.9.9,<3"

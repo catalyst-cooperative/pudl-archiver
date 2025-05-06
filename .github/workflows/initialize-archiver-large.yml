@@ -43,23 +43,13 @@ jobs:
           workload_identity_provider: "projects/345950277072/locations/global/workloadIdentityPools/gh-actions-pool/providers/gh-actions-provider"
           service_account: "pudl-sources@catalyst-cooperative-pudl.iam.gserviceaccount.com"
 
-      - name: Install Conda environment using mamba
-        uses: mamba-org/setup-micromamba@v2
-        with:
-          environment-file: environment.yml
-          cache-environment: true
-          condarc: |
-            channels:
-            - conda-forge
-            channel_priority: strict
+      - name: Set up pixi
+        uses: prefix-dev/setup-pixi@v0.8.8
 
-      - name: Log the conda environment
+      - name: Log the pixi environment
         run: |
-          conda info
-          conda list
-          conda config --show-sources
-          conda config --show
-          printenv | sort
+          pixi info
+          pixi list
 
       - name: Initialize production archive for ${{ matrix.dataset }}
         env:
@@ -68,7 +58,7 @@ jobs:
           ZENODO_TOKEN_PUBLISH: ${{ secrets.ZENODO_TOKEN_PUBLISH }}
         if: ${{ inputs.server == 'production' }}
         run: |
-          pudl_archiver --datasets ${{ matrix.dataset }} --initialize --summary-file ${{ matrix.dataset }}_run_summary.json --clobber-unchanged
+          pixi run pudl_archiver --datasets ${{ matrix.dataset }} --initialize --summary-file ${{ matrix.dataset }}_run_summary.json --clobber-unchanged
 
       - name: Initialize sandbox archive for ${{ matrix.dataset }}
         env:
@@ -77,7 +67,7 @@ jobs:
           EPACEMS_API_KEY: ${{ secrets.EPACEMS_API_KEY }}
         if: ${{ inputs.server == 'sandbox' }}
         run: |
-          pudl_archiver --datasets ${{ matrix.dataset }} --initialize --sandbox --summary-file ${{ matrix.dataset }}_run_summary.json --clobber-unchanged
+          pixi run pudl_archiver --datasets ${{ matrix.dataset }} --initialize --sandbox --summary-file ${{ matrix.dataset }}_run_summary.json --clobber-unchanged
 
       - name: Upload run summaries
         if: always()
