@@ -203,5 +203,5 @@ lint = [{task="ruff"}, {task="pre-commit"}]
 ci = [{task="lint"}, {task="unit"}, {task="integration"}, {task="coverage"}]
 
 [tool.pixi.dependencies]
-gdal = ">=3.10.3,<4"
+gdal = "==3.10.3"
 psycopg2-binary = ">=2.9.9,<3"
