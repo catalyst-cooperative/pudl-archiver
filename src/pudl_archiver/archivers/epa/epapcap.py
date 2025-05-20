@@ -29,6 +29,7 @@ class EpaPcapArchiver(AbstractDatasetArchiver):
     """EPA PCAP archiver."""
 
     name = "epapcap"
+    concurrency_limit = 2
 
     async def get_resources(self) -> ArchiveAwaitable:
         """Download EPA PCAP resources."""
