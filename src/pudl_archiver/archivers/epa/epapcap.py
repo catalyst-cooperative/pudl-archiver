@@ -20,6 +20,10 @@ DATA_TABLE_URLS = [
     "https://www.epa.gov/inflation-reduction-act/lidac-benefits-searchable-table",
 ]
 
+USER_AGENT = [
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:77.0) Gecko/20100101 Firefox/77.0",
+]
+
 
 class EpaPcapArchiver(AbstractDatasetArchiver):
     """EPA PCAP archiver."""
@@ -72,7 +76,9 @@ class EpaPcapArchiver(AbstractDatasetArchiver):
         if filename in data_paths_in_archive:
             return
         download_path = self.download_directory / filename
-        await self.download_file(link, download_path)
+        await self.download_file(
+            link, download_path, headers={"User-Agent": USER_AGENT}
+        )
         self.add_to_archive(
             zip_path=zip_path,
             filename=filename,
