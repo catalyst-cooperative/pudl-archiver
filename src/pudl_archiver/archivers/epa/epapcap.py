@@ -20,9 +20,9 @@ DATA_TABLE_URLS = [
     "https://www.epa.gov/inflation-reduction-act/lidac-benefits-searchable-table",
 ]
 
-USER_AGENT = [
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:77.0) Gecko/20100101 Firefox/77.0",
-]
+USER_AGENT = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:77.0) Gecko/20100101 Firefox/77.0"
+)
 
 
 class EpaPcapArchiver(AbstractDatasetArchiver):
