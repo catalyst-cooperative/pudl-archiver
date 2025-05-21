@@ -37,10 +37,6 @@ YEARS_DOIS = {
     2018: "https://doi.org/10.25984/1784729",
 }
 
-# verified working 2025-01-22 via
-# $ wget "https://www.energy.gov/scep/low-income-energy-affordability-data-lead-tool" -O foo.html -U "Mozilla/5.0 Catalyst/2025 Cooperative/2025"
-HEADERS = {"User-Agent": "Mozilla/5.0 Catalyst/2025 Cooperative/2025"}
-
 
 class DoeLeadArchiver(AbstractDatasetArchiver):
     """DOE LEAD archiver."""
@@ -130,7 +126,11 @@ class DoeLeadArchiver(AbstractDatasetArchiver):
         """
         self.logger.info(f"Downloading {link}")
         download_path = self.download_directory / filename
-        await self.download_file(url=link, file_path=download_path, headers=HEADERS)
+
+        user_agent = self.get_user_agent()
+        await self.download_file(
+            url=link, file_path=download_path, headers={"User-Agent": user_agent}
+        )
 
         return ResourceInfo(
             local_path=download_path,
