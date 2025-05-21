@@ -6,7 +6,6 @@ portal, and then manually download subsets of data from all item codes for all y
 """
 
 import asyncio
-import random
 import zipfile
 
 import pandas as pd
@@ -18,12 +17,6 @@ from pudl_archiver.archivers.classes import (
 from pudl_archiver.archivers.eia.naturalgas import EiaNGQVArchiver
 from pudl_archiver.frictionless import ZipLayout
 from pudl_archiver.utils import add_to_archive_stable_hash
-
-USER_AGENTS = [
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:77.0) Gecko/20100101 Firefox/77.0",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:107.0) Gecko/20100101 Firefox/107.0",
-    "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Mobile Safari/537.36",
-]
 
 
 class Eia176Archiver(EiaNGQVArchiver):
@@ -74,7 +67,6 @@ class Eia176Archiver(EiaNGQVArchiver):
         dataframes = []
 
         for i in range(0, len(items_list), 20):
-            rand = random.randint(0, 2)  # noqa: S311
             self.logger.debug(f"Getting items {i}-{i + 20} of data for {year}")
             # Chunk items list into 20 to avoid error message
             download_url = self.data_url + f"{year}/{year}/ICA/Name/"
@@ -83,8 +75,9 @@ class Eia176Archiver(EiaNGQVArchiver):
                 download_url += f"{item}/"
             download_url = download_url[:-1]  # Drop trailing slash
 
+            user_agent = self.get_user_agent()
             json_response = await self.get_json(
-                download_url, headers={"User-Agent": USER_AGENTS[rand]}
+                download_url, headers={"User-Agent": user_agent}
             )  # Generate a random user agent
             # Get data into dataframes
             try:

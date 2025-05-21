@@ -59,12 +59,23 @@ class EpaPcapArchiver(AbstractDatasetArchiver):
     async def download_helper(self, link, zip_path, data_paths_in_archive):
         """Download file and add to archive."""
         filename = Path(link).name
+        # Some filenames have parameters in them,
+        # e.g., Maricopa-Pinal-County-Region-Priority-Climate-Action-Plan.pdf?ver=8G2HlJqwTD7IwdHfyGUlYA%3d%3d
+        # so we also drop anything in the file name after .pdf or .xlsx
+        if not filename.endswith((".pdf", ".xlsx")):
+            # Get index of the last string in the match
+            last_char = max([m.end() for m in re.finditer(r".xlsx|.pdf", filename)])
+            filename = filename[0:last_char]  # Drop anything after this character
+
         # Do nothing if we're going to end up duplicating a file
         # Many of the PDFs are shared between the multiple searchable tables
         if filename in data_paths_in_archive:
             return
         download_path = self.download_directory / filename
-        await self.download_file(link, download_path)
+        user_agent = self.get_user_agent()
+        await self.download_file(
+            link, download_path, headers={"User-Agent": user_agent}
+        )
         self.add_to_archive(
             zip_path=zip_path,
             filename=filename,

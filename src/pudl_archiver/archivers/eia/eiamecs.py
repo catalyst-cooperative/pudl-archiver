@@ -10,7 +10,6 @@ from pudl_archiver.archivers.classes import (
 )
 from pudl_archiver.frictionless import ZipLayout
 
-HEADERS = {"User-Agent": "Mozilla/5.0 Catalyst/2025 Cooperative/2025"}
 BASE_URL = "https://www.eia.gov/consumption/manufacturing/data"
 
 TABLE_LINK_PATTERNS: dict[str | int, str] = {
@@ -136,7 +135,11 @@ class EiaMECSArchiver(AbstractDatasetArchiver):
                 # Download filename
                 filename = f"eia-mecs-{year}-table-{major_num}-{minor_num}{rse}{preliminary}{extension}"
             download_path = self.download_directory / filename
-            await self.download_file(table_link, download_path, headers=HEADERS)
+
+            user_agent = self.get_user_agent()
+            await self.download_file(
+                table_link, download_path, headers={"User-Agent": user_agent}
+            )
             # there are a small-ish handful of files who's links redirect to the main
             # mecs page. presumably its a broken link. we want to skip those files,
             # so we are going to check to see if the doctype of the bytes of the file
