@@ -12574,7 +12574,7 @@ packages:
 - pypi: ./
   name: pudl-archiver
   version: 0.2.0
-  sha256: 8f1bd85003c1a93bc472b2fdddf4e47247c46f2e832af2165388d26c2911bd00
+  sha256: d51b4f4e0b30856e5955660fbb09697f8c61e6e062924c740f62351041e5cdbb
   requires_dist:
   - arelle-release>=2.29,<2.38
   - beautifulsoup4>=4.12.3,<5
