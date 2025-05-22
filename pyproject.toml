@@ -18,6 +18,7 @@ dependencies = [
     "pyyaml>=6.0,<7",
     "semantic_version>=2.8,<3",
     "tqdm>=4.64",
+    "urllib3<2.4", # Pinned to
 ]
 
 classifiers = [

@@ -3,9 +3,12 @@
 import asyncio
 import json
 import logging
+import ssl
+import sys
 from pathlib import Path
 
 import aiohttp
+import certifi
 
 import pudl_archiver.orchestrator  # noqa: F401
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver
@@ -73,7 +76,14 @@ async def archive_datasets(
     trace_config.on_response_chunk_received.append(on_response_chunk_received)
     trace_config.on_request_end.append(on_request_end)
 
-    connector = aiohttp.TCPConnector(limit_per_host=20, force_close=True)
+    ctx = ssl.create_default_context(cafile=certifi.where())
+    if sys.version_info >= (3, 13):
+        # Added in version 3.4
+        ctx.verify_flags = ctx.verify_flags & ~ssl.VERIFY_X509_STRICT
+        # Added in version 3.10.
+        ctx.verify_flags = ctx.verify_flags & ~ssl.VERIFY_X509_PARTIAL_CHAIN
+
+    connector = aiohttp.TCPConnector(limit_per_host=20, force_close=True, ssl=ctx)
     async with aiohttp.ClientSession(
         trace_configs=[trace_config],
         connector=connector,

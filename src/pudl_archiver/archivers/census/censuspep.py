@@ -10,7 +10,7 @@ from pudl_archiver.archivers.classes import (
 )
 from pudl_archiver.frictionless import ZipLayout
 
-BASE_URL = "https://www2.census.gov/programs-surveys/popest/geographies"
+BASE_URL = "https://www2.census.gov/programs-surveys/popest/geographies/"
 
 
 class CensusPepArchiver(AbstractDatasetArchiver):
@@ -23,6 +23,7 @@ class CensusPepArchiver(AbstractDatasetArchiver):
         # the BASE_URL page has a bunch of links with YEAR/ at the end
         link_pattern = re.compile(r"(\d{4})/$")
         for link in await self.get_hyperlinks(BASE_URL, link_pattern):
+            self.logger.info("Got links")
             matches = link_pattern.search(link)
             if not matches:
                 continue
@@ -48,6 +49,7 @@ class CensusPepArchiver(AbstractDatasetArchiver):
         elif year == 2000:
             link_url = f"{BASE_URL}/1990-2000"
             file_name = "90s-fips.txt"
+        self.logger.info("Url")
         url = f"{link_url}/{file_name}"
         download_path = self.download_directory / f"{self.name}-{year}.zip"
         await self.download_and_zip_file(url, file_name, download_path)
