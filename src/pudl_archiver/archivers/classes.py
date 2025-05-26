@@ -46,6 +46,8 @@ USER_AGENTS: list[str] = [
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
     "Mozilla/5.0 (X11; Linux i686; rv:124.0) Gecko/20100101 Firefox/124.0",
 ]
+"""User agents compiled from https://www.useragents.me/ in May 2025. Will need to be
+updated periodically."""
 
 ArchiveAwaitable = typing.AsyncGenerator[
     typing.Awaitable[ResourceInfo | list[ResourceInfo]], None
@@ -366,7 +368,13 @@ class AbstractDatasetArchiver(ABC):
         return hyperlinks
 
     def get_user_agent(self):
-        """Get a random user agent for use making requests."""
+        """Get a random user agent from USER_AGENTS for use making requests.
+
+        User agents represent the entity making the request. We typically make the
+        request using the default aiohttp user-agent, but this can sometimes be
+        blocked by the server. In this case, we use rotating user agents to successfully
+        complete the request.
+        """
         rand = randbelow(len(USER_AGENTS))
         return USER_AGENTS[rand]
 
