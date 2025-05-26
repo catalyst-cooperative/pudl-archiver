@@ -413,7 +413,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/52/a7/d2782e4e3f77c8450f727ba74a8f12756d5ba823d81b941f1b04da9d033a/sphinxcontrib_serializinghtml-2.0.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/53/5d/2da96b1d6af0803b342fdcbb959ba6b32c0684f4af92ad83b6a6f3690357/splink-4.0.7-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/3c/35/f74add3978c20de6323fb11cb5162702670cc7a9420033befb43d8d5b7a4/sqlalchemy-2.0.41-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
-      - pypi: https://files.pythonhosted.org/packages/1c/13/9f3088fc1f58b44f8561b97c6141e515b4efd5815ba2e1a2b98a18c7b104/sqlglot-26.19.0-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/81/99/8e057f88b23289d9ef5dfdda12abcca01767c42cd079b71094a3bfaf1d81/sqlglot-26.20.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2f/f5/c65840718e78ad23bd1b9927f3feb3aa5ca889881cc3279127828340a4a7/sqlglotrs-0.4.2-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/a9/5c/bfd6bd0bf979426d405cc6e71eceb8701b148b16c21d2dc3c261efc61c7b/sqlparse-0.5.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/f1/7b/ce1eafaf1a76852e2ec9b22edecf1daa58175c090266e9f6c64afcd81d91/stack_data-0.6.3-py3-none-any.whl
@@ -857,7 +857,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/52/a7/d2782e4e3f77c8450f727ba74a8f12756d5ba823d81b941f1b04da9d033a/sphinxcontrib_serializinghtml-2.0.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/53/5d/2da96b1d6af0803b342fdcbb959ba6b32c0684f4af92ad83b6a6f3690357/splink-4.0.7-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/3e/2a/f1f4e068b371154740dd10fb81afb5240d5af4aa0087b88d8b308b5429c2/sqlalchemy-2.0.41-cp312-cp312-macosx_10_13_x86_64.whl
-      - pypi: https://files.pythonhosted.org/packages/1c/13/9f3088fc1f58b44f8561b97c6141e515b4efd5815ba2e1a2b98a18c7b104/sqlglot-26.19.0-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/81/99/8e057f88b23289d9ef5dfdda12abcca01767c42cd079b71094a3bfaf1d81/sqlglot-26.20.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/a8/ac/8db50dfce09cedd0bd449bea323b83ca595e2a15c8d9e7ad6dbe8cb3af86/sqlglotrs-0.4.2-cp312-cp312-macosx_10_12_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/a9/5c/bfd6bd0bf979426d405cc6e71eceb8701b148b16c21d2dc3c261efc61c7b/sqlparse-0.5.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/f1/7b/ce1eafaf1a76852e2ec9b22edecf1daa58175c090266e9f6c64afcd81d91/stack_data-0.6.3-py3-none-any.whl
@@ -1301,7 +1301,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/52/a7/d2782e4e3f77c8450f727ba74a8f12756d5ba823d81b941f1b04da9d033a/sphinxcontrib_serializinghtml-2.0.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/53/5d/2da96b1d6af0803b342fdcbb959ba6b32c0684f4af92ad83b6a6f3690357/splink-4.0.7-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9b/e8/c664a7e73d36fbfc4730f8cf2bf930444ea87270f2825efbe17bf808b998/sqlalchemy-2.0.41-cp312-cp312-macosx_11_0_arm64.whl
-      - pypi: https://files.pythonhosted.org/packages/1c/13/9f3088fc1f58b44f8561b97c6141e515b4efd5815ba2e1a2b98a18c7b104/sqlglot-26.19.0-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/81/99/8e057f88b23289d9ef5dfdda12abcca01767c42cd079b71094a3bfaf1d81/sqlglot-26.20.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/97/af/eac25faa6c20e54d72b6a29c95dcfae7a06b71ed050d24d7344f2802ca0a/sqlglotrs-0.4.2-cp312-cp312-macosx_11_0_arm64.whl
       - pypi: https://files.pythonhosted.org/packages/a9/5c/bfd6bd0bf979426d405cc6e71eceb8701b148b16c21d2dc3c261efc61c7b/sqlparse-0.5.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/f1/7b/ce1eafaf1a76852e2ec9b22edecf1daa58175c090266e9f6c64afcd81d91/stack_data-0.6.3-py3-none-any.whl
@@ -1767,7 +1767,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/52/a7/d2782e4e3f77c8450f727ba74a8f12756d5ba823d81b941f1b04da9d033a/sphinxcontrib_serializinghtml-2.0.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/53/5d/2da96b1d6af0803b342fdcbb959ba6b32c0684f4af92ad83b6a6f3690357/splink-4.0.7-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/3c/35/f74add3978c20de6323fb11cb5162702670cc7a9420033befb43d8d5b7a4/sqlalchemy-2.0.41-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
-      - pypi: https://files.pythonhosted.org/packages/1c/13/9f3088fc1f58b44f8561b97c6141e515b4efd5815ba2e1a2b98a18c7b104/sqlglot-26.19.0-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/81/99/8e057f88b23289d9ef5dfdda12abcca01767c42cd079b71094a3bfaf1d81/sqlglot-26.20.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2f/f5/c65840718e78ad23bd1b9927f3feb3aa5ca889881cc3279127828340a4a7/sqlglotrs-0.4.2-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/a9/5c/bfd6bd0bf979426d405cc6e71eceb8701b148b16c21d2dc3c261efc61c7b/sqlparse-0.5.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/f1/7b/ce1eafaf1a76852e2ec9b22edecf1daa58175c090266e9f6c64afcd81d91/stack_data-0.6.3-py3-none-any.whl
@@ -2216,7 +2216,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/52/a7/d2782e4e3f77c8450f727ba74a8f12756d5ba823d81b941f1b04da9d033a/sphinxcontrib_serializinghtml-2.0.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/53/5d/2da96b1d6af0803b342fdcbb959ba6b32c0684f4af92ad83b6a6f3690357/splink-4.0.7-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/3e/2a/f1f4e068b371154740dd10fb81afb5240d5af4aa0087b88d8b308b5429c2/sqlalchemy-2.0.41-cp312-cp312-macosx_10_13_x86_64.whl
-      - pypi: https://files.pythonhosted.org/packages/1c/13/9f3088fc1f58b44f8561b97c6141e515b4efd5815ba2e1a2b98a18c7b104/sqlglot-26.19.0-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/81/99/8e057f88b23289d9ef5dfdda12abcca01767c42cd079b71094a3bfaf1d81/sqlglot-26.20.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/a8/ac/8db50dfce09cedd0bd449bea323b83ca595e2a15c8d9e7ad6dbe8cb3af86/sqlglotrs-0.4.2-cp312-cp312-macosx_10_12_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/a9/5c/bfd6bd0bf979426d405cc6e71eceb8701b148b16c21d2dc3c261efc61c7b/sqlparse-0.5.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/f1/7b/ce1eafaf1a76852e2ec9b22edecf1daa58175c090266e9f6c64afcd81d91/stack_data-0.6.3-py3-none-any.whl
@@ -2665,7 +2665,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/52/a7/d2782e4e3f77c8450f727ba74a8f12756d5ba823d81b941f1b04da9d033a/sphinxcontrib_serializinghtml-2.0.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/53/5d/2da96b1d6af0803b342fdcbb959ba6b32c0684f4af92ad83b6a6f3690357/splink-4.0.7-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9b/e8/c664a7e73d36fbfc4730f8cf2bf930444ea87270f2825efbe17bf808b998/sqlalchemy-2.0.41-cp312-cp312-macosx_11_0_arm64.whl
-      - pypi: https://files.pythonhosted.org/packages/1c/13/9f3088fc1f58b44f8561b97c6141e515b4efd5815ba2e1a2b98a18c7b104/sqlglot-26.19.0-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/81/99/8e057f88b23289d9ef5dfdda12abcca01767c42cd079b71094a3bfaf1d81/sqlglot-26.20.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/97/af/eac25faa6c20e54d72b6a29c95dcfae7a06b71ed050d24d7344f2802ca0a/sqlglotrs-0.4.2-cp312-cp312-macosx_11_0_arm64.whl
       - pypi: https://files.pythonhosted.org/packages/a9/5c/bfd6bd0bf979426d405cc6e71eceb8701b148b16c21d2dc3c261efc61c7b/sqlparse-0.5.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/f1/7b/ce1eafaf1a76852e2ec9b22edecf1daa58175c090266e9f6c64afcd81d91/stack_data-0.6.3-py3-none-any.whl
@@ -3130,7 +3130,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/52/a7/d2782e4e3f77c8450f727ba74a8f12756d5ba823d81b941f1b04da9d033a/sphinxcontrib_serializinghtml-2.0.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/53/5d/2da96b1d6af0803b342fdcbb959ba6b32c0684f4af92ad83b6a6f3690357/splink-4.0.7-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/3c/35/f74add3978c20de6323fb11cb5162702670cc7a9420033befb43d8d5b7a4/sqlalchemy-2.0.41-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
-      - pypi: https://files.pythonhosted.org/packages/1c/13/9f3088fc1f58b44f8561b97c6141e515b4efd5815ba2e1a2b98a18c7b104/sqlglot-26.19.0-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/81/99/8e057f88b23289d9ef5dfdda12abcca01767c42cd079b71094a3bfaf1d81/sqlglot-26.20.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2f/f5/c65840718e78ad23bd1b9927f3feb3aa5ca889881cc3279127828340a4a7/sqlglotrs-0.4.2-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/a9/5c/bfd6bd0bf979426d405cc6e71eceb8701b148b16c21d2dc3c261efc61c7b/sqlparse-0.5.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/f1/7b/ce1eafaf1a76852e2ec9b22edecf1daa58175c090266e9f6c64afcd81d91/stack_data-0.6.3-py3-none-any.whl
@@ -3574,7 +3574,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/52/a7/d2782e4e3f77c8450f727ba74a8f12756d5ba823d81b941f1b04da9d033a/sphinxcontrib_serializinghtml-2.0.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/53/5d/2da96b1d6af0803b342fdcbb959ba6b32c0684f4af92ad83b6a6f3690357/splink-4.0.7-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/3e/2a/f1f4e068b371154740dd10fb81afb5240d5af4aa0087b88d8b308b5429c2/sqlalchemy-2.0.41-cp312-cp312-macosx_10_13_x86_64.whl
-      - pypi: https://files.pythonhosted.org/packages/1c/13/9f3088fc1f58b44f8561b97c6141e515b4efd5815ba2e1a2b98a18c7b104/sqlglot-26.19.0-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/81/99/8e057f88b23289d9ef5dfdda12abcca01767c42cd079b71094a3bfaf1d81/sqlglot-26.20.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/a8/ac/8db50dfce09cedd0bd449bea323b83ca595e2a15c8d9e7ad6dbe8cb3af86/sqlglotrs-0.4.2-cp312-cp312-macosx_10_12_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/a9/5c/bfd6bd0bf979426d405cc6e71eceb8701b148b16c21d2dc3c261efc61c7b/sqlparse-0.5.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/f1/7b/ce1eafaf1a76852e2ec9b22edecf1daa58175c090266e9f6c64afcd81d91/stack_data-0.6.3-py3-none-any.whl
@@ -4018,7 +4018,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/52/a7/d2782e4e3f77c8450f727ba74a8f12756d5ba823d81b941f1b04da9d033a/sphinxcontrib_serializinghtml-2.0.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/53/5d/2da96b1d6af0803b342fdcbb959ba6b32c0684f4af92ad83b6a6f3690357/splink-4.0.7-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9b/e8/c664a7e73d36fbfc4730f8cf2bf930444ea87270f2825efbe17bf808b998/sqlalchemy-2.0.41-cp312-cp312-macosx_11_0_arm64.whl
-      - pypi: https://files.pythonhosted.org/packages/1c/13/9f3088fc1f58b44f8561b97c6141e515b4efd5815ba2e1a2b98a18c7b104/sqlglot-26.19.0-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/81/99/8e057f88b23289d9ef5dfdda12abcca01767c42cd079b71094a3bfaf1d81/sqlglot-26.20.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/97/af/eac25faa6c20e54d72b6a29c95dcfae7a06b71ed050d24d7344f2802ca0a/sqlglotrs-0.4.2-cp312-cp312-macosx_11_0_arm64.whl
       - pypi: https://files.pythonhosted.org/packages/a9/5c/bfd6bd0bf979426d405cc6e71eceb8701b148b16c21d2dc3c261efc61c7b/sqlparse-0.5.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/f1/7b/ce1eafaf1a76852e2ec9b22edecf1daa58175c090266e9f6c64afcd81d91/stack_data-0.6.3-py3-none-any.whl
@@ -4483,7 +4483,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/52/a7/d2782e4e3f77c8450f727ba74a8f12756d5ba823d81b941f1b04da9d033a/sphinxcontrib_serializinghtml-2.0.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/53/5d/2da96b1d6af0803b342fdcbb959ba6b32c0684f4af92ad83b6a6f3690357/splink-4.0.7-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/3c/35/f74add3978c20de6323fb11cb5162702670cc7a9420033befb43d8d5b7a4/sqlalchemy-2.0.41-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
-      - pypi: https://files.pythonhosted.org/packages/1c/13/9f3088fc1f58b44f8561b97c6141e515b4efd5815ba2e1a2b98a18c7b104/sqlglot-26.19.0-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/81/99/8e057f88b23289d9ef5dfdda12abcca01767c42cd079b71094a3bfaf1d81/sqlglot-26.20.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2f/f5/c65840718e78ad23bd1b9927f3feb3aa5ca889881cc3279127828340a4a7/sqlglotrs-0.4.2-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/a9/5c/bfd6bd0bf979426d405cc6e71eceb8701b148b16c21d2dc3c261efc61c7b/sqlparse-0.5.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/f1/7b/ce1eafaf1a76852e2ec9b22edecf1daa58175c090266e9f6c64afcd81d91/stack_data-0.6.3-py3-none-any.whl
@@ -4929,7 +4929,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/52/a7/d2782e4e3f77c8450f727ba74a8f12756d5ba823d81b941f1b04da9d033a/sphinxcontrib_serializinghtml-2.0.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/53/5d/2da96b1d6af0803b342fdcbb959ba6b32c0684f4af92ad83b6a6f3690357/splink-4.0.7-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/3e/2a/f1f4e068b371154740dd10fb81afb5240d5af4aa0087b88d8b308b5429c2/sqlalchemy-2.0.41-cp312-cp312-macosx_10_13_x86_64.whl
-      - pypi: https://files.pythonhosted.org/packages/1c/13/9f3088fc1f58b44f8561b97c6141e515b4efd5815ba2e1a2b98a18c7b104/sqlglot-26.19.0-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/81/99/8e057f88b23289d9ef5dfdda12abcca01767c42cd079b71094a3bfaf1d81/sqlglot-26.20.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/a8/ac/8db50dfce09cedd0bd449bea323b83ca595e2a15c8d9e7ad6dbe8cb3af86/sqlglotrs-0.4.2-cp312-cp312-macosx_10_12_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/a9/5c/bfd6bd0bf979426d405cc6e71eceb8701b148b16c21d2dc3c261efc61c7b/sqlparse-0.5.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/f1/7b/ce1eafaf1a76852e2ec9b22edecf1daa58175c090266e9f6c64afcd81d91/stack_data-0.6.3-py3-none-any.whl
@@ -5375,7 +5375,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/52/a7/d2782e4e3f77c8450f727ba74a8f12756d5ba823d81b941f1b04da9d033a/sphinxcontrib_serializinghtml-2.0.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/53/5d/2da96b1d6af0803b342fdcbb959ba6b32c0684f4af92ad83b6a6f3690357/splink-4.0.7-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9b/e8/c664a7e73d36fbfc4730f8cf2bf930444ea87270f2825efbe17bf808b998/sqlalchemy-2.0.41-cp312-cp312-macosx_11_0_arm64.whl
-      - pypi: https://files.pythonhosted.org/packages/1c/13/9f3088fc1f58b44f8561b97c6141e515b4efd5815ba2e1a2b98a18c7b104/sqlglot-26.19.0-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/81/99/8e057f88b23289d9ef5dfdda12abcca01767c42cd079b71094a3bfaf1d81/sqlglot-26.20.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/97/af/eac25faa6c20e54d72b6a29c95dcfae7a06b71ed050d24d7344f2802ca0a/sqlglotrs-0.4.2-cp312-cp312-macosx_11_0_arm64.whl
       - pypi: https://files.pythonhosted.org/packages/a9/5c/bfd6bd0bf979426d405cc6e71eceb8701b148b16c21d2dc3c261efc61c7b/sqlparse-0.5.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/f1/7b/ce1eafaf1a76852e2ec9b22edecf1daa58175c090266e9f6c64afcd81d91/stack_data-0.6.3-py3-none-any.whl
@@ -14425,10 +14425,10 @@ packages:
   - typing-extensions!=3.10.0.1 ; extra == 'aiosqlite'
   - sqlcipher3-binary ; extra == 'sqlcipher'
   requires_python: '>=3.7'
-- pypi: https://files.pythonhosted.org/packages/1c/13/9f3088fc1f58b44f8561b97c6141e515b4efd5815ba2e1a2b98a18c7b104/sqlglot-26.19.0-py3-none-any.whl
+- pypi: https://files.pythonhosted.org/packages/81/99/8e057f88b23289d9ef5dfdda12abcca01767c42cd079b71094a3bfaf1d81/sqlglot-26.20.0-py3-none-any.whl
   name: sqlglot
-  version: 26.19.0
-  sha256: f8d2193f0e618ce3ce636290d33c94f444304ca9853b546046fb74983261d249
+  version: 26.20.0
+  sha256: dc0fc5f4e7f36229931363265775287cf82355186bab7be8ac78fb5a8a10240d
   requires_dist:
   - duckdb>=0.6 ; extra == 'dev'
   - mypy ; extra == 'dev'
