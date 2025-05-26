@@ -12,6 +12,7 @@ from abc import ABC, abstractmethod
 from contextlib import nullcontext
 from html.parser import HTMLParser
 from pathlib import Path
+from secrets import randbelow
 
 import aiohttp
 import bs4
@@ -32,6 +33,21 @@ MEDIA_TYPES: dict[str, str] = {
     "csv": "text/csv",
 }
 VALID_PARTITION_RANGES: dict[str, str] = {"year_quarter": "QS", "year_month": "MS"}
+
+USER_AGENTS: list[str] = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:124.0) Gecko/20100101 Firefox/124.0",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36 Edg/123.0.2420.81",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36 OPR/109.0.0.0",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14.4; rv:124.0) Gecko/20100101 Firefox/124.0",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Safari/605.1.15",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36 OPR/109.0.0.0",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (X11; Linux i686; rv:124.0) Gecko/20100101 Firefox/124.0",
+]
+"""User agents compiled from https://www.useragents.me/ in May 2025. Will need to be
+updated periodically."""
 
 ArchiveAwaitable = typing.AsyncGenerator[
     typing.Awaitable[ResourceInfo | list[ResourceInfo]], None
@@ -350,6 +366,17 @@ class AbstractDatasetArchiver(ABC):
             )
 
         return hyperlinks
+
+    def get_user_agent(self):
+        """Get a random user agent from USER_AGENTS for use making requests.
+
+        User agents represent the entity making the request. We typically make the
+        request using the default aiohttp user-agent, but this can sometimes be
+        blocked by the server. In this case, we use rotating user agents to successfully
+        complete the request.
+        """
+        rand = randbelow(len(USER_AGENTS))
+        return USER_AGENTS[rand]
 
     def _check_missing_files(
         self,
