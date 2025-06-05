@@ -72,33 +72,35 @@ def test_files():
         "unchanged_file.txt": {
             "original": b"This file should not change during deposition update.",
             "updated": b"This file should not change during deposition update.",
+            "checksums": b"This file should not change during deposition update.",
         },
         "updated_file.txt": {
             "original": b"This file should updated during deposition update.",
             "updated": b"This file changes during the deposition update.",
+            "checksums": b"This document is altered significantly over the course of the placement emendation.",
         },
         "deleted_file.txt": {
             "original": b"This file should deleted during deposition update.",
+            "checksums": b"This file should deleted during deposition update.",
         },
         "created_file.txt": {
             "updated": b"This file should created during deposition update.",
+            "checksums": b"This file should created during deposition update.",
         },
     }
 
     with tempfile.TemporaryDirectory() as tmp_dir:
         tmp_dir_path = Path(tmp_dir)
 
-        file_paths = {
-            "original": tmp_dir_path / "original",
-            "updated": tmp_dir_path / "updated",
-        }
-
         # Create directories
-        file_paths["original"].mkdir()
-        file_paths["updated"].mkdir()
+        file_paths = {}
+        files = {}
+        for dep_type in ["original", "updated", "checksums"]:
+            file_paths[dep_type] = tmp_dir_path / dep_type
+            file_paths[dep_type].mkdir()
+            files[dep_type] = []
 
         # Loop through files and create them on local disk
-        files = {"original": [], "updated": []}
         for filename, data in file_data.items():
             for dep_type, contents in data.items():
                 path = file_paths[dep_type] / filename
@@ -133,6 +135,21 @@ def test_settings():
             f.writelines(["fake_dataset:\n", "    sandbox_doi: null"])
 
         yield Path(tmp_dir)
+
+
+class TestDownloader(AbstractDatasetArchiver):
+    name = "Test Downloader"
+
+    def __init__(self, resources, **kwargs):
+        super().__init__(**kwargs)
+        self.resources = resources
+
+    async def get_resources(self):
+        async def identity(x):
+            return x
+
+        for info in self.resources.values():
+            yield identity(info)
 
 
 @pytest.mark.asyncio
@@ -186,20 +203,6 @@ async def test_zenodo_workflow(
 
             # Verify that contents of file are correct
             assert res.text.encode() == file_data["contents"]
-
-    class TestDownloader(AbstractDatasetArchiver):
-        name = "Test Downloader"
-
-        def __init__(self, resources, **kwargs):
-            super().__init__(**kwargs)
-            self.resources = resources
-
-        async def get_resources(self):
-            async def identity(x):
-                return x
-
-            for info in self.resources.values():
-                yield identity(info)
 
     # Mock out creating deposition metadata with fake data source
     deposition_metadata_mock = mocker.MagicMock(return_value=deposition_metadata)
@@ -286,6 +289,46 @@ async def test_zenodo_workflow(
     assert v2_summary.success
 
     verify_files(test_files["updated"], v2_refreshed.deposition)
+
+    vc_resources = {
+        file_data["path"].name: ResourceInfo(
+            local_path=file_data["path"], partitions={}
+        )
+        for file_data in test_files["checksums"]
+    }
+
+    # Force a mismatched checksum for all files
+    with unittest.mock.patch(
+        "pudl_archiver.depositors.zenodo.depositor.ZenodoDraftDeposition.get_checksum",
+        # depositor.DraftDeposition.get_checksum",
+        lambda *_args: "nonsense_checksum",
+    ):
+        downloader = TestDownloader(vc_resources, session=session)
+        downloader.fail_on_file_size_change = False
+        downloader.fail_on_dataset_size_change = False
+        with pytest.raises(RuntimeError, match=".*could not get checksums to match.*"):
+            vc_summary, vc_refreshed = await orchestrate_run(
+                dataset="pudl_test",
+                downloader=downloader,
+                run_settings=settings,
+                session=session,
+            )
+
+    # Wait for deleted deposition to propogate through
+    time.sleep(1)
+
+    # Disable test and re-run
+    downloader.fail_on_missing_files = False
+    vc_summary, vc_refreshed = await orchestrate_run(
+        dataset="pudl_test",
+        downloader=downloader,
+        run_settings=settings,
+        session=session,
+    )
+    assert vc_summary.success
+
+    verify_files(test_files["checksums"], vc_refreshed.deposition)
+    ###
 
     # force a datapackage.json update
     with unittest.mock.patch(

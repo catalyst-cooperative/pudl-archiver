@@ -15,7 +15,7 @@ from pydantic import BaseModel, ConfigDict
 
 from pudl_archiver.archivers.validate import RunSummary
 from pudl_archiver.frictionless import DataPackage, ResourceInfo
-from pudl_archiver.utils import RunSettings, Url
+from pudl_archiver.utils import RunSettings, Url, compute_md5
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
@@ -226,6 +226,15 @@ class DraftDeposition(BaseModel, ABC):
         ...
 
     @abstractmethod
+    def get_checksum(self, filename: str) -> str | None:
+        """Get checksum for a file in the current deposition.
+
+        Args:
+            filename: Name of file to checksum.
+        """
+        ...
+
+    @abstractmethod
     async def list_files(self) -> list[str]:
         """Return list of filenames from previous version of deposition."""
         ...
@@ -248,7 +257,7 @@ class DraftDeposition(BaseModel, ABC):
             data: the actual data associated with the file.
 
         Returns:
-            None if success.
+            DraftDeposition with the created file
         """
         ...
 
@@ -263,7 +272,7 @@ class DraftDeposition(BaseModel, ABC):
             target: the filename of the file you want to delete.
 
         Returns:
-            None if success.
+            DraftDeposition with the deleted file
         """
         ...
 
@@ -341,7 +350,6 @@ class DraftDeposition(BaseModel, ABC):
         """Actually upload and delete what we listed in self.uploads/deletes.
 
         Args:
-            draft: the draft to make these changes to
             change: the change to make
         """
         draft = self
@@ -351,9 +359,26 @@ class DraftDeposition(BaseModel, ABC):
             if change.resource is None:
                 raise RuntimeError("Must pass a resource to be uploaded.")
 
-            draft = await self._upload_file(
-                _UploadSpec(source=change.resource, dest=change.name)
-            )
+            checksum = compute_md5(change.resource)
+            for chance in range(5):
+                draft = await self._upload_file(
+                    _UploadSpec(source=change.resource, dest=change.name)
+                )
+                if (uploaded_checksum := draft.get_checksum(change.name)) == checksum:
+                    logger.info(
+                        f"Matching checksums for {change.name}: {uploaded_checksum}, {checksum}"
+                    )
+                    break
+                logger.warn(
+                    f"Upload of {change.name} failed with nonmatching checksum (try {chance + 1} of 5)"
+                )
+                # drop the bad upload before retrying
+                draft = await self.delete_file(change.name)
+            else:  # if we run out of tries
+                raise RuntimeError(
+                    f"Upload of {change.name} persistently failing; could not get checksums to match."
+                )
+
         return draft
 
     async def _upload_file(self, upload: _UploadSpec):
@@ -363,7 +388,10 @@ class DraftDeposition(BaseModel, ABC):
             with upload.source.open("rb") as f:
                 wrapped_file = FileWrapper(f.read())
 
-        draft = await self.create_file(upload.dest, wrapped_file)
+        draft = await self.create_file(
+            upload.dest,
+            wrapped_file,
+        )
 
         wrapped_file.actually_close()
         return draft
