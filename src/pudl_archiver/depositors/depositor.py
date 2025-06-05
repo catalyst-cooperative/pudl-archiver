@@ -364,12 +364,9 @@ class DraftDeposition(BaseModel, ABC):
                 draft = await self._upload_file(
                     _UploadSpec(source=change.resource, dest=change.name)
                 )
-                if (uploaded_checksum := draft.get_checksum(change.name)) == checksum:
-                    logger.info(
-                        f"Matching checksums for {change.name}: {uploaded_checksum}, {checksum}"
-                    )
+                if draft.get_checksum(change.name) == checksum:
                     break
-                logger.warn(
+                logger.warning(
                     f"Upload of {change.name} failed with nonmatching checksum (try {chance + 1} of 5)"
                 )
                 # drop the bad upload before retrying
@@ -388,10 +385,7 @@ class DraftDeposition(BaseModel, ABC):
             with upload.source.open("rb") as f:
                 wrapped_file = FileWrapper(f.read())
 
-        draft = await self.create_file(
-            upload.dest,
-            wrapped_file,
-        )
+        draft = await self.create_file(upload.dest, wrapped_file)
 
         wrapped_file.actually_close()
         return draft

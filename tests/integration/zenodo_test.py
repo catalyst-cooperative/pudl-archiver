@@ -300,12 +300,12 @@ async def test_zenodo_workflow(
     # Force a mismatched checksum for all files
     with unittest.mock.patch(
         "pudl_archiver.depositors.zenodo.depositor.ZenodoDraftDeposition.get_checksum",
-        # depositor.DraftDeposition.get_checksum",
         lambda *_args: "nonsense_checksum",
     ):
         downloader = TestDownloader(vc_resources, session=session)
         downloader.fail_on_file_size_change = False
         downloader.fail_on_dataset_size_change = False
+        downloader.fail_on_missing_files = False
         with pytest.raises(RuntimeError, match=".*could not get checksums to match.*"):
             vc_summary, vc_refreshed = await orchestrate_run(
                 dataset="pudl_test",
@@ -317,8 +317,7 @@ async def test_zenodo_workflow(
     # Wait for deleted deposition to propogate through
     time.sleep(1)
 
-    # Disable test and re-run
-    downloader.fail_on_missing_files = False
+    # re-run with normal checksums
     vc_summary, vc_refreshed = await orchestrate_run(
         dataset="pudl_test",
         downloader=downloader,
