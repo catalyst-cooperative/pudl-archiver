@@ -174,6 +174,17 @@ class FsspecDraftDeposition(DraftDeposition):
             deposition=self.deposition,
         )
 
+    def get_checksum(self, filename: str) -> str | None:
+        """Get checksum for a file in the current deposition.
+
+        Args:
+            filename: Name of file to checksum.
+        """
+        filepath = self.deposition.deposition_path / filename
+        if filepath.exists():
+            return compute_md5(filepath)
+        return None
+
     async def create_file(
         self,
         filename: str,

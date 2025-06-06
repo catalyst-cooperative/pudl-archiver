@@ -175,7 +175,7 @@ class ZenodoAPIClient(DepositorAPIClient):
             data: the actual data associated with the file.
 
         Returns:
-            None if success.
+            Remote deposition after creating file.
         """
         if deposition.links.bucket and force_api != "files":
             url = f"{deposition.links.bucket}/{filename}"
@@ -215,7 +215,7 @@ class ZenodoAPIClient(DepositorAPIClient):
             None if success.
         """
         if not (file_to_delete := deposition.files_map.get(filename)):
-            logger.info(f"No files matched {filename}.")
+            logger.info(f"No files matched {filename}; could not delete.")
             return None
 
         await self._request(
@@ -657,7 +657,9 @@ class ZenodoDraftDeposition(DraftDeposition):
         return self.model_copy(
             update={
                 "deposition": await self.api_client.create_file(
-                    self.deposition, filename, data
+                    self.deposition,
+                    filename,
+                    data,
                 )
             }
         )
@@ -693,6 +695,15 @@ class ZenodoDraftDeposition(DraftDeposition):
             filename: Name of file to fetch.
         """
         return await self.api_client.get_file(self.deposition, filename)
+
+    def get_checksum(self, filename: str) -> str | None:
+        """Get checksum for a file in the current deposition.
+
+        Args:
+            filename: Name of file to checksum.
+        """
+        file_info = self.deposition.files_map.get(filename)
+        return file_info.checksum if file_info else None
 
     async def list_files(self) -> list[str]:
         """Return list of filenames from published version of deposition."""
