@@ -202,7 +202,10 @@ class AbstractDatasetArchiver(ABC):
                 return
 
         # If it makes it here that means it couldn't download a valid zipfile
-        raise RuntimeError(f"Failed to download valid zipfile from {url}")
+        with Path.open(zip_path) as f:
+            raise RuntimeError(
+                f"Failed to download valid zipfile from {url}. File head: {f.read(128).lower().strip()}"
+            )
 
     async def download_file(
         self, url: str, file_path: Path | io.BytesIO, post: bool = False, **kwargs
