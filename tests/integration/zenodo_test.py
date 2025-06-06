@@ -137,21 +137,6 @@ def test_settings():
         yield Path(tmp_dir)
 
 
-class TestDownloader(AbstractDatasetArchiver):
-    name = "Test Downloader"
-
-    def __init__(self, resources, **kwargs):
-        super().__init__(**kwargs)
-        self.resources = resources
-
-    async def get_resources(self):
-        async def identity(x):
-            return x
-
-        for info in self.resources.values():
-            yield identity(info)
-
-
 @pytest.mark.asyncio
 async def test_zenodo_workflow(
     session: aiohttp.ClientSession,
@@ -203,6 +188,20 @@ async def test_zenodo_workflow(
 
             # Verify that contents of file are correct
             assert res.text.encode() == file_data["contents"]
+
+    class TestDownloader(AbstractDatasetArchiver):
+        name = "Test Downloader"
+
+        def __init__(self, resources, **kwargs):
+            super().__init__(**kwargs)
+            self.resources = resources
+
+        async def get_resources(self):
+            async def identity(x):
+                return x
+
+            for info in self.resources.values():
+                yield identity(info)
 
     # Mock out creating deposition metadata with fake data source
     deposition_metadata_mock = mocker.MagicMock(return_value=deposition_metadata)

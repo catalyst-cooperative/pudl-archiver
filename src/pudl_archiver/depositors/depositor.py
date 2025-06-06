@@ -346,11 +346,16 @@ class DraftDeposition(BaseModel, ABC):
         logger.info("Attempting to publish deposition.")
         return await self.publish()
 
-    async def _apply_change(self, change: DepositionChange) -> "DraftDeposition":
+    async def _apply_change(
+        self, change: DepositionChange, checksum_retry_count: int = 7
+    ) -> "DraftDeposition":
         """Actually upload and delete what we listed in self.uploads/deletes.
 
         Args:
             change: the change to make
+            checksum_retry_count: how many times to try an upload again if the
+                finished remote file doesn't match checksums with the local file;
+                default 7
         """
         draft = self
         if change.action_type in [DepositionAction.DELETE, DepositionAction.UPDATE]:
@@ -360,14 +365,14 @@ class DraftDeposition(BaseModel, ABC):
                 raise RuntimeError("Must pass a resource to be uploaded.")
 
             checksum = compute_md5(change.resource)
-            for chance in range(5):
+            for chance in range(checksum_retry_count):
                 draft = await self._upload_file(
                     _UploadSpec(source=change.resource, dest=change.name)
                 )
                 if draft.get_checksum(change.name) == checksum:
                     break
                 logger.warning(
-                    f"Upload of {change.name} failed with nonmatching checksum (try {chance + 1} of 5)"
+                    f"Upload of {change.name} failed with nonmatching checksum (try {chance + 1} of {checksum_retry_count})"
                 )
                 # drop the bad upload before retrying
                 draft = await self.delete_file(change.name)
