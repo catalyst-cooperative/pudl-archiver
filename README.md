@@ -52,6 +52,9 @@ This will setup and activate the environment, and install the pre-commit hooks.
 > [!TIP]
 > Instead of `pixi shell`, you can also use `pixi run` to run the archiver code in
 > the correct Python environment (e.g., `pixi run pudl_archiver --dataset eiawater`).
+>
+> If you are running integration tests locally, you'll need to use the "tests" pixi
+> environment (e.g., `pixi shell -e tests`; `pixi run -e tests pytest ...`)
 
 ## Setting up the development environment
 
