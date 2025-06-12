@@ -18,6 +18,7 @@ dependencies = [
     "pyyaml>=6.0,<7",
     "semantic_version>=2.8,<3",
     "tqdm>=4.64",
+    "playwright>=1.52.0,<2",
 ]
 
 classifiers = [
@@ -204,3 +205,6 @@ ci = [{task="lint"}, {task="unit"}, {task="integration"}, {task="coverage"}]
 [tool.pixi.dependencies]
 gdal = "==3.11.0"
 psycopg2-binary = ">=2.9.9,<3"
+
+[tool.pixi.activation]
+scripts = ["scripts/check_playwright_installation.sh"]
