@@ -69,7 +69,7 @@ repos:
         verbose: false
         pass_filenames: false
         always_run: true
-        entry: pytest tests/unit
+        entry: pixi run pytest tests/unit
 
 # Configuration for pre-commit.ci
 ci:
