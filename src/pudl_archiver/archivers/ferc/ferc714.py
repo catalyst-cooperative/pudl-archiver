@@ -40,6 +40,6 @@ class Ferc714Archiver(AbstractDatasetArchiver):
         download_path = self.download_directory / "ferc714.zip"
         async with async_playwright() as p:
             browser = await p.webkit.launch()
-            self.download_zipfile_via_playwright(browser, url, download_path)
+            await self.download_zipfile_via_playwright(browser, url, download_path)
             await browser.close()
         return ResourceInfo(local_path=download_path, partitions={})

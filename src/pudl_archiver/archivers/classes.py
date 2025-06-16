@@ -206,7 +206,8 @@ class AbstractDatasetArchiver(ABC):
             # this suppress manager is silly but necessary when using page.goto() for a direct download:
             # https://stackoverflow.com/questions/73652378/download-files-with-goto-in-playwright-python/74144570#74144570
             with contextlib.suppress(PlaywrightError):
-                await page.goto(url)
+                # timeout: 10 minutes, same as we use for the aiohttp session
+                await page.goto(url, timeout=10 * 60 * 1000)
         download = await download_info.value
         # [2025 km] NB: playwright.download.save_as can't save to a BytesIO
         await download.save_as(zip_path)
