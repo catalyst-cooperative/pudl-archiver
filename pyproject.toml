@@ -49,7 +49,7 @@ docs = [
 ]
 
 tests = [
-    "coverage>=7,<7.9", # Lets us track what code is being tested
+    "coverage>=7,<7.10", # Lets us track what code is being tested
     "doc8>=1.1,<1.2", # Ensures clean documentation formatting
     "pre-commit>=4,<4.3", # Allow us to run pre-commit hooks in testing
     "cfgv>=3.3.1,<4",
