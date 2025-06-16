@@ -11,8 +11,6 @@ from pudl_archiver.archivers.classes import (
 )
 from pudl_archiver.archivers.ferc import xbrl
 
-FERC714_HOMEPAGE = "https://www.ferc.gov/industries-data/electric/general-information/electric-industry-forms/form-no-714-annual-electric/data"
-
 
 class Ferc714Archiver(AbstractDatasetArchiver):
     """Ferc Form 714 archiver."""
@@ -33,17 +31,15 @@ class Ferc714Archiver(AbstractDatasetArchiver):
         )
 
     async def get_bulk_csv(self) -> tuple[Path, dict]:
-        """Download historical CSVs of FERC Form 714 data from 2006-2010."""
+        """Download historical CSVs of FERC Form 714 data from 2006-2010.
+
+        Source page:
+          https://www.ferc.gov/industries-data/electric/general-information/electric-industry-forms/form-no-714-annual-electric/data
+        """
+        url = "https://www.ferc.gov/sites/default/files/2021-06/Form-714-csv-files-June-2021.zip"
         download_path = self.download_directory / "ferc714.zip"
         async with async_playwright() as p:
             browser = await p.webkit.launch()
-            page = await browser.new_page()
-            await page.goto(FERC714_HOMEPAGE)
-            async with page.expect_download() as download_info:
-                await page.get_by_role(
-                    "link", name="2006 - 2020 Form 714 Database"
-                ).click()
-            download = await download_info.value
-            await download.save_as(download_path)
+            self.download_zipfile_via_playwright(browser, url, download_path)
             await browser.close()
         return ResourceInfo(local_path=download_path, partitions={})

@@ -1,6 +1,7 @@
 """Defines base class for archiver."""
 
 import asyncio
+import contextlib
 import io
 import json
 import logging
@@ -17,6 +18,8 @@ from secrets import randbelow
 import aiohttp
 import bs4
 import pandas as pd
+from playwright.async_api import Browser as PlaywrightBrowser
+from playwright.async_api import Error as PlaywrightError
 
 from pudl_archiver.archivers import validate
 from pudl_archiver.frictionless import DataPackage, ResourceInfo
@@ -183,6 +186,42 @@ class AbstractDatasetArchiver(ABC):
         for details.
         """
         ...
+
+    async def download_zipfile_via_playwright(
+        self,
+        playwright_browser: PlaywrightBrowser,
+        url: str,
+        zip_path: Path,
+    ):
+        """Attempt to download a zipfile using playwright and fail if zipfile is invalid.
+
+        Args:
+            playwright_browser: async browser instance to use for fetching the URL.
+            url: URL of zipfile.
+            zip_path: Local path to write file to disk.
+        """
+        page = await playwright_browser.new_page()
+
+        # this suppress manager is silly but necessary when using page.goto() for a direct download:
+        # https://stackoverflow.com/questions/73652378/download-files-with-goto-in-playwright-python/74144570#74144570
+        async with (
+            page.expect_download() as download_info,
+            contextlib.suppress(PlaywrightError),
+        ):
+            await page.goto(url)
+        download = await download_info.value
+        # [2025 km] NB: playwright.download.save_as can't save to a BytesIO
+        await download.save_as(zip_path)
+        await page.close()
+
+        if zipfile.is_zipfile(zip_path):
+            return
+
+        # If it makes it here that means it couldn't download a valid zipfile
+        with Path.open(zip_path) as f:
+            raise RuntimeError(
+                f"Failed to download valid zipfile from {url}. File head: {f.read(128).lower().strip()}"
+            )
 
     async def download_zipfile(
         self, url: str, zip_path: Path | io.BytesIO, retries: int = 5, **kwargs
@@ -685,3 +724,10 @@ class AbstractDatasetArchiver(ABC):
                 tmp_dir = tempfile.TemporaryDirectory()
                 self.download_directory = Path(tmp_dir.name)
                 self.logger.info(f"New download directory {self.download_directory}")
+
+        # subclass cleanup when necessary
+        await self.after_download()
+
+    async def after_download(self) -> None:
+        """Optional cleanup after download_all_resources for override by subclass as needed."""
+        pass
