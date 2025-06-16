@@ -52,7 +52,7 @@ jobs:
           service_account: "pudl-sources@catalyst-cooperative-pudl.iam.gserviceaccount.com"
 
       - name: Set up pixi
-        uses: prefix-dev/setup-pixi@v0.8.8
+        uses: prefix-dev/setup-pixi@v0.8.10
 
       - name: Log the pixi environment
         run: |
