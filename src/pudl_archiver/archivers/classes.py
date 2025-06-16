@@ -202,13 +202,11 @@ class AbstractDatasetArchiver(ABC):
         """
         page = await playwright_browser.new_page()
 
-        # this suppress manager is silly but necessary when using page.goto() for a direct download:
-        # https://stackoverflow.com/questions/73652378/download-files-with-goto-in-playwright-python/74144570#74144570
-        async with (
-            page.expect_download() as download_info,
-            contextlib.suppress(PlaywrightError),
-        ):
-            await page.goto(url)
+        async with page.expect_download() as download_info:
+            # this suppress manager is silly but necessary when using page.goto() for a direct download:
+            # https://stackoverflow.com/questions/73652378/download-files-with-goto-in-playwright-python/74144570#74144570
+            with contextlib.suppress(PlaywrightError):
+                await page.goto(url)
         download = await download_info.value
         # [2025 km] NB: playwright.download.save_as can't save to a BytesIO
         await download.save_as(zip_path)
