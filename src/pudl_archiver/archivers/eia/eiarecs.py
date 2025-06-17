@@ -93,7 +93,7 @@ class EiaRECSArchiver(AbstractDatasetArchiver):
             local_path=zip_path,
             partitions={"year": year},
             layout=ZipLayout(
-                file_paths=paths_within_archive + original_forms_within_archive
+                file_paths=sorted(paths_within_archive + original_forms_within_archive)
             ),
         )
 
@@ -269,7 +269,10 @@ class EiaRECSArchiver(AbstractDatasetArchiver):
         first_unselected_tabs = await get_unselected_tabs(url)
         another_tab_url = next(iter(first_unselected_tabs)).url
         next_unselected_tabs = await get_unselected_tabs(another_tab_url)
-        return first_unselected_tabs.union(next_unselected_tabs)
+        # Sort tabs by name to ensure stability between archive runs
+        return sorted(
+            first_unselected_tabs.union(next_unselected_tabs), key=lambda x: x.name
+        )
 
     async def __skip(self, **kwargs) -> list[str]:
         return []
