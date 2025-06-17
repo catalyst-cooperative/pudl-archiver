@@ -57,7 +57,7 @@ class NrelAtbArchiver(AbstractDatasetArchiver):
         """Clean excel filename.
 
         We standardize the names to have this general structure:
-        * nrelatb-{year}-{atb_type}-{cleaned up file name w/ extension}
+        * nrelatb-{year}-{atb_type}-{version if it exists}-{cleaned up file name w/ extension}
 
         We attempt to convert all the spaces and other delimiters in the name
         to snakecase. We also remove the year and "ATB" or the full name in
@@ -77,7 +77,20 @@ class NrelAtbArchiver(AbstractDatasetArchiver):
             .replace("%20", "-")
             .replace("annual-technology-baseline-", "")
         )
-        excel_filename = f"nrelatb-{year}-{atb_type}-{og_filename}"
+
+        # Sometimes there's a version in the URL that
+        # we also want to pull out.
+        # If whatever precedes the filename in the URL looks like /v1.2.3./
+        # We add it into the file name
+        version_pattern = re.compile(r"v[\d.]+")
+        version_match = re.match(version_pattern, excel_url.split("/")[-2])
+        if version_match:
+            version = version_match.group().lower().strip().replace(".", "-")
+            version = f"{version}-"
+            self.logger.info([year, excel_url, version])
+        else:
+            version = ""
+        excel_filename = f"nrelatb-{year}-{atb_type}-{version}{og_filename}"
         return excel_filename
 
     async def compile_parquet_urls(
@@ -132,7 +145,19 @@ class NrelAtbArchiver(AbstractDatasetArchiver):
                 .replace(" ", "-")
                 .replace("_", "-")
             )
-            parquet_filename = f"nrelatb-{year}-{atb_type}-{parquet_filename}"
+            # Sometimes there's a version in the URL that
+            # we also want to pull out.
+            # If whatever precedes the filename in the URL looks like /v1.2.3./
+            # We add it into the file name
+            version_pattern = re.compile(r"v[\d.]+")
+            version_match = re.match(version_pattern, parquet_url.split("/")[-2])
+            if version_match:
+                version = version_match.group().lower().strip().replace(".", "-")
+                version = f"{version}-"
+                self.logger.info([year, parquet_url, version])
+            else:
+                version = ""
+            parquet_filename = f"nrelatb-{year}-{atb_type}-{version}{parquet_filename}"
             await self.download_add_to_archive_and_unlink(
                 parquet_url, parquet_filename, zip_path
             )
