@@ -87,7 +87,6 @@ class FeedEntry(BaseModel):
     necessary for the scraping/archiving process.
     """
 
-    entry_id: str = Field(..., alias="id")
     title: str
     download_url: HttpUrl
     published_parsed: datetime.datetime
