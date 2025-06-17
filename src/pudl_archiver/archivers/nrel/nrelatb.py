@@ -78,19 +78,7 @@ class NrelAtbArchiver(AbstractDatasetArchiver):
             .replace("annual-technology-baseline-", "")
         )
 
-        # Sometimes there's a version in the URL that
-        # we also want to pull out.
-        # If whatever precedes the filename in the URL looks like /v1.2.3./
-        # We add it into the file name
-        version_pattern = re.compile(r"v[\d.]+")
-        version_match = re.match(version_pattern, excel_url.split("/")[-2])
-        if version_match:
-            version = version_match.group().lower().strip().replace(".", "-")
-            version = f"{version}-"
-            self.logger.info([year, excel_url, version])
-        else:
-            version = ""
-        excel_filename = f"nrelatb-{year}-{atb_type}-{version}{og_filename}"
+        excel_filename = f"nrelatb-{year}-{atb_type}-{og_filename}"
         return excel_filename
 
     async def compile_parquet_urls(
@@ -154,7 +142,6 @@ class NrelAtbArchiver(AbstractDatasetArchiver):
             if version_match:
                 version = version_match.group().lower().strip().replace(".", "-")
                 version = f"{version}-"
-                self.logger.info([year, parquet_url, version])
             else:
                 version = ""
             parquet_filename = f"nrelatb-{year}-{atb_type}-{version}{parquet_filename}"
@@ -172,6 +159,28 @@ class NrelAtbArchiver(AbstractDatasetArchiver):
                 excel_url, excel_filename, zip_path
             )
             data_paths_in_archive.add(excel_filename)
+
+        # The default base url to grab the excel files contains some of the
+        # data (the link to the CSVs and the most recent versions)
+        # For older versions of the data, we also want to grab files from the OpenEI
+        # page linked on the page (if it exists, after 2022 and only for electricity).
+        if year > 2022:
+            oedi_link_pattern = re.compile(r"data.openei.org\/submissions\/(\d)")
+            oedi_links = await self.get_hyperlinks(
+                year_excel_base_url, oedi_link_pattern
+            )
+            for url in oedi_links:
+                # If there's an OEDI page linked
+                # On the OEDI page, iterate through and add any files we missed
+                for oedi_url in await self.get_hyperlinks(url, link_pattern):
+                    oedi_filename = self.clean_excel_filename(oedi_url, year, atb_type)
+                    if oedi_filename not in data_paths_in_archive:
+                        self.logger.info([url, oedi_url])
+                        oedi_url = urljoin(url, oedi_url)
+                        await self.download_add_to_archive_and_unlink(
+                            oedi_url, oedi_filename, zip_path
+                        )
+                        data_paths_in_archive.add(oedi_filename)
 
         return ResourceInfo(
             local_path=zip_path,
