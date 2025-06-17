@@ -45,6 +45,7 @@ eiacbecs:
   sandbox_doi: 10.5072/zenodo.160999
 eiarecs:
   production_doi: 10.5281/zenodo.14783267
+  sandbox_doi: 10.5072/zenodo.269461
 eianems:
   production_doi: 10.5281/zenodo.14767206
   sandbox_doi: 10.5072/zenodo.180515
