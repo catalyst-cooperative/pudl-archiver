@@ -26,8 +26,9 @@ install_path=`playwright install webkit --dry-run |grep "Install location" |sed 
 # Check if the install path is a regular file. If so, we're done.
 if [ -f "$install_path" ]; then exit 0; fi
 
-# If not, install. On a normal computer you generally don't need --with-deps,
-# but the CI machine is missing a whole slew of system libraries, and this is
-# how we convince it to install them as well.
+# If not, install.
 
-playwright install --with-deps webkit
+playwright install webkit
+
+# If playwright archivers (e.g. ferc2, ferc714) still won't run on your machine, try
+# playwright install --with-deps webkit

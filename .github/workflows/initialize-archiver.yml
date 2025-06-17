@@ -51,6 +51,10 @@ jobs:
           pixi info
           pixi list
 
+      - name: Additional Playwright setup
+        run: |
+          pixi run playwright install --with-deps webkit
+
       - name: Initialize production archive for ${{ matrix.dataset }}
         env:
           EPACEMS_API_KEY: ${{ secrets.EPACEMS_API_KEY }}
