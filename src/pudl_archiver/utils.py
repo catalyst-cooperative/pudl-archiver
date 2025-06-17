@@ -69,6 +69,7 @@ async def retry_async(
                 f"Error while executing {coro} (try #{try_count}, retry in {retry_delay_s}s): {type(e)} - {e}"
             )
             await asyncio.sleep(retry_delay_s)
+    return None
 
 
 def add_to_archive_stable_hash(archive: zipfile.ZipFile, filename, data: bytes):
