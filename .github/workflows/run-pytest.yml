@@ -39,7 +39,7 @@ jobs:
           ZENODO_SANDBOX_TOKEN_UPLOAD: ${{ secrets.ZENODO_SANDBOX_TOKEN_UPLOAD }}
           EPACEMS_API_KEY: ${{ secrets.EPACEMS_API_KEY }}
         run: |
-          pixi run -e tests ci
+          pixi run ci
 
       - name: Upload test coverage report to CodeCov
         uses: codecov/codecov-action@v5
