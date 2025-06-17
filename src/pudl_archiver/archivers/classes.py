@@ -1,7 +1,6 @@
 """Defines base class for archiver."""
 
 import asyncio
-import contextlib
 import io
 import json
 import logging
@@ -204,10 +203,18 @@ class AbstractDatasetArchiver(ABC):
 
         # timeout: 10 minutes, same as we use for the aiohttp session
         async with page.expect_download(timeout=10 * 60 * 1000) as download_info:
-            # this suppress manager is silly but necessary when using page.goto() for a direct download:
-            # https://stackoverflow.com/questions/73652378/download-files-with-goto-in-playwright-python/74144570#74144570
-            with contextlib.suppress(PlaywrightError):
+            try:
+                # page.goto within a page.expect_download context always generates
+                # an error with message "Page.goto: Download is starting" and a call
+                # log. All evidence suggests this error is harmless and does not
+                # affect the downloaded file. See also:
+                # https://github.com/microsoft/playwright/issues/18430#issuecomment-1309638711
+                # https://stackoverflow.com/questions/73652378/download-files-with-goto-in-playwright-python/74144570#74144570
                 await page.goto(url, timeout=10 * 60 * 1000)
+            except PlaywrightError as e:
+                # ...but we're going to check our assumptions just in case:
+                if not e.message.startswith("Page.goto: Download is starting"):
+                    raise e
         download = await download_info.value
         # [2025 km] NB: playwright.download.save_as can't save to a BytesIO
         await download.save_as(zip_path)
