@@ -66,14 +66,14 @@ class EpaPcapArchiver(AbstractDatasetArchiver):
                     continue
 
                 # Many of the PDFs are shared between the multiple searchable tables;
-                # we only need one copy but let's make sure they match
+                # we only need one copy but let's make sure the URLs match
                 if filename in to_fetch:
                     assert to_fetch[filename] == link, (
-                        f"Mismatched link for '{filename}': {to_fetch[filename]} vs {link}"
+                        f"Found more than one distinct URL for '{filename}': {to_fetch[filename]} vs {link}"
                     )
                 to_fetch[filename] = link
             self.logger.info(
-                f"Fetch queue at {len(to_fetch)} after scraping {data_table_url}"
+                f"Fetch queue length {len(to_fetch)} after scraping {data_table_url}"
             )
 
         for filename, link in sorted(to_fetch.items()):
@@ -95,26 +95,27 @@ class EpaPcapArchiver(AbstractDatasetArchiver):
         # a couple of the PDF links have challenges in front of them that
         # yield an HTML error page instead if the requestor doesn't act
         # like a web browser.
-        # check that files that claim to be PDFs are actually PDFS;
+        # check that files that claim to be PDFs are actually PDFs;
         # if they're HTML files instead, try playwright;
         # if that doesn't work, call for help.
         if filename.endswith(".pdf"):
             with download_path.open("rb") as f:
                 header = f.read(128).lower().strip()
-            if (not header.startswith(b"%pdf-")) and header.startswith(
-                b"<!doctype html>"
-            ):
-                self.logger.info(
-                    f"Got HTML instead of PDF at {link}; trying playwright"
-                )
-                async with async_playwright() as p:
-                    browser = await p.webkit.launch()
-                    await self.download_file_via_playwright(
-                        browser, link, download_path
+            if not header.startswith(b"%pdf-"):
+                if header.startswith(b"<!doctype html>"):
+                    self.logger.info(
+                        f"Got HTML instead of PDF at {link}; trying playwright"
                     )
-                    await browser.close()
-                with download_path.open("rb") as f:
-                    header = f.read(128).lower().strip()
+                    async with async_playwright() as p:
+                        browser = await p.webkit.launch()
+                        await self.download_file_via_playwright(
+                            browser, link, download_path
+                        )
+                        await browser.close()
+                    with download_path.open("rb") as f:
+                        header = f.read(128).lower().strip()
+                # fail if first try wasn't a PDF and wasn't HTML either
+                # also fail if second try wasn't a PDF
                 assert header.startswith(b"%pdf-"), (
                     f"Expected a pdf from {link} at {filename} but got {header}"
                 )
