@@ -69,11 +69,11 @@ class EpaPcapArchiver(AbstractDatasetArchiver):
                 # we only need one copy but let's make sure the URLs match
                 if filename in to_fetch:
                     assert to_fetch[filename] == link, (
-                        f"Found more than one distinct URL for '{filename}': {to_fetch[filename]} vs {link}"
+                        f"Found more than one distinct URL for {filename}:\n{to_fetch[filename]}\n{link}"
                     )
                 to_fetch[filename] = link
             self.logger.info(
-                f"Fetch queue length {len(to_fetch)} after scraping {data_table_url}"
+                f"Identified {len(to_fetch)} total files to fetch after scraping {data_table_url}"
             )
 
         for filename, link in sorted(to_fetch.items()):
@@ -117,7 +117,7 @@ class EpaPcapArchiver(AbstractDatasetArchiver):
                 # fail if first try wasn't a PDF and wasn't HTML either
                 # also fail if second try wasn't a PDF
                 assert header.startswith(b"%pdf-"), (
-                    f"Expected a pdf from {link} at {filename} but got {header}"
+                    f"Expected a pdf from {filename} at {link} but got {header}"
                 )
 
         self.add_to_archive(
