@@ -10,7 +10,6 @@ import zipfile
 from collections import defaultdict
 from collections.abc import Callable
 from enum import Enum
-from functools import cache
 from pathlib import Path
 from typing import Annotated
 from urllib.parse import urlparse
@@ -46,6 +45,28 @@ to this URL to specify the month and year desired.
 
 Year = Annotated[int, Field(ge=1994, le=datetime.datetime.today().year)]
 """Constrained pydantic integer type with all years containing XBRL data."""
+
+
+def _get_rss_feeds() -> list[str]:
+    """Return all FERC RSS feeds."""
+    # The first month with available filings is October, 2021
+    feed_start_date = datetime.datetime(2021, 10, 1)
+
+    # Get the last day of the previous month at the time of running
+    feed_end_date = datetime.datetime.today().replace(day=1) - datetime.timedelta(
+        days=1
+    )
+
+    # Get a list of all available month specific feeds
+    rss_feeds = [
+        f"{BASE_RSS_URL}?month={dt.month}&year={dt.year}"
+        for dt in rrule.rrule(
+            rrule.MONTHLY, dtstart=feed_start_date, until=feed_end_date
+        )
+    ]
+    # Append feed with latest filings
+    rss_feeds.append(BASE_RSS_URL)
+    return rss_feeds
 
 
 class FercForm(Enum):
@@ -117,6 +138,55 @@ class FeedEntry(BaseModel):
         return self.download_url == other.download_url
 
 
+class IndexedFilings(BaseModel):
+    """Parse FERC provided RSS feeds and extract metadata for all filings for a specific form number."""
+
+    filings_per_year: dict[Year, set[FeedEntry]]
+
+    @classmethod
+    def index_available_entries(cls, form: FercForm) -> "IndexedFilings":
+        """Parse all RSS feeds and index the available filings by Form number and year.
+
+        FERC provides an RSS feed for accessing XBRL filings. However, primary RSS feed
+        only contains the latest 650 filings. To access earlier filings, they also
+        provide month specific feeds that contain all filings submitted for a specific
+        month.
+
+        Returns:
+            Dictionary mapping a year to all available filings for that year.
+        """
+        rss_feeds = _get_rss_feeds()
+        indexed_filings = defaultdict(set)
+
+        # Loop through all feeds and index available filings
+        logger.info("Indexing filings available in all RSS feeds")
+        for feed in rss_feeds:
+            logger.info(f"Parsing RSS feed: {feed}")
+            parsed_feed = feedparser.parse(feed)
+
+            for entry in parsed_feed.entries:
+                # Validate FERC form name
+                if entry["ferc_formname"] != form.value:
+                    continue
+
+                # There are a number of test filings in the feed. Skip these
+                if "Test" in entry["title"]:
+                    continue
+
+                parsed_entry = FeedEntry(**entry)
+
+                # Get filings specific to FERC form and append new filing
+                indexed_filings[parsed_entry.ferc_year].add(parsed_entry)
+
+        # Sort filings by download URL for determenistic ordering
+        return IndexedFilings(
+            filings_per_year={
+                year: sorted(year_filings, key=lambda f: f.download_url)
+                for year, year_filings in indexed_filings.items()
+            }
+        )
+
+
 def _taxonomy_zip_name_from_url(url: str) -> str:
     if not (match := TAXONOMY_URL_PATTERN.match(url)):
         raise RuntimeError(f"{url} does not appear to be a taxonomy url.")
@@ -148,78 +218,6 @@ class FilingMetadata(BaseModel):
             taxonomy_url=taxonomy_url,
             taxonomy_zip_name=_taxonomy_zip_name_from_url(taxonomy_url),
         )
-
-
-FormFilings = dict[Year, set[FeedEntry]]
-"""Type alias for a dictionary containing indexed filings for a single FERC form."""
-
-
-@cache
-def index_available_entries() -> dict[FercForm, FormFilings]:
-    """Parse all RSS feeds and index the available filings by Form number and year.
-
-    FERC provides an RSS feed for accessing XBRL filings. However, primary RSS feed
-    only contains the latest 650 filings. To access earlier filings, they also
-    provide month specific feeds that contain all filings submitted for a specific
-    month. This class will parse through all of these feeds and create an index of
-    all filings.
-    """
-    allowable_forms = [form.value for form in FercForm]
-
-    # The first month with available filings is October, 2021
-    feed_start_date = datetime.datetime(2021, 10, 1)
-
-    # Get the last day of the previous month at the time of running
-    feed_end_date = datetime.datetime.today().replace(day=1) - datetime.timedelta(
-        days=1
-    )
-
-    # Get a list of all available month specific feeds
-    rss_feeds = [
-        f"{BASE_RSS_URL}?month={dt.month}&year={dt.year}"
-        for dt in rrule.rrule(
-            rrule.MONTHLY, dtstart=feed_start_date, until=feed_end_date
-        )
-    ]
-
-    # Append feed with latest filings
-    rss_feeds.append(BASE_RSS_URL)
-
-    # Create dictionary for mapping filings to form/year
-    indexed_filings = {
-        FercForm.FORM_1: FormFilings(),
-        FercForm.FORM_2: FormFilings(),
-        FercForm.FORM_6: FormFilings(),
-        FercForm.FORM_60: FormFilings(),
-        FercForm.FORM_714: FormFilings(),
-    }
-
-    logger.info("Indexing filings available in all RSS feeds")
-    # Loop through all feeds and index available filings
-    for feed in rss_feeds:
-        logger.info(f"Parsing RSS feed: {feed}")
-        parsed_feed = feedparser.parse(feed)
-
-        for entry in parsed_feed.entries:
-            # Validate FERC form name
-            if entry["ferc_formname"] not in allowable_forms:
-                continue
-
-            # There are a number of test filings in the feed. Skip these
-            if "Test" in entry["title"]:
-                continue
-
-            parsed_entry = FeedEntry(**entry)
-
-            # Get filings specific to FERC form and append new filing
-            indexed_form = indexed_filings[parsed_entry.ferc_formname]
-            if parsed_entry.ferc_year not in indexed_form:
-                indexed_form[parsed_entry.ferc_year] = set()
-
-            indexed_form[parsed_entry.ferc_year].add(parsed_entry)
-
-    # Return indexed filings for all requested forms
-    return indexed_filings
 
 
 async def archive_taxonomies(
@@ -298,6 +296,56 @@ async def archive_taxonomies(
     )
 
 
+async def _download_filing(
+    filing: FeedEntry,
+    session: aiohttp.ClientSession,
+) -> bytes:
+    """Download a single filing."""
+    # Download filing
+    response = await retry_async(
+        session.get,
+        args=[str(filing.download_url)],
+        kwargs={"raise_for_status": True},
+    )
+    return await retry_async(response.content.read)
+
+
+async def _download_filings(
+    archive: zipfile.ZipFile,
+    year: Year,
+    filings: set[FeedEntry],
+    form: FercForm,
+    session: aiohttp.ClientSession,
+):
+    """Download all filings for a single year/form.
+
+    Args:
+        archive: ZipFile to write filings to.
+        year: Year to archive.
+        filings: Set of filings indexed from RSS feed.
+        form: Ferc form.
+        session: Async http client session.
+    """
+    metadata = defaultdict(list)
+    for filing in tqdm(filings, desc=f"FERC {form.value} {year} XBRL"):
+        # Download filing
+        response_bytes = await _download_filing(filing, session)
+
+        # Write to zipfile
+        filename = f"{filing.title}_form{filing.ferc_formname.as_int()}_{filing.ferc_period}_{round(filing.published_parsed.timestamp())}.xbrl".replace(
+            " ", "_"
+        )
+        filing_name = f"{filing.title}{filing.ferc_period}"
+        filing_metadata = FilingMetadata.from_rss_metadata(
+            filing, filename, response_bytes
+        )
+        metadata[filing_name].append(filing_metadata.model_dump())
+
+        with archive.open(filename, "w") as f:
+            f.write(response_bytes)
+    return metadata
+
+
 async def archive_year(
     year: Year,
     filings: set[FeedEntry],
@@ -317,60 +365,35 @@ async def archive_year(
     # Get form number as integer
     form_number = form.as_int()
 
-    metadata = defaultdict(list)
     archive_path = output_dir / f"ferc{form_number}-xbrl-{year}.zip"
 
-    # Track taxonomies referenced by all filings for archival
-    taxonomies_referenced = set()
-
-    files_in_zip = ["rssfeed"]
     with zipfile.ZipFile(archive_path, "w", compression=ZIP_DEFLATED) as archive:
-        for filing in tqdm(filings, desc=f"FERC {form.value} {year} XBRL"):
-            # Add filing metadata
-
-            # Download filing
-            try:
-                response = await retry_async(
-                    session.get,
-                    args=[str(filing.download_url)],
-                    kwargs={"raise_for_status": True},
-                )
-                response_bytes = await retry_async(response.content.read)
-            except aiohttp.client_exceptions.ClientResponseError as e:
-                logger.warning(
-                    f"Failed to download XBRL filing {filing.title} for form{form_number}-{year}: {e.message}"
-                )
-                continue
-            # Write to zipfile
-            filename = f"{filing.title}_form{filing.ferc_formname.as_int()}_{filing.ferc_period}_{round(filing.published_parsed.timestamp())}.xbrl".replace(
-                " ", "_"
-            )
-            filing_name = f"{filing.title}{filing.ferc_period}"
-            filing_metadata = FilingMetadata.from_rss_metadata(
-                filing, filename, response_bytes
-            )
-            metadata[filing_name].append(filing_metadata.model_dump())
-            taxonomies_referenced.add(filing_metadata.taxonomy_url)
-
-            with archive.open(filename, "w") as f:
-                files_in_zip.append(filename)
-                f.write(response_bytes)
+        metadata = await _download_filings(archive, year, filings, form, session)
 
         # Save snapshot of RSS feed
         with archive.open("rssfeed", "w") as f:
             logger.info("Writing rss feed metadata to archive.")
             f.write(
                 json.dumps(
-                    {
-                        filing_name: metadata[filing_name]
-                        for filing_name in sorted(metadata)
-                    },
+                    metadata,
                     default=str,
                     indent=2,
                 ).encode("utf-8")
             )
 
     logger.info(f"Finished scraping ferc{form_number}-{year}.")
+
+    # Extract list of files in archive and list of taxonomies referenced by filings
+    files_in_zip = ["rssfeed"] + [
+        filing_metadata["filename"]
+        for filing_list in metadata.values()
+        for filing_metadata in filing_list
+    ]
+    taxonomies_referenced = [
+        filing_metadata["taxonomy_url"]
+        for filing_list in metadata.values()
+        for filing_metadata in filing_list
+    ]
 
     return ResourceInfo(
         local_path=archive_path,
@@ -390,9 +413,9 @@ async def archive_xbrl_for_form(
     session: aiohttp.ClientSession,
 ) -> list[ResourceInfo]:
     """Archive all XBRL filings and taxonomies for specified FERC form."""
-    indexed_filings = index_available_entries()[form]
+    indexed_filings = IndexedFilings.index_available_entries(form)
     filing_resources = []
-    for year, filings in indexed_filings.items():
+    for year, filings in indexed_filings.filings_per_year.items():
         if not valid_year(year):
             continue
 
