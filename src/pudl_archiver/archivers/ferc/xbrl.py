@@ -343,7 +343,12 @@ async def _download_filings(
 
         with archive.open(filename, "w") as f:
             f.write(response_bytes)
-    return metadata
+    return {
+        filename: sorted(
+            filings, key=lambda filing: filing["rss_metadata"]["download_url"]
+        )
+        for filename, filings in metadata.items()
+    }
 
 
 async def archive_year(
