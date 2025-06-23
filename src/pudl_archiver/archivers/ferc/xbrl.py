@@ -345,9 +345,10 @@ async def _download_filings(
             f.write(response_bytes)
     return {
         filename: sorted(
-            filings, key=lambda filing: filing["rss_metadata"]["download_url"]
+            metadata[filename],
+            key=lambda filing: filing["rss_metadata"]["download_url"],
         )
-        for filename, filings in metadata.items()
+        for filename in sorted(metadata)
     }
 
 
