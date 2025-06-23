@@ -189,6 +189,7 @@ ci = [{task="lint"}, {task="unit"}, {task="integration"}, {task="coverage"}]
 [tool.pixi.dependencies]
 gdal = ">=3.11.0,<4"
 psycopg2-binary = ">=2.9.9,<3"
+git-lfs = ">=3.6.1,<4"
 
 [tool.pixi.activation]
-scripts = ["scripts/check_playwright_installation.sh"]
+scripts = ["scripts/check_playwright_installation.sh", "scripts/install_github_lfs.sh"]
