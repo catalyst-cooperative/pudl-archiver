@@ -199,26 +199,7 @@ class AbstractDatasetArchiver(ABC):
             url: URL of zipfile.
             zip_path: Local path to write file to disk.
         """
-        page = await playwright_browser.new_page()
-
-        # timeout: 10 minutes, same as we use for the aiohttp session
-        async with page.expect_download(timeout=10 * 60 * 1000) as download_info:
-            try:
-                # page.goto within a page.expect_download context always generates
-                # an error with message "Page.goto: Download is starting" and a call
-                # log. All evidence suggests this error is harmless and does not
-                # affect the downloaded file. See also:
-                # https://github.com/microsoft/playwright/issues/18430#issuecomment-1309638711
-                # https://stackoverflow.com/questions/73652378/download-files-with-goto-in-playwright-python/74144570#74144570
-                await page.goto(url, timeout=10 * 60 * 1000)
-            except PlaywrightError as e:
-                # ...but we're going to check our assumptions just in case:
-                if not e.message.startswith("Page.goto: Download is starting"):
-                    raise e
-        download = await download_info.value
-        # [2025 km] NB: playwright.download.save_as can't save to a BytesIO
-        await download.save_as(zip_path)
-        await page.close()
+        await self.download_file_via_playwright(playwright_browser, url, zip_path)
 
         if zipfile.is_zipfile(zip_path):
             return
@@ -251,6 +232,37 @@ class AbstractDatasetArchiver(ABC):
             raise RuntimeError(
                 f"Failed to download valid zipfile from {url}. File head: {f.read(128).lower().strip()}"
             )
+
+    async def download_file_via_playwright(
+        self, playwright_browser: PlaywrightBrowser, url: str, file_path: Path
+    ) -> int:
+        """Download a file using playwright.
+
+        Args:
+            playwright_browser: async browser instance to use for fetching the URL.
+            url: URL to file to download.
+            file_path: Local path to write file to disk.
+        """
+        page = await playwright_browser.new_page()
+
+        # timeout: 10 minutes, same as we use for the aiohttp session
+        async with page.expect_download(timeout=10 * 60 * 1000) as download_info:
+            try:
+                # page.goto within a page.expect_download context always generates
+                # an error with message "Page.goto: Download is starting" and a call
+                # log. All evidence suggests this error is harmless and does not
+                # affect the downloaded file. See also:
+                # https://github.com/microsoft/playwright/issues/18430#issuecomment-1309638711
+                # https://stackoverflow.com/questions/73652378/download-files-with-goto-in-playwright-python/74144570#74144570
+                await page.goto(url, timeout=10 * 60 * 1000)
+            except PlaywrightError as e:
+                # ...but we're going to check our assumptions just in case:
+                if not e.message.startswith("Page.goto: Download is starting"):
+                    raise e
+        download = await download_info.value
+        # [2025 km] NB: playwright.download.save_as can't save to a BytesIO
+        await download.save_as(file_path)
+        await page.close()
 
     async def download_file(
         self, url: str, file_path: Path | io.BytesIO, post: bool = False, **kwargs
