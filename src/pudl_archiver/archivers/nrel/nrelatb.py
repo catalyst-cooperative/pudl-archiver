@@ -80,6 +80,7 @@ class NrelAtbArchiver(AbstractDatasetArchiver):
             .replace("atb-", "")
             .replace("%20", "-")
             .replace("annual-technology-baseline-", "")
+            .replace(".csv.csv", ".csv")  # Replace one duplicated filename
         )
 
         # Sometimes there's a version in the URL that
