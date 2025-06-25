@@ -55,10 +55,10 @@ class NrelAtbArchiver(AbstractDatasetArchiver):
                         year, atb_type, year_excel_base_url
                     )
 
-    def clean_excel_filename(
-        self, excel_url, year: int, atb_type: Literal["transportation", "electricity"]
+    def clean_filename(
+        self, url: str, year: int, atb_type: Literal["transportation", "electricity"]
     ) -> str:
-        """Clean excel filename.
+        """Clean filename.
 
         We standardize the names to have this general structure:
         * nrelatb-{year}-{atb_type}-{version if it exists}-{cleaned up file name w/ extension}
@@ -68,7 +68,7 @@ class NrelAtbArchiver(AbstractDatasetArchiver):
         there.
         """
         og_filename = (
-            excel_url.split("/")[-1]
+            url.split("/")[-1]
             .lower()
             .strip()
             .replace(" ", "-")
@@ -82,8 +82,21 @@ class NrelAtbArchiver(AbstractDatasetArchiver):
             .replace("annual-technology-baseline-", "")
         )
 
-        excel_filename = f"nrelatb-{year}-{atb_type}-{og_filename}"
-        return excel_filename
+        # Sometimes there's a version in the URL that
+        # we also want to pull out.
+        # If whatever precedes the filename in the URL looks like /v1.2.3./
+        # We add it into the file name
+        version_pattern = re.compile(r"v[\d.]+")
+        version_match = re.match(version_pattern, url.split("/")[-2])
+        if version_match:
+            version = version_match.group().lower().strip().replace(".", "-")
+            version = f"{version}-"
+        else:
+            version = ""
+
+        # Put it all back together
+        cleaned_filename = f"nrelatb-{year}-{atb_type}-{version}{og_filename}"
+        return cleaned_filename
 
     async def compile_s3_viewer_urls(
         self,
@@ -128,26 +141,8 @@ class NrelAtbArchiver(AbstractDatasetArchiver):
         and adding it to the data paths in archive.
         """
         for s3_viewer_url in s3_viewer_urls:
-            s3_viewer_filename = (
-                s3_viewer_url.split("/")[-1]
-                .lower()
-                .strip()
-                .replace(" ", "-")
-                .replace("_", "-")
-            )
-            # Sometimes there's a version in the URL that
-            # we also want to pull out.
-            # If whatever precedes the filename in the URL looks like /v1.2.3./
-            # We add it into the file name
-            version_pattern = re.compile(r"v[\d.]+")
-            version_match = re.match(version_pattern, s3_viewer_url.split("/")[-2])
-            if version_match:
-                version = version_match.group().lower().strip().replace(".", "-")
-                version = f"{version}-"
-            else:
-                version = ""
-            s3_viewer_filename = (
-                f"nrelatb-{year}-{atb_type}-{version}{s3_viewer_filename}"
+            s3_viewer_filename = self.clean_filename(
+                url=s3_viewer_url, year=year, atb_type=atb_type
             )
             await self.download_add_to_archive_and_unlink(
                 s3_viewer_url, s3_viewer_filename, zip_path
@@ -195,7 +190,7 @@ class NrelAtbArchiver(AbstractDatasetArchiver):
             f"{year}/{atb_type}: Downloading spreadsheet data from {year_excel_base_url}."
         )
         for excel_url in await self.get_hyperlinks(year_excel_base_url, link_pattern):
-            excel_filename = self.clean_excel_filename(excel_url, year, atb_type)
+            excel_filename = self.clean_filename(excel_url, year, atb_type)
             if excel_filename not in data_paths_in_archive:  # Avoid duplicates
                 excel_url = urljoin(year_excel_base_url, excel_url)
                 await self.download_add_to_archive_and_unlink(
@@ -220,7 +215,7 @@ class NrelAtbArchiver(AbstractDatasetArchiver):
                 # If there's an OEDI page linked
                 # On the OEDI page, iterate through and add any files we missed
                 for oedi_url in await self.get_hyperlinks(url, link_pattern):
-                    oedi_filename = self.clean_excel_filename(oedi_url, year, atb_type)
+                    oedi_filename = self.clean_filename(oedi_url, year, atb_type)
                     if oedi_filename not in data_paths_in_archive:
                         oedi_url = urljoin(url, oedi_url)
                         await self.download_add_to_archive_and_unlink(
