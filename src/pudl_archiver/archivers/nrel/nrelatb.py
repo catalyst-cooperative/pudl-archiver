@@ -201,7 +201,7 @@ class NrelAtbArchiver(AbstractDatasetArchiver):
 
         # The default base url to grab the excel files contains some of the
         # data (the link to the CSVs and the most recent versions)
-        # For older versions of the data, we also want to grab files from the OpenEI
+        # For newer versions of the data, we also want to grab files from the OpenEI
         # page linked on the page (if it exists, after 2022 and only for electricity).
         # This includes prior versions of Excel and Tableau worksheets.
         if year > 2022:
