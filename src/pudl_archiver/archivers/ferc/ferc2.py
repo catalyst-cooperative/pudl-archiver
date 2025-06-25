@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+from playwright.async_api import async_playwright
+
 from pudl_archiver.archivers.classes import (
     AbstractDatasetArchiver,
     ArchiveAwaitable,
@@ -15,8 +17,16 @@ class Ferc2Archiver(AbstractDatasetArchiver):
 
     name = "ferc2"
 
+    async def after_download(self) -> None:
+        """Clean up playwright once downloads are complete."""
+        await self.browser.close()
+        await self.playwright.stop()
+
     async def get_resources(self) -> ArchiveAwaitable:
         """Download FERC 2 resources."""
+        self.playwright = await async_playwright().start()
+        self.browser = await self.playwright.webkit.launch()
+
         # Get sub-annually partitioned DBF data
         for year in range(1991, 2000):
             if not self.valid_year(year):
@@ -41,7 +51,11 @@ class Ferc2Archiver(AbstractDatasetArchiver):
     async def get_year_dbf(
         self, year: int, part: int | None = None
     ) -> tuple[Path, dict]:
-        """Download a single year of FERC Form 2 data."""
+        """Download a single DBF of historical FERC Form 2 data from 1991-2021.
+
+        Source page:
+            https://www.ferc.gov/industries-data/natural-gas/industry-forms/form-2-2a-3-q-gas-historical-vfp-data
+        """
         early_urls: dict[tuple(int, int), str] = {
             (1991, 1): "https://www.ferc.gov/sites/default/files/2020-07/F2Y91A-M.zip",
             (1991, 2): "https://www.ferc.gov/sites/default/files/2020-07/F2Y91N-Z.zip",
@@ -72,7 +86,7 @@ class Ferc2Archiver(AbstractDatasetArchiver):
             url = f"https://forms.ferc.gov/f2allyears/f2_{year}.zip"
             download_path = self.download_directory / f"ferc2-{year}.zip"
 
-        await self.download_zipfile(url, download_path)
+        await self.download_zipfile_via_playwright(self.browser, url, download_path)
 
         return ResourceInfo(
             local_path=download_path,
