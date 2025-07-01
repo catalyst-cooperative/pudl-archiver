@@ -330,7 +330,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/85/e4/07c80521879c2d15f321465ac24c70efe2381378c00bf5e56a0f4fbac8cd/protobuf-5.29.5-cp38-abi3-manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/bf/b9/b0eb3f3cbcb734d930fdf839431606844a825b23eaf9a6ab371edac8162c/psutil-7.0.0-cp36-abi3-manylinux_2_12_x86_64.manylinux2010_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/22/a6/858897256d0deac81a172289110f31629fc4cee19b6f01283303e18c8db3/ptyprocess-0.7.0-py2.py3-none-any.whl
-      - pypi: git+https://github.com/catalyst-cooperative/pudl.git#aaf880267081ba51d240b95ddb7699c75d7e3aec
+      - pypi: git+https://github.com/catalyst-cooperative/pudl.git#4f2d075c1728c7f75f234e5cbd726a08be66e47b
       - pypi: https://files.pythonhosted.org/packages/8e/37/efad0257dc6e593a18957422533ff0f87ede7c9c6ea010a2177d738fb82f/pure_eval-0.2.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/27/2e/29bb28a7102a6f71026a9d70d1d61df926887e36ec797f2e6acfd2dd3867/pyarrow-19.0.1-cp312-cp312-manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/c8/f1/d6a797abb14f6283c0ddff96bbdd46937f64122b8c925cab503dd37f8214/pyasn1-0.6.1-py3-none-any.whl
@@ -780,7 +780,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/dd/73/10e1661c21f139f2c6ad9b23040ff36fee624310dc28fba20d33fdae124c/protobuf-5.29.5-cp38-abi3-macosx_10_9_universal2.whl
       - pypi: https://files.pythonhosted.org/packages/ed/e6/2d26234410f8b8abdbf891c9da62bee396583f713fb9f3325a4760875d22/psutil-7.0.0-cp36-abi3-macosx_10_9_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/22/a6/858897256d0deac81a172289110f31629fc4cee19b6f01283303e18c8db3/ptyprocess-0.7.0-py2.py3-none-any.whl
-      - pypi: git+https://github.com/catalyst-cooperative/pudl.git#aaf880267081ba51d240b95ddb7699c75d7e3aec
+      - pypi: git+https://github.com/catalyst-cooperative/pudl.git#4f2d075c1728c7f75f234e5cbd726a08be66e47b
       - pypi: https://files.pythonhosted.org/packages/8e/37/efad0257dc6e593a18957422533ff0f87ede7c9c6ea010a2177d738fb82f/pure_eval-0.2.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/7e/3b/4692965e04bb1df55e2c314c4296f1eb12b4f3052d4cf43d29e076aedf66/pyarrow-19.0.1-cp312-cp312-macosx_12_0_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/c8/f1/d6a797abb14f6283c0ddff96bbdd46937f64122b8c925cab503dd37f8214/pyasn1-0.6.1-py3-none-any.whl
@@ -1230,7 +1230,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/dd/73/10e1661c21f139f2c6ad9b23040ff36fee624310dc28fba20d33fdae124c/protobuf-5.29.5-cp38-abi3-macosx_10_9_universal2.whl
       - pypi: https://files.pythonhosted.org/packages/04/8b/30f930733afe425e3cbfc0e1468a30a18942350c1a8816acfade80c005c4/psutil-7.0.0-cp36-abi3-macosx_11_0_arm64.whl
       - pypi: https://files.pythonhosted.org/packages/22/a6/858897256d0deac81a172289110f31629fc4cee19b6f01283303e18c8db3/ptyprocess-0.7.0-py2.py3-none-any.whl
-      - pypi: git+https://github.com/catalyst-cooperative/pudl.git#aaf880267081ba51d240b95ddb7699c75d7e3aec
+      - pypi: git+https://github.com/catalyst-cooperative/pudl.git#4f2d075c1728c7f75f234e5cbd726a08be66e47b
       - pypi: https://files.pythonhosted.org/packages/8e/37/efad0257dc6e593a18957422533ff0f87ede7c9c6ea010a2177d738fb82f/pure_eval-0.2.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/78/b4/94e828704b050e723f67d67c3535cf7076c7432cd4cf046e4bb3b96a9c9d/pyarrow-19.0.1-cp312-cp312-macosx_12_0_arm64.whl
       - pypi: https://files.pythonhosted.org/packages/c8/f1/d6a797abb14f6283c0ddff96bbdd46937f64122b8c925cab503dd37f8214/pyasn1-0.6.1-py3-none-any.whl
@@ -2158,9 +2158,9 @@ packages:
   - tox>=4.16.0,<4.26 ; extra == 'tests'
   - types-setuptools ; extra == 'types'
   requires_python: '>=3.10,<3.14'
-- pypi: git+https://github.com/catalyst-cooperative/pudl.git#aaf880267081ba51d240b95ddb7699c75d7e3aec
+- pypi: git+https://github.com/catalyst-cooperative/pudl.git#4f2d075c1728c7f75f234e5cbd726a08be66e47b
   name: catalystcoop-pudl
-  version: 2025.5.1.dev38+gaaf880267
+  version: 2025.5.1.dev40+g4f2d075c1
   requires_dist:
   - alembic>=1.16
   - boto3>=1.35
@@ -8706,38 +8706,38 @@ packages:
 - pypi: ./
   name: pudl-archiver
   version: 0.2.0
-  sha256: 4fa16c9b5f3504e48bc450ea7517c7ae74fd64c63084b2d6a6c6c5e1cecd508d
+  sha256: caabed9fd90ac128c0da36c9f22412dd60b3247c5209696263754bd23c585c76
   requires_dist:
   - catalystcoop-pudl @ git+https://github.com/catalyst-cooperative/pudl.git
-  - arelle-release
-  - beautifulsoup4
-  - cfgv
-  - coloredlogs
-  - coverage
-  - dask
-  - deltalake
-  - doc8
-  - feedparser
-  - frictionless
-  - furo
-  - playwright
-  - pre-commit
-  - pydantic
-  - pydocstyle
-  - pytest-asyncio
-  - pytest-console-scripts
-  - pytest-cov
-  - pytest-mock
-  - pytest
-  - python-dotenv
-  - pyyaml
-  - ruff
-  - semantic-version
-  - sphinx-autoapi
-  - sphinx-issues
-  - sphinx
-  - tqdm
-  - types-requests
+  - arelle-release>=2.37.28,<3
+  - beautifulsoup4>=4.13.4,<5
+  - cfgv>=3.4.0,<4
+  - coloredlogs>=14.0,<15
+  - coverage>=7.9.1,<8
+  - dask>=2025.5.1,<2026
+  - deltalake>=1.0.2,<2
+  - doc8>=2.0.0,<3
+  - feedparser>=6.0.11,<7
+  - frictionless>=5.18.1,<6
+  - furo>=2024.8.6,<2025
+  - playwright>=1.53.0,<2
+  - pre-commit>=4.2.0,<5
+  - pydantic>=2.11.7,<3
+  - pydocstyle>=6.3.0,<7
+  - pytest-asyncio>=1.0.0,<2
+  - pytest-console-scripts>=1.4.1,<2
+  - pytest-cov>=6.2.1,<7
+  - pytest-mock>=3.14.1,<4
+  - pytest>=8.4.1,<9
+  - python-dotenv>=1.1.1,<2
+  - pyyaml>=6.0.2,<7
+  - ruff>=0.12.1,<0.13
+  - semantic-version>=2.10.0,<3
+  - sphinx-autoapi>=3.6.0,<4
+  - sphinx-issues>=5.0.1,<6
+  - sphinx>=8.2.3,<9
+  - tqdm>=4.67.1,<5
+  - types-requests>=2.32.4.20250611,<3
   requires_python: '>=3.12,<3.13'
   editable: true
 - pypi: https://files.pythonhosted.org/packages/8e/37/efad0257dc6e593a18957422533ff0f87ede7c9c6ea010a2177d738fb82f/pure_eval-0.2.3-py3-none-any.whl
