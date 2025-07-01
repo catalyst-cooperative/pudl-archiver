@@ -5,9 +5,9 @@ authors = [{ name = "PUDL", email = "pudl@catalyst.coop" }]
 requires-python = ">=3.12,<3.13"
 
 dependencies = [
-    "arelle-release>=2.37.23,<3",
-    "beautifulsoup4>=4.13.4,<5",
     "catalystcoop.pudl @ git+https://github.com/catalyst-cooperative/pudl.git",
+    "arelle-release>=2.37.28,<3",
+    "beautifulsoup4>=4.13.4,<5",
     "cfgv>=3.4.0,<4",
     "coloredlogs>=14.0,<15",
     "coverage>=7.9.1,<8",
@@ -17,7 +17,7 @@ dependencies = [
     "feedparser>=6.0.11,<7",
     "frictionless>=5.18.1,<6",
     "furo>=2024.8.6,<2025",
-    "playwright>=1.52.0,<2",
+    "playwright>=1.53.0,<2",
     "pre-commit>=4.2.0,<5",
     "pydantic>=2.11.7,<3",
     "pydocstyle>=6.3.0,<7",
@@ -25,10 +25,10 @@ dependencies = [
     "pytest-console-scripts>=1.4.1,<2",
     "pytest-cov>=6.2.1,<7",
     "pytest-mock>=3.14.1,<4",
-    "pytest>=8.4.0,<9",
-    "python-dotenv>=1.1.0,<2",
+    "pytest>=8.4.1,<9",
+    "python-dotenv>=1.1.1,<2",
     "pyyaml>=6.0.2,<7",
-    "ruff>=0.12.0,<0.13",
+    "ruff>=0.12.1,<0.13",
     "semantic-version>=2.10.0,<3",
     "sphinx-autoapi>=3.6.0,<4",
     "sphinx-issues>=5.0.1,<6",
@@ -183,12 +183,17 @@ unit = "pytest --cov-append --cov=src/pudl_archiver --cov-report=xml --doctest-m
 integration = "pytest --cov-append --cov=src/pudl_archiver --cov-report=xml --doctest-modules src/pudl_archiver tests/integration"
 coverage = "coverage report --sort=cover"
 
-lint = [{task="ruff"}, {task="pre-commit"}]
-ci = [{task="lint"}, {task="unit"}, {task="integration"}, {task="coverage"}]
+lint = [{ task = "ruff" }, { task = "pre-commit" }]
+ci = [
+    { task = "lint" },
+    { task = "unit" },
+    { task = "integration" },
+    { task = "coverage" },
+]
 
 [tool.pixi.dependencies]
 gdal = ">=3.11.0,<4"
-psycopg2-binary = ">=2.9.9,<3"
+psycopg2-binary = ">=2.9.10,<3"
 
 [tool.pixi.activation]
 scripts = ["scripts/check_playwright_installation.sh"]
