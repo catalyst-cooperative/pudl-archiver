@@ -192,7 +192,7 @@ ci = [
 ]
 
 [tool.pixi.dependencies]
-gdal = ">=3.11.0,<4"
+gdal = "==3.11.0"
 psycopg2-binary = ">=2.9.10,<3"
 
 [tool.pixi.activation]
