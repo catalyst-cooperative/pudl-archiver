@@ -110,8 +110,11 @@ def _format_errors(log: str) -> str:
     )
     url = url_re.group(1)
 
-    failure = f"```\n{log.splitlines()[-1]}\n```"
-    return _format_message(url=url, name=name, content=failure)
+    failure = log.splitlines()[-1]
+    # We already capture archive validtion failures elsewhere, so ignore these.
+    if failure != "RuntimeError: Error: archive validation tests failed.":
+        return _format_message(url=url, name=name, content=failure)
+    return None
 
 
 def _load_summaries(summary_files: list[Path]) -> list[dict]:
