@@ -17,15 +17,22 @@ hide large messages (such as a file diff) behind a "See more" action.
 import argparse
 import itertools
 import json
+import logging
 import re
 from collections import defaultdict
 from pathlib import Path
+
+logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 
 def _parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--summary-files", nargs="+", type=Path, help="Paths to RunSummary JSON files."
+        "--summary-files",
+        nargs="+",
+        type=Path,
+        help="Paths to RunSummary JSON files.",
+        default=None,
     )
     parser.add_argument(
         "--error-files",
@@ -89,7 +96,8 @@ def _format_summary(summary: dict) -> list[dict]:
 def _format_errors(log: str) -> str:
     """Take a log file from a failed run and return the exception."""
     name_re = re.search(
-        r"(?:catalystcoop.pudl_archiver.archivers.classes:155 Archiving )([a-z0-9])*"
+        r"(?:catalystcoop.pudl_archiver.archivers.classes:155 Archiving )([a-z0-9]*)",
+        log,
     )
     name = name_re.group(1)
 
@@ -103,22 +111,32 @@ def _format_errors(log: str) -> str:
     return _format_message(url=url, name=name, content=failure)
 
 
+def _load_summaries(summary_files: list[Path]) -> list[dict]:
+    summaries = []
+    for summary_file in summary_files:
+        if summary_file.exists():  # Handle case where no files are found
+            with summary_file.open() as f:
+                summaries.extend(json.loads(f.read()))
+    return summaries
+
+
+def _load_errors(error_files: list[Path]) -> list[str]:
+    errors = []
+    for error_file in error_files:
+        if error_file.exists():  # Handle case where no files are found
+            with error_file.open() as f:
+                errors.append(f.read())
+    return errors
+
+
 def main(summary_files: list[Path], error_files: list[Path]) -> None:
     """Format summary files for Slack perusal."""
-    summaries = []
-    errors = []
-
-    for summary_file in summary_files:
-        with summary_file.open() as f:
-            summaries.extend(json.loads(f.read()))
-
-    for error_file in error_files:
-        with error_file.open() as f:
-            errors.append(f.read())
+    summaries = _load_summaries(summary_files)
+    errors = _load_errors(error_files)
 
     error_blocks = list(
         itertools.chain.from_iterable(
-            _format_failures(e) for e in errors if _format_errors(e) is not None
+            _format_errors(e) for e in errors if _format_errors(e) is not None
         )
     )
 
