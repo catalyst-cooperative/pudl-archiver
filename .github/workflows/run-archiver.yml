@@ -83,7 +83,14 @@ jobs:
           ZENODO_TOKEN_PUBLISH: ${{ secrets.ZENODO_TOKEN_PUBLISH }}
         if: ${{ inputs.server == 'sandbox' }}
         run: |
-          pixi run pudl_archiver --datasets ${{ matrix.dataset }} --sandbox --summary-file ${{ matrix.dataset }}_run_summary.json --clobber-unchanged
+          pixi run pudl_archiver --datasets ${{ matrix.dataset }} --sandbox --summary-file ${{ matrix.dataset }}_run_summary.json --clobber-unchanged 2> ${{ matrix.dataset }}_log.txt || true
+
+      - name: Save failed runs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: error-log-${{ matrix.dataset }}
+          path: ${{ matrix.dataset }}_log.txt
 
       - name: Upload run summaries
         if: always()
