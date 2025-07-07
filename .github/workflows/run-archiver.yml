@@ -108,12 +108,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Download summaries
-        id: download
+        id: download-summaries
         uses: actions/download-artifact@v4
         with:
           pattern: run-summaries-*
           merge-multiple: true
-      - name: show summaries
+      - name: Download failures
+        id: download-artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: error-log-*
+          merge-multiple: true
+      - name: Show downloaded artifacts
         run: ls -R
       - name: Munge summaries together
         id: all_summaries
