@@ -126,7 +126,7 @@ jobs:
         run: |
           {
             echo "SLACK_PAYLOAD<<EOF"
-            ./scripts/make_slack_notification_message.py --summary-files *_run_summary.json | tee slack-payload.json
+            ./scripts/make_slack_notification_message.py --summary-files *_run_summary.json --error-files *_log.txt | tee slack-payload.json
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
       - name: Post update to pudl-deployment

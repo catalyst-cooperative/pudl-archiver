@@ -17,6 +17,7 @@ hide large messages (such as a file diff) behind a "See more" action.
 import argparse
 import itertools
 import json
+import re
 from collections import defaultdict
 from pathlib import Path
 
@@ -25,6 +26,12 @@ def _parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--summary-files", nargs="+", type=Path, help="Paths to RunSummary JSON files."
+    )
+    parser.add_argument(
+        "--error-files",
+        nargs="+",
+        type=Path,
+        help="Paths to log files for failed runs.",
     )
     return parser.parse_args()
 
@@ -79,12 +86,41 @@ def _format_summary(summary: dict) -> list[dict]:
     return _format_message(url=url, name=name, content=changes)
 
 
-def main(summary_files: list[Path]) -> None:
+def _format_errors(log: str) -> str:
+    """Take a log file from a failed run and return the exception."""
+    name_re = re.search(
+        r"(?:catalystcoop.pudl_archiver.archivers.classes:155 Archiving )([a-z0-9])*"
+    )
+    name = name_re.group(1)
+
+    url_re = re.search(
+        r"(?:INFO:catalystcoop.pudl_archiver.depositors.zenodo.depositor:PUT )(https:\/\/[a-z0-9\/.]*)",
+        log,
+    )
+    url = url_re.group(1)
+
+    failure = log.splitlines()[-1]
+    return _format_message(url=url, name=name, content=failure)
+
+
+def main(summary_files: list[Path], error_files: list[Path]) -> None:
     """Format summary files for Slack perusal."""
     summaries = []
+    errors = []
+
     for summary_file in summary_files:
         with summary_file.open() as f:
             summaries.extend(json.loads(f.read()))
+
+    for error_file in error_files:
+        with error_file.open() as f:
+            errors.append(f.read())
+
+    error_blocks = list(
+        itertools.chain.from_iterable(
+            _format_failures(e) for e in errors if _format_errors(e) is not None
+        )
+    )
 
     failed_blocks = list(
         itertools.chain.from_iterable(
@@ -113,6 +149,8 @@ def main(summary_files: list[Path]) -> None:
     def section_block(text: str) -> dict:
         return {"type": "section", "text": {"type": "mrkdwn", "text": text}}
 
+    if error_blocks:
+        error_blocks = [section_block("*Run Failures*")] + error_blocks
     if failed_blocks:
         failed_blocks = [section_block("*Validation Failures*")] + failed_blocks
     if changed_blocks:
@@ -123,6 +161,7 @@ def main(summary_files: list[Path]) -> None:
     print(
         json.dumps(
             [header_block("Archiver Run Outcomes")]
+            + error_blocks
             + failed_blocks
             + changed_blocks
             + unchanged_blocks,
