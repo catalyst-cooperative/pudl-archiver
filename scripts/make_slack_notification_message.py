@@ -107,7 +107,7 @@ def _format_errors(log: str) -> str:
     )
     url = url_re.group(1)
 
-    failure = log.splitlines()[-1]
+    failure = f"```\n{log.splitlines()[-1]}\n```"
     return _format_message(url=url, name=name, content=failure)
 
 
