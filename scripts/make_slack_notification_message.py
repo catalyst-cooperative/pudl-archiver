@@ -98,6 +98,11 @@ def _format_summary(summary: dict) -> list[dict]:
 
 def _format_errors(log: str) -> str:
     """Take a log file from a failed run and return the exception."""
+    failure = log.splitlines()[-1]
+    # We already capture archive validtion failures elsewhere, so ignore these.
+    if failure == "RuntimeError: Error: archive validation tests failed.":
+        return None
+
     name_re = re.search(
         r"(?:catalystcoop.pudl_archiver.archivers.classes:155 Archiving )([a-z0-9]*)",
         log,
@@ -110,11 +115,7 @@ def _format_errors(log: str) -> str:
     )
     url = url_re.group(1)
 
-    failure = log.splitlines()[-1]
-    # We already capture archive validtion failures elsewhere, so ignore these.
-    if failure != "RuntimeError: Error: archive validation tests failed.":
-        return _format_message(url=url, name=name, content=failure)
-    return None
+    return _format_message(url=url, name=name, content=failure)
 
 
 def _load_summaries(summary_files: list[Path]) -> list[dict]:
@@ -129,7 +130,9 @@ def _load_summaries(summary_files: list[Path]) -> list[dict]:
 def _load_errors(error_files: list[Path]) -> list[str]:
     errors = []
     for error_file in error_files:
-        if error_file.exists():  # Handle case where no files are found
+        if (
+            error_file.exists() and error_file.stat().st_size > 0
+        ):  # Handle case where no files are found or file is empty
             with error_file.open() as f:
                 errors.append(f.read())
     return errors
