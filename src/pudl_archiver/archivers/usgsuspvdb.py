@@ -32,9 +32,13 @@ class UsgsUsPvDbArchiver(AbstractDatasetArchiver):
 
     async def get_resources(self) -> ArchiveAwaitable:
         """Download the 2 version of the database released in different years."""
+        user_agent = self.get_user_agent()
+
         # Get any link matching /item/alphanumeric and capture the alphanumeric part
         link_pattern = re.compile(r"\/item\/(\w+)$")
-        for link in await self.get_hyperlinks(BASE_URL, link_pattern):
+        for link in await self.get_hyperlinks(
+            BASE_URL, link_pattern, headers={"User-Agent": user_agent}
+        ):
             dataset_id = link_pattern.search(link).group(1)
             yield self.get_version_resource(link, dataset_id)
 
