@@ -279,7 +279,9 @@ async def archive_taxonomies(
                     archive_files.add(path)
 
                     add_to_archive_stable_hash(
-                        archive=taxonomy_archive, filename=path, data=response_bytes
+                        archive=taxonomy_archive,
+                        filename=str(path),
+                        data=response_bytes,
                     )
 
             taxonomy_zip_name = _taxonomy_zip_name_from_url(taxonomy_entry_point)
