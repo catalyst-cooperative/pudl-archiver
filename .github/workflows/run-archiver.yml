@@ -84,7 +84,7 @@ jobs:
         if: ${{ inputs.server == 'sandbox' }}
         run: |
           set -o pipefail
-          pixi run pudl_archiver --datasets ${{ matrix.dataset }} --sandbox --summary-file ${{ matrix.dataset }}_run_summary.json --clobber-unchanged | tee "${{ matrix.dataset }}_log.txt"
+          pixi run pudl_archiver --datasets ${{ matrix.dataset }} --sandbox --summary-file ${{ matrix.dataset }}_run_summary.json --clobber-unchanged 2>&1 | tee ${{ matrix.dataset }}_log.txt
 
       - name: Save failed runs
         if: failure()
