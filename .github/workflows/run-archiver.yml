@@ -59,6 +59,10 @@ jobs:
           pixi info
           pixi list
 
+      - name: Additional Playwright setup
+        run: |
+          pixi run playwright install --with-deps webkit
+
       - name: Run production archiver for ${{ matrix.dataset }}
         env:
           ZENODO_SANDBOX_TOKEN_UPLOAD: ${{ secrets.ZENODO_SANDBOX_TOKEN_UPLOAD }}

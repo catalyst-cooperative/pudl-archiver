@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+from playwright.async_api import async_playwright
+
 from pudl_archiver.archivers.classes import (
     AbstractDatasetArchiver,
     ArchiveAwaitable,
@@ -29,9 +31,15 @@ class Ferc714Archiver(AbstractDatasetArchiver):
         )
 
     async def get_bulk_csv(self) -> tuple[Path, dict]:
-        """Download a single year of FERC Form 714 data."""
+        """Download historical CSVs of FERC Form 714 data from 2006-2010.
+
+        Source page:
+          https://www.ferc.gov/industries-data/electric/general-information/electric-industry-forms/form-no-714-annual-electric/data
+        """
         url = "https://www.ferc.gov/sites/default/files/2021-06/Form-714-csv-files-June-2021.zip"
         download_path = self.download_directory / "ferc714.zip"
-        await self.download_zipfile(url, download_path)
-
+        async with async_playwright() as p:
+            browser = await p.webkit.launch()
+            await self.download_zipfile_via_playwright(browser, url, download_path)
+            await browser.close()
         return ResourceInfo(local_path=download_path, partitions={})

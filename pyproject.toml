@@ -5,19 +5,36 @@ authors = [{ name = "PUDL", email = "pudl@catalyst.coop" }]
 requires-python = ">=3.12,<3.13"
 
 dependencies = [
-    "arelle-release>=2.29,<2.38",
-    "beautifulsoup4>=4.12.3,<5",
     "catalystcoop.pudl @ git+https://github.com/catalyst-cooperative/pudl.git",
-    "coloredlogs>=14",
-    "dask>=2025,<2026",
-    "deltalake>=0.25,<1.1",
-    "feedparser>=6.0",
-    "frictionless>=5,<6",
-    "pydantic>=2.7,<3",
-    "python-dotenv~=1.1.0",
-    "pyyaml>=6.0,<7",
-    "semantic_version>=2.8,<3",
-    "tqdm>=4.64",
+    "arelle-release>=2.37.28,<3",
+    "beautifulsoup4>=4.13.4,<5",
+    "cfgv>=3.4.0,<4",
+    "coloredlogs>=14.0,<15",
+    "coverage>=7.9.1,<8",
+    "dask>=2025.5.1,<2026",
+    "deltalake>=1.0.2,<2",
+    "doc8>=2.0.0,<3",
+    "feedparser>=6.0.11,<7",
+    "frictionless>=5.18.1,<6",
+    "furo>=2024.8.6,<2025",
+    "playwright>=1.53.0,<2",
+    "pre-commit>=4.2.0,<5",
+    "pydantic>=2.11.7,<3",
+    "pydocstyle>=6.3.0,<7",
+    "pytest-asyncio>=1.0.0,<2",
+    "pytest-console-scripts>=1.4.1,<2",
+    "pytest-cov>=6.2.1,<7",
+    "pytest-mock>=3.14.1,<4",
+    "pytest>=8.4.1,<9",
+    "python-dotenv>=1.1.1,<2",
+    "pyyaml>=6.0.2,<7",
+    "ruff>=0.12.1,<0.13",
+    "semantic-version>=2.10.0,<3",
+    "sphinx-autoapi>=3.6.0,<4",
+    "sphinx-issues>=5.0.1,<6",
+    "sphinx>=8.2.3,<9",
+    "tqdm>=4.67.1,<5",
+    "types-requests>=2.32.4.20250611,<3",
 ]
 
 classifiers = [
@@ -30,36 +47,6 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.12",
-]
-
-[project.optional-dependencies]
-dev = [
-    "ruff>=0.11,<0.12",
-    "build>=1.2,<1.3",
-    "twine>=3.3,<6.2", # Used to make releases to PyPI
-    "types-requests",
-]
-
-docs = [
-    "doc8>=1.1,<1.2", # Ensures clean documentation formatting
-    "furo>=2022.4.7",
-    "sphinx>=7,<8.2.4", # The default Python documentation engine
-    "sphinx-autoapi>=3,<3.7", # Generates documentation from docstrings
-    "sphinx-issues>=1.2,<5.1", # Allows references to GitHub issues
-]
-
-tests = [
-    "coverage>=7,<7.9", # Lets us track what code is being tested
-    "doc8>=1.1,<1.2", # Ensures clean documentation formatting
-    "pre-commit>=4,<4.3", # Allow us to run pre-commit hooks in testing
-    "cfgv>=3.3.1,<4",
-    "pydocstyle>=6,<6.4", # Style guidelines for Python documentation
-    "pytest>=8,<8.4", # Our testing framework
-    "pytest-asyncio>=0.20,<0.27", # Test async functions
-    "pytest-console-scripts>=1.1,<1.5", # Allow automatic testing of scripts
-    "pytest-cov>=5,<6.2", # Pytest plugin for working with coverage
-    "pytest-mock>=3.0,<3.15", # Pytest plugin for mocking function calls and objects
-    "ruff>=0.11,<0.12",
 ]
 
 [project.scripts]
@@ -179,15 +166,13 @@ platforms = [
     # The google-cloud-sdk conda package doesn't support Windows
     # "win-64",
 ]
+channel-priority = "strict"
 
 [tool.pixi.pypi-dependencies]
 pudl_archiver = { path = ".", editable = true }
 
 [tool.pixi.environments]
 default = { solve-group = "default" }
-dev = { features = ["dev"], solve-group = "default" }
-docs = { features = ["docs"], solve-group = "default" }
-tests = { features = ["tests"], solve-group = "default" }
 
 [tool.pixi.tasks]
 pre-commit-install = "pre-commit install"
@@ -198,9 +183,17 @@ unit = "pytest --cov-append --cov=src/pudl_archiver --cov-report=xml --doctest-m
 integration = "pytest --cov-append --cov=src/pudl_archiver --cov-report=xml --doctest-modules src/pudl_archiver tests/integration"
 coverage = "coverage report --sort=cover"
 
-lint = [{task="ruff"}, {task="pre-commit"}]
-ci = [{task="lint"}, {task="unit"}, {task="integration"}, {task="coverage"}]
+lint = [{ task = "ruff" }, { task = "pre-commit" }]
+ci = [
+    { task = "lint" },
+    { task = "unit" },
+    { task = "integration" },
+    { task = "coverage" },
+]
 
 [tool.pixi.dependencies]
-gdal = "==3.11.0"
-psycopg2-binary = ">=2.9.9,<3"
+gdal = ">=3.11.0,<4"
+psycopg2-binary = ">=2.9.10,<3"
+
+[tool.pixi.activation]
+scripts = ["scripts/check_playwright_installation.sh"]
