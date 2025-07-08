@@ -99,9 +99,10 @@ def _format_summary(summary: dict) -> list[dict]:
 def _format_errors(log: str) -> str:
     """Take a log file from a failed run and return the exception."""
     failure = log.splitlines()[-1]
-    # We already capture archive validtion failures elsewhere, so ignore these.
+    # We already capture archive validation failures elsewhere, so ignore these.
     if failure == "RuntimeError: Error: archive validation tests failed.":
         return None
+    failure = f"```\n{failure}\n```"  # Format as code
 
     name_re = re.search(
         r"(?:catalystcoop.pudl_archiver.archivers.classes:155 Archiving )([a-z0-9]*)",
