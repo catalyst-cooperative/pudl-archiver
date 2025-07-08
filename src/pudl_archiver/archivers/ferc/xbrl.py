@@ -24,7 +24,7 @@ from tqdm import tqdm
 
 from pudl_archiver.archivers.classes import ResourceInfo
 from pudl_archiver.frictionless import ZipLayout
-from pudl_archiver.utils import retry_async
+from pudl_archiver.utils import add_to_archive_stable_hash, retry_async
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
@@ -278,13 +278,17 @@ async def archive_taxonomies(
                     path = Path(url_parsed.path).relative_to("/")
                     archive_files.add(path)
 
-                    with taxonomy_archive.open(str(path), "w") as f:
-                        f.write(response_bytes)
+                    add_to_archive_stable_hash(
+                        archive=taxonomy_archive, filename=path, data=response_bytes
+                    )
 
             taxonomy_zip_name = _taxonomy_zip_name_from_url(taxonomy_entry_point)
             taxonomy_versions.append(taxonomy_zip_name)
-            with archive.open(taxonomy_zip_name, mode="w") as taxonomy_zip:
-                taxonomy_zip.write(taxonomy_buffer.getvalue())
+            add_to_archive_stable_hash(
+                archive=archive,
+                filename=taxonomy_zip_name,
+                data=taxonomy_buffer.getvalue(),
+            )
 
     return ResourceInfo(
         local_path=archive_path,
@@ -327,7 +331,10 @@ async def _download_filings(
         session: Async http client session.
     """
     metadata = defaultdict(list)
-    for filing in tqdm(filings, desc=f"FERC {form.value} {year} XBRL"):
+    for filing in tqdm(
+        sorted(filings, key=lambda f: f.download_url),
+        desc=f"FERC {form.value} {year} XBRL",
+    ):
         # Download filing
         response_bytes = await _download_filing(filing, session)
 
@@ -341,8 +348,9 @@ async def _download_filings(
         )
         metadata[filing_name].append(filing_metadata.model_dump())
 
-        with archive.open(filename, "w") as f:
-            f.write(response_bytes)
+        add_to_archive_stable_hash(
+            archive=archive, filename=filename, data=response_bytes
+        )
     return {
         filename: sorted(
             metadata[filename],
@@ -377,15 +385,16 @@ async def archive_year(
         metadata = await _download_filings(archive, year, filings, form, session)
 
         # Save snapshot of RSS feed
-        with archive.open("rssfeed", "w") as f:
-            logger.info("Writing rss feed metadata to archive.")
-            f.write(
-                json.dumps(
-                    metadata,
-                    default=str,
-                    indent=2,
-                ).encode("utf-8")
-            )
+        logger.info("Writing rss feed metadata to archive.")
+        add_to_archive_stable_hash(
+            archive=archive,
+            filename="rssfeed",
+            data=json.dumps(
+                metadata,
+                default=str,
+                indent=2,
+            ).encode("utf-8"),
+        )
 
     logger.info(f"Finished scraping ferc{form_number}-{year}.")
 
