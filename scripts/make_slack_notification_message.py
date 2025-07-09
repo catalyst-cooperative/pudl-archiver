@@ -87,7 +87,7 @@ def _format_summary(summary: dict) -> list[dict]:
         for change in file_changes:
             abridged_changes[change["diff_type"]].append(
                 # Convert the size diff to MB for speed of assessment, and round
-                {change["name"]: round(change["size_diff"] * (2**-20), 4)}
+                {change["name"]: round(change["size_diff"] * (1**-6), 4)}
             )
         changes = f"```\n{json.dumps(abridged_changes, indent=2)}\n```"
     else:
@@ -131,11 +131,9 @@ def _load_summaries(summary_files: list[Path]) -> list[dict]:
 def _load_errors(error_files: list[Path]) -> list[str]:
     errors = []
     for error_file in error_files:
-        if (
-            error_file.exists() and error_file.stat().st_size > 0
-        ):  # Handle case where no files are found or file is empty
-            with error_file.open() as f:
-                errors.append(f.read())
+        # Handle case where no files are found or file is empty
+        with error_file.open() as f:
+            errors.append(f.read())
     return errors
 
 
@@ -145,14 +143,12 @@ def main(summary_files: list[Path], error_files: list[Path]) -> None:
     errors = _load_errors(error_files)
 
     error_blocks = list(
-        itertools.chain.from_iterable(
-            _format_errors(e) for e in errors if _format_errors(e) is not None
-        )
+        itertools.chain.from_iterable(filter(None, (_format_errors(e) for e in errors)))
     )
 
     failed_blocks = list(
         itertools.chain.from_iterable(
-            _format_failures(s) for s in summaries if _format_failures(s) is not None
+            filter(None, (_format_failures(s) for s in summaries))
         )
     )
 
