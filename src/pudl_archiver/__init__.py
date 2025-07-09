@@ -77,7 +77,7 @@ async def archive_datasets(
 
     ssl_context = ssl.create_default_context(cafile=certifi.where())
     connector = aiohttp.TCPConnector(
-        limit_per_host=20, force_close=True, ssl=ssl_context
+        limit_per_host=5, force_close=True, ssl=ssl_context
     )
     async with aiohttp.ClientSession(
         trace_configs=[trace_config],
