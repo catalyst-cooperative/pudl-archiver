@@ -63,7 +63,7 @@ class UsgsUsPvDbArchiver(AbstractDatasetArchiver):
         ]
 
         # For each version, bundle together all the files corresponding to that version.
-        for version in (url["version"][0] for url in file_dict if url["version"]):
+        for version in {url["version"][0] for url in file_dict if url["version"]}:
             self.logger.info(f"Downloading files for version {version}.")
             version_file_dict = [url for url in file_dict if version in url["version"]]
             yield self.get_version_resource(version, version_file_dict)
@@ -83,7 +83,7 @@ class UsgsUsPvDbArchiver(AbstractDatasetArchiver):
         for record in version_file_dict:  # For each link in a version
             await self.download_add_to_archive_and_unlink(
                 zip_path=zip_path,
-                filename=record["filename"],
+                filename=record["filename"].lower(),
                 url=urljoin(BASE_URL, record["url"]),
             )
         return ResourceInfo(local_path=zip_path, partitions={"version": version})
