@@ -82,8 +82,18 @@ jobs:
           ZENODO_TOKEN_UPLOAD: ${{ secrets.ZENODO_TOKEN_UPLOAD }}
           ZENODO_TOKEN_PUBLISH: ${{ secrets.ZENODO_TOKEN_PUBLISH }}
         if: ${{ inputs.server == 'sandbox' }}
+        # set -o pipefail passes on any failure codes to the next step,
+        # enabling us to see whether or not the pudl_archiver run failed.
         run: |
-          pixi run pudl_archiver --datasets ${{ matrix.dataset }} --sandbox --summary-file ${{ matrix.dataset }}_run_summary.json --clobber-unchanged
+          set -o pipefail
+          pixi run pudl_archiver --datasets ${{ matrix.dataset }} --sandbox --summary-file ${{ matrix.dataset }}_run_summary.json --clobber-unchanged 2>&1 | tee ${{ matrix.dataset }}_log.txt
+
+      - name: Save failed runs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: error-log-${{ matrix.dataset }}
+          path: ${{ matrix.dataset }}_log.txt
 
       - name: Upload run summaries
         if: always()
@@ -101,19 +111,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Download summaries
-        id: download
+        id: download-summaries
         uses: actions/download-artifact@v4
         with:
           pattern: run-summaries-*
           merge-multiple: true
-      - name: show summaries
+      - name: Download failures
+        id: download-artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: error-log-*
+          merge-multiple: true
+      - name: Show downloaded artifacts
         run: ls -R
       - name: Munge summaries together
         id: all_summaries
         run: |
           {
             echo "SLACK_PAYLOAD<<EOF"
-            ./scripts/make_slack_notification_message.py --summary-files *_run_summary.json | tee slack-payload.json
+            ./scripts/make_slack_notification_message.py --summary-files *_run_summary.json --error-files *_log.txt | tee slack-payload.json
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
       - name: Post update to pudl-deployment
