@@ -44,9 +44,16 @@ def _parse_args():
 
 
 def _format_message(
-    url: str, name: str, content: str, max_len: int = 3000
+    url: str | None, name: str, content: str, max_len: int = 3000
 ) -> list[dict]:
-    text = f"<{url}|*{name}*>\n{content}"[:max_len]
+    """Format message for Slack API.
+
+    When archives fail, they may not have a URL.
+    """
+    if url:
+        text = f"<{url}|*{name}*>\n{content}"[:max_len]
+    else:
+        text = f"*{name}*\n{content}"[:max_len]
     return [
         {
             "type": "section",
@@ -114,7 +121,9 @@ def _format_errors(log: str) -> str:
         r"(?:INFO:catalystcoop.pudl_archiver.depositors.zenodo.depositor:PUT )(https:\/\/[a-z0-9\/.]*)",
         log,
     )
-    url = url_re.group(1)
+    # If an archiver doesn't make it to this stage, return nothing and don't make this
+    # a hyperlink.
+    url = url_re.group(1) if url_re else None
 
     return _format_message(url=url, name=name, content=failure)
 
