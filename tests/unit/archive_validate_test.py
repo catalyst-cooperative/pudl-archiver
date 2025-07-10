@@ -319,6 +319,7 @@ def test_run_summary_success(specs, expected_success):
         date="2023-11-29",
         previous_version_date="2023-11-28",
         record_url=Url("https://www.catalyst.coop/bogus-record-url"),
+        datapackage_changed=False,
     )
     assert summary.success == expected_success
 

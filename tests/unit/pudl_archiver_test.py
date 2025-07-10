@@ -23,6 +23,7 @@ def successful_run():
         date="date",
         previous_version_date="date",
         record_url="https://www.catalyst.coop/bogus-record-url",
+        datapackage_changed=False,
     )
 
 
@@ -42,6 +43,7 @@ def failed_run():
         date="date",
         previous_version_date="date",
         record_url="https://www.catalyst.coop/bogus-record-url",
+        datapackage_changed=False,
     )
 
 
