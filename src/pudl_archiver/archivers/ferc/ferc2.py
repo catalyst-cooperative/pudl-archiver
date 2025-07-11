@@ -92,5 +92,5 @@ class Ferc2Archiver(AbstractDatasetArchiver):
 
         return ResourceInfo(
             local_path=download_path,
-            partitions=partitions | {"year": year, "data_format": "dbf", "part": part},
+            partitions=partitions | {"year": year, "data_format": "dbf"},
         )

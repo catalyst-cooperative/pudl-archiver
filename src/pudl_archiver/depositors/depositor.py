@@ -396,7 +396,6 @@ class DraftDeposition(BaseModel, ABC):
     async def attach_datapackage(
         self,
         resources: dict[str, ResourceInfo],
-        old_datapackage: DataPackage,
     ) -> tuple[DataPackage, bool]:
         """Generate new datapackage describing draft deposition in current state."""
         new_datapackage = self.generate_datapackage(resources)

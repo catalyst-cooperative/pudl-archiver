@@ -33,7 +33,7 @@ async def orchestrate_run(
             draft = await draft.delete_file(filename)
 
     # Create new datapackage
-    new_datapackage = await draft.attach_datapackage(resources, original_datapackage)
+    new_datapackage = await draft.attach_datapackage(resources)
 
     # Validate run
     validations = downloader.validate_dataset(
