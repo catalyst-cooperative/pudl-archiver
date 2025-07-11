@@ -2,7 +2,6 @@
 
 import io
 import logging
-import re
 import typing
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -315,7 +314,6 @@ class DraftDeposition(BaseModel, ABC):
     async def publish_if_valid(
         self,
         run_summary: RunSummary,
-        datapackage_updated: bool,
         clobber_unchanged: bool,
         auto_publish: bool,
     ) -> PublishedDeposition | None:
@@ -326,7 +324,7 @@ class DraftDeposition(BaseModel, ABC):
                 f"draft at {self.get_deposition_link()} for inspection."
             )
             return run_summary
-        if len(run_summary.file_changes) == 0 and not datapackage_updated:
+        if len(run_summary.file_changes) == 0 and not run_summary.datapackage_changed:
             if clobber_unchanged:
                 await self.delete_deposition()
                 logger.info("No changes detected, deleted draft.")
@@ -395,53 +393,21 @@ class DraftDeposition(BaseModel, ABC):
         wrapped_file.actually_close()
         return draft
 
-    def _datapackage_worth_changing(
-        self, old_datapackage: DataPackage | None, new_datapackage: DataPackage
-    ) -> bool:
-        # Copy datapackages so we can modify without causing problems down the line
-        new_datapackage_copy = new_datapackage.model_copy(deep=True)
-        if old_datapackage is not None:
-            old_datapackage_copy = old_datapackage.model_copy(deep=True)
-        # ignore differences in created/version
-        # ignore differences resource paths if it's just some ID number changing...
-        if old_datapackage is None:
-            return True
-        for field in new_datapackage_copy.model_dump():
-            if field in {"created", "version"}:
-                continue
-            if field == "resources":
-                for r in (
-                    old_datapackage_copy.resources + new_datapackage_copy.resources
-                ):
-                    r.path = re.sub(r"/\d+/", "/ID_NUMBER/", str(r.path))
-            if getattr(new_datapackage_copy, field) != getattr(
-                old_datapackage_copy, field
-            ):
-                return True
-
-        # Due to a bug in an earlier version some resources ended up with ID_NUMBER in path.
-        # These should be replaced
-        return any("ID_NUMBER" in str(r.path) for r in old_datapackage.resources)
-
     async def attach_datapackage(
         self,
         resources: dict[str, ResourceInfo],
-        old_datapackage: DataPackage,
     ) -> tuple[DataPackage, bool]:
         """Generate new datapackage describing draft deposition in current state."""
         new_datapackage = self.generate_datapackage(resources)
 
-        # Add datapackage if it's changed
-        # copy new datapackage so temporary modifications aren't saved
-        if update := self._datapackage_worth_changing(old_datapackage, new_datapackage):
-            datapackage_json = io.BytesIO(
-                bytes(
-                    new_datapackage.model_dump_json(by_alias=True, indent=4),
-                    encoding="utf-8",
-                )
+        datapackage_json = io.BytesIO(
+            bytes(
+                new_datapackage.model_dump_json(by_alias=True, indent=4),
+                encoding="utf-8",
             )
-            await self.create_file("datapackage.json", datapackage_json)
-        return new_datapackage, update
+        )
+        await self.create_file("datapackage.json", datapackage_json)
+        return new_datapackage
 
 
 @dataclass

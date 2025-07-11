@@ -33,9 +33,7 @@ async def orchestrate_run(
             draft = await draft.delete_file(filename)
 
     # Create new datapackage
-    new_datapackage, datapackage_updated = await draft.attach_datapackage(
-        resources, original_datapackage
-    )
+    new_datapackage = await draft.attach_datapackage(resources)
 
     # Validate run
     validations = downloader.validate_dataset(
@@ -50,7 +48,6 @@ async def orchestrate_run(
     )
     published = await draft.publish_if_valid(
         summary,
-        datapackage_updated,
         run_settings.clobber_unchanged,
         run_settings.auto_publish,
     )
