@@ -105,11 +105,20 @@ def _format_summary(summary: dict) -> list[dict]:
 
 def _format_errors(log: str) -> str:
     """Take a log file from a failed run and return the exception."""
-    failure = log.splitlines()[-1]
-    # We already capture archive validation failures elsewhere, so ignore these.
-    if failure == "RuntimeError: Error: archive validation tests failed.":
+    # First isolate traceback
+    failure_match = list(re.finditer("Traceback", log))
+    if not failure_match or any(
+        "RuntimeError: Error: archive validation tests failed." in failure.group()
+        for failure in failure_match
+    ):
+        # We already capture archive validation failures elsewhere, so ignore these.
         return None
-    failure = f"```\n{failure}\n```"  # Format as code
+    # Get last traceback
+    failure = log[failure_match[-1].start() :]
+    # Keep last three lines to get a sliver of the error message
+    failure = "\n".join(failure.splitlines()[-3:])
+
+    failure = f"```{log[failure:]}\n```"  # Format as code
 
     name_re = re.search(
         r"(?:catalystcoop.pudl_archiver.archivers.classes:155 Archiving )([a-z0-9]*)",
@@ -117,6 +126,8 @@ def _format_errors(log: str) -> str:
     )
     name = name_re.group(1)
 
+    # TODO: Change to link to the Github job URL when they make the Job ID accessible
+    # from a given job's context
     url_re = re.search(
         r"(?:INFO:catalystcoop.pudl_archiver.depositors.zenodo.depositor:PUT )(https:\/\/[a-z0-9\/.]*)",
         log,
