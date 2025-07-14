@@ -24,9 +24,13 @@ class UsgsUswtdbArchiver(AbstractDatasetArchiver):
 
     async def get_resources(self) -> ArchiveAwaitable:
         """Download USWTDB resources."""
+        user_agent = self.get_user_agent()
+
         link_pattern = re.compile(r"uswtdb_v(\d+)_(\d+)(?:_(\d+))?_(\d{8})\.zip")
         self.logger.info(f"Searching {BASE_URL} for hyperlinks matching {link_pattern}")
-        data_links = await self.get_hyperlinks(BASE_URL, link_pattern)
+        data_links = await self.get_hyperlinks(
+            BASE_URL, link_pattern, headers={"User-Agent": user_agent}
+        )
         for link, name in data_links.items():
             self.logger.debug(f"Found link: {link}, name: {name}")
             matches = link_pattern.search(name)
