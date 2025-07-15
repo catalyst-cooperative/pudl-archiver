@@ -186,6 +186,20 @@ def main(summary_files: list[Path], error_files: list[Path]) -> None:
         )
     )
 
+    if len(error_blocks + failed_blocks + unchanged_blocks + changed_blocks) >= 50:
+        # Slack doesn't let us send more than 50 items in a list
+        # Let's squish our unchanged blocks together.
+
+        unchanged_blocks = [
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": "\n\n".join([s["text"]["text"] for s in unchanged_blocks]),
+                },
+            },
+        ]
+
     def header_block(text: str) -> dict:
         return {"type": "header", "text": {"type": "plain_text", "text": text}}
 
