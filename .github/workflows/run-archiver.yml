@@ -128,19 +128,19 @@ jobs:
         id: all_summaries
         run: |
           {
-            echo "SLACK_PAYLOAD<<EOF"
-            ./scripts/make_slack_notification_message.py --summary-files *_run_summary.json --error-files *_log.txt | tee slack-payload.json
+            echo "ERRORS<<EOF"
+            ./scripts/make_github_notification_message.py --summary-files *_run_summary.json --error-files *_log.txt --summary-type error
+            echo "EOF"
+            echo "FAILURES<<EOF"
+            ./scripts/make_github_notification_message.py --summary-files *_run_summary.json --error-files *_log.txt --summary-type failure
+            echo "EOF"
+            echo "CHANGES<<EOF"
+            ./scripts/make_github_notification_message.py --summary-files *_run_summary.json --error-files *_log.txt --summary-type change
+            echo "EOF"
+            echo "UNCHANGED<<EOF"
+            ./scripts/make_github_notification_message.py --summary-files *_run_summary.json --error-files *_log.txt --summary-type unchanged
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
-      - name: Post update to pudl-deployment
-        uses: slackapi/slack-github-action@v2.1.1
-        with:
-          method: chat.postMessage
-          token: ${{ secrets.PUDL_DEPLOY_SLACK_TOKEN }}
-          payload: |
-            text: "PUDL data archive run complete."
-            blocks: ${{ steps.all_summaries.outputs.SLACK_PAYLOAD }}
-            channel: "C03FHB9N0PQ"
 
   make-github-issue:
     # If event is a scheduled run on the first of the month or a workflow run where an issue
@@ -153,9 +153,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Create an issue
+        id: create-issue
         uses: JasonEtco/create-an-issue@v2.9.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          ERRORS: ${{ env.ERRORS }}
+          FAILURES: ${{ env.FAILURES }}
+          CHANGES: ${{ env.CHANGES }}
+          UNCHANGED: ${{ env.UNCHANGED }}
         with:
           filename: .github/ISSUE_TEMPLATE/monthly-archive-update.md
+      - id: get-issue-url
+        run: echo "GITHUB_URL=${{ steps.create-issue.outputs.url }}" >> $GITHUB_ENV
+
+  make-slack-announcement:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: slackapi/slack-github-action@v2.1.1
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.PUDL_DEPLOY_SLACK_TOKEN }}
+          payload: |
+            text: "PUDL data archive run complete: ${{ env.GITHUB_URL }}"
+            channel: "C03FHB9N0PQ"
