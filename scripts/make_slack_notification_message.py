@@ -117,8 +117,7 @@ def _format_errors(log: str) -> str:
     failure = log[failure_match[-1].start() :]
     # Keep last three lines to get a sliver of the error message
     failure = "\n".join(failure.splitlines()[-3:])
-
-    failure = f"```{log[failure:]}\n```"  # Format as code
+    failure = f"```\n{failure}\n```"  # Format as code
 
     name_re = re.search(
         r"(?:catalystcoop.pudl_archiver.archivers.classes:155 Archiving )([a-z0-9]*)",
