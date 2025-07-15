@@ -406,11 +406,11 @@ async def archive_year(
         for filing_list in metadata.values()
         for filing_metadata in filing_list
     ]
-    taxonomies_referenced = [
+    taxonomies_referenced = {
         filing_metadata["taxonomy_url"]
         for filing_list in metadata.values()
         for filing_metadata in filing_list
-    ]
+    }
 
     return ResourceInfo(
         local_path=archive_path,
