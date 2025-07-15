@@ -169,6 +169,10 @@ jobs:
 
   make-slack-announcement:
     runs-on: ubuntu-latest
+    if: ${{ always() }}
+    needs:
+      - archive-run
+      - make-github-issue
     steps:
       - uses: slackapi/slack-github-action@v2.1.1
         with:
