@@ -150,6 +150,7 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - archive-run
+      - archive-notify
     steps:
       - uses: actions/checkout@v4
       - name: Create an issue
