@@ -128,19 +128,19 @@ jobs:
         id: all_summaries
         run: |
           {
-            echo "ERRORS<<EOF"
-            ./scripts/make_github_notification_message.py --summary-files *_run_summary.json --error-files *_log.txt --summary-type error
-            echo EOF
-            echo "FAILURES<<EOF"
-            ./scripts/make_github_notification_message.py --summary-files *_run_summary.json --error-files *_log.txt --summary-type failure
-            echo EOF
-            echo "CHANGES<<EOF"
-            ./scripts/make_github_notification_message.py --summary-files *_run_summary.json --error-files *_log.txt --summary-type change
-            echo EOF
-            echo "UNCHANGED<<EOF"
-            ./scripts/make_github_notification_message.py --summary-files *_run_summary.json --error-files *_log.txt --summary-type unchanged
-            echo EOF
-          } | tee -a "$GITHUB_OUTPUT"
+            echo 'ERRORS<<DELIM1'
+            ./scripts/make_github_notification.py --summary-files *_run_summary.json --error-files *_log.txt --summary-type error
+            echo 'DELIM1'
+            echo 'FAILURES<<DELIM2'
+            ./scripts/make_github_notification.py --summary-files *_run_summary.json --error-files *_log.txt --summary-type failure
+            echo 'DELIM2'
+            echo 'CHANGES<<DELIM3'
+            ./scripts/make_github_notification.py --summary-files *_run_summary.json --error-files *_log.txt --summary-type change
+            echo 'DELIM3'
+            echo 'UNCHANGED<<DELIM4'
+            ./scripts/make_github_notification.py --summary-files *_run_summary.json --error-files *_log.txt --summary-type unchanged
+            echo 'DELIM4'
+          } | tee -a '$GITHUB_OUTPUT'
 
   make-github-issue:
     # If event is a scheduled run on the first of the month or a workflow run where an issue
@@ -183,5 +183,5 @@ jobs:
           method: chat.postMessage
           token: ${{ secrets.PUDL_DEPLOY_SLACK_TOKEN }}
           payload: |
-            text: "PUDL data archive run complete: $GITHUB-URL"
+            text: "PUDL data archive run complete: ${{env.github-url}}"
             channel: "C03FHB9N0PQ"
