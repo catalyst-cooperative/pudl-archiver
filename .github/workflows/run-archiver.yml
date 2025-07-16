@@ -141,6 +141,11 @@ jobs:
             ./scripts/make_github_notification.py --summary-files *_run_summary.json --error-files *_log.txt --summary-type unchanged
             echo 'DELIM4'
           } | tee -a '$GITHUB_OUTPUT'
+    outputs:
+      errors: ${{ steps.all_summaries.outputs.ERRORS }}
+      failures: ${{ steps.all_summaries.outputs.FAILURES }}
+      changes: ${{ steps.all_summaries.outputs.CHANGES }}
+      unchanged: ${{ steps.all_summaries.outputs.UNCHANGED }}
 
   make-github-issue:
     # If event is a scheduled run on the first of the month or a workflow run where an issue
@@ -159,15 +164,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          ERRORS: ${{ env.ERRORS }}
-          FAILURES: ${{ env.FAILURES }}
-          CHANGES: ${{ env.CHANGES }}
-          UNCHANGED: ${{ env.UNCHANGED }}
+          ERRORS: ${{ needs.archive-notify.outputs.errors }}
+          FAILURES: ${{ needs.archive-notify.outputs.failures }}
+          CHANGES: ${{ needs.archive-notify.outputs.changes }}
+          UNCHANGED: ${{ needs.archive-notify.outputs.unchanged }}
         with:
           filename: .github/ISSUE_TEMPLATE/monthly-archive-update.md
-      - run: echo "GITHUB_URL=${{ steps.create-issue.outputs.url }}" >> $GITHUB_ENV
+      - run: echo "URL=${{ steps.create-issue.outputs.url }}" >> $GITHUB_ENV
     outputs:
-      github-url: ${{ steps.create-issue.outputs.GITHUB_URL}}
+      url: ${{ steps.create-issue.outputs.URL}}
 
   make-slack-announcement:
     runs-on: ubuntu-latest
@@ -176,12 +181,12 @@ jobs:
       - archive-run
       - make-github-issue
     env:
-      github-url: ${{ needs.make-github-issue.outputs.github-url }}
+      github-url: ${{ needs.make-github-issue.outputs.url }}
     steps:
       - uses: slackapi/slack-github-action@v2.1.1
         with:
           method: chat.postMessage
           token: ${{ secrets.PUDL_DEPLOY_SLACK_TOKEN }}
           payload: |
-            text: "PUDL data archive run complete: ${{env.github-url}}"
+            text: "PUDL data archive run complete: ${{ env.github-url }}"
             channel: "C03FHB9N0PQ"
