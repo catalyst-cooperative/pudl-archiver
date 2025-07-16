@@ -130,17 +130,17 @@ jobs:
           {
             echo "ERRORS<<EOF"
             ./scripts/make_github_notification_message.py --summary-files *_run_summary.json --error-files *_log.txt --summary-type error
-            echo "EOF"
+            echo EOF
             echo "FAILURES<<EOF"
             ./scripts/make_github_notification_message.py --summary-files *_run_summary.json --error-files *_log.txt --summary-type failure
-            echo "EOF"
+            echo EOF
             echo "CHANGES<<EOF"
             ./scripts/make_github_notification_message.py --summary-files *_run_summary.json --error-files *_log.txt --summary-type change
-            echo "EOF"
+            echo EOF
             echo "UNCHANGED<<EOF"
             ./scripts/make_github_notification_message.py --summary-files *_run_summary.json --error-files *_log.txt --summary-type unchanged
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
+            echo EOF
+          } | tee -a "$GITHUB_OUTPUT"
 
   make-github-issue:
     # If event is a scheduled run on the first of the month or a workflow run where an issue
