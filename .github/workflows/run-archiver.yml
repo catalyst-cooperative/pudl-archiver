@@ -165,8 +165,9 @@ jobs:
           UNCHANGED: ${{ env.UNCHANGED }}
         with:
           filename: .github/ISSUE_TEMPLATE/monthly-archive-update.md
-      - id: get-issue-url
-        run: echo "GITHUB_URL=${{ steps.create-issue.outputs.url }}" >> $GITHUB_ENV
+      - run: echo "GITHUB_URL=${{ steps.create-issue.outputs.url }}" >> $GITHUB_ENV
+    outputs:
+      github-url: ${{ steps.create-issue.outputs.GITHUB_URL}}
 
   make-slack-announcement:
     runs-on: ubuntu-latest
@@ -174,11 +175,13 @@ jobs:
     needs:
       - archive-run
       - make-github-issue
+    env:
+      github-url: ${{ needs.make-github-issue.outputs.github-url }}
     steps:
       - uses: slackapi/slack-github-action@v2.1.1
         with:
           method: chat.postMessage
           token: ${{ secrets.PUDL_DEPLOY_SLACK_TOKEN }}
           payload: |
-            text: "PUDL data archive run complete: ${{ env.GITHUB_URL }}"
+            text: "PUDL data archive run complete: $GITHUB-URL"
             channel: "C03FHB9N0PQ"
