@@ -330,7 +330,7 @@ async def test_zenodo_workflow(
 
     # force a datapackage.json update
     with unittest.mock.patch(
-        "pudl_archiver.depositors.depositor.DraftDeposition._datapackage_worth_changing",
+        "pudl_archiver.archivers.validate._datapackage_changed",
         lambda *_args: True,
     ):
         v3_summary, v3_refreshed = await orchestrate_run(
