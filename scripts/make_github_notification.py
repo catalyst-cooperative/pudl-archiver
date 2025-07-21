@@ -24,6 +24,8 @@ import re
 from collections import defaultdict
 from pathlib import Path
 
+import pandas as pd
+
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 
@@ -100,13 +102,16 @@ def _format_summary(summary: dict) -> list[dict]:
         return None  # Don't report on file changes if any test failed.
 
     if file_changes := summary["file_changes"]:
-        abridged_changes = defaultdict(list)
-        for change in file_changes:
-            abridged_changes[change["diff_type"]].append(
-                # Convert the size diff to MB for speed of assessment, and round
-                {change["name"]: round(change["size_diff"] * (1**-6), 4)}
-            )
-        changes = _format_text_as_github_code(json.dumps(abridged_changes, indent=2))
+        file_change_table = pd.DataFrame.from_records(file_changes)
+        file_change_table["size_diff"] = round(
+            file_change_table["size_diff"] * (1**-6), 4
+        )
+        file_change_table = file_change_table.rename(
+            columns={"size_diff": "change_in_mb"}
+        )
+        # Convert to markdown
+        changes = file_change_table.to_html(index=False).replace("\n", "")
+
     else:
         changes = "No changes."
 
