@@ -124,6 +124,8 @@ jobs:
           merge-multiple: true
       - name: Show downloaded artifacts
         run: ls -R
+      - name: Check pre-run output
+        run: echo $GITHUB_OUTPUT
       - name: Munge summaries together
         id: all_summaries
         run: |
@@ -141,6 +143,8 @@ jobs:
             ./scripts/make_github_notification.py --summary-files *_run_summary.json --error-files *_log.txt --summary-type unchanged
             echo 'DELIM4'
           } | tee -a '$GITHUB_OUTPUT'
+      - name: Check output
+        run: echo $GITHUB_OUTPUT
     outputs:
       errors: ${{ steps.all_summaries.outputs.ERRORS }}
       failures: ${{ steps.all_summaries.outputs.FAILURES }}
