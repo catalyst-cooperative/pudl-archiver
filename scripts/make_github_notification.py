@@ -59,10 +59,17 @@ def _format_message(
     When archives fail, they may not have a URL.
     """
     if url:
-        text = f"[**{name}**]({url})<br/>{content}"[:max_len]
+        text = f"[**{name}**]({url})<br/><br/>{content}"[:max_len]
     else:
-        text = f"**{name}**<br/>{content}"[:max_len]
+        text = f"**{name}**<br/><br/>{content}"[:max_len]
     return text
+
+
+def _format_text_as_github_code(text: str) -> str:
+    """Set up code to render nicely in one block, instead of per-line."""
+    start_string = "<pre><code><br/>"
+    end_string = "<br/></code></pre>"
+    return f"{start_string}{text}{end_string}"
 
 
 def _format_failures(summary: dict) -> list[dict]:
@@ -79,7 +86,7 @@ def _format_failures(summary: dict) -> list[dict]:
             )  # Flatten list of lists
 
     if test_failures:
-        failures = f"```<br/>{json.dumps(test_failures, indent=2)}<br/>```"
+        failures = _format_text_as_github_code(json.dumps(test_failures, indent=2))
     else:
         return None
 
@@ -99,7 +106,7 @@ def _format_summary(summary: dict) -> list[dict]:
                 # Convert the size diff to MB for speed of assessment, and round
                 {change["name"]: round(change["size_diff"] * (1**-6), 4)}
             )
-        changes = f"```{json.dumps(abridged_changes, indent=2)}  ```"
+        changes = _format_text_as_github_code(json.dumps(abridged_changes, indent=2))
     else:
         changes = "No changes."
 
@@ -120,7 +127,7 @@ def _format_errors(log: str) -> str:
     failure = log[failure_match[-1].start() :]
     # Keep last three lines to get a sliver of the error message
     failure = "  ".join(failure.splitlines()[-3:])
-    failure = f"```{failure}  ```"  # Format as code
+    failure = _format_text_as_github_code(failure)  # Format as code
 
     name_re = re.search(
         r"(?:catalystcoop.pudl_archiver.archivers.classes:155 Archiving )([a-z0-9]*)",
