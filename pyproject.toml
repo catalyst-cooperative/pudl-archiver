@@ -6,29 +6,29 @@ requires-python = ">=3.12,<3.13"
 
 dependencies = [
     "catalystcoop.pudl @ git+https://github.com/catalyst-cooperative/pudl.git",
-    "arelle-release>=2.37.28,<3",
+    "arelle-release>=2.37.37,<3",
     "beautifulsoup4>=4.13.4,<5",
     "cfgv>=3.4.0,<4",
     "coloredlogs>=14.0,<15",
-    "coverage>=7.9.1,<8",
-    "dask>=2025.5.1,<2026",
-    "deltalake>=1.0.2,<2",
+    "coverage>=7.9.2,<8",
+    "dask>=2025.7.0,<2026",
+    "deltalake>=1.1.0,<2",
     "doc8>=2.0.0,<3",
     "feedparser>=6.0.11,<7",
     "frictionless>=5.18.1,<6",
-    "furo>=2024.8.6,<2025",
+    "furo>=2025.7.19,<2026",
     "playwright>=1.53.0,<2",
     "pre-commit>=4.2.0,<5",
     "pydantic>=2.11.7,<3",
     "pydocstyle>=6.3.0,<7",
-    "pytest-asyncio>=1.0.0,<2",
+    "pytest-asyncio>=1.1.0,<2",
     "pytest-console-scripts>=1.4.1,<2",
     "pytest-cov>=6.2.1,<7",
     "pytest-mock>=3.14.1,<4",
     "pytest>=8.4.1,<9",
     "python-dotenv>=1.1.1,<2",
     "pyyaml>=6.0.2,<7",
-    "ruff>=0.12.1,<0.13",
+    "ruff>=0.12.4,<0.13",
     "semantic-version>=2.10.0,<3",
     "sphinx-autoapi>=3.6.0,<4",
     "sphinx-issues>=5.0.1,<6",
@@ -192,7 +192,7 @@ ci = [
 ]
 
 [tool.pixi.dependencies]
-gdal = ">=3.11.0,<4"
+gdal = ">=3.11.3,<4"
 psycopg2-binary = ">=2.9.10,<3"
 
 [tool.pixi.activation]
