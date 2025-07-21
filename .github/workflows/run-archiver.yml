@@ -142,7 +142,7 @@ jobs:
             echo 'UNCHANGED<<DELIM4'
             ./scripts/make_github_notification.py --summary-files *_run_summary.json --error-files *_log.txt --summary-type unchanged
             echo 'DELIM4'
-          } | tee -a '$GITHUB_OUTPUT'
+          } | tee -a $GITHUB_OUTPUT
       - name: Check output
         run: echo $GITHUB_OUTPUT
     outputs:
