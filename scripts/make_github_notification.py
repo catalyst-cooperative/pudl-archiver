@@ -109,7 +109,8 @@ def _format_summary(summary: dict) -> list[dict]:
         file_change_table = file_change_table.rename(
             columns={"size_diff": "change_in_mb"}
         )
-        # Convert to markdown
+        # Convert to HTML (GH was being very cranky about rendering mkdn, so we're
+        # just cutting straight to the source here.)
         changes = file_change_table.to_html(index=False).replace("\n", "")
 
     else:
