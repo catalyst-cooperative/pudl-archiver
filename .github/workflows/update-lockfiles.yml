@@ -34,4 +34,6 @@ jobs:
           base: main
           labels: pixi
           delete-branch: true
-          add-paths: pixi.lock
+          add-paths: |
+            pixi.lock
+            pyproject.toml
