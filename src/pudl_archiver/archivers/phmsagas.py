@@ -5,6 +5,8 @@ import typing
 from pathlib import Path
 from zipfile import ZipFile
 
+from playwright.async_api import async_playwright
+
 from pudl_archiver.archivers.classes import (
     AbstractDatasetArchiver,
     ArchiveAwaitable,
@@ -28,12 +30,25 @@ class PhmsaGasArchiver(AbstractDatasetArchiver):
 
     name = "phmsagas"
 
+    async def after_download(self) -> None:
+        """Clean up playwright once downloads are complete."""
+        await self.browser.close()
+        await self.playwright.stop()
+
     async def get_resources(self) -> ArchiveAwaitable:
         """Download PHMSA gas resources."""
+        self.playwright = await async_playwright().start()
+        self.browser = await self.playwright.webkit.launch()
+
         link_pattern = re.compile(r"annual[-|_](\S+).zip")
 
-        # Get main table links.
-        links = await self.get_hyperlinks(BASE_URL, link_pattern)
+        # Get main table links using playwright.
+        links = await self.get_hyperlinks_via_playwright(
+            url=BASE_URL,
+            filter_pattern=link_pattern,
+            playwright_browser=self.browser,
+        )
+
         forms = [
             "_".join(
                 link_pattern.search(link)
@@ -54,7 +69,7 @@ class PhmsaGasArchiver(AbstractDatasetArchiver):
                 f"Expected form download links not found for forms: {missing_data}"
             )
 
-        for link in await self.get_hyperlinks(BASE_URL, link_pattern):
+        for link in links:
             yield self.get_zip_resource(link, link_pattern.search(link))
 
     async def get_zip_resource(
@@ -75,7 +90,7 @@ class PhmsaGasArchiver(AbstractDatasetArchiver):
             self.logger.warning(f"New form type found: {form}.")
 
         download_path = self.download_directory / f"{self.name}_{filename}.zip"
-        await self.download_zipfile(url, download_path)
+        await self.download_zipfile_via_playwright(self.browser, url, download_path)
 
         # From start and end year, get partitions
         start_year = int(filename.split("_")[-2])
