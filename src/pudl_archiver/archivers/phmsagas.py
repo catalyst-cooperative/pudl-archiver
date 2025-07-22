@@ -1,4 +1,4 @@
-"""Download PHMSHA data."""
+"""Download PHMSA data."""
 
 import re
 import typing
