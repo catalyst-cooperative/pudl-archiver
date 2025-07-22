@@ -401,9 +401,9 @@ class AbstractDatasetArchiver(ABC):
 
         Args:
             url: URL of web page.
+            playwright_browser: async browser instance to use for fetching the URL.
             filter_pattern: If present, only return links that contain pattern.
             verify: Verify ssl certificate (EPACEMS https source has bad certificate).
-            headers: Additional headers to send in the GET request.
         """
         # Parse web page to get all hyperlinks
         page = await playwright_browser.new_page()
