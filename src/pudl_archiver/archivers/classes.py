@@ -375,7 +375,6 @@ class AbstractDatasetArchiver(ABC):
             headers: Additional headers to send in the GET request.
         """
         # Parse web page to get all hyperlinks
-
         response = await retry_async(
             self.session.get,
             args=[url],
@@ -385,6 +384,31 @@ class AbstractDatasetArchiver(ABC):
             },
         )
         text = await retry_async(response.text)
+        return self.get_hyperlinks_from_text(text, filter_pattern, url)
+
+    async def get_hyperlinks_via_playwright(
+        self,
+        url: str,
+        playwright_browser: PlaywrightBrowser,
+        filter_pattern: typing.Pattern | None = None,
+    ) -> dict[str, str]:
+        """Return all hyperlinks from a specific web page.
+
+        This is a helper function to perform very basic web-scraping functionality.
+        It extracts all hyperlinks from a web page, and returns those that match
+        a specified pattern. This means it can find all hyperlinks that look like
+        a download link to a single data resource.
+
+        Args:
+            url: URL of web page.
+            playwright_browser: async browser instance to use for fetching the URL.
+            filter_pattern: If present, only return links that contain pattern.
+            verify: Verify ssl certificate (EPACEMS https source has bad certificate).
+        """
+        # Parse web page to get all hyperlinks
+        page = await playwright_browser.new_page()
+        await page.goto(url, timeout=10 * 60 * 1000)
+        text = await page.content()
         return self.get_hyperlinks_from_text(text, filter_pattern, url)
 
     def get_hyperlinks_from_text(
