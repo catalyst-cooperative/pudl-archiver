@@ -124,8 +124,9 @@ def _format_errors(log: str) -> str:
     """Take a log file from a failed run and return the exception."""
     # First isolate traceback
     failure_match = list(re.finditer("Traceback", log))
+
     if not failure_match or any(
-        "archive validation tests failed" in failure.group()
+        "archive validation tests failed" in log[failure.start() :]
         for failure in failure_match
     ):
         # We already capture archive validation failures elsewhere, so ignore these.
