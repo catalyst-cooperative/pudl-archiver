@@ -43,6 +43,7 @@ def _parse_args():
         nargs="+",
         type=Path,
         help="Paths to log files for failed runs.",
+        default=None,
     )
     parser.add_argument(
         "--summary-type",
@@ -166,9 +167,9 @@ def _load_summaries(summary_files: list[Path]) -> list[dict]:
 def _load_errors(error_files: list[Path]) -> list[str]:
     errors = []
     for error_file in error_files:
-        # Handle case where no files are found or file is empty
-        with error_file.open() as f:
-            errors.append(f.read())
+        if error_file.exists():  # Handle case where no files are found or file is empty
+            with error_file.open() as f:
+                errors.append(f.read())
     return errors
 
 
