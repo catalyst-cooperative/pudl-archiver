@@ -125,7 +125,7 @@ def _format_errors(log: str) -> str:
     # First isolate traceback
     failure_match = list(re.finditer("Traceback", log))
     if not failure_match or any(
-        "RuntimeError: Error: archive validation tests failed." in failure.group()
+        "archive validation tests failed" in failure.group()
         for failure in failure_match
     ):
         # We already capture archive validation failures elsewhere, so ignore these.
