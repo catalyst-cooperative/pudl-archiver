@@ -227,7 +227,7 @@ def main(summary_files: list[Path], error_files: list[Path]) -> None:
         logger.warn(
             "Too many archive updates for Slack to handle! Trimming anything over 50."
         )
-        trimmed_blocks = blocks[:49] + [
+        blocks = blocks[:49] + [
             {
                 "type": "section",
                 "text": {"type": "mrkdwn", "text": "And more..."},
@@ -236,7 +236,7 @@ def main(summary_files: list[Path], error_files: list[Path]) -> None:
 
     print(
         json.dumps(
-            trimmed_blocks,
+            blocks,
             indent=2,
         )
     )
