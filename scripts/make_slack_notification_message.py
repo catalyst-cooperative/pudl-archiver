@@ -215,13 +215,27 @@ def main(summary_files: list[Path], error_files: list[Path]) -> None:
     if unchanged_blocks:
         unchanged_blocks = [section_block("*Unchanged*")] + unchanged_blocks
 
+    blocks = (
+        [header_block("Archiver Run Outcomes")]
+        + error_blocks
+        + failed_blocks
+        + changed_blocks
+        + unchanged_blocks
+    )
+    if len(blocks) >= 50:
+        logger.warn(
+            "Too many archive updates for Slack to handle! Trimming anything over 50."
+        )
+        trimmed_blocks = blocks[:49] + [
+            {
+                "type": "section",
+                "text": {"type": "mrkdwn", "text": "And more..."},
+            }
+        ]
+
     print(
         json.dumps(
-            [header_block("Archiver Run Outcomes")]
-            + error_blocks
-            + failed_blocks
-            + changed_blocks
-            + unchanged_blocks,
+            trimmed_blocks,
             indent=2,
         )
     )

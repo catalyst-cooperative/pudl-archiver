@@ -53,6 +53,8 @@ jobs:
 
       - name: Set up pixi
         uses: prefix-dev/setup-pixi@v0.8.12
+        with:
+          cache: true
 
       - name: Log the pixi environment
         run: |
@@ -124,38 +126,60 @@ jobs:
           merge-multiple: true
       - name: Show downloaded artifacts
         run: ls -R
-      - name: Check pre-run output
-        run: echo $GITHUB_OUTPUT
-      - name: Munge summaries together
-        id: all_summaries
+      # These steps only run to create a Github issue summarizing the run.
+      - name: Load pixi from cache
+        if: ${{ always() && (github.event_name == 'schedule' || inputs.create_github_issue == true) }}
+        uses: prefix-dev/setup-pixi@v0.8.13
+      - name: Munge summaries together for Github
+        if: ${{ always() && (github.event_name == 'schedule' || inputs.create_github_issue == true) }}
+        id: github_summaries
         run: |
           {
             echo 'ERRORS<<DELIM1'
-            ./scripts/make_github_notification.py --summary-files *_run_summary.json --error-files *_log.txt --summary-type error
+            pixi run ./scripts/make_github_notification.py --summary-files *_run_summary.json --error-files *_log.txt --summary-type error
             echo 'DELIM1'
             echo 'FAILURES<<DELIM2'
-            ./scripts/make_github_notification.py --summary-files *_run_summary.json --error-files *_log.txt --summary-type failure
+            pixi run ./scripts/make_github_notification.py --summary-files *_run_summary.json --error-files *_log.txt --summary-type failure
             echo 'DELIM2'
             echo 'CHANGES<<DELIM3'
-            ./scripts/make_github_notification.py --summary-files *_run_summary.json --error-files *_log.txt --summary-type change
+            pixi run ./scripts/make_github_notification.py --summary-files *_run_summary.json --error-files *_log.txt --summary-type change
             echo 'DELIM3'
             echo 'UNCHANGED<<DELIM4'
-            ./scripts/make_github_notification.py --summary-files *_run_summary.json --error-files *_log.txt --summary-type unchanged
+            pixi run ./scripts/make_github_notification.py --summary-files *_run_summary.json --error-files *_log.txt --summary-type unchanged
             echo 'DELIM4'
           } | tee -a $GITHUB_OUTPUT
-      - name: Check output
-        run: echo $GITHUB_OUTPUT
+      # These steps only run if no Github issue is requested to be created.
+      # The summary will show up in Slack instead.
+      - name: Munge summaries for Slack
+        id: slack_summaries
+        if: ${{ inputs.create_github_issue == false }}
+        run: |
+          {
+            echo "SLACK_PAYLOAD<<EOF"
+            ./scripts/make_slack_notification_message.py --summary-files *_run_summary.json | tee slack-payload.json
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+      - name: Post update to pudl-deployment
+        if: ${{ inputs.create_github_issue == false }}
+        uses: slackapi/slack-github-action@v2.1.1
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.PUDL_DEPLOY_SLACK_TOKEN }}
+          payload: |
+            text: "PUDL data archive run complete."
+            blocks: ${{ steps.slack_summaries.outputs.SLACK_PAYLOAD }}
+            channel: "C03FHB9N0PQ"
+
     outputs:
-      errors: ${{ steps.all_summaries.outputs.ERRORS }}
-      failures: ${{ steps.all_summaries.outputs.FAILURES }}
-      changes: ${{ steps.all_summaries.outputs.CHANGES }}
-      unchanged: ${{ steps.all_summaries.outputs.UNCHANGED }}
+      errors: ${{ steps.github_summaries.outputs.ERRORS }}
+      failures: ${{ steps.github_summaries.outputs.FAILURES }}
+      changes: ${{ steps.github_summaries.outputs.CHANGES }}
+      unchanged: ${{ steps.github_summaries.outputs.UNCHANGED }}
 
   make-github-issue:
-    # If event is a scheduled run on the first of the month or a workflow run where an issue
-    # is requested, create an issue. Do not create issues for weekly Monday runs to avoid
-    # having to manually close them for now, given the goal of publishing archives monthly.
-    if: ${{ always() && ((github.event_name == 'schedule' && github.event.schedule == '21 8 1 * *') || inputs.create_github_issue == true) }}
+    # If event is a scheduled run or a workflow run where an issue
+    # is requested, create an issue.
+    if: ${{ always() && (github.event_name == 'schedule' || inputs.create_github_issue == true) }}
     runs-on: ubuntu-latest
     needs:
       - archive-run
@@ -178,9 +202,9 @@ jobs:
     outputs:
       url: ${{ steps.create-issue.outputs.URL}}
 
-  make-slack-announcement:
+  make-slack-announcement-for-github-issue:
     runs-on: ubuntu-latest
-    if: ${{ always() }}
+    if: ${{ always() && (github.event_name == 'schedule' || inputs.create_github_issue == true) }}
     needs:
       - archive-run
       - make-github-issue
