@@ -2,7 +2,7 @@
 name = "pudl_archiver"
 version = "0.2.0"
 authors = [{ name = "PUDL", email = "pudl@catalyst.coop" }]
-requires-python = ">=3.12,<3.13"
+requires-python = ">=3.13,<3.14"
 
 dependencies = [
     "catalystcoop.pudl @ git+https://github.com/catalyst-cooperative/pudl.git", "arelle-release>=2.37.39,<3", "beautifulsoup4>=4.13.4,<5", "cfgv>=3.4.0,<4", "coloredlogs>=14.0,<15", "coverage>=7.10.1,<8", "dask>=2025.7.0,<2026", "deltalake>=1.1.2,<2", "doc8>=2.0.0,<3", "feedparser>=6.0.11,<7", "frictionless>=5.18.1,<6", "furo>=2025.7.19,<2026", "playwright>=1.54.0,<2", "pre-commit>=4.2.0,<5", "pydantic>=2.11.7,<3", "pydocstyle>=6.3.0,<7", "pytest-asyncio>=1.1.0,<2", "pytest-console-scripts>=1.4.1,<2", "pytest-cov>=6.2.1,<7", "pytest-mock>=3.14.1,<4", "pytest>=8.4.1,<9", "python-dotenv>=1.1.1,<2", "pyyaml>=6.0.2,<7", "ruff>=0.12.5,<0.13", "semantic-version>=2.10.0,<3", "sphinx-autoapi>=3.6.0,<4", "sphinx-issues>=5.0.1,<6", "sphinx>=8.2.3,<9", "tqdm>=4.67.1,<5", "types-requests>=2.32.4.20250611,<3",
@@ -17,7 +17,7 @@ classifiers = [
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 
 [project.scripts]
@@ -46,8 +46,8 @@ doctest_optionflags = ["NORMALIZE_WHITESPACE", "IGNORE_EXCEPTION_DETAIL", "ELLIP
 asyncio_mode = "auto"
 
 [tool.ruff]
-# Assume Python 3.12
-target-version = "py312"
+# Assume Python 3.13
+target-version = "py313"
 line-length = 88
 indent-width = 4
 
