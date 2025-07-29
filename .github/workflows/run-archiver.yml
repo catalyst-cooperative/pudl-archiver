@@ -204,7 +204,6 @@ jobs:
 
   make-slack-announcement-for-github-issue:
     runs-on: ubuntu-latest
-    if: ${{ always() && (github.event_name == 'schedule' || inputs.create_github_issue == true) }}
     needs:
       - archive-run
       - make-github-issue

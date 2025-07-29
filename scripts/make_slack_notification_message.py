@@ -104,7 +104,7 @@ def _format_summary(summary: dict) -> list[dict]:
     return _format_message(url=url, name=name, content=changes)
 
 
-def _format_errors(log: str) -> str:
+def _format_errors(log: str) -> str | None:
     """Take a log file from a failed run and return the exception."""
     # First isolate traceback
     failure_match = list(re.finditer("Traceback", log))
