@@ -52,7 +52,7 @@ USER_AGENTS: list[str] = [
 updated periodically."""
 
 ArchiveAwaitable = typing.AsyncGenerator[
-    typing.Awaitable[ResourceInfo | list[ResourceInfo]], None
+    typing.Awaitable[ResourceInfo | list[ResourceInfo]]
 ]
 """Return type of method get_resources.
 
@@ -707,7 +707,7 @@ class AbstractDatasetArchiver(ABC):
 
     async def download_all_resources(
         self,
-    ) -> typing.Generator[tuple[str, ResourceInfo], None, None]:
+    ) -> typing.Generator[tuple[str, ResourceInfo]]:
         """Download all resources.
 
         This method uses the awaitables returned by `get_resources`. It
