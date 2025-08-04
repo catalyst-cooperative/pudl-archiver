@@ -23,6 +23,7 @@ jobs:
         run: |
           set -o pipefail
           pixi upgrade --json | pixi exec pixi-diff-to-markdown >> diff.md
+          pixi shell
       - name: Create pull request
         uses: peter-evans/create-pull-request@v7
         with:
