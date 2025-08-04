@@ -129,7 +129,7 @@ jobs:
       # These steps only run to create a Github issue summarizing the run.
       - name: Load pixi from cache
         if: ${{ always() && (github.event_name == 'schedule' || inputs.create_github_issue == true) }}
-        uses: prefix-dev/setup-pixi@v0.8.13
+        uses: prefix-dev/setup-pixi@v0.8.14
       - name: Munge summaries together for Github
         if: ${{ always() && (github.event_name == 'schedule' || inputs.create_github_issue == true) }}
         id: github_summaries
