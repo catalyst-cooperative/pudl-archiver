@@ -8,11 +8,19 @@ from pudl_archiver.archivers.classes import (
     ResourceInfo,
 )
 
-BASE_URL = "https://eqrreportviewer.ferc.gov/"
-
 
 class FercEQRArchiver(AbstractDatasetArchiver):
-    """FERC EQR archiver."""
+    """FERC EQR archiver.
+
+    EQR data is much too large to use with Zenodo, so this archiver
+    is meant to be used with be used with the `fsspec` storage
+    backend. To run the archiver with this backend, execute the
+    following command:
+
+    ```
+    pudl_archiver --datasets ferceqr --deposition-path gs://archives.catalyst.coop/eqr --depositor fsspec
+    ```
+    """
 
     name = "ferceqr"
     concurrency_limit = 1
