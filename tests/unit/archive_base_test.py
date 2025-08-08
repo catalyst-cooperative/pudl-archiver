@@ -698,5 +698,5 @@ def test_check_file_type(
     validation_result = validate_filetype(good_zipfile, True)
     assert validation_result.success
 
-    validation_result = validate_filetype(bad_zipfile, True)
-    assert not validation_result.success
+    with pytest.raises(RuntimeError, match=re.escape("['test.zip'] is invalid.")):
+        validation_result = validate_filetype(bad_zipfile, True)
