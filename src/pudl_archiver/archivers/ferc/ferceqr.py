@@ -18,7 +18,7 @@ class FercEQRArchiver(AbstractDatasetArchiver):
     following command:
 
     ```
-    pudl_archiver --datasets ferceqr --deposition-path gs://archives.catalyst.coop/eqr --depositor fsspec
+    pudl_archiver --datasets ferceqr --deposition-path gs://archives.catalyst.coop/ferceqr --depositor fsspec
     ```
     """
 
