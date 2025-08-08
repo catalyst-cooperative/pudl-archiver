@@ -22,9 +22,9 @@ class FercEQRArchiver(AbstractDatasetArchiver):
     async def get_resources(self) -> ArchiveAwaitable:
         """Download FERC EQR resources."""
         # Get quarterly EQR data
-        for year in range(2013, 2025):
+        for year in range(2013, 2026):
             for quarter in range(1, 5):
-                if quarter < 3 and year == 2013:
+                if (quarter < 3 and year == 2013) or (quarter > 2 and year == 2025):
                     continue
                 yield self.get_quarter_csv(year, quarter)
 
