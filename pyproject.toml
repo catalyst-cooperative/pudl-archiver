@@ -2,51 +2,51 @@
 name = "pudl_archiver"
 version = "0.2.0"
 authors = [{ name = "PUDL", email = "pudl@catalyst.coop" }]
-requires-python = ">=3.12,<3.13"
+requires-python = ">=3.13,<3.14"
 
 dependencies = [
-    "catalystcoop.pudl @ git+https://github.com/catalyst-cooperative/pudl.git",
-    "arelle-release>=2.37.28,<3",
-    "beautifulsoup4>=4.13.4,<5",
-    "cfgv>=3.4.0,<4",
-    "coloredlogs>=14.0,<15",
-    "coverage>=7.9.1,<8",
-    "dask>=2025.5.1,<2026",
-    "deltalake>=1.0.2,<2",
-    "doc8>=2.0.0,<3",
-    "feedparser>=6.0.11,<7",
-    "frictionless>=5.18.1,<6",
-    "furo>=2024.8.6,<2025",
-    "playwright>=1.53.0,<2",
-    "pre-commit>=4.2.0,<5",
-    "pydantic>=2.11.7,<3",
-    "pydocstyle>=6.3.0,<7",
-    "pytest-asyncio>=1.0.0,<2",
-    "pytest-console-scripts>=1.4.1,<2",
-    "pytest-cov>=6.2.1,<7",
-    "pytest-mock>=3.14.1,<4",
-    "pytest>=8.4.1,<9",
-    "python-dotenv>=1.1.1,<2",
-    "pyyaml>=6.0.2,<7",
-    "ruff>=0.12.1,<0.13",
-    "semantic-version>=2.10.0,<3",
-    "sphinx-autoapi>=3.6.0,<4",
-    "sphinx-issues>=5.0.1,<6",
-    "sphinx>=8.2.3,<9",
-    "tqdm>=4.67.1,<5",
-    "types-requests>=2.32.4.20250611,<3",
+  "catalystcoop.pudl @ git+https://github.com/catalyst-cooperative/pudl.git",
+  "arelle-release>=2.37.43,<3",
+  "beautifulsoup4>=4.13.4,<5",
+  "cfgv>=3.4.0,<4",
+  "coloredlogs>=14.0,<15",
+  "coverage>=7.10.2,<8",
+  "dask>=2025.7.0,<2026",
+  "deltalake>=1.1.3,<2",
+  "doc8>=2.0.0,<3",
+  "feedparser>=6.0.11,<7",
+  "frictionless>=5.18.1,<6",
+  "furo>=2025.7.19,<2026",
+  "playwright>=1.54.0,<2",
+  "pre-commit>=4.2.0,<5",
+  "pydantic>=2.11.7,<3",
+  "pydocstyle>=6.3.0,<7",
+  "pytest-asyncio>=1.1.0,<2",
+  "pytest-console-scripts>=1.4.1,<2",
+  "pytest-cov>=6.2.1,<7",
+  "pytest-mock>=3.14.1,<4",
+  "pytest>=8.4.1,<9",
+  "python-dotenv>=1.1.1,<2",
+  "pyyaml>=6.0.2,<7",
+  "ruff>=0.12.7,<0.13",
+  "semantic-version>=2.10.0,<3",
+  "sphinx-autoapi>=3.6.0,<4",
+  "sphinx-issues>=5.0.1,<6",
+  "sphinx>=8.2.3,<9",
+  "tqdm>=4.67.1,<5",
+  "types-requests>=2.32.4.20250611,<3",
 ]
 
 classifiers = [
-    "Development Status :: 3 - Alpha",
-    "Environment :: Console",
-    "License :: OSI Approved :: MIT License",
-    "Natural Language :: English",
-    "Operating System :: OS Independent",
-    "Programming Language :: Python",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.12",
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "License :: OSI Approved :: MIT License",
+  "Natural Language :: English",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.13",
 ]
 
 [project.scripts]
@@ -63,20 +63,24 @@ ignore-path = ["docs/_build"]
 [tool.pytest.ini_options]
 testpaths = "./"
 filterwarnings = [
-    "ignore:distutils Version classes are deprecated:DeprecationWarning",
-    "ignore:Creating a LegacyVersion:DeprecationWarning:pkg_resources[.*]",
+  "ignore:distutils Version classes are deprecated:DeprecationWarning",
+  "ignore:Creating a LegacyVersion:DeprecationWarning:pkg_resources[.*]",
 ]
 addopts = "--verbose"
 log_format = "%(asctime)s [%(levelname)8s] %(name)s:%(lineno)s %(message)s"
 log_date_format = "%Y-%m-%d %H:%M:%S"
 log_cli = true
 log_cli_level = "INFO"
-doctest_optionflags = ["NORMALIZE_WHITESPACE", "IGNORE_EXCEPTION_DETAIL", "ELLIPSIS"]
+doctest_optionflags = [
+  "NORMALIZE_WHITESPACE",
+  "IGNORE_EXCEPTION_DETAIL",
+  "ELLIPSIS",
+]
 asyncio_mode = "auto"
 
 [tool.ruff]
-# Assume Python 3.12
-target-version = "py312"
+# Assume Python 3.13
+target-version = "py313"
 line-length = 88
 indent-width = 4
 
@@ -88,48 +92,48 @@ line-ending = "auto"
 
 [tool.ruff.lint]
 select = [
-    "A", # flake8-builtins
-    # "ARG", # unused arguments
-    # "B",  # flake8-bugbear
-    "C", # Limit cyclomatic complexity using mccabe
-    "D", # pydocstyle errors
-    "E", # pycodestyle errors
-    "EXE", # executable file issues
-    # "ERA", # eradicate: find commented out code
-    "F", # pyflakes
-    "I", # isort
-    "ISC", # implicit string concatenation
-    "N", # pep8-naming
-    "NPY", # NumPy specific checks
-    "PD", # pandas checks
-    "PGH", # pygrep-hooks
-    # "PL",  # pylint
-    # "PT",  # pytest style
-    "PTH", # use pathlib
-    "Q", # flake8-quotes
-    "RET", # check return values
-    "RSE", # unnecessary parenthises on raised exceptions
-    "S", # flake8-bandit
-    "SIM", # flake8-simplify
-    # "T",   # print statements found
-    "UP", # pyupgrade (use modern python syntax)
-    "W", # pycodestyle warnings
+  "A", # flake8-builtins
+  # "ARG", # unused arguments
+  # "B",  # flake8-bugbear
+  "C",   # Limit cyclomatic complexity using mccabe
+  "D",   # pydocstyle errors
+  "E",   # pycodestyle errors
+  "EXE", # executable file issues
+  # "ERA", # eradicate: find commented out code
+  "F",   # pyflakes
+  "I",   # isort
+  "ISC", # implicit string concatenation
+  "N",   # pep8-naming
+  "NPY", # NumPy specific checks
+  "PD",  # pandas checks
+  "PGH", # pygrep-hooks
+  # "PL",  # pylint
+  # "PT",  # pytest style
+  "PTH", # use pathlib
+  "Q",   # flake8-quotes
+  "RET", # check return values
+  "RSE", # unnecessary parenthises on raised exceptions
+  "S",   # flake8-bandit
+  "SIM", # flake8-simplify
+  # "T",   # print statements found
+  "UP", # pyupgrade (use modern python syntax)
+  "W",  # pycodestyle warnings
 ]
 
 ignore = [
-    "D401", # Require imperative mood in docstrings.
-    "D417",
-    "E501", # Overlong lines.
-    "E203", # Space before ':' (black recommends to ignore)
-    "PD003", # Use of isna rather than isnull
-    "PD004", # Use of notna rather than notnull
-    "PD008", # Use of df.at[] rather than df.loc[]
-    "PD010", # Use of df.stack()
-    "PD013", # Use of df.unstack()
-    "PD015", # Use of pd.merge() rather than df.merge()
-    "PD901", # df as variable name
-    "RET504", # Ignore unnecessary assignment before return
-    "S101", # Use of assert
+  "D401",   # Require imperative mood in docstrings.
+  "D417",
+  "E501",   # Overlong lines.
+  "E203",   # Space before ':' (black recommends to ignore)
+  "PD003",  # Use of isna rather than isnull
+  "PD004",  # Use of notna rather than notnull
+  "PD008",  # Use of df.at[] rather than df.loc[]
+  "PD010",  # Use of df.stack()
+  "PD013",  # Use of df.unstack()
+  "PD015",  # Use of pd.merge() rather than df.merge()
+  "PD901",  # df as variable name
+  "RET504", # Ignore unnecessary assignment before return
+  "S101",   # Use of assert
 ]
 
 # Don't automatically concatenate strings -- sometimes we forget a comma!
@@ -160,11 +164,11 @@ multiline-quotes = "double"
 [tool.pixi.workspace]
 channels = ["conda-forge"]
 platforms = [
-    "linux-64",
-    "osx-64",
-    "osx-arm64",
-    # The google-cloud-sdk conda package doesn't support Windows
-    # "win-64",
+  "linux-64",
+  "osx-64",
+  "osx-arm64",
+  # The google-cloud-sdk conda package doesn't support Windows
+  # "win-64",
 ]
 channel-priority = "strict"
 
@@ -185,15 +189,17 @@ coverage = "coverage report --sort=cover"
 
 lint = [{ task = "ruff" }, { task = "pre-commit" }]
 ci = [
-    { task = "lint" },
-    { task = "unit" },
-    { task = "integration" },
-    { task = "coverage" },
+  { task = "lint" },
+  { task = "unit" },
+  { task = "integration" },
+  { task = "coverage" },
 ]
 
 [tool.pixi.dependencies]
-gdal = ">=3.11.0,<4"
+gdal = ">=3.11.3,<4"
 psycopg2-binary = ">=2.9.10,<3"
+numba = ">=0.61.2,<0.62"
+pandas = ">=2.3.1,<3"
 
 [tool.pixi.activation]
 scripts = ["scripts/check_playwright_installation.sh"]
