@@ -43,7 +43,7 @@ class FercEQRArchiver(AbstractDatasetArchiver):
     ) -> tuple[Path, dict]:
         """Download a quarter of 2013-present data."""
         url = f"https://eqrreportviewer.ferc.gov/DownloadRepositoryProd/7D0F99CBC5C744969A7A9A5F4BA5612ED77CB30C09F6425BB9C3D417EFBE01C20C6C7A6DE7D0446881A7639F0FDC8FE1/BulkNew/CSV/CSV_{year}_Q{quarter}.zip"
-        download_path = self.download_directory / f"ferceqr-{year}-Q{quarter}.zip"
+        download_path = self.download_directory / f"ferceqr-{year}q{quarter}.zip"
 
         await self.download_zipfile(url, download_path)
 
