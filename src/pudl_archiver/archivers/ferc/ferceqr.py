@@ -5,6 +5,8 @@ import logging
 
 from pathlib import Path
 
+from playwright.async_api import async_playwright
+
 from pudl_archiver.archivers.classes import (
     AbstractDatasetArchiver,
     ArchiveAwaitable,
