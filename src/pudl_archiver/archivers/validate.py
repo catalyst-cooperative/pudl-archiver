@@ -45,7 +45,7 @@ def validate_filetype(
     path: Path, required_for_run_success: bool
 ) -> FileUniversalValidation:
     """Check that file is valid based on type."""
-    validation = FileUniversalValidation(
+    return FileUniversalValidation(
         name="Valid Filetype Test",
         description="Check that all files appear to be valid based on their extensions.",
         required_for_run_success=required_for_run_success,
@@ -53,7 +53,6 @@ def validate_filetype(
         success=_validate_file_type(path, BytesIO(path.read_bytes())),
         notes=[path.name],
     )
-    return validation
 
 
 def validate_file_not_empty(
