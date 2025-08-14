@@ -53,8 +53,6 @@ def validate_filetype(
         success=_validate_file_type(path, BytesIO(path.read_bytes())),
         notes=[path.name],
     )
-    if not validation.success:
-        raise RuntimeError(f"{validation.notes} is invalid.")
     return validation
 
 
