@@ -1,8 +1,8 @@
 """Download FERC EQR data."""
 
-import re
+import asyncio
 import logging
-
+import re
 from pathlib import Path
 
 from playwright.async_api import async_playwright
@@ -14,6 +14,7 @@ from pudl_archiver.archivers.classes import (
 )
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
+YEAR_QUARTER_PATT = re.compile(r"CSV_(\d+)_Q(\d).zip")
 
 
 class FercEQRArchiver(AbstractDatasetArchiver):
@@ -36,31 +37,40 @@ class FercEQRArchiver(AbstractDatasetArchiver):
 
     async def get_resources(self) -> ArchiveAwaitable:
         """Download FERC EQR resources."""
-        # Get quarterly EQR data
+        # Dynamically get links to all quarters of EQR data
         urls = await self.get_urls()
-        logger.info(f"Found the following URLS for ferceqr quarters: {urls}")
-        exit(0)
         for url in urls:
-            yield self.get_quarter_csv(year, quarter)
+            yield self.get_quarter_csv(url)
 
     async def get_urls(self) -> list[str]:
         """Use playwright to dynamically grab URLs from the EQR webpage."""
-        playwright = await async_playwright().start()
-        browser = await playwright.webkit.launch(headless=True)
-        context = await browser.new_context()
-        page = await context.new_page()
-        
-        await page.goto("https://eqrreportviewer.ferc.gov/")
-        await page.get_by_text("Downloads", exact=True).click()
-        return await page.get_by_text(re.compile(r"CSV_(\d+)_Q\d.zip")).all_inner_texts()
+        logger.info(
+            "Launching browser with playwright to get EQR year-quarter download links"
+        )
+        async with async_playwright() as pw:
+            browser = await pw.webkit.launch(headless=True)
+            context = await browser.new_context()
+            page = await context.new_page()
 
-    async def get_quarter_csv(
-        self,
-        year: int,
-        quarter: int,
-    ) -> tuple[Path, dict]:
+            await page.goto("https://eqrreportviewer.ferc.gov/")
+            # Navigate to Downlaods tab, and wait for tab to finish loading
+            await page.get_by_text("Downloads", exact=True).click()
+            await asyncio.sleep(5)
+
+            # Find all links matching expected pattern and return
+            return [
+                await locator.get_attribute("href")
+                for locator in await page.get_by_text(YEAR_QUARTER_PATT).all()
+            ]
+
+    async def get_quarter_csv(self, url: str) -> tuple[Path, dict]:
         """Download a quarter of 2013-present data."""
-        url = f"https://eqrreportviewer.ferc.gov/DownloadRepositoryProd/7D0F99CBC5C744969A7A9A5F4BA5612ED77CB30C09F6425BB9C3D417EFBE01C20C6C7A6DE7D0446881A7639F0FDC8FE1/BulkNew/CSV/CSV_{year}_Q{quarter}.zip"
+        # Extract year-quarter from URL
+        link_match = YEAR_QUARTER_PATT.search(url)
+        year = int(link_match.group(1))
+        quarter = int(link_match.group(2))
+        logger.info(f"Found EQR data for {year}-Q{quarter}")
+
         download_path = self.download_directory / f"ferceqr-{year}-Q{quarter}.zip"
 
         await self.download_zipfile(url, download_path)
