@@ -71,8 +71,8 @@ class FercEQRArchiver(AbstractDatasetArchiver):
         quarter = int(link_match.group(2))
         logger.info(f"Found EQR data for {year}-Q{quarter}")
 
-        download_path = self.download_directory / f"ferceqr-{year}-Q{quarter}.zip"
-
+        # Download quarter
+        download_path = self.download_directory / f"ferceqr-{year}q{quarter}.zip"
         await self.download_zipfile(url, download_path)
 
         return ResourceInfo(
