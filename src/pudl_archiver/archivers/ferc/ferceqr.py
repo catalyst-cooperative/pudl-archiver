@@ -1,5 +1,8 @@
 """Download FERC EQR data."""
 
+import re
+import logging
+
 from pathlib import Path
 
 from pudl_archiver.archivers.classes import (
@@ -7,6 +10,8 @@ from pudl_archiver.archivers.classes import (
     ArchiveAwaitable,
     ResourceInfo,
 )
+
+logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 
 class FercEQRArchiver(AbstractDatasetArchiver):
@@ -30,11 +35,22 @@ class FercEQRArchiver(AbstractDatasetArchiver):
     async def get_resources(self) -> ArchiveAwaitable:
         """Download FERC EQR resources."""
         # Get quarterly EQR data
-        for year in range(2013, 2026):
-            for quarter in range(1, 5):
-                if (quarter < 3 and year == 2013) or (quarter > 2 and year == 2025):
-                    continue
-                yield self.get_quarter_csv(year, quarter)
+        urls = await self.get_urls()
+        logger.info(f"Found the following URLS for ferceqr quarters: {urls}")
+        exit(0)
+        for url in urls:
+            yield self.get_quarter_csv(year, quarter)
+
+    async def get_urls(self) -> list[str]:
+        """Use playwright to dynamically grab URLs from the EQR webpage."""
+        playwright = await async_playwright().start()
+        browser = await playwright.webkit.launch(headless=True)
+        context = await browser.new_context()
+        page = await context.new_page()
+        
+        await page.goto("https://eqrreportviewer.ferc.gov/")
+        await page.get_by_text("Downloads", exact=True).click()
+        return await page.get_by_text(re.compile(r"CSV_(\d+)_Q\d.zip")).all_inner_texts()
 
     async def get_quarter_csv(
         self,
