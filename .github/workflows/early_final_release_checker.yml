@@ -42,7 +42,7 @@ jobs:
       contents: "read"
       id-token: "write"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set default GCP credentials
         id: gcloud-auth
@@ -53,7 +53,7 @@ jobs:
           service_account: "pudl-sources@catalyst-cooperative-pudl.iam.gserviceaccount.com"
 
       - name: Set up pixi
-        uses: prefix-dev/setup-pixi@v0.8.14
+        uses: prefix-dev/setup-pixi@v0.9.0
         with:
           cache: true
 
@@ -112,7 +112,7 @@ jobs:
       - archive-run
     if: ${{ always() }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Download summaries
         id: download-summaries
         uses: actions/download-artifact@v5
@@ -130,7 +130,7 @@ jobs:
       # These steps only run to create a Github issue summarizing the run.
       - name: Load pixi from cache
         if: ${{ always() && (github.event_name == 'schedule' || inputs.create_github_issue == true) }}
-        uses: prefix-dev/setup-pixi@v0.8.14
+        uses: prefix-dev/setup-pixi@v0.9.0
       - name: Munge summaries together for Github
         if: ${{ always() && (github.event_name == 'schedule' || inputs.create_github_issue == true) }}
         id: github_summaries
@@ -186,7 +186,7 @@ jobs:
       - archive-run
       - archive-notify
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Create an issue
         id: create-issue
         uses: JasonEtco/create-an-issue@v2.9.2
