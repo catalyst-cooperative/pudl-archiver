@@ -167,6 +167,33 @@ async def test_resource_chunks(
 
 
 @pytest.mark.asyncio
+async def test_fail_fast(bad_zipfile):
+    """Test that setting ``fail_fast`` when calling download_all_resources raises error if test fails."""
+
+    class MockArchiver(AbstractDatasetArchiver):
+        name = "mock"
+
+        async def get_resources(self):
+            yield self.get_bad_zip()
+
+        async def get_bad_zip(self):
+            return ResourceInfo(local_path=bad_zipfile, partitions={"test": None})
+
+    with pytest.raises(
+        RuntimeError,
+        match=re.escape(
+            "The following validation tests failed with file-validation-fail-fast set: ['Valid Filetype Test']"
+        ),
+    ):
+        [
+            _
+            async for _ in MockArchiver(session=None).download_all_resources(
+                fail_fast=True
+            )
+        ]
+
+
+@pytest.mark.asyncio
 async def test_download_zipfile(mocker, bad_zipfile, good_zipfile):
     """Test download zipfile.
 

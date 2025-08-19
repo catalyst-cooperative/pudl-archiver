@@ -22,7 +22,9 @@ async def orchestrate_run(
     resources = {}
     # Get datapackage from previous version if there is one
     draft, original_datapackage = await get_deposition(dataset, session, run_settings)
-    async for name, resource in downloader.download_all_resources():
+    async for name, resource in downloader.download_all_resources(
+        fail_fast=run_settings.file_validation_fail_fast
+    ):
         resources[name] = resource
         draft = await draft.add_resource(name, resource)
 
