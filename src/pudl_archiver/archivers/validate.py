@@ -58,7 +58,7 @@ def validate_filetype(
 def validate_file_not_empty(
     path: Path, required_for_run_success: bool
 ) -> FileUniversalValidation:
-    """Check that file is valid based on type."""
+    """Check that file is not empty."""
     return FileUniversalValidation(
         name="Empty File Test",
         description="Check that files are not empty.",
