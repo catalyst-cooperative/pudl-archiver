@@ -1,5 +1,6 @@
 """Depositor implementation using any fsspec compatible file-system as storage backend."""
 
+import base64
 import logging
 import traceback
 from typing import BinaryIO
@@ -180,10 +181,20 @@ class FsspecDraftDeposition(DraftDeposition):
         Args:
             filename: Name of file to checksum.
         """
+        md5_hash = None
         filepath = self.deposition.deposition_path / filename
         if filepath.exists():
-            return compute_md5(filepath)
-        return None
+            # For Google Cloud fsspec backend we can use the `info` method to get
+            # The md5 hash without having to read the entire file we just uploaded
+            if filepath.protocol == "gs":
+                md5_hash = base64.urlsafe_b64decode(
+                    filepath.fs.info(filepath.as_uri(), detail=True)["md5Hash"]
+                ).hex()
+            # Not all filesystems return an md5 hash from `info` method, so default
+            # to manual computation
+            else:
+                md5_hash = compute_md5(filepath)
+        return md5_hash
 
     async def create_file(
         self,
@@ -232,7 +243,7 @@ class FsspecDraftDeposition(DraftDeposition):
         remote_path = self.deposition.deposition_path / filename
 
         if remote_path.exists():
-            remote_md5 = compute_md5(remote_path)
+            remote_md5 = self.get_checksum(filename)
             local_md5 = compute_md5(resource.local_path)
             if remote_md5 != local_md5:
                 logger.info(
