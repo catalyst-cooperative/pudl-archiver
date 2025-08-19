@@ -14,7 +14,7 @@ from pudl_archiver.archivers.classes import (
 )
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
-YEAR_QUARTER_PATT = re.compile(r"CSV_(\d+)_Q(\d).zip")
+YEAR_QUARTER_PATT = re.compile(r"CSV_(\d{4})_Q(\d).zip")
 
 
 class FercEQRArchiver(AbstractDatasetArchiver):
