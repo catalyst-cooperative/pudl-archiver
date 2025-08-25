@@ -81,6 +81,15 @@ def parse_main(args=None):
         help="Regenerate metadata from PUDL data source rather than existing archived metadata.",
     )
     parser.add_argument(
+        "--file-validation-fail-fast",
+        action="store_true",
+        help="Immediately raise an error if a file level validation test fails."
+        " This is primarily useful with the `fsspec` depositor where you may not want"
+        " to overwrite a file if the new version is corrupted. This is not an issue with"
+        " the Zenodo depositor, as Zenodo's deposition publishing mechanism ensures files"
+        " will not be overwritten without deliberate action.",
+    )
+    parser.add_argument(
         "--depositor",
         type=str,
         help="Specifies what backend engine will be used for archive storage. Current allowable options include zenodo and fsspec",

@@ -707,6 +707,7 @@ class AbstractDatasetArchiver(ABC):
 
     async def download_all_resources(
         self,
+        fail_fast: bool = False,
     ) -> typing.Generator[tuple[str, ResourceInfo]]:
         """Download all resources.
 
@@ -757,6 +758,18 @@ class AbstractDatasetArchiver(ABC):
                             ),
                         ]
                     )
+
+                    # Check if fail_fast is set and there are failed file level validations
+                    failed_validations = [
+                        validation
+                        for validation in self.file_validations
+                        if not validation.success
+                    ]
+                    if fail_fast and len(failed_validations) > 0:
+                        raise RuntimeError(
+                            "The following validation tests failed with file-validation-fail-fast set:"
+                            f" {[validation.name for validation in failed_validations]}"
+                        )
 
                     # Return downloaded
                     yield str(resource_info.local_path.name), resource_info

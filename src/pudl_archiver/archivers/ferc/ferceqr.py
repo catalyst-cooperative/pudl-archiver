@@ -39,6 +39,17 @@ class FercEQRArchiver(AbstractDatasetArchiver):
         """Download FERC EQR resources."""
         # Dynamically get links to all quarters of EQR data
         urls = await self.get_urls()
+
+        # Check how many quarters of data we found from EQR webpage
+        # The number we expect will change as data is released
+        # but as of writing there are 48, so this provides reasonable lower bound
+        logger.info(f"Found {len(urls)} quarters of available EQR data.")
+        if len(urls) < 48:
+            raise RuntimeError(
+                "Expected a minimum of 48 quarters of EQR data to be available."
+                f" Found the following URLs: {urls}"
+            )
+
         for url in urls:
             yield self.get_quarter_csv(url)
 
@@ -55,7 +66,7 @@ class FercEQRArchiver(AbstractDatasetArchiver):
             await page.goto("https://eqrreportviewer.ferc.gov/")
             # Navigate to Downlaods tab, and wait for tab to finish loading
             await page.get_by_text("Downloads", exact=True).click()
-            await asyncio.sleep(5)
+            await asyncio.sleep(10)
 
             # Find all links matching expected pattern and return
             return [
