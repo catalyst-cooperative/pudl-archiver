@@ -73,7 +73,10 @@ jobs:
           ZENODO_TOKEN_UPLOAD: ${{ secrets.ZENODO_TOKEN_UPLOAD }}
           ZENODO_TOKEN_PUBLISH: ${{ secrets.ZENODO_TOKEN_PUBLISH }}
         if: ${{inputs.server == 'production' || github.event_name == 'schedule'}}
+        # set -o pipefail passes on any failure codes to the next step,
+        # enabling us to see whether or not the pudl_archiver run failed.
         run: |
+          set -o pipefail
           pixi run pudl_archiver --datasets ${{ matrix.dataset }} --summary-file ${{ matrix.dataset }}_run_summary.json --clobber-unchanged 2>&1 | tee ${{ matrix.dataset }}_log.txt
 
       - name: Run sandbox archiver for ${{ matrix.dataset }}

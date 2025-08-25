@@ -15,12 +15,6 @@ See the job run logs and results [here]({{ env.RUN_URL }}).
 
 For each of the following archives, find the run status in the Github archiver run. If validation tests pass, manually review the archive and publish. If no changes detected, delete the draft. If changes are detected, manually review the archive following the guidelines in step 3 of `README.md`, then publish the new version. Then confirm publication status, adding a note on the status (e.g., "v1 published", "no changes detected, draft deleted") or creating a follow-up sub-issue as needed.
 
-# Unchanged archives
-
-The following archives had no observed changes.
-
-{{ env.UNCHANGED }}
-
 # Changed archives
 The following archives have successfully run and have new data. Review each archive prior to publication.
 
@@ -41,6 +35,12 @@ If the validation failure is blocking (e.g., file format incorrect, whole datase
 For each run that failed because of another reason (e.g., underlying data changes, code failures), create an issue describing the failure and take necessary steps to resolve it.
 
 {{ env.ERRORS }}
+
+# Unchanged archives
+
+The following archives had no observed changes.
+
+{{ env.UNCHANGED }}
 
 # Other issues
 
