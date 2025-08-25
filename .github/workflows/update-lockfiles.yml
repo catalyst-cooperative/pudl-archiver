@@ -19,10 +19,15 @@ jobs:
         uses: prefix-dev/setup-pixi@v0.9.0
         with:
           run-install: false
+          log-level: vvv
       - name: Update lockfiles
         run: |
           set -o pipefail
           pixi upgrade --json | pixi exec pixi-diff-to-markdown >> diff.md
+      - name: Install new environment
+        uses: prefix-dev/setup-pixi@v0.9.0
+      - name: Initiate shell
+        run: |
           pixi shell
       - name: Create pull request
         uses: peter-evans/create-pull-request@v7
