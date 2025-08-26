@@ -104,9 +104,7 @@ def _format_summary(summary: dict) -> list[dict]:
 
     if file_changes := summary["file_changes"]:
         file_change_table = pd.DataFrame.from_records(file_changes)
-        file_change_table["size_diff"] = round(
-            file_change_table["size_diff"] * (1**-6), 4
-        )
+        file_change_table["size_diff"] = round(file_change_table["size_diff"] * 1e-6, 4)
         file_change_table = file_change_table.rename(
             columns={"size_diff": "change_in_mb"}
         )
