@@ -96,6 +96,11 @@ def parse_main(args=None):
         choices=list(typing.get_args(Depositors)),
         default="zenodo",
     )
+    parser.add_argument(
+        "--retry-run",
+        help="Specify a Run Summary JSON file that contains partitions to retry.",
+        default=None,
+    )
     return parser.parse_args(args)
 
 

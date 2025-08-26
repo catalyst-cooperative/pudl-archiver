@@ -148,6 +148,7 @@ class RunSettings(BaseModel):
     resume_run: bool = False
     depositor: Depositors = "zenodo"
     file_validation_fail_fast: bool = False
+    retry_run: str | None = None
 
 
 def compute_md5(file_path: UPath) -> str:

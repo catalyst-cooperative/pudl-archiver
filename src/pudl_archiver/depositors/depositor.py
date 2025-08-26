@@ -13,7 +13,7 @@ import aiohttp
 from pydantic import BaseModel, ConfigDict
 
 from pudl_archiver.archivers.validate import RunSummary
-from pudl_archiver.frictionless import DataPackage, ResourceInfo
+from pudl_archiver.frictionless import DataPackage, Partitions, ResourceInfo
 from pudl_archiver.utils import RunSettings, Url, compute_md5
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
@@ -298,8 +298,8 @@ class DraftDeposition(BaseModel, ABC):
         ...
 
     @abstractmethod
-    def generate_datapackage(
-        self, resource_info: dict[str, ResourceInfo]
+    async def generate_datapackage(
+        self, partitions_in_deposition: dict[str, Partitions]
     ) -> DataPackage:
         """Generate new datapackage and return it."""
         ...
@@ -395,10 +395,10 @@ class DraftDeposition(BaseModel, ABC):
 
     async def attach_datapackage(
         self,
-        resources: dict[str, ResourceInfo],
+        partitions_in_deposition: dict[str, Partitions],
     ) -> tuple[DataPackage, bool]:
         """Generate new datapackage describing draft deposition in current state."""
-        new_datapackage = self.generate_datapackage(resources)
+        new_datapackage = await self.generate_datapackage(partitions_in_deposition)
 
         datapackage_json = io.BytesIO(
             bytes(

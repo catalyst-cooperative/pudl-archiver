@@ -12,7 +12,12 @@ import pandas as pd
 import pyarrow as pa
 from pydantic import BaseModel
 
-from pudl_archiver.frictionless import DataPackage, Resource, ZipLayout
+from pudl_archiver.frictionless import (
+    DataPackage,
+    Partitions,
+    Resource,
+    ZipLayout,
+)
 from pudl_archiver.utils import Url, is_html_file
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
@@ -118,6 +123,8 @@ class RunSummary(BaseModel):
     previous_version_date: str
     record_url: Url
     datapackage_changed: bool
+    failed_partitions: dict[str, Partitions]
+    successful_partitions: dict[str, Partitions]
 
     def get_failed_tests(self) -> list[ValidationTestResult]:
         """Return any tests that failed."""
@@ -140,6 +147,8 @@ class RunSummary(BaseModel):
         new_datapackage: DataPackage,
         validation_tests: list[ValidationTestResult],
         record_url: Url,
+        failed_partitions: dict[str, Partitions],
+        successful_partitions: dict[str, Partitions],
     ) -> "RunSummary":
         """Create a summary of archive changes from two DataPackage descriptors."""
         baseline_resources = {}
@@ -179,6 +188,8 @@ class RunSummary(BaseModel):
             previous_version_date=previous_version_date,
             record_url=record_url,
             datapackage_changed=datapackage_changed,
+            failed_partitions=failed_partitions,
+            successful_partitions=successful_partitions,
         )
 
 

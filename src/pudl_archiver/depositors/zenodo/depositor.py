@@ -22,7 +22,13 @@ from pudl_archiver.depositors.depositor import (
     PublishedDeposition,
     register_depositor,
 )
-from pudl_archiver.frictionless import MEDIA_TYPES, DataPackage, Resource, ResourceInfo
+from pudl_archiver.frictionless import (
+    MEDIA_TYPES,
+    DataPackage,
+    Partitions,
+    Resource,
+    ResourceInfo,
+)
 from pudl_archiver.utils import RunSettings, Url, compute_md5, retry_async
 
 from .entities import (
@@ -742,14 +748,14 @@ class ZenodoDraftDeposition(DraftDeposition):
         )
 
     def generate_datapackage(
-        self, resource_info: dict[str, ResourceInfo]
+        self, partitions_in_deposition: dict[str, Partitions]
     ) -> DataPackage:
         """Generate new datapackage, attach to deposition, and return."""
         logger.info(f"Creating new datapackage.json for {self.dataset_id}")
 
         # Create updated datapackage
         resources = [
-            _resource_from_file(f, resource_info[f.filename].partitions)
+            _resource_from_file(f, partitions_in_deposition[f.filename])
             for f in self.deposition.files
             if f.filename != "datapackage.json"
         ]

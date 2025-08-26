@@ -21,7 +21,7 @@ from playwright.async_api import Browser as PlaywrightBrowser
 from playwright.async_api import Error as PlaywrightError
 
 from pudl_archiver.archivers import validate
-from pudl_archiver.frictionless import DataPackage, ResourceInfo
+from pudl_archiver.frictionless import DataPackage, Partitions, ResourceInfo
 from pudl_archiver.utils import (
     add_to_archive_stable_hash,
     retry_async,
@@ -150,6 +150,8 @@ class AbstractDatasetArchiver(ABC):
         self.only_years = only_years
         self.file_validations: list[validate.FileUniversalValidation] = []
 
+        self.failed_partitions: dict[str, Partitions] = {}
+
         # Create logger
         self.logger = logging.getLogger(f"catalystcoop.{__name__}")
         self.logger.info(f"Archiving {self.name}")
@@ -163,7 +165,7 @@ class AbstractDatasetArchiver(ABC):
         return bs4.BeautifulSoup(await response.text(), "html.parser")
 
     @abstractmethod
-    def get_resources(self) -> ArchiveAwaitable:
+    def get_resources(self) -> ArchiveAwaitable | tuple[ArchiveAwaitable, Partitions]:
         """Abstract method that each data source must implement to download all resources.
 
         This method should be a generator that yields awaitable objects that will download
@@ -705,9 +707,21 @@ class AbstractDatasetArchiver(ABC):
         """
         return (not self.only_years) or int(year) in self.only_years
 
+    async def _unpack_resources(self) -> tuple[list[ArchiveAwaitable], Partitions]:
+        """Run ``get_resources`` method for archiver and separate partitons/resources."""
+        resources = []
+        partitions = []
+        async for resource in self.get_resources():
+            if type(resource) is tuple:
+                resource, partition = resource
+                partitions.append(partition)
+            resources.append(resource)
+
+        return resources, partitions
+
     async def download_all_resources(
         self,
-        fail_fast: bool = False,
+        retry_parts: list[Partitions] = [],
     ) -> typing.Generator[tuple[str, ResourceInfo]]:
         """Download all resources.
 
@@ -715,7 +729,21 @@ class AbstractDatasetArchiver(ABC):
         coordinates downloading all resources concurrently.
         """
         # Get all awaitables from get_resources
-        resources = [resource async for resource in self.get_resources()]
+        resources, partitions = await self._unpack_resources()
+
+        if len(retry_parts) > 0:
+            if len(partitions) == 0:
+                raise RuntimeError(
+                    "Archiver must return partions from `get_resources` to be able "
+                    "to filter to a specific set of resources. See ferceqr archiver "
+                    "for an example of how to implement this."
+                )
+            logger.info(f"Only downloading the following partitions: {retry_parts}")
+            resources = [
+                resource
+                for resource, parts in zip(resources, partitions)
+                if parts in retry_parts
+            ]
 
         # Split resources into chunks to limit concurrency
         chunksize = self.concurrency_limit if self.concurrency_limit else len(resources)
@@ -759,16 +787,19 @@ class AbstractDatasetArchiver(ABC):
                         ]
                     )
 
-                    # Check if fail_fast is set and there are failed file level validations
+                    # Check if there are failed file level validations
                     failed_validations = [
                         validation
                         for validation in self.file_validations
                         if not validation.success
                     ]
-                    if fail_fast and len(failed_validations) > 0:
-                        raise RuntimeError(
+                    if len(failed_validations) > 0:
+                        logger.error(
                             "The following validation tests failed with file-validation-fail-fast set:"
                             f" {[validation.name for validation in failed_validations]}"
+                        )
+                        self.failed_partitions[resource_info.local_path.name] = (
+                            resource_info.partitions
                         )
 
                     # Return downloaded
