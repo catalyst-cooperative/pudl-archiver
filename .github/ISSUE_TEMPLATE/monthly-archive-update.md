@@ -13,48 +13,12 @@ See the job run logs and results [here]({{ env.RUN_URL }}).
 
 # Review and publish archives
 
-For each of the following archives, find the run status in the Github archiver run. If validation tests pass, manually review the archive and publish. If no changes detected, delete the draft. If changes are detected, manually review the archive following the guidelines in step 3 of `README.md`, then publish the new version. Then check the box here to confirm publication status, adding a note on the status (e.g., "v1 published", "no changes detected, draft deleted"):
+For each of the following archives, find the run status in the Github archiver run. If validation tests pass, manually review the archive and publish. If no changes detected, delete the draft. If changes are detected, manually review the archive following the guidelines in step 3 of `README.md`, then publish the new version. Then confirm publication status, adding a note on the status (e.g., "v1 published", "no changes detected, draft deleted") or creating a follow-up sub-issue as needed.
 
-- [ ] censuspep
-- [ ] doeiraec
-- [ ] doelead
-- [ ] eia176
-- [ ] eia191
-- [ ] eia757a
-- [ ] eia860
-- [ ] eia860m
-- [ ] eia861
-- [ ] eia923
-- [ ] eia930
-- [ ] eiaaeo
-- [ ] eiaapi
-- [ ] eiacbecs
-- [ ] eiamecs
-- [ ] eianems
-- [ ] eiarecs
-- [ ] eiasteo
-- [ ] eiawater
-- [ ] epacamd_eia
-- [ ] epacems
-- [ ] epaegrid
-- [ ] epamats
-- [ ] epapcap
-- [ ] ferc1
-- [ ] ferc2
-- [ ] ferc6
-- [ ] ferc60
-- [ ] ferc714
-- [ ] gridpathratoolkit
-- [ ] mshamines
-- [ ] nrelatb
-- [ ] nrelefs
-- [ ] nrelss
-- [ ] nrelsts
-- [ ] phmsagas
-- [ ] sec10k
-- [ ] usgsuspvdb
-- [ ] usgswtdb
-- [ ] vcerare
+# Changed archives
+The following archives have successfully run and have new data. Review each archive prior to publication.
+
+{{ env.CHANGES }}
 
 # Validation failures
 
@@ -64,13 +28,19 @@ If the validation failure is deemed ok after manual review (e.g., Q2 of 2024 dat
 
 If the validation failure is blocking (e.g., file format incorrect, whole dataset changes size by 200%), make an issue to resolve it.
 
-- [ ] dataset
+{{ env.FAILURES }}
 
 # Other failures
 
 For each run that failed because of another reason (e.g., underlying data changes, code failures), create an issue describing the failure and take necessary steps to resolve it.
 
-- [ ] dataset
+{{ env.ERRORS }}
+
+# Unchanged archives
+
+The following archives had no observed changes.
+
+{{ env.UNCHANGED }}
 
 # Other issues
 

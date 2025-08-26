@@ -1,6 +1,7 @@
 """Defines models used for validating/summarizing an archiver run."""
 
 import logging
+import re
 import xml.etree.ElementTree as Et  # nosec: B405
 import zipfile
 from io import BytesIO
@@ -116,6 +117,7 @@ class RunSummary(BaseModel):
     date: str
     previous_version_date: str
     record_url: Url
+    datapackage_changed: bool
 
     def get_failed_tests(self) -> list[ValidationTestResult]:
         """Return any tests that failed."""
@@ -141,10 +143,15 @@ class RunSummary(BaseModel):
     ) -> "RunSummary":
         """Create a summary of archive changes from two DataPackage descriptors."""
         baseline_resources = {}
+        datapackage_changed = True
         if baseline_datapackage is not None:
             baseline_resources = {
                 resource.name: resource for resource in baseline_datapackage.resources
             }
+            datapackage_changed = _datapackage_changed(
+                baseline_datapackage, new_datapackage
+            )
+
         new_resources = {
             resource.name: resource for resource in new_datapackage.resources
         }
@@ -171,7 +178,27 @@ class RunSummary(BaseModel):
             date=new_datapackage.created,
             previous_version_date=previous_version_date,
             record_url=record_url,
+            datapackage_changed=datapackage_changed,
         )
+
+
+def _datapackage_changed(
+    baseline_datapackage: DataPackage,
+    new_datapackage: DataPackage,
+) -> bool:
+    """Check if any fields in datapackage have changed."""
+    # Copy datapackages so we can modify without causing problems down the line
+    new_datapackage_copy = new_datapackage.model_copy(deep=True)
+    old_datapackage_copy = baseline_datapackage.model_copy(deep=True)
+    for field in new_datapackage_copy.model_dump():
+        if field in {"created", "version"}:
+            continue
+        if field == "resources":
+            for r in old_datapackage_copy.resources + new_datapackage_copy.resources:
+                r.path = re.sub(r"/\d+/", "/ID_NUMBER/", str(r.path))
+        if getattr(new_datapackage_copy, field) != getattr(old_datapackage_copy, field):
+            return True
+    return False
 
 
 def _process_partition_diffs(

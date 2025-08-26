@@ -47,6 +47,7 @@ async def test_cli(args, dataset_success_map, downloaders, mocker):
             date="right_now",
             previous_version_date="before_right_now",
             record_url="https://test.com",
+            datapackage_changed=True,
         ), None
 
     mock = unittest.mock.AsyncMock(side_effect=_get_run_results)

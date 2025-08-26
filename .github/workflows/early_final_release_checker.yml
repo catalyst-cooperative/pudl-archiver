@@ -4,12 +4,19 @@ name: early-final-release-checker
 on:
   workflow_dispatch:
     inputs:
-      small_runner:
-        description: 'Small runner: Comma-separated list of datasets to archive (e.g., "ferc2","ferc6").'
-        # We can't pass env variables to the workflow_dispatch, so we manually list the target datasets here.
+      datasets:
+        description: 'Comma-separated list of datasets to archive (e.g., "ferc2","ferc6").'
         default: '"eia860","eia861","eia923"'
         required: true
         type: string
+      server:
+        description: "Which Zenodo server would you like to run on?"
+        default: "sandbox"
+        options:
+          - sandbox
+          - production
+        required: true
+        type: choice
       create_github_issue:
         description: "Create a Github issue from this run?"
         default: false
@@ -17,40 +24,79 @@ on:
         type: boolean
   schedule:
     - cron: "21 8 2-31 6-7,9-10 0,2-6"
-    # 8:21 AM UTC, every day in June, July, Sept, Oct except the 1st
-    # Don't run on Mondays, when run-archiver.yml runs
+    # 8:21 AM UTC, every day in June, July, Sept, Oct.
+    # Don't run on Mondays or the 1st of the month, when run-archiver.yml runs
 
 jobs:
-  archive-run-small:
+  archive-run:
     defaults:
       run:
         shell: bash -l {0}
     strategy:
       matrix:
         # Note that we can't pass global env variables to the matrix, so we manually reproduce the list of datasets here.
-        dataset: ${{ fromJSON(format('[{0}]', inputs.small_runner || '"eia860","eia861","eia923"' )) }}
+        dataset: ${{ fromJSON(format('[{0}]', inputs.datasets || '"eia860","eia861","eia923"' )) }}
       fail-fast: false
     runs-on: ubuntu-latest
+    permissions:
+      contents: "read"
+      id-token: "write"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+
+      - name: Set default GCP credentials
+        id: gcloud-auth
+        continue-on-error: true
+        uses: "google-github-actions/auth@v2"
+        with:
+          workload_identity_provider: "projects/345950277072/locations/global/workloadIdentityPools/gh-actions-pool/providers/gh-actions-provider"
+          service_account: "pudl-sources@catalyst-cooperative-pudl.iam.gserviceaccount.com"
 
       - name: Set up pixi
-        uses: prefix-dev/setup-pixi@v0.8.10
+        uses: prefix-dev/setup-pixi@v0.9.0
+        with:
+          cache: true
 
       - name: Log the pixi environment
         run: |
           pixi info
           pixi list
 
-      - name: Run archiver for ${{ matrix.dataset }}
+      - name: Additional Playwright setup
+        run: |
+          pixi run playwright install --with-deps webkit
+
+      - name: Run production archiver for ${{ matrix.dataset }}
         env:
           ZENODO_SANDBOX_TOKEN_UPLOAD: ${{ secrets.ZENODO_SANDBOX_TOKEN_UPLOAD }}
           ZENODO_SANDBOX_TOKEN_PUBLISH: ${{ secrets.ZENODO_SANDBOX_TOKEN_PUBLISH }}
           EPACEMS_API_KEY: ${{ secrets.EPACEMS_API_KEY }}
           ZENODO_TOKEN_UPLOAD: ${{ secrets.ZENODO_TOKEN_UPLOAD }}
           ZENODO_TOKEN_PUBLISH: ${{ secrets.ZENODO_TOKEN_PUBLISH }}
+        if: ${{inputs.server == 'production' || github.event_name == 'schedule'}}
         run: |
-          pixi run pudl_archiver --datasets ${{ matrix.dataset }} --summary-file ${{ matrix.dataset }}_run_summary.json
+          pixi run pudl_archiver --datasets ${{ matrix.dataset }} --summary-file ${{ matrix.dataset }}_run_summary.json --clobber-unchanged 2>&1 | tee ${{ matrix.dataset }}_log.txt
+
+      - name: Run sandbox archiver for ${{ matrix.dataset }}
+        env:
+          ZENODO_SANDBOX_TOKEN_UPLOAD: ${{ secrets.ZENODO_SANDBOX_TOKEN_UPLOAD }}
+          ZENODO_SANDBOX_TOKEN_PUBLISH: ${{ secrets.ZENODO_SANDBOX_TOKEN_PUBLISH }}
+          EPACEMS_API_KEY: ${{ secrets.EPACEMS_API_KEY }}
+          ZENODO_TOKEN_UPLOAD: ${{ secrets.ZENODO_TOKEN_UPLOAD }}
+          ZENODO_TOKEN_PUBLISH: ${{ secrets.ZENODO_TOKEN_PUBLISH }}
+        if: ${{ inputs.server == 'sandbox' }}
+        # set -o pipefail passes on any failure codes to the next step,
+        # enabling us to see whether or not the pudl_archiver run failed.
+        run: |
+          set -o pipefail
+          pixi run pudl_archiver --datasets ${{ matrix.dataset }} --sandbox --summary-file ${{ matrix.dataset }}_run_summary.json --clobber-unchanged 2>&1 | tee ${{ matrix.dataset }}_log.txt
+
+      - name: Save failed runs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: error-log-${{ matrix.dataset }}
+          path: ${{ matrix.dataset }}_log.txt
 
       - name: Upload run summaries
         if: always()
@@ -63,51 +109,113 @@ jobs:
   archive-notify:
     runs-on: ubuntu-latest
     needs:
-      - archive-run-small
+      - archive-run
     if: ${{ always() }}
-    outputs:
-      output1: ${{ steps.all_summaries.outputs.SLACK_PAYLOAD }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Download summaries
-        id: download
-        uses: actions/download-artifact@v4
+        id: download-summaries
+        uses: actions/download-artifact@v5
         with:
           pattern: run-summaries-*
           merge-multiple: true
-      - name: show summaries
+      - name: Download failures
+        id: download-artifacts
+        uses: actions/download-artifact@v5
+        with:
+          pattern: error-log-*
+          merge-multiple: true
+      - name: Show downloaded artifacts
         run: ls -R
-      - name: Munge summaries together
-        id: all_summaries
+      # These steps only run to create a Github issue summarizing the run.
+      - name: Load pixi from cache
+        if: ${{ always() && (github.event_name == 'schedule' || inputs.create_github_issue == true) }}
+        uses: prefix-dev/setup-pixi@v0.9.0
+      - name: Munge summaries together for Github
+        if: ${{ always() && (github.event_name == 'schedule' || inputs.create_github_issue == true) }}
+        id: github_summaries
+        run: |
+          {
+            echo 'ERRORS<<DELIM1'
+            pixi run ./scripts/make_github_notification.py --summary-files *_run_summary.json --error-files *_log.txt --summary-type error
+            echo 'DELIM1'
+            echo 'FAILURES<<DELIM2'
+            pixi run ./scripts/make_github_notification.py --summary-files *_run_summary.json --error-files *_log.txt --summary-type failure
+            echo 'DELIM2'
+            echo 'CHANGES<<DELIM3'
+            pixi run ./scripts/make_github_notification.py --summary-files *_run_summary.json --error-files *_log.txt --summary-type change
+            echo 'DELIM3'
+            echo 'UNCHANGED<<DELIM4'
+            pixi run ./scripts/make_github_notification.py --summary-files *_run_summary.json --error-files *_log.txt --summary-type unchanged
+            echo 'DELIM4'
+          } | tee -a $GITHUB_OUTPUT
+      # These steps only run if no Github issue is requested to be created.
+      # The summary will show up in Slack instead.
+      - name: Munge summaries for Slack
+        id: slack_summaries
+        if: ${{ inputs.create_github_issue == false }}
         run: |
           {
             echo "SLACK_PAYLOAD<<EOF"
-            ./scripts/make_slack_notification_message.py --summary-files *_run_summary.json | tee slack-payload.json
+            ./scripts/make_slack_notification_message.py --summary-files *_run_summary.json --error-files *_log.txt | tee slack-payload.json
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
       - name: Post update to pudl-deployment
-        uses: slackapi/slack-github-action@v2.1.0
+        if: ${{ inputs.create_github_issue == false }}
+        uses: slackapi/slack-github-action@v2.1.1
         with:
           method: chat.postMessage
           token: ${{ secrets.PUDL_DEPLOY_SLACK_TOKEN }}
           payload: |
             text: "PUDL data archive run complete."
-            blocks: ${{ steps.all_summaries.outputs.SLACK_PAYLOAD }}
+            blocks: ${{ steps.slack_summaries.outputs.SLACK_PAYLOAD }}
             channel: "C03FHB9N0PQ"
 
+    outputs:
+      errors: ${{ steps.github_summaries.outputs.ERRORS }}
+      failures: ${{ steps.github_summaries.outputs.FAILURES }}
+      changes: ${{ steps.github_summaries.outputs.CHANGES }}
+      unchanged: ${{ steps.github_summaries.outputs.UNCHANGED }}
+
   make-github-issue:
+    # If event is a scheduled run or a workflow run where an issue
+    # is requested, create an issue.
+    if: ${{ always() && (github.event_name == 'schedule' || inputs.create_github_issue == true) }}
     runs-on: ubuntu-latest
     needs:
-      - archive-run-small
+      - archive-run
       - archive-notify
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Create an issue
+        id: create-issue
         uses: JasonEtco/create-an-issue@v2.9.2
-        # If Slack message includes new data, create a Github issue
-        if: ${{ always() && ( inputs.create_github_issue == true || (contains(needs.archive-notify.outputs.output1, 'CREATE') || contains(needs.archive-notify.outputs.output1, 'UPDATE'))) }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          ERRORS: ${{ needs.archive-notify.outputs.errors }}
+          FAILURES: ${{ needs.archive-notify.outputs.failures }}
+          CHANGES: ${{ needs.archive-notify.outputs.changes }}
+          UNCHANGED: ${{ needs.archive-notify.outputs.unchanged }}
         with:
-          filename: .github/ISSUE_TEMPLATE/early-final-release-template.md
+          filename: .github/ISSUE_TEMPLATE/monthly-archive-update.md
+      - run: echo "URL=${{ steps.create-issue.outputs.url }}" >> $GITHUB_ENV
+    outputs:
+      url: ${{ steps.create-issue.outputs.URL}}
+
+  make-slack-announcement-for-github-issue:
+    runs-on: ubuntu-latest
+    if: ${{ always() && (github.event_name == 'schedule' || inputs.create_github_issue == true) }}
+    needs:
+      - archive-run
+      - make-github-issue
+    env:
+      github-url: ${{ needs.make-github-issue.outputs.url }}
+    steps:
+      - uses: slackapi/slack-github-action@v2.1.1
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.PUDL_DEPLOY_SLACK_TOKEN }}
+          payload: |
+            text: "PUDL data archive run complete: ${{ env.github-url }}"
+            channel: "C03FHB9N0PQ"

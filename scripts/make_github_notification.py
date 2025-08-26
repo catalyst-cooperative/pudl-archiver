@@ -1,7 +1,10 @@
 #! /usr/bin/env python
-"""Format summary files for Slack perusal. Only uses stdlib.
+"""Format summary and error files into Github issue template.
 
-Outputs a JSON payload to put into the Slack Github Action:
+Creates chunks that can be added to the Github issue template
+`monthly-archiver-update.yml`. Only uses stdlib.
+
+Sets a series of env variables to put into the Slack Github Action:
 
 https://github.com/slackapi/slack-github-action
 
@@ -15,12 +18,13 @@ hide large messages (such as a file diff) behind a "See more" action.
 """
 
 import argparse
-import itertools
 import json
 import logging
 import re
 from collections import defaultdict
 from pathlib import Path
+
+import pandas as pd
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
@@ -41,26 +45,34 @@ def _parse_args():
         help="Paths to log files for failed runs.",
         default=None,
     )
+    parser.add_argument(
+        "--summary-type",
+        type=str,
+        help="What category of text to get (changes, failures).",
+        default=None,
+    )
     return parser.parse_args()
 
 
 def _format_message(
     url: str | None, name: str, content: str, max_len: int = 3000
 ) -> list[dict]:
-    """Format message for Slack API.
+    """Format message for Markdown.
 
     When archives fail, they may not have a URL.
     """
     if url:
-        text = f"<{url}|*{name}*>\n{content}"[:max_len]
+        text = f"[**{name}**]({url})<br/><br/>{content}"[:max_len]
     else:
-        text = f"*{name}*\n{content}"[:max_len]
-    return [
-        {
-            "type": "section",
-            "text": {"type": "mrkdwn", "text": text},
-        },
-    ]
+        text = f"**{name}**<br/><br/>{content}"[:max_len]
+    return text
+
+
+def _format_text_as_github_code(text: str) -> str:
+    """Set up code to render nicely in one block, instead of per-line."""
+    start_string = "<pre><code><br/>"
+    end_string = "<br/></code></pre>"
+    return f"{start_string}{text}{end_string}"
 
 
 def _format_failures(summary: dict) -> list[dict]:
@@ -77,7 +89,7 @@ def _format_failures(summary: dict) -> list[dict]:
             )  # Flatten list of lists
 
     if test_failures:
-        failures = f"```\n{json.dumps(test_failures, indent=2)}\n```"
+        failures = _format_text_as_github_code(json.dumps(test_failures, indent=2))
     else:
         return None
 
@@ -91,23 +103,26 @@ def _format_summary(summary: dict) -> list[dict]:
         return None  # Don't report on file changes if any test failed.
 
     if file_changes := summary["file_changes"]:
-        abridged_changes = defaultdict(list)
-        for change in file_changes:
-            abridged_changes[change["diff_type"]].append(
-                # Convert the size diff to MB for speed of assessment, and round
-                {change["name"]: round(change["size_diff"] * 1e-6, 4)}
-            )
-        changes = f"```\n{json.dumps(abridged_changes, indent=2)}\n```"
+        file_change_table = pd.DataFrame.from_records(file_changes)
+        file_change_table["size_diff"] = round(file_change_table["size_diff"] * 1e-6, 4)
+        file_change_table = file_change_table.rename(
+            columns={"size_diff": "change_in_mb"}
+        )
+        # Convert to HTML (GH was being very cranky about rendering mkdn, so we're
+        # just cutting straight to the source here.)
+        changes = file_change_table.to_html(index=False).replace("\n", "")
+
     else:
         changes = "No changes."
 
     return _format_message(url=url, name=name, content=changes)
 
 
-def _format_errors(log: str) -> str | None:
+def _format_errors(log: str) -> str:
     """Take a log file from a failed run and return the exception."""
     # First isolate traceback
     failure_match = list(re.finditer("Traceback", log))
+
     if not failure_match or any(
         "archive validation tests failed" in log[failure.start() :]
         for failure in failure_match
@@ -117,8 +132,8 @@ def _format_errors(log: str) -> str | None:
     # Get last traceback
     failure = log[failure_match[-1].start() :]
     # Keep last three lines to get a sliver of the error message
-    failure = "\n".join(failure.splitlines()[-3:])
-    failure = f"```\n{failure}\n```"  # Format as code
+    failure = "  ".join(failure.splitlines()[-3:])
+    failure = _format_text_as_github_code(failure)  # Format as code
 
     name_re = re.search(
         r"(?:catalystcoop.pudl_archiver.archivers.classes:155 Archiving )([a-z0-9]*)",
@@ -157,89 +172,39 @@ def _load_errors(error_files: list[Path]) -> list[str]:
     return errors
 
 
-def main(summary_files: list[Path], error_files: list[Path]) -> None:
+def main(summary_files: list[Path], error_files: list[Path], summary_type: str) -> None:
     """Format summary files for Slack perusal."""
     summaries = _load_summaries(summary_files)
     errors = _load_errors(error_files)
 
-    error_blocks = list(
-        itertools.chain.from_iterable(filter(None, (_format_errors(e) for e in errors)))
+    error_blocks = "<br/><br/>".join(filter(None, (_format_errors(e) for e in errors)))
+
+    failed_blocks = "<br/><br/>".join(
+        filter(None, (_format_failures(s) for s in summaries))
     )
 
-    failed_blocks = list(
-        itertools.chain.from_iterable(
-            filter(None, (_format_failures(s) for s in summaries))
-        )
+    unchanged_blocks = "<br/><br/>".join(
+        _format_summary(s)
+        for s in summaries
+        if (not s["file_changes"]) and (_format_summary(s) is not None)
     )
 
-    unchanged_blocks = list(
-        itertools.chain.from_iterable(
-            _format_summary(s)
-            for s in summaries
-            if (not s["file_changes"]) and (_format_summary(s) is not None)
-        )
-    )
-    changed_blocks = list(
-        itertools.chain.from_iterable(
-            _format_summary(s)
-            for s in summaries
-            if (s["file_changes"]) and (_format_summary(s) is not None)
-        )
+    changed_blocks = "<br/><br/>".join(
+        _format_summary(s)
+        for s in summaries
+        if (s["file_changes"]) and (_format_summary(s) is not None)
     )
 
-    if len(error_blocks + failed_blocks + unchanged_blocks + changed_blocks) >= 50:
-        # Slack doesn't let us send more than 50 items in a list
-        # Let's squish our unchanged blocks together.
-
-        unchanged_blocks = [
-            {
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": "\n\n".join([s["text"]["text"] for s in unchanged_blocks]),
-                },
-            },
-        ]
-
-    def header_block(text: str) -> dict:
-        return {"type": "header", "text": {"type": "plain_text", "text": text}}
-
-    def section_block(text: str) -> dict:
-        return {"type": "section", "text": {"type": "mrkdwn", "text": text}}
-
-    if error_blocks:
-        error_blocks = [section_block("*Run Failures*")] + error_blocks
-    if failed_blocks:
-        failed_blocks = [section_block("*Validation Failures*")] + failed_blocks
-    if changed_blocks:
-        changed_blocks = [section_block("*Changed*")] + changed_blocks
-    if unchanged_blocks:
-        unchanged_blocks = [section_block("*Unchanged*")] + unchanged_blocks
-
-    blocks = (
-        [header_block("Archiver Run Outcomes")]
-        + error_blocks
-        + failed_blocks
-        + changed_blocks
-        + unchanged_blocks
-    )
-    if len(blocks) >= 50:
-        logger.warn(
-            "Too many archive updates for Slack to handle! Trimming anything over 50."
-        )
-        blocks = blocks[:49] + [
-            {
-                "type": "section",
-                "text": {"type": "mrkdwn", "text": "And more..."},
-            }
-        ]
-
-    print(
-        json.dumps(
-            blocks,
-            indent=2,
-        )
-    )
+    if summary_type == "change":
+        print(changed_blocks)
+    elif summary_type == "error":
+        print(error_blocks)
+    elif summary_type == "failure":
+        print(failed_blocks)
+    elif summary_type == "unchanged":
+        print(unchanged_blocks)
+    else:
+        print([changed_blocks, unchanged_blocks, failed_blocks, error_blocks])
 
 
 if __name__ == "__main__":
