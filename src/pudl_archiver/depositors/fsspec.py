@@ -18,13 +18,19 @@ from pudl_archiver.depositors.depositor import (
     PublishedDeposition,
     register_depositor,
 )
-from pudl_archiver.frictionless import MEDIA_TYPES, DataPackage, Resource, ResourceInfo
+from pudl_archiver.frictionless import (
+    MEDIA_TYPES,
+    DataPackage,
+    Partitions,
+    Resource,
+    ResourceInfo,
+)
 from pudl_archiver.utils import RunSettings, compute_md5
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 
-def _resource_from_upath(path: UPath, parts: dict[str, str]) -> Resource:
+def _resource_from_upath(path: UPath, parts: Partitions, md5_hash: str) -> Resource:
     """Create a resource from a single file with partitions.
 
     Args:
@@ -35,8 +41,8 @@ def _resource_from_upath(path: UPath, parts: dict[str, str]) -> Resource:
 
     return Resource(
         name=path.name,
-        path=path.as_uri(),
-        remote_url=path.as_uri(),
+        path=path.as_uri().replace("draft", "published"),
+        remote_url=path.as_uri().replace("draft", "published"),
         title=path.name,
         mediatype=mt,
         parts=parts,
@@ -53,22 +59,53 @@ class Deposition(DepositionState):
 
     deposition_path: UPath
     #: static list of files from deposition prior to any modifications
-    file_list: list[str]
+    draft_file_list: list[str]
+    published_file_list: list[str]
     version: str = "0.1"
+
+    def get_deposition_path(self, deposition_state: str) -> UPath:
+        """Return path to draft or published version of deposition."""
+        return self.deposition_path / deposition_state
+
+    def get_checksum(self, filename: str, deposition_state: str) -> str | None:
+        """Get checksum for a file in the current deposition.
+
+        Args:
+            filename: Name of file to checksum.
+            deposition_state: Specify whether to get checksum from published or draft deposition.
+        """
+        md5_hash = None
+        filepath = self.get_deposition_path(deposition_state) / filename
+        if filepath.exists():
+            # For Google Cloud fsspec backend we can use the `info` method to get
+            # The md5 hash without having to read the entire file we just uploaded
+            if filepath.protocol == "gs":
+                md5_hash = base64.urlsafe_b64decode(
+                    filepath.fs.info(filepath.as_uri(), detail=True)["md5Hash"]
+                ).hex()
+            # Not all filesystems return an md5 hash from `info` method, so default
+            # to manual computation
+            else:
+                md5_hash = compute_md5(filepath)
+        return md5_hash
 
     @classmethod
     def from_upath(cls, deposition_path: UPath):
         """Construct deposition object from fsspec path to deposition."""
-        file_list = []
-        if deposition_path.exists():
-            file_list = [
-                str(child.name)
-                for child in deposition_path.iterdir()
-                if child.name != deposition_path.name
-            ]
+        file_lists = {
+            "draft_file_list": [],
+            "published_file_list": [],
+        }
+        for deposition_state in ["draft", "published"]:
+            if (deposition_path / deposition_state).exists():
+                file_lists[f"{deposition_state}_file_list"] = [
+                    str(child.name)
+                    for child in (deposition_path / deposition_state).iterdir()
+                    if child.name != (deposition_path / deposition_state).name
+                ]
         return cls(
-            deposition_path=deposition_path,
-            file_list=file_list,
+            deposition_path=deposition_path.absolute(),
+            **file_lists,
         )
 
 
@@ -110,9 +147,13 @@ class FsspecAPIClient(DepositorAPIClient):
 
         return Deposition.from_upath(deposition_path=deposition_path)
 
-    def get_file(self, deposition: Deposition, filename: str) -> bytes:
+    def get_file(
+        self, deposition: Deposition, filename: str, deposition_state: str
+    ) -> bytes:
         """Download file from deposition."""
-        with (deposition.deposition_path / filename).open("rb") as f:
+        with (deposition.get_deposition_path(deposition_state) / filename).open(
+            "rb"
+        ) as f:
             return f.read()
 
 
@@ -128,7 +169,7 @@ class FsspecPublishedDeposition(PublishedDeposition):
 
     async def list_files(self):
         """List files."""
-        return self.deposition.file_list
+        return self.deposition.published_file_list
 
     def get_deposition_link(self) -> str:
         """Return link to deposition."""
@@ -136,7 +177,9 @@ class FsspecPublishedDeposition(PublishedDeposition):
 
     async def get_file(self, filename: str) -> bytes:
         """Download file from deposition."""
-        return self.api_client.get_file(self.deposition, filename)
+        return self.api_client.get_file(
+            self.deposition, filename, deposition_state="published"
+        )
 
     async def open_draft(self) -> "FsspecDraftDeposition":
         """Open a new draft to make edits."""
@@ -157,10 +200,30 @@ class FsspecDraftDeposition(DraftDeposition):
     deposition: Deposition
     api_client: FsspecAPIClient
     dataset_id: str
+    files_to_delete: list[str] = []
 
     async def list_files(self):
-        """List files."""
-        return self.deposition.file_list
+        """Return the union of files from the current draft and previous published version."""
+        return [path.name for path in self._list_paths()]
+
+    def _list_paths(self):
+        """Return the union of files from the current draft and previous published version."""
+        draft_paths = [
+            self.deposition.get_deposition_path("draft") / fname
+            for fname in self.deposition.draft_file_list
+        ]
+        published_paths = [
+            self.deposition.get_deposition_path("published") / fname
+            for fname in self.deposition.published_file_list
+            if fname not in self.files_to_delete
+        ]
+        all_paths = draft_paths + published_paths
+        all_fnames = [path.name for path in all_paths]
+        if len(all_fnames) != len(set(all_fnames)):
+            raise RuntimeError(
+                "fsspec depositor detected duplicate files in current draft."
+            )
+        return all_paths
 
     def get_deposition_link(self) -> str:
         """Return link to deposition."""
@@ -168,11 +231,22 @@ class FsspecDraftDeposition(DraftDeposition):
 
     async def publish(self) -> FsspecPublishedDeposition:
         """Publish deposition."""
+        # Delete files no longer included in published deposition
+        self.deposition.get_deposition_path("published").mkdir(exist_ok=True)
+        for filename in self.files_to_delete:
+            (self.deposition.get_deposition_path("published") / filename).unlink()
+
+        # Move files from draft to published deposition
+        for filename in self.deposition.draft_file_list:
+            (self.deposition.get_deposition_path("draft") / filename).rename(
+                self.deposition.get_deposition_path("published") / filename
+            )
+
         return FsspecPublishedDeposition(
             dataset_id=self.dataset_id,
             api_client=self.api_client,
             settings=self.settings.model_copy(update={"initialize": False}),
-            deposition=self.deposition,
+            deposition=Deposition.from_upath(self.deposition.deposition_path),
         )
 
     def get_checksum(self, filename: str) -> str | None:
@@ -181,20 +255,7 @@ class FsspecDraftDeposition(DraftDeposition):
         Args:
             filename: Name of file to checksum.
         """
-        md5_hash = None
-        filepath = self.deposition.deposition_path / filename
-        if filepath.exists():
-            # For Google Cloud fsspec backend we can use the `info` method to get
-            # The md5 hash without having to read the entire file we just uploaded
-            if filepath.protocol == "gs":
-                md5_hash = base64.urlsafe_b64decode(
-                    filepath.fs.info(filepath.as_uri(), detail=True)["md5Hash"]
-                ).hex()
-            # Not all filesystems return an md5 hash from `info` method, so default
-            # to manual computation
-            else:
-                md5_hash = compute_md5(filepath)
-        return md5_hash
+        return self.deposition.get_checksum(filename, deposition_state="draft")
 
     async def create_file(
         self,
@@ -202,7 +263,10 @@ class FsspecDraftDeposition(DraftDeposition):
         data: BinaryIO,
     ) -> "FsspecDraftDeposition":
         """Create a file in a deposition."""
-        with (self.deposition.deposition_path / filename).open(mode="wb") as f:
+        self.deposition.get_deposition_path("draft").mkdir(exist_ok=True)
+        with (self.deposition.get_deposition_path("draft") / filename).open(
+            mode="wb"
+        ) as f:
             f.write(data.read())
 
         return self.model_copy(
@@ -213,16 +277,17 @@ class FsspecDraftDeposition(DraftDeposition):
 
     async def delete_file(self, filename: str) -> "FsspecDraftDeposition":
         """Delete a file from a deposition."""
-        (self.deposition.deposition_path / filename).unlink()
         return self.model_copy(
             update={
-                "deposition": Deposition.from_upath(self.deposition.deposition_path),
+                "files_to_delete": self.files_to_delete + [filename],
             }
         )
 
     async def get_file(self, filename: str) -> bytes:
         """Download file from deposition."""
-        return self.api_client.get_file(self.deposition, filename)
+        return self.api_client.get_file(
+            self.deposition, filename, deposition_state="draft"
+        )
 
     async def cleanup_after_error(self, e: Exception):
         """Cleanup draft after an error during an archive run."""
@@ -239,11 +304,13 @@ class FsspecDraftDeposition(DraftDeposition):
     def generate_change(
         self, filename: str, resource: ResourceInfo
     ) -> DepositionChange:
-        """Check whether file exists and should be changed."""
-        remote_path = self.deposition.deposition_path / filename
+        """Check whether file exists in most recent published version and should be deleted."""
+        remote_path = self.deposition.get_deposition_path("published") / filename
 
         if remote_path.exists():
-            remote_md5 = self.get_checksum(filename)
+            remote_md5 = self.deposition.get_checksum(
+                filename, deposition_state="published"
+            )
             local_md5 = compute_md5(resource.local_path)
             if remote_md5 != local_md5:
                 logger.info(
@@ -263,8 +330,9 @@ class FsspecDraftDeposition(DraftDeposition):
             resource=resource.local_path,
         )
 
-    def generate_datapackage(
-        self, resource_info: dict[str, ResourceInfo]
+    async def generate_datapackage(
+        self,
+        partitions_in_deposition: dict[str, Partitions],
     ) -> DataPackage:
         """Generate new datapackage, attach to deposition, and return."""
         logger.info(f"Creating new datapackage.json for {self.dataset_id}")
@@ -272,10 +340,12 @@ class FsspecDraftDeposition(DraftDeposition):
         # Create updated datapackage
         resources = [
             _resource_from_upath(
-                self.deposition.deposition_path / fname, resource_info[fname].partitions
+                path,
+                partitions_in_deposition[path.name],
+                self.get_checksum(path.name),
             )
-            for fname in self.deposition.file_list
-            if fname != "datapackage.json"
+            for path in self._list_paths()
+            if path.name != "datapackage.json" and path.name not in self.files_to_delete
         ]
         datapackage = DataPackage.new_datapackage(
             self.dataset_id,
