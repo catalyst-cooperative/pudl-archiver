@@ -28,8 +28,8 @@ jobs:
         uses: actions/create-github-app-token@v2
         id: generate-token
         with:
-          app-id: ${{ secrets.BOT_AUTO_MERGE_PRS_APP_ID }}
-          private-key: ${{ secrets.BOT_AUTO_MERGE_PRS_APP_KEY }}
+          app-id: ${{ secrets.WORKFLOW_TRIGGERER_APP_ID }}
+          private-key: ${{ secrets.WORKFLOW_TRIGGERER_PRIVATE_KEY }}
       - name: Create pull request
         uses: peter-evans/create-pull-request@v7
         with:
