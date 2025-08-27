@@ -707,8 +707,16 @@ class AbstractDatasetArchiver(ABC):
         """
         return (not self.only_years) or int(year) in self.only_years
 
-    async def _unpack_resources(self) -> tuple[list[ArchiveAwaitable], Partitions]:
-        """Run ``get_resources`` method for archiver and separate partitons/resources."""
+    async def _unpack_resources(
+        self,
+    ) -> tuple[list[ArchiveAwaitable], list[Partitions]]:
+        """Run ``get_resources`` method for archiver and separate partitons/resources.
+
+        Some archivers will only return resources from ``get_resources``, while some
+        will return tuples of resources and a dictionary of partitions that correspond
+        to those resources. If no partitions are returned, then this function will
+        return an empty list of partitions.
+        """
         resources = []
         partitions = []
         async for resource in self.get_resources():
