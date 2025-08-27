@@ -81,15 +81,6 @@ def parse_main(args=None):
         help="Regenerate metadata from PUDL data source rather than existing archived metadata.",
     )
     parser.add_argument(
-        "--file-validation-fail-fast",
-        action="store_true",
-        help="Immediately raise an error if a file level validation test fails."
-        " This is primarily useful with the `fsspec` depositor where you may not want"
-        " to overwrite a file if the new version is corrupted. This is not an issue with"
-        " the Zenodo depositor, as Zenodo's deposition publishing mechanism ensures files"
-        " will not be overwritten without deliberate action.",
-    )
-    parser.add_argument(
         "--depositor",
         type=str,
         help="Specifies what backend engine will be used for archive storage. Current allowable options include zenodo and fsspec",
@@ -98,7 +89,14 @@ def parse_main(args=None):
     )
     parser.add_argument(
         "--retry-run",
-        help="Specify a Run Summary JSON file that contains partitions to retry.",
+        help="Specify a Run Summary JSON file that contains partitions to retry."
+        " This Run Summary JSON file should be output by a failed previous run of"
+        " the archiver. This file will contain a list of the failed and successful"
+        " partitions, so we can only re-run the partitions that failed. This assumes"
+        " that all of the files downloaded by the previous run still exist in an open"
+        " draft, and that you are running the archiver with the same depositor settings."
+        " If the state of the draft deposition has changed since the previous run, then"
+        " the behavior of retrying that run will be undefined.",
         default=None,
     )
     return parser.parse_args(args)

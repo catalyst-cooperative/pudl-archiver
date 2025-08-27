@@ -1,4 +1,24 @@
-"""Depositor implementation using any fsspec compatible file-system as storage backend."""
+"""Depositor implementation using any fsspec compatible file-system as storage backend.
+
+This Depositor can't rely on Zenodo's built-in draft deposition/publication functionality,
+so it implements this functionality itself. When using the Zenodo depositor, Zenodo will
+automatically create a new draft where we can make changes to an archive without actually
+overwritting the previous version. Only after intentionally publishing the draft do those
+changes actually overwrite the official version of the archive.
+
+To mimic this behavior, the fsspec Depositor will create two subdirectories within the
+configured ``deposition_path``. One of these directories is used to store a working draft,
+while the other is used to store official 'published' data. During an archiver run, files
+will be uploaded to the working draft, and only after we call the ``publish`` method will
+those files be moved to the ``published`` directory. If we detect any errors during a run,
+like a poorly formatted file, then we won't call ``publish``, but the files will still
+exist in the ``draft`` directory for inspection.
+
+One piece of Zenodo functionality that this Depositor does not implement is versioning. In
+Zenodo, when we publish a new deposition, the old version will still exist with a distinct
+DOI that we can use to point to that version. At this point, the fsspec Depositor will just
+overwrite data in the published directory, so the old version will disappear.
+"""
 
 import base64
 import logging
@@ -49,7 +69,7 @@ def _resource_from_upath(path: UPath, parts: Partitions, md5_hash: str) -> Resou
         mediatype=mt,
         parts=parts,
         bytes=path.stat().st_size,
-        hash=compute_md5(path),
+        hash=md5_hash,
         format=path.suffix,
     )
 
@@ -137,8 +157,8 @@ class FsspecAPIClient(DepositorAPIClient):
         """Return initialized fsspec api client."""
         logger.warning(
             "The fsspec depositor backend is in an early/experimental state. "
-            "It currently does not support versioning so any existing archive will be overwritten. "
-            "Please use with caution."
+            "It currently does not support versioning so any existing archive will be overwritten "
+            "after publishing. Please use with caution."
         )
         if sandbox:
             raise NotImplementedError(
@@ -201,6 +221,7 @@ class FsspecPublishedDeposition(PublishedDeposition):
             settings=self.settings,
             api_client=self.api_client,
             dataset_id=self.dataset_id,
+            # When we open a new draft we assume it starts with all files from previous version
             resources_in_draft={
                 fname: self.deposition.get_deposition_path(DepositionStatus.PUBLISHED)
                 / fname

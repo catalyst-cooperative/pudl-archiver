@@ -18,6 +18,14 @@ logger = logging.getLogger(f"catalystcoop.{__name__}")
 def _get_partitions_from_previous_run(
     run_summary_json: str | None,
 ) -> tuple[dict[str, Partitions], dict[str, Partitions]]:
+    """Return failed/successful partitions from previous run if requested.
+
+    In order to retry a previous failed run, we save the failed and
+    successful partitions from that run in the run summary json file
+    that the archiver outputs. This allows us to only re-run the partitions
+    that failed. If ``run_summary_json`` is None, then this function will
+    return two empty dict's.
+    """
     failed_partitions, successful_partitions = {}, {}
     if run_summary_json is not None:
         with Path(run_summary_json).open() as f:
@@ -37,9 +45,12 @@ async def orchestrate_run(
     resources = {}
     # Get datapackage from previous version if there is one
     draft, original_datapackage = await get_deposition(dataset, session, run_settings)
+
+    # Get partitions from previous run if retrying a run
     failed_partitions, successful_partitions = _get_partitions_from_previous_run(
         run_settings.retry_run
     )
+
     async for name, resource in downloader.download_all_resources(
         list(failed_partitions.values()),
     ):
