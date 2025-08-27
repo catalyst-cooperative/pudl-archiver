@@ -777,30 +777,29 @@ class AbstractDatasetArchiver(ABC):
                     self.logger.info(f"Downloaded {resource_info.local_path}.")
 
                     # Perform various file validations
-                    self.file_validations.extend(
-                        [
-                            validate.validate_filetype(
-                                resource_info.local_path,
-                                self.fail_on_empty_invalid_files,
-                            ),
-                            validate.validate_file_not_empty(
-                                resource_info.local_path,
-                                self.fail_on_empty_invalid_files,
-                            ),
-                            validate.validate_zip_layout(
-                                resource_info.local_path,
-                                resource_info.layout,
-                                self.fail_on_empty_invalid_files,
-                            ),
-                        ]
-                    )
+                    current_file_validations = [
+                        validate.validate_filetype(
+                            resource_info.local_path,
+                            self.fail_on_empty_invalid_files,
+                        ),
+                        validate.validate_file_not_empty(
+                            resource_info.local_path,
+                            self.fail_on_empty_invalid_files,
+                        ),
+                        validate.validate_zip_layout(
+                            resource_info.local_path,
+                            resource_info.layout,
+                            self.fail_on_empty_invalid_files,
+                        ),
+                    ]
 
                     # Check if there are failed file level validations
                     failed_validations = [
                         validation
-                        for validation in self.file_validations
+                        for validation in current_file_validations
                         if not validation.success
                     ]
+                    self.file_validations.extend(current_file_validations)
                     if len(failed_validations) > 0:
                         logger.error(
                             "The following validation tests failed with file-validation-fail-fast set:"
