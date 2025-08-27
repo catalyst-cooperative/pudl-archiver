@@ -18,31 +18,6 @@ from pudl_archiver.frictionless import Resource, ResourceInfo
 
 
 @pytest.fixture()
-def bad_zipfile():
-    """Create a fake bad zipfile as a temp file."""
-    with tempfile.TemporaryDirectory() as path:
-        zip_path = Path(path) / "test.zip"
-        with Path.open(zip_path, "wb") as archive:
-            archive.write(b"Fake non-zipfile data")
-
-        yield zip_path
-
-
-@pytest.fixture()
-def good_zipfile():
-    """Create a fake good zipfile in temporary directory."""
-    with tempfile.TemporaryDirectory() as path:
-        zip_path = Path(path) / "test.zip"
-        with (
-            zipfile.ZipFile(zip_path, "w") as archive,
-            archive.open("test.txt", "w") as file,
-        ):
-            file.write(b"Test good zipfile")
-
-        yield zip_path
-
-
-@pytest.fixture()
 def file_data():
     """Create test file data for download_file test."""
     return b"Junk test file data"
@@ -167,30 +142,30 @@ async def test_resource_chunks(
 
 
 @pytest.mark.asyncio
-async def test_fail_fast(bad_zipfile):
-    """Test that setting ``fail_fast`` when calling download_all_resources raises error if test fails."""
+async def test_failed_parts(bad_zipfile, good_zipfile):
+    """Test that the archiver will add a resource to failed_partitions if it detects a bad file."""
 
     class MockArchiver(AbstractDatasetArchiver):
         name = "mock"
 
         async def get_resources(self):
             yield self.get_bad_zip()
+            yield self.get_good_zip()
 
         async def get_bad_zip(self):
-            return ResourceInfo(local_path=bad_zipfile, partitions={"test": None})
-
-    with pytest.raises(
-        RuntimeError,
-        match=re.escape(
-            "The following validation tests failed with file-validation-fail-fast set: ['Valid Filetype Test']"
-        ),
-    ):
-        [
-            _
-            async for _ in MockArchiver(session=None).download_all_resources(
-                fail_fast=True
+            return ResourceInfo(
+                local_path=bad_zipfile, partitions={"bad_zip": True, "good_zip": False}
             )
-        ]
+
+        async def get_good_zip(self):
+            return ResourceInfo(
+                local_path=good_zipfile, partitions={"bad_zip": False, "good_zip": True}
+            )
+
+    archiver = MockArchiver(session=None)
+    [_ async for _ in archiver.download_all_resources()]
+    assert list(archiver.failed_partitions.keys()) == ["bad.zip"]
+    assert archiver.failed_partitions["bad.zip"] == {"bad_zip": True, "good_zip": False}
 
 
 @pytest.mark.asyncio

@@ -24,6 +24,8 @@ def successful_run():
         previous_version_date="date",
         record_url="https://www.catalyst.coop/bogus-record-url",
         datapackage_changed=False,
+        successful_partitions={"resource_0": {"part": 0}},
+        failed_partitions={},
     )
 
 
@@ -44,6 +46,8 @@ def failed_run():
         previous_version_date="date",
         record_url="https://www.catalyst.coop/bogus-record-url",
         datapackage_changed=False,
+        successful_partitions={"resource_0": {"part": 0}},
+        failed_partitions={"resource_1": {"part": 1}},
     )
 
 

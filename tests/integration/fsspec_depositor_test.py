@@ -1,5 +1,6 @@
 """Test fsspec based depositor backend."""
 
+import json
 import tempfile
 from pathlib import Path
 
@@ -59,9 +60,9 @@ def test_files():
 
 
 @pytest.fixture()
-def datasource():
+def datasource(mocker):
     """Create fake datasource for testing."""
-    return DataSource(
+    datasource = DataSource(
         name="pudl_test",
         title="Pudl Test",
         description="Test dataset for the sandbox, thanks!",
@@ -69,6 +70,75 @@ def datasource():
         license_raw=LICENSES["cc-by-4.0"],
         license_pudl=LICENSES["cc-by-4.0"],
     )
+    # Mock out creating datapackage with fake data source
+    datasource_mock = mocker.MagicMock(return_value=datasource)
+    mocker.patch(
+        "pudl_archiver.frictionless.DataSource.from_id",
+        new=datasource_mock,
+    )
+
+
+@pytest.mark.asyncio
+async def test_retry_run(
+    good_zipfile,
+    bad_zipfile,
+    tmp_path,
+    datasource: DataSource,
+    mocker,
+):
+    deposition_path = tmp_path / "depostion"
+    deposition_path.mkdir()
+
+    settings = RunSettings(
+        sandbox=False,
+        clobber_unchanged=True,
+        auto_publish=False,
+        refresh_metadata=False,
+        initialize=True,
+        depositor="fsspec",
+        deposition_path=str(deposition_path),
+    )
+    retry_part = {"part": "retry_part"}
+    ok_part = {"part": "ok_part"}
+
+    class TestDownloader(AbstractDatasetArchiver):
+        name = "Test Downloader"
+
+        def __init__(self, fail_part: bool, **kwargs):
+            super().__init__(**kwargs)
+            self.fail_part = fail_part
+
+        async def get_resources(self):
+            if self.fail_part:
+                yield self.get_zipfile(bad_zipfile, parts=retry_part), retry_part
+            else:
+                yield self.get_zipfile(good_zipfile, parts=retry_part), retry_part
+
+            yield self.get_zipfile(good_zipfile, parts=ok_part), ok_part
+
+        async def get_zipfile(self, zip_path, parts):
+            return ResourceInfo(local_path=zip_path, partitions=parts)
+
+    v1_summary, _ = await orchestrate_run(
+        dataset="pudl_test",
+        downloader=TestDownloader(fail_part=True, session="session"),
+        run_settings=settings,
+        session="sesion",
+    )
+    with (tmp_path / "run_summary.json").open("w") as f:
+        f.write(json.dumps(v1_summary.model_dump(), indent=2))
+
+    assert retry_part in list(v1_summary.failed_partitions.values())
+    assert not v1_summary.success
+
+    settings.retry_run = str(tmp_path / "run_summary.json")
+    v2_summary, _ = await orchestrate_run(
+        dataset="pudl_test",
+        downloader=TestDownloader(fail_part=False, session="session"),
+        run_settings=settings,
+        session="sesion",
+    )
+    assert v2_summary.success
 
 
 @pytest.mark.asyncio
@@ -108,13 +178,6 @@ async def test_fsspec_depositor(
 
             for info in self.resources.values():
                 yield identity(info)
-
-    # Mock out creating datapackage with fake data source
-    datasource_mock = mocker.MagicMock(return_value=datasource)
-    mocker.patch(
-        "pudl_archiver.frictionless.DataSource.from_id",
-        new=datasource_mock,
-    )
 
     # Create new deposition and add files
     v1_resources = {
