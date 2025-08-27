@@ -145,9 +145,7 @@ class RunSettings(BaseModel):
     clobber_unchanged: bool = False
     auto_publish: bool = False
     refresh_metadata: bool = False
-    resume_run: bool = False
     depositor: Depositors = "zenodo"
-    file_validation_fail_fast: bool = False
     retry_run: str | None = None
 
 
