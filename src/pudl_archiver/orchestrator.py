@@ -1,5 +1,6 @@
 """Core routines for archiving raw data packages."""
 
+import json
 import logging
 from pathlib import Path
 
@@ -20,7 +21,7 @@ def _get_partitions_from_previous_run(
     failed_partitions, successful_partitions = {}, {}
     if run_summary_json is not None:
         with Path(run_summary_json).open() as f:
-            run_summary = RunSummary.model_validate_json(f.read())
+            run_summary = RunSummary.model_validate(json.load(f)[0])
             failed_partitions = run_summary.failed_partitions
             successful_partitions = run_summary.successful_partitions
     return failed_partitions, successful_partitions
@@ -47,7 +48,11 @@ async def orchestrate_run(
 
     # Delete files in draft that weren't downloaded by downloader
     for filename in await draft.list_files():
-        if filename not in resources and filename != "datapackage.json":
+        if (
+            filename not in resources
+            and filename != "datapackage.json"
+            and filename not in successful_partitions
+        ):
             logger.info(f"Deleting {filename} from deposition.")
             draft = await draft.delete_file(filename)
 
@@ -71,7 +76,9 @@ async def orchestrate_run(
         record_url=draft.get_deposition_link(),
         failed_partitions=downloader.failed_partitions,
         successful_partitions={
-            name: resource.partitions for name, partitions in resources.items()
+            name: resource.partitions
+            for name, partitions in resources.items()
+            if name not in downloader.failed_partitions
         },
     )
     published = await draft.publish_if_valid(
