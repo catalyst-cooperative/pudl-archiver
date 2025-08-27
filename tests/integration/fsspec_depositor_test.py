@@ -116,6 +116,7 @@ async def test_retry_run(
         def __init__(self, fail_part: bool, **kwargs):
             super().__init__(**kwargs)
             self.fail_part = fail_part
+            self.good_downloaded = False
 
         async def get_resources(self):
             if self.fail_part:
@@ -126,6 +127,9 @@ async def test_retry_run(
             yield self.get_zipfile(good_zipfile, parts=ok_part), ok_part
 
         async def get_zipfile(self, zip_path, parts):
+            # Check if we're downloading 'good.zip'. This shouldn't happen in the retry run
+            if zip_path.name == "good.zip":
+                self.good_downloaded = True
             return ResourceInfo(local_path=zip_path, partitions=parts)
 
     v1_summary, _ = await orchestrate_run(
@@ -146,12 +150,14 @@ async def test_retry_run(
     assert not v1_summary.success
 
     settings.retry_run = str(tmp_path / "run_summary.json")
+    v2_downloader = TestDownloader(fail_part=False, session="session")
     v2_summary, _ = await orchestrate_run(
         dataset="pudl_test",
-        downloader=TestDownloader(fail_part=False, session="session"),
+        downloader=v2_downloader,
         run_settings=settings,
         session="sesion",
     )
+    assert not v2_downloader.good_downloaded
     assert v2_summary.success
     assert (deposition_path / "published" / "bad.zip").exists()
     assert (deposition_path / "published" / "good.zip").exists()
