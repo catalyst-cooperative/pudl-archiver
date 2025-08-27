@@ -322,10 +322,12 @@ def _validate_file_type(path: Path, buffer: BytesIO) -> bool:  # noqa:C901
     if extension == ".xlsx":
         return zipfile.is_zipfile(buffer)
 
+    logger.warning(f"FTYPE: {path.name}")
     if extension == ".zip":
         if zipfile.is_zipfile(buffer):
             try:
                 zip_test = zipfile.ZipFile(buffer).testzip()
+                logger.warning(f"t2 {path.name}: {zip_test}")
                 return zip_test is None  # None if no error
             except NotImplementedError:
                 logger.warn(
