@@ -398,7 +398,7 @@ class DraftDeposition(BaseModel, ABC):
         partitions_in_deposition: dict[str, Partitions],
     ) -> tuple["DraftDeposition", DataPackage]:
         """Generate new datapackage describing draft deposition in current state."""
-        new_datapackage = await self.generate_datapackage(partitions_in_deposition)
+        new_datapackage = self.generate_datapackage(partitions_in_deposition)
 
         datapackage_json = io.BytesIO(
             bytes(

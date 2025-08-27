@@ -375,7 +375,7 @@ class FsspecDraftDeposition(DraftDeposition):
             resource=resource.local_path,
         )
 
-    async def generate_datapackage(
+    def generate_datapackage(
         self,
         partitions_in_deposition: dict[str, Partitions],
     ) -> DataPackage:
