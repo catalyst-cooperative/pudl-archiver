@@ -227,7 +227,21 @@ class FsspecPublishedDeposition(PublishedDeposition):
 
 
 class FsspecDraftDeposition(DraftDeposition):
-    """Represents draft version of fsspec deposition."""
+    """Represents draft version of fsspec deposition.
+
+    This class tracks the state of the deposition in the ``resources_in_draft`` field.
+    This field is a dictionary that maps filenames to a ``UPath`` that points to the actual
+    file in the deposition. If we are creating a new version of an existing archive,
+    we will populate this with the existing resources from the previous version. In
+    this case, the paths will all point to the files in the 'published' directory.
+    As we add new files, the paths will point to the 'draft' directory. If we update
+    an existing file, we will remove the 'published' path from ``resources_in_draft``
+    and replace it with a path pointing to the updated file in the 'draft' directory.
+    When this happens, we will also add the 'published' version of the file to the
+    ``files_to_delete`` field. This allows us to avoid actually deleting the files
+    until a run is complete and we call the ``publish`` method. If a run fails, all
+    of the original files will remain in the 'published' directory.
+    """
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -239,7 +253,7 @@ class FsspecDraftDeposition(DraftDeposition):
     files_to_delete: dict[str, UPath] = {}
 
     async def list_files(self):
-        """Return the union of files from the current draft and previous published version."""
+        """Return files that are included in the current version of the draft."""
         # Check for files that are in the draft directory but not in resources_in_draft
         # This is expected behavior if we are re-running a failed run
         if missing_files := set(
