@@ -95,7 +95,7 @@ def _format_summary(summary: dict) -> list[dict]:
         for change in file_changes:
             abridged_changes[change["diff_type"]].append(
                 # Convert the size diff to MB for speed of assessment, and round
-                {change["name"]: round(change["size_diff"] * (1**-6), 4)}
+                {change["name"]: round(change["size_diff"] * 1e-6, 4)}
             )
         changes = f"```\n{json.dumps(abridged_changes, indent=2)}\n```"
     else:
