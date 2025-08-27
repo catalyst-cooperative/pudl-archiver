@@ -88,7 +88,7 @@ async def orchestrate_run(
         failed_partitions=downloader.failed_partitions,
         successful_partitions={
             name: resource.partitions
-            for name, partitions in resources.items()
+            for name, resource in resources.items()
             if name not in downloader.failed_partitions
         },
     )

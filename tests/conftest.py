@@ -39,6 +39,20 @@ def bad_zipfile():
 
 
 @pytest.fixture()
+def fixed_bad_zipfile():
+    """Create a fixed version of 'bad.zip' as a temp file."""
+    with tempfile.TemporaryDirectory() as path:
+        zip_path = Path(path) / "bad.zip"
+        with (
+            zipfile.ZipFile(zip_path, "w") as archive,
+            archive.open("test.txt", "w") as file,
+        ):
+            file.write(b"Test fixed bad zipfile")
+
+        yield zip_path
+
+
+@pytest.fixture()
 def good_zipfile():
     """Create a fake good zipfile in temporary directory."""
     with tempfile.TemporaryDirectory() as path:

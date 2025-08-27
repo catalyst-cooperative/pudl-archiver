@@ -82,17 +82,26 @@ def datasource(mocker):
 async def test_retry_run(
     good_zipfile,
     bad_zipfile,
+    fixed_bad_zipfile,
     tmp_path,
     datasource: DataSource,
     mocker,
 ):
+    """Test a an archiver retry run using fsspec depositor.
+
+    This test will creates a mock archiver that will 'download'
+    two zipfiles. One will be well formatted, while the other won't.
+    This will lead to a failed run that we will retry. On the second
+    run, it will retry the failed partition, and we return a fixed
+    zipfile, so the archiver should succeed and publish the results.
+    """
     deposition_path = tmp_path / "depostion"
     deposition_path.mkdir()
 
     settings = RunSettings(
         sandbox=False,
         clobber_unchanged=True,
-        auto_publish=False,
+        auto_publish=True,
         refresh_metadata=False,
         initialize=True,
         depositor="fsspec",
@@ -112,7 +121,7 @@ async def test_retry_run(
             if self.fail_part:
                 yield self.get_zipfile(bad_zipfile, parts=retry_part), retry_part
             else:
-                yield self.get_zipfile(good_zipfile, parts=retry_part), retry_part
+                yield self.get_zipfile(fixed_bad_zipfile, parts=retry_part), retry_part
 
             yield self.get_zipfile(good_zipfile, parts=ok_part), ok_part
 
@@ -126,9 +135,14 @@ async def test_retry_run(
         session="sesion",
     )
     with (tmp_path / "run_summary.json").open("w") as f:
-        f.write(json.dumps(v1_summary.model_dump(), indent=2))
+        f.write(json.dumps([v1_summary.model_dump()], indent=2))
 
-    assert retry_part in list(v1_summary.failed_partitions.values())
+    assert retry_part == v1_summary.failed_partitions["bad.zip"]
+    assert ok_part == v1_summary.successful_partitions["good.zip"]
+    assert not (deposition_path / "published" / "bad.zip").exists()
+    assert not (deposition_path / "published" / "good.zip").exists()
+    assert (deposition_path / "draft" / "bad.zip").exists()
+    assert (deposition_path / "draft" / "good.zip").exists()
     assert not v1_summary.success
 
     settings.retry_run = str(tmp_path / "run_summary.json")
@@ -139,6 +153,8 @@ async def test_retry_run(
         session="sesion",
     )
     assert v2_summary.success
+    assert (deposition_path / "published" / "bad.zip").exists()
+    assert (deposition_path / "published" / "good.zip").exists()
 
 
 @pytest.mark.asyncio
