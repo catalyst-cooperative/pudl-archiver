@@ -51,15 +51,13 @@ class FercEQRArchiver(AbstractDatasetArchiver):
                 f" Found the following URLs: {urls}"
             )
 
-        for i, url in enumerate(urls):
+        for url in urls:
             link_match = YEAR_QUARTER_PATT.search(url)
             partitions = {
                 "year": int(link_match.group(1)),
                 "quarter": int(link_match.group(2)),
             }
             yield self.get_quarter_csv(url, partitions), partitions
-            if i == 1:
-                return
 
     async def get_urls(self) -> list[str]:
         """Use playwright to dynamically grab URLs from the EQR webpage."""
