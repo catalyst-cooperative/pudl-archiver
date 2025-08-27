@@ -95,17 +95,13 @@ class Deposition(DepositionState):
         """Return path to draft or published version of deposition."""
         return self.deposition_path / deposition_state.value
 
-    def get_checksum(
-        self, filename: str, deposition_state: DepositionStatus
-    ) -> str | None:
+    def get_checksum(self, filepath: UPath) -> str | None:
         """Get checksum for a file in the current deposition.
 
         Args:
-            filename: Name of file to checksum.
-            deposition_state: Specify whether to get checksum from published or draft deposition.
+            filepath: Path of file to checksum.
         """
         md5_hash = None
-        filepath = self.get_deposition_path(deposition_state) / filename
         if filepath.exists():
             # For Google Cloud fsspec backend we can use the `info` method to get
             # The md5 hash without having to read the entire file we just uploaded
@@ -292,9 +288,10 @@ class FsspecDraftDeposition(DraftDeposition):
         Args:
             filename: Name of file to checksum.
         """
-        return self.deposition.get_checksum(
-            filename, deposition_state=DepositionStatus.DRAFT
-        )
+        checksum = None
+        if filepath := self.resources_in_draft.get(filename):
+            checksum = self.deposition.get_checksum(filepath)
+        return checksum
 
     async def create_file(
         self,
@@ -358,9 +355,7 @@ class FsspecDraftDeposition(DraftDeposition):
         )
 
         if remote_path.exists():
-            remote_md5 = self.deposition.get_checksum(
-                filename, deposition_state=DepositionStatus.PUBLISHED
-            )
+            remote_md5 = self.deposition.get_checksum(remote_path)
             local_md5 = compute_md5(resource.local_path)
             if remote_md5 != local_md5:
                 logger.info(
@@ -392,7 +387,7 @@ class FsspecDraftDeposition(DraftDeposition):
             _resource_from_upath(
                 path,
                 partitions_in_deposition[fname],
-                self.get_checksum(path.name),
+                self.deposition.get_checksum(path),
             )
             for fname, path in self.resources_in_draft.items()
             if fname != "datapackage.json" and fname not in self.files_to_delete

@@ -68,7 +68,7 @@ async def orchestrate_run(
             draft = await draft.delete_file(filename)
 
     # Create new datapackage
-    new_datapackage = await draft.attach_datapackage(
+    draft, new_datapackage = await draft.attach_datapackage(
         partitions_in_deposition={
             name: resource.partitions for name, resource in resources.items()
         }

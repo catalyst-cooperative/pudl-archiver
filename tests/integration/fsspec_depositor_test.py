@@ -218,4 +218,4 @@ async def test_fsspec_depositor(
         session="sesion",
     )
     assert v1_summary.success
-    verify_files(test_files["original"], tmp_path)
+    verify_files(test_files["original"], tmp_path / "published")

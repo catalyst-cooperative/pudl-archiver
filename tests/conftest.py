@@ -29,7 +29,9 @@ def datapackage():
 @pytest.fixture()
 def bad_zipfile(tmp_path):
     """Create a fake bad zipfile as a temp file."""
-    zip_path = tmp_path / "bad.zip"
+    base_path = tmp_path / "bad"
+    base_path.mkdir()
+    zip_path = base_path / "bad.zip"
     with Path.open(zip_path, "wb") as archive:
         archive.write(b"Fake non-zipfile data")
 
@@ -39,7 +41,9 @@ def bad_zipfile(tmp_path):
 @pytest.fixture()
 def fixed_bad_zipfile(tmp_path):
     """Create a fixed version of 'bad.zip' as a temp file."""
-    zip_path = tmp_path / "bad.zip"
+    base_path = tmp_path / "fixed_bad"
+    base_path.mkdir()
+    zip_path = base_path / "bad.zip"
     with (
         zipfile.ZipFile(zip_path, "w") as archive,
         archive.open("test.txt", "w") as file,
