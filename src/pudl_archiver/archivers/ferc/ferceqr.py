@@ -10,6 +10,7 @@ from playwright.async_api import async_playwright
 from pudl_archiver.archivers.classes import (
     AbstractDatasetArchiver,
     ArchiveAwaitable,
+    Partitions,
     ResourceInfo,
 )
 
@@ -35,7 +36,7 @@ class FercEQRArchiver(AbstractDatasetArchiver):
     directory_per_resource_chunk = True
     max_wait_time = 36000
 
-    async def get_resources(self) -> ArchiveAwaitable:
+    async def get_resources(self) -> tuple[ArchiveAwaitable, Partitions]:
         """Download FERC EQR resources."""
         # Dynamically get links to all quarters of EQR data
         urls = await self.get_urls()
@@ -50,8 +51,15 @@ class FercEQRArchiver(AbstractDatasetArchiver):
                 f" Found the following URLs: {urls}"
             )
 
-        for url in urls:
-            yield self.get_quarter_csv(url)
+        for i, url in enumerate(urls):
+            link_match = YEAR_QUARTER_PATT.search(url)
+            partitions = {
+                "year": int(link_match.group(1)),
+                "quarter": int(link_match.group(2)),
+            }
+            yield self.get_quarter_csv(url, partitions), partitions
+            if i == 1:
+                return
 
     async def get_urls(self) -> list[str]:
         """Use playwright to dynamically grab URLs from the EQR webpage."""
@@ -74,19 +82,21 @@ class FercEQRArchiver(AbstractDatasetArchiver):
                 for locator in await page.get_by_text(YEAR_QUARTER_PATT).all()
             ]
 
-    async def get_quarter_csv(self, url: str) -> tuple[Path, dict]:
+    async def get_quarter_csv(
+        self, url: str, partitions: Partitions
+    ) -> tuple[Path, dict]:
         """Download a quarter of 2013-present data."""
         # Extract year-quarter from URL
-        link_match = YEAR_QUARTER_PATT.search(url)
-        year = int(link_match.group(1))
-        quarter = int(link_match.group(2))
-        logger.info(f"Found EQR data for {year}-Q{quarter}")
+        logger.info(f"Found EQR data for {partitions['year']}-Q{partitions['quarter']}")
 
         # Download quarter
-        download_path = self.download_directory / f"ferceqr-{year}q{quarter}.zip"
+        download_path = (
+            self.download_directory
+            / f"ferceqr-{partitions['year']}q{partitions['quarter']}.zip"
+        )
         await self.download_zipfile(url, download_path)
 
         return ResourceInfo(
             local_path=download_path,
-            partitions={"year": year, "quarter": quarter},
+            partitions=partitions,
         )
