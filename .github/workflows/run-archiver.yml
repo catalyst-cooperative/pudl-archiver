@@ -2,29 +2,27 @@
 name: run-archiver
 
 on:
-  workflow_dispatch:
+  workflow_call:
     inputs:
       datasets:
         description: 'Comma-separated list of datasets to archive (e.g., "ferc2","ferc6").'
         default: '"censuspep","doeiraec","doelead","eia176","eia191","eia757a","eia860","eia860m","eia861","eia923","eia930","eiaaeo","eiaapi","eiacbecs","eiamecs","eianems","eiarecs","eiasteo","eiawater","epacamd_eia","epacems","epaegrid","epamats","epapcap","ferc1","ferc2","ferc6","ferc60","ferc714","gridpathratoolkit","mshamines","nrelatb","nrelefs","nrelsiting","nrelss","nrelsts","phmsagas","sec10k","usgsuspvdb","usgsuswtdb","vcerare"'
-        required: true
         type: string
       server:
         description: "Which Zenodo server would you like to run on?"
         default: "sandbox"
-        options:
-          - sandbox
-          - production
-        required: true
-        type: choice
+        type: string
+      depositor:
+        description: "Select storage backend to use for archive run?"
+        default: "zenodo"
+        type: string
+      deposition_path:
+        description: "Specify an fsspec compatible path where archive will be created."
+        type: string
       create_github_issue:
         description: "Create a Github issue from this run?"
         default: false
-        required: true
         type: boolean
-  schedule:
-    - cron: "21 8 1 * *" # 8:21 AM UTC, first of every month
-    - cron: "21 8 * * 1" # 8:21 AM UTC, every Monday
 
 jobs:
   archive-run:
@@ -77,7 +75,14 @@ jobs:
         # enabling us to see whether or not the pudl_archiver run failed.
         run: |
           set -o pipefail
-          pixi run pudl_archiver --datasets ${{ matrix.dataset }} --summary-file ${{ matrix.dataset }}_run_summary.json --clobber-unchanged 2>&1 | tee ${{ matrix.dataset }}_log.txt
+          pixi run pudl_archiver \
+            --datasets ${{ matrix.dataset }} \
+            --summary-file ${{ matrix.dataset }}_run_summary.json \
+            --depositor ${{ inputs.depositor }} \
+            {% if inputs.deposition_path is not None %}
+            --deposition-path ${{ inputs.deposition_path }}/${{ matrix.dataset }} \
+            {% endif %}
+            --clobber-unchanged 2>&1 | tee ${{ matrix.dataset }}_log.txt
 
       - name: Run sandbox archiver for ${{ matrix.dataset }}
         env:
@@ -91,7 +96,11 @@ jobs:
         # enabling us to see whether or not the pudl_archiver run failed.
         run: |
           set -o pipefail
-          pixi run pudl_archiver --datasets ${{ matrix.dataset }} --sandbox --summary-file ${{ matrix.dataset }}_run_summary.json --clobber-unchanged 2>&1 | tee ${{ matrix.dataset }}_log.txt
+          pixi run pudl_archiver
+            --datasets ${{ matrix.dataset }} \
+            --sandbox \
+            --summary-file ${{ matrix.dataset }}_run_summary.json \
+            --clobber-unchanged 2>&1 | tee ${{ matrix.dataset }}_log.txt
 
       - name: Save failed runs
         if: failure()

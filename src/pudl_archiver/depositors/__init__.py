@@ -28,7 +28,7 @@ async def get_deposition(
     api_client = await deposition_backend.api_client.initialize_client(
         session=session,
         sandbox=run_settings.sandbox,
-        deposition_path=run_settings.deposition_path,
+        deposition_path=f"{run_settings.deposition_path}/{dataset}",
     )
     if run_settings.initialize:
         return await deposition_backend.draft_interface.new_draft(

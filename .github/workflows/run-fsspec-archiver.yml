@@ -1,0 +1,30 @@
+name: run-zenodo-archiver
+
+on:
+  workflow_dispatch:
+    inputs:
+      datasets:
+        description: 'Comma-separated list of datasets to archive (e.g., "ferc2","ferc6").'
+        default: '"ferceqr"'
+        type: string
+      create_github_issue:
+        description: "Create a Github issue from this run?"
+        default: false
+        type: boolean
+      deposition_path:
+        description: "Specify an fsspec compatible path where archive will be created."
+        default: "gs://archives.catalyst.coop"
+        type: string
+  schedule:
+    - cron: "21 8 1 * *" # 8:21 AM UTC, first of every month
+    - cron: "21 8 * * 1" # 8:21 AM UTC, every Monday
+
+jobs:
+  zenodo-archive-run:
+    uses: ./.github/workflows/run-archiver.yml
+    with:
+      server: production
+      datasets: ${{ inputs.datasets }}
+      create_github_issue: ${{ inputs.create_github_issue }}
+      depositor: fsspec
+      deposition_path: ${{ inputs.deposition_path }}

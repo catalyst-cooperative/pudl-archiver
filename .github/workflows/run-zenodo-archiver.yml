@@ -1,0 +1,33 @@
+name: run-zenodo-archiver
+
+on:
+  workflow_dispatch:
+    inputs:
+      datasets:
+        description: 'Comma-separated list of datasets to archive (e.g., "ferc2","ferc6").'
+        default: '"censuspep","doeiraec","doelead","eia176","eia191","eia757a","eia860","eia860m","eia861","eia923","eia930","eiaaeo","eiaapi","eiacbecs","eiamecs","eianems","eiarecs","eiasteo","eiawater","epacamd_eia","epacems","epaegrid","epamats","epapcap","ferc1","ferc2","ferc6","ferc60","ferc714","gridpathratoolkit","mshamines","nrelatb","nrelefs","nrelsiting","nrelss","nrelsts","phmsagas","sec10k","usgsuspvdb","usgsuswtdb","vcerare"'
+        required: true
+        type: string
+      server:
+        description: "Which Zenodo server would you like to run on?"
+        default: "sandbox"
+        options:
+          - sandbox
+          - production
+        type: choice
+      create_github_issue:
+        description: "Create a Github issue from this run?"
+        default: false
+        type: boolean
+  schedule:
+    - cron: "21 8 1 * *" # 8:21 AM UTC, first of every month
+    - cron: "21 8 * * 1" # 8:21 AM UTC, every Monday
+
+jobs:
+  zenodo-archive-run:
+    uses: ./.github/workflows/run-archiver.yml
+    with:
+      server: ${{ inputs.server }}
+      datasets: ${{ inputs.datasets }}
+      create_github_issue: ${{ inputs.create_github_issue }}
+      depositor: zenodo
