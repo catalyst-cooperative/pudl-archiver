@@ -23,8 +23,8 @@ on:
         required: true
         type: boolean
   schedule:
-    - cron: "21 8 2-31 6-7,9-10 0,2-6"
-    # 8:21 AM UTC, every day in June, July, Sept, Oct.
+    - cron: "21 9 2-31 6-7,9-10 0,2-6"
+    # 9:21 AM UTC, every day in June, July, Sept, Oct.
     # Don't run on Mondays or the 1st of the month, when run-archiver.yml runs
 
 jobs:
