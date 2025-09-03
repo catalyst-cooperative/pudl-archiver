@@ -140,6 +140,15 @@ During a retry, the archiver expects all successfully downloaded resources to st
 be in the draft deposition. If the state of the deposition has been changed in any
 way since the failed run, then the behavior of an attempted retry is undefined.
 
+Once a retry run has been kicked off, it will follow these steps below:
+
+1. Load the run summary from the previous run and get failed/successful resources
+and CLI settings.
+2. Filter out successful resources from previous run so we don't re-download them.
+3. Start downloading failed resources and adding new versions to the open draft deposition.
+4. Attempt to publish draft containing resources from original run and retry, following
+standard validation procedures.
+
 ## Adding a new dataset
 
 ### Step 1: Define the dataset's metadata
