@@ -23,8 +23,8 @@ on:
         required: true
         type: boolean
   schedule:
-    - cron: "21 8 2-31 6-7,9-10 0,2-6"
-    # 8:21 AM UTC, every day in June, July, Sept, Oct.
+    - cron: "21 9 2-31 6-7,9-10 0,2-6"
+    # 9:21 AM UTC, every day in June, July, Sept, Oct.
     # Don't run on Mondays or the 1st of the month, when run-archiver.yml runs
 
 jobs:
@@ -47,7 +47,7 @@ jobs:
       - name: Set default GCP credentials
         id: gcloud-auth
         continue-on-error: true
-        uses: "google-github-actions/auth@v2"
+        uses: "google-github-actions/auth@v3"
         with:
           workload_identity_provider: "projects/345950277072/locations/global/workloadIdentityPools/gh-actions-pool/providers/gh-actions-provider"
           service_account: "pudl-sources@catalyst-cooperative-pudl.iam.gserviceaccount.com"
@@ -75,6 +75,7 @@ jobs:
           ZENODO_TOKEN_PUBLISH: ${{ secrets.ZENODO_TOKEN_PUBLISH }}
         if: ${{inputs.server == 'production' || github.event_name == 'schedule'}}
         run: |
+          set -o pipefail
           pixi run pudl_archiver --datasets ${{ matrix.dataset }} --summary-file ${{ matrix.dataset }}_run_summary.json --clobber-unchanged 2>&1 | tee ${{ matrix.dataset }}_log.txt
 
       - name: Run sandbox archiver for ${{ matrix.dataset }}
