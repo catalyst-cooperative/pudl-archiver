@@ -54,17 +54,15 @@ def _parse_args():
     return parser.parse_args()
 
 
-def _format_message(
-    url: str | None, name: str, content: str, max_len: int = 3000
-) -> list[dict]:
+def _format_message(url: str | None, name: str, content: str) -> list[dict]:
     """Format message for Markdown.
 
     When archives fail, they may not have a URL.
     """
     if url:
-        text = f"[**{name}**]({url})<br/><br/>{content}"[:max_len]
+        text = f"[**{name}**]({url})<br/><br/>{content}"
     else:
-        text = f"**{name}**<br/><br/>{content}"[:max_len]
+        text = f"**{name}**<br/><br/>{content}"
     return text
 
 
