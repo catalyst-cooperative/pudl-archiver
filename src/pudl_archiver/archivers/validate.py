@@ -18,7 +18,7 @@ from pudl_archiver.frictionless import (
     Resource,
     ZipLayout,
 )
-from pudl_archiver.utils import Url, is_html_file
+from pudl_archiver.utils import RunSettings, Url, is_html_file
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
@@ -125,6 +125,7 @@ class RunSummary(BaseModel):
     datapackage_changed: bool
     failed_partitions: dict[str, Partitions]
     successful_partitions: dict[str, Partitions]
+    run_settings: RunSettings
 
     def get_failed_tests(self) -> list[ValidationTestResult]:
         """Return any tests that failed."""
@@ -149,6 +150,7 @@ class RunSummary(BaseModel):
         record_url: Url,
         failed_partitions: dict[str, Partitions],
         successful_partitions: dict[str, Partitions],
+        run_settings: RunSettings,
     ) -> "RunSummary":
         """Create a summary of archive changes from two DataPackage descriptors."""
         baseline_resources = {}
@@ -190,6 +192,7 @@ class RunSummary(BaseModel):
             datapackage_changed=datapackage_changed,
             failed_partitions=failed_partitions,
             successful_partitions=successful_partitions,
+            run_settings=run_settings,
         )
 
 

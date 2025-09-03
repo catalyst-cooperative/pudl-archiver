@@ -15,8 +15,32 @@ from pudl_archiver.utils import RunSettings
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 
-def _get_partitions_from_previous_run(
+def _load_failed_run_summary(
     run_summary_json: str | None,
+) -> RunSummary | None:
+    """If ``retry_run`` is specified in ``RunSettings``, then return the parsed json file."""
+    failed_run_summary = None
+    if run_summary_json is not None:
+        with Path(run_summary_json).open() as f:
+            failed_run_summary = RunSummary.model_validate(json.load(f)[0])
+    return failed_run_summary
+
+
+def _get_failed_run_settings(
+    current_run_settings: RunSettings,
+    failed_run_summary: RunSummary | None,
+) -> RunSettings:
+    """If retrying a run, get the settings from the previous run to reuse for current run."""
+    new_settings = current_run_settings
+    if failed_run_summary is not None:
+        new_settings = failed_run_summary.run_settings.model_copy(
+            update={"retry_run": new_settings.retry_run},
+        )
+    return new_settings
+
+
+def _get_partitions_from_previous_run(
+    failed_run_summary: RunSummary | None,
 ) -> tuple[dict[str, Partitions], dict[str, Partitions]]:
     """Return failed/successful partitions from previous run if requested.
 
@@ -27,11 +51,9 @@ def _get_partitions_from_previous_run(
     return two empty dict's.
     """
     failed_partitions, successful_partitions = {}, {}
-    if run_summary_json is not None:
-        with Path(run_summary_json).open() as f:
-            run_summary = RunSummary.model_validate(json.load(f)[0])
-            failed_partitions = run_summary.failed_partitions
-            successful_partitions = run_summary.successful_partitions
+    if failed_run_summary is not None:
+        failed_partitions = failed_run_summary.failed_partitions
+        successful_partitions = failed_run_summary.successful_partitions
     return failed_partitions, successful_partitions
 
 
@@ -47,9 +69,11 @@ async def orchestrate_run(
     draft, original_datapackage = await get_deposition(dataset, session, run_settings)
 
     # Get partitions from previous run if retrying a run
+    failed_run_summary = _load_failed_run_summary(run_settings.retry_run)
     failed_partitions, successful_partitions = _get_partitions_from_previous_run(
-        run_settings.retry_run
+        failed_run_summary
     )
+    run_settings = _get_failed_run_settings(run_settings, failed_run_summary)
 
     async for name, resource in downloader.download_all_resources(
         list(failed_partitions.values()),
@@ -91,6 +115,7 @@ async def orchestrate_run(
             for name, resource in resources.items()
             if name not in downloader.failed_partitions
         },
+        run_settings=run_settings,
     )
     published = await draft.publish_if_valid(
         summary,

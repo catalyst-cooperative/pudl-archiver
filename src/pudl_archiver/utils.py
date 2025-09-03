@@ -7,7 +7,6 @@ import zipfile
 from collections.abc import Awaitable, Callable
 from hashlib import md5
 from io import BytesIO
-from pathlib import Path
 from time import time
 
 import aiohttp
@@ -140,7 +139,7 @@ class RunSettings(BaseModel):
     sandbox: bool = True
     initialize: bool = False
     only_years: list[int] | None = []
-    summary_file: Path | None = None
+    summary_file: str | None = None
     deposition_path: str | None = None
     clobber_unchanged: bool = False
     auto_publish: bool = False

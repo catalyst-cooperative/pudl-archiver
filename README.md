@@ -98,6 +98,48 @@ There are also five optional flags available:
 - `--deposition-path`: Used with the `fsspec` option for `--depositor`. Should
   point to an fsspec compliant path (e.g. `file://path/to/folder`).
 
+### `fsspec` Depositor
+While we have typically used Zenodo for storing and managing archives, we've recently
+added the ability to use any `fsspec` compatible filesystem as a storage backend. This
+functionality is necessary for datasets like FERC EQR, which require significantly
+more storage space than is available in a standard Zenodo archive, but also can be
+a useful for testing. For example, if you are developing a new archiver or updating
+an existing one, you can use the `fsspec` depositor with a local path to download
+data directly to your computer for inspection.
+
+The `fsspec` depositor can be selected by setting the `--depositor` CLI option. When
+using this option, you must also set a `--deposition-path`. `--deposition-path` should
+be formatted like `protocol://path/to/deposition`. For a local path, you would use the
+protocol `file`, while `gs` can be used to specify a GCS bucket.
+
+### Retry failed run
+When running an archiver with the `--summary-file` CLI option it will save a list of
+failed partitions to the generated JSON file. In this context, a "failed parition" is
+a single data resource (often a zip file with data for a single period of time), for
+which the archiver detected errors. Generally, these errors would be an empty file,
+or a file which appears incorrectly formatted based on it's filte-type extension (i.e.
+a `.zip` file that doesn't look like a zipfile). If the archiver recovers an
+unrecoverable error that causes it to fail before writing the JSON file, then retries
+will not be possible.
+
+Once you have a run summary JSON file with failed partitions, you can retry those
+partitions without having to re-download the rest of the successful partitions. This
+can be particularly useful for a dataset like FERC EQR, where the total archive size
+is ~100GB and each individual file can be several GB, which can lead to corruption
+during downloads. To actually execute a retry, you can use a command like the following:
+
+```
+pudl_archiver --datasets {dataset} --retry-run {path_to_run_summary}
+```
+
+To avoid conflicting settings in the retry run, all other CLI options will be overriden
+by the settings from the failed run. These settings also get written to the run summary
+JSON file, and will be loaded from there.
+
+During a retry, the archiver expects all successfully downloaded resources to still
+be in the draft deposition. If the state of the deposition has been changed in any
+way since the failed run, then the behavior of an attempted retry is undefined.
+
 ## Adding a new dataset
 
 ### Step 1: Define the dataset's metadata

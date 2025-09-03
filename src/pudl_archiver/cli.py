@@ -4,7 +4,6 @@ import argparse
 import asyncio
 import logging
 import typing
-from pathlib import Path
 
 import coloredlogs
 from dotenv import load_dotenv
@@ -60,7 +59,7 @@ def parse_main(args=None):
     )
     parser.add_argument(
         "--summary-file",
-        type=Path,
+        type=str,
         help="Generate a JSON archive run summary",
     )
     parser.add_argument(
