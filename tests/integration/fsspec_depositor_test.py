@@ -95,7 +95,7 @@ async def test_retry_run(
     run, it will retry the failed partition, and we return a fixed
     zipfile, so the archiver should succeed and publish the results.
     """
-    deposition_path = tmp_path / "depostion"
+    deposition_path = tmp_path / "deposition"
     deposition_path.mkdir()
 
     settings = RunSettings(
@@ -136,7 +136,7 @@ async def test_retry_run(
         dataset="pudl_test",
         downloader=TestDownloader(fail_part=True, session="session"),
         run_settings=settings,
-        session="sesion",
+        session="session",
     )
     with (tmp_path / "run_summary.json").open("w") as f:
         f.write(json.dumps([v1_summary.model_dump()], indent=2))
@@ -155,7 +155,7 @@ async def test_retry_run(
         dataset="pudl_test",
         downloader=v2_downloader,
         run_settings=settings,
-        session="sesion",
+        session="session",
     )
     assert not v2_downloader.good_downloaded
     assert v2_summary.success
@@ -213,9 +213,9 @@ async def test_fsspec_depositor(
     settings = settings.model_copy(update={"auto_publish": True})
     v1_summary, v1_refreshed = await orchestrate_run(
         dataset="pudl_test",
-        downloader=TestDownloader(v1_resources, session="sesion"),
+        downloader=TestDownloader(v1_resources, session="session"),
         run_settings=settings,
-        session="sesion",
+        session="session",
     )
     assert v1_summary.success
     verify_files(test_files["original"], tmp_path / "published")
