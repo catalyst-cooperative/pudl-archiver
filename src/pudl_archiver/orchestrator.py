@@ -54,6 +54,12 @@ def _get_partitions_from_previous_run(
     if failed_run_summary is not None:
         failed_partitions = failed_run_summary.failed_partitions
         successful_partitions = failed_run_summary.successful_partitions
+
+        if failed_partitions == {}:
+            raise RuntimeError(
+                "Trying to retry a run that did not have any failed partitions is not supported!"
+                " Double check that you are passing the correct run summary file to ``--retry-run``."
+            )
     return failed_partitions, successful_partitions
 
 
