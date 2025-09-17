@@ -114,7 +114,7 @@ While we have typically used Zenodo for storing and managing archives, we've rec
 added the ability to use any `fsspec` compatible filesystem as a storage backend. This
 functionality is necessary for datasets like FERC EQR, which require significantly
 more storage space than is available in a standard Zenodo archive, but also can be
-a useful for testing. For example, if you are developing a new archiver or updating
+useful for testing. For example, if you are developing a new archiver or updating
 an existing one, you can use the `fsspec` depositor with a local path to download
 data directly to your computer for inspection.
 
@@ -128,8 +128,8 @@ When running an archiver with the `--summary-file` CLI option it will save a lis
 failed partitions to the generated JSON file. In this context, a "failed parition" is
 a single data resource (often a zip file with data for a single period of time), for
 which the archiver detected errors. Generally, these errors would be an empty file,
-or a file which appears incorrectly formatted based on it's filte-type extension (i.e.
-a `.zip` file that doesn't look like a zipfile). If the archiver recovers an
+or a file which appears incorrectly formatted based on it's file-type extension (i.e.
+a `.zip` file that doesn't look like a zipfile). If the archiver encounters an
 unrecoverable error that causes it to fail before writing the JSON file, then retries
 will not be possible.
 

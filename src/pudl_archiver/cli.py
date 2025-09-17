@@ -95,7 +95,7 @@ def parse_main(args=None):
         " that all of the files downloaded by the previous run still exist in an open"
         " draft, and that you are running the archiver with the same depositor settings."
         " If the state of the draft deposition has changed since the previous run, then"
-        " the behavior of retrying that run will be undefined.",
+        " retrying that run may produce unexpected results.",
         default=None,
     )
     return parser.parse_args(args)
