@@ -60,7 +60,10 @@ class FercEQRArchiver(AbstractDatasetArchiver):
             yield self.get_quarter_csv(url, partitions), partitions
 
     async def get_urls(self) -> list[str]:
-        """Use playwright to dynamically grab URLs from the EQR webpage."""
+        """Use playwright to dynamically grab URLs from the EQR webpage.
+
+        Only grabs URLs that match the expected pattern for the quarterly CSV files.
+        """
         logger.info(
             "Launching browser with playwright to get EQR year-quarter download links"
         )
@@ -85,7 +88,7 @@ class FercEQRArchiver(AbstractDatasetArchiver):
     ) -> tuple[Path, dict]:
         """Download a quarter of 2013-present data."""
         # Extract year-quarter from URL
-        logger.info(f"Found EQR data for {partitions['year']}-Q{partitions['quarter']}")
+        logger.info(f"Found EQR data for {partitions['year']}q{partitions['quarter']}")
 
         # Download quarter
         download_path = (
