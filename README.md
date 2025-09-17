@@ -81,7 +81,7 @@ requested datasource requested. The supported datasources include `eia860`, `eia
 `ferc1`, `epacems`, and many more; see the full list of available datasets with
 `pudl_archiver --list`.
 
-There are also five optional flags available:
+There are also many optional flags available:
 
 - `--sandbox`: used for testing. It will only interact with Zenodo's
   [sandbox](https://sandbox.zenodo.org/) instance.
@@ -97,6 +97,17 @@ There are also five optional flags available:
   `fsspec` and set the `--deposition-path` to an fsspec compliant path.
 - `--deposition-path`: Used with the `fsspec` option for `--depositor`. Should
   point to an fsspec compliant path (e.g. `file://path/to/folder`).
+- `--auto-publish`: Automatically publish new version of an archive if all validation
+  tests pass. If any validation tests fail, then the new version will not be published,
+  even if `auto-publish` is set.
+- `--summary-file`: Specify a JSON file to write a structured summary of the archiver
+  run. This includes details about any files that were updated/deleted/added to the
+  new version of the archive, as well as the results of any validation tests.
+- `--retry-run`: Should point to a run summary JSON file produced by running the archiver
+  with the `--summary-file` option. If the run that produced the summary file encountered
+  any issues with specific files during the archiving process (like a poorly formatted
+  zipfile), then new run will reuse the draft deposition created by that run, and
+  only retry the problematic files.
 
 ### `fsspec` Depositor
 While we have typically used Zenodo for storing and managing archives, we've recently
