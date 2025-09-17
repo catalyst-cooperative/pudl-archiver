@@ -86,8 +86,9 @@ There are also many optional flags available:
 - `--sandbox`: used for testing. It will only interact with Zenodo's
   [sandbox](https://sandbox.zenodo.org/) instance.
 - `--initialize`: used for creating an archive for a new dataset that doesn't
-  currently exist on zenodo. If successful, this command will automatically add
-  the new Zenodo DOI to the `dataset_doi.yaml` file.
+  currently exist on zenodo. If used with the `fsspec` backend, this will attempt
+  to create a new directory at the location specified by `deposition-path` and use
+  this directory for archiving.
 - `--all`: shortcut for archiving all datasets that we have defined archivers
   for. Overrides `--datasets`.
 - `--depositor`: select backend storage system. Defaults to `zenodo`, which is

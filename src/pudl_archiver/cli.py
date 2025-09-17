@@ -50,7 +50,8 @@ def parse_main(args=None):
     parser.add_argument(
         "--initialize",
         action="store_true",
-        help="Initialize new deposition by preserving a DOI",
+        help="Initialize new deposition by reserving a DOI. If used with the fsspec"
+        " depositor, this will try to create the directory at the specified deposition-path.",
     )
     parser.add_argument(
         "--clobber-unchanged",
