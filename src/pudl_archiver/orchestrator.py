@@ -16,13 +16,22 @@ logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 
 def _load_failed_run_summary(
+    requested_dataset: str,
     run_summary_json: str | None,
 ) -> RunSummary | None:
     """If ``retry_run`` is specified in ``RunSettings``, then return the parsed json file."""
     failed_run_summary = None
     if run_summary_json is not None:
         with Path(run_summary_json).open() as f:
-            failed_run_summary = RunSummary.model_validate(json.load(f)[0])
+            # A run can archive more than one dataset at a time, in which case the JSON
+            # may contain a summary for multiple datasets, so we need to ensure we
+            # are getting the correct summary.
+            [parsed_summary] = [
+                summary_dict
+                for summary_dict in json.load(f)
+                if summary_dict["dataset_name"] == requested_dataset
+            ]
+            failed_run_summary = RunSummary.model_validate(parsed_summary)
     return failed_run_summary
 
 
@@ -75,7 +84,7 @@ async def orchestrate_run(
     draft, original_datapackage = await get_deposition(dataset, session, run_settings)
 
     # Get partitions from previous run if retrying a run
-    failed_run_summary = _load_failed_run_summary(run_settings.retry_run)
+    failed_run_summary = _load_failed_run_summary(dataset, run_settings.retry_run)
     failed_partitions, successful_partitions = _get_partitions_from_previous_run(
         failed_run_summary
     )
