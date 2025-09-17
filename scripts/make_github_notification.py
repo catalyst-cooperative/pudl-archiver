@@ -134,7 +134,7 @@ def _format_errors(log: str) -> str:
     failure = _format_text_as_github_code(failure)  # Format as code
 
     name_re = re.search(
-        r"(?:catalystcoop.pudl_archiver.archivers.classes:\d{3} Archiving )([a-z0-9]*)",
+        r"(?:catalystcoop.pudl_archiver.archivers.classes:\d+ Archiving )([a-z0-9]*)",
         log,
     )
     name = name_re.group(1)
