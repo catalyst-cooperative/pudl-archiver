@@ -145,8 +145,8 @@ async def test_retry_run(
     assert ok_part == v1_summary.successful_partitions["good.zip"]
     assert not (deposition_path / "published" / "bad.zip").exists()
     assert not (deposition_path / "published" / "good.zip").exists()
-    assert (deposition_path / "draft" / "bad.zip").exists()
-    assert (deposition_path / "draft" / "good.zip").exists()
+    assert (deposition_path / "workspace" / "bad.zip").exists()
+    assert (deposition_path / "workspace" / "good.zip").exists()
     assert not v1_summary.success
 
     settings.retry_run = str(tmp_path / "run_summary.json")
