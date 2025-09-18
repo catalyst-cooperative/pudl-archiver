@@ -68,11 +68,14 @@ class ZipLayout(BaseModel):
         return success, notes
 
 
+Partitions = dict[str, Any]
+
+
 class ResourceInfo(BaseModel):
     """Class providing information about downloaded resource."""
 
     local_path: Path
-    partitions: dict[str, Any]
+    partitions: Partitions
     layout: ZipLayout | None = None
 
 

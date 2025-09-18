@@ -24,6 +24,9 @@ def successful_run():
         previous_version_date="date",
         record_url="https://www.catalyst.coop/bogus-record-url",
         datapackage_changed=False,
+        successful_partitions={"resource_0": {"part": 0}},
+        failed_partitions={},
+        run_settings=RunSettings(),
     )
 
 
@@ -44,6 +47,9 @@ def failed_run():
         previous_version_date="date",
         record_url="https://www.catalyst.coop/bogus-record-url",
         datapackage_changed=False,
+        successful_partitions={"resource_0": {"part": 0}},
+        failed_partitions={"resource_1": {"part": 1}},
+        run_settings=RunSettings(),
     )
 
 
@@ -66,7 +72,7 @@ async def test_archive_datasets(
     with summary_file.open("w") as f:
         f.write("file")
     mocked_json_dump = mocker.patch("pudl_archiver.json.dumps", return_value="{}")
-    settings = RunSettings(summary_file=summary_file)
+    settings = RunSettings(summary_file=str(summary_file))
 
     # Set run() return value to success summary and test
     mocked_orchestrator_success = mocker.AsyncMock(

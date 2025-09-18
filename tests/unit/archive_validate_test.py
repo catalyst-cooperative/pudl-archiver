@@ -10,7 +10,7 @@ import pytest
 
 from pudl_archiver.archivers import validate
 from pudl_archiver.frictionless import Resource, ZipLayout
-from pudl_archiver.utils import Url
+from pudl_archiver.utils import RunSettings, Url
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
@@ -175,6 +175,9 @@ def test_create_run_summary(baseline_resources, new_resources, diffs, mocker):
         new_datapackage=new,
         validation_tests=[],
         record_url=Url("https://www.catalyst.coop/bogus-record-url"),
+        failed_partitions={},
+        successful_partitions={},
+        run_settings=RunSettings(),
     )
     test_diffs = summary.file_changes
     assert test_diffs == diffs
@@ -320,6 +323,9 @@ def test_run_summary_success(specs, expected_success):
         previous_version_date="2023-11-28",
         record_url=Url("https://www.catalyst.coop/bogus-record-url"),
         datapackage_changed=False,
+        failed_partitions={},
+        successful_partitions={},
+        run_settings=RunSettings(),
     )
     assert summary.success == expected_success
 

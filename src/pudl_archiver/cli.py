@@ -4,7 +4,6 @@ import argparse
 import asyncio
 import logging
 import typing
-from pathlib import Path
 
 import coloredlogs
 from dotenv import load_dotenv
@@ -51,7 +50,8 @@ def parse_main(args=None):
     parser.add_argument(
         "--initialize",
         action="store_true",
-        help="Initialize new deposition by preserving a DOI",
+        help="Initialize new deposition by reserving a DOI. If used with the fsspec"
+        " depositor, this will try to create the directory at the specified deposition-path.",
     )
     parser.add_argument(
         "--clobber-unchanged",
@@ -60,7 +60,7 @@ def parse_main(args=None):
     )
     parser.add_argument(
         "--summary-file",
-        type=Path,
+        type=str,
         help="Generate a JSON archive run summary",
     )
     parser.add_argument(
@@ -86,6 +86,18 @@ def parse_main(args=None):
         help="Specifies what backend engine will be used for archive storage. Current allowable options include zenodo and fsspec",
         choices=list(typing.get_args(Depositors)),
         default="zenodo",
+    )
+    parser.add_argument(
+        "--retry-run",
+        help="Specify a Run Summary JSON file that contains partitions to retry."
+        " This Run Summary JSON file should be output by a failed previous run of"
+        " the archiver. This file will contain a list of the failed and successful"
+        " partitions, so we can only re-run the partitions that failed. This assumes"
+        " that all of the files downloaded by the previous run still exist in an open"
+        " draft, and that you are running the archiver with the same depositor settings."
+        " If the state of the draft deposition has changed since the previous run, then"
+        " retrying that run may produce unexpected results.",
+        default=None,
     )
     return parser.parse_args(args)
 

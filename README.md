@@ -81,13 +81,14 @@ requested datasource requested. The supported datasources include `eia860`, `eia
 `ferc1`, `epacems`, and many more; see the full list of available datasets with
 `pudl_archiver --list`.
 
-There are also five optional flags available:
+There are also many optional flags available:
 
 - `--sandbox`: used for testing. It will only interact with Zenodo's
   [sandbox](https://sandbox.zenodo.org/) instance.
 - `--initialize`: used for creating an archive for a new dataset that doesn't
-  currently exist on zenodo. If successful, this command will automatically add
-  the new Zenodo DOI to the `dataset_doi.yaml` file.
+  currently exist on zenodo. If used with the `fsspec` backend, this will attempt
+  to create a new directory at the location specified by `deposition-path` and use
+  this directory for archiving.
 - `--all`: shortcut for archiving all datasets that we have defined archivers
   for. Overrides `--datasets`.
 - `--depositor`: select backend storage system. Defaults to `zenodo`, which is
@@ -97,6 +98,68 @@ There are also five optional flags available:
   `fsspec` and set the `--deposition-path` to an fsspec compliant path.
 - `--deposition-path`: Used with the `fsspec` option for `--depositor`. Should
   point to an fsspec compliant path (e.g. `file://path/to/folder`).
+- `--auto-publish`: Automatically publish new version of an archive if all validation
+  tests pass. If any validation tests fail, then the new version will not be published,
+  even if `auto-publish` is set.
+- `--summary-file`: Specify a JSON file to write a structured summary of the archiver
+  run. This includes details about any files that were updated/deleted/added to the
+  new version of the archive, as well as the results of any validation tests.
+- `--retry-run`: Should point to a run summary JSON file produced by running the archiver
+  with the `--summary-file` option. If the run that produced the summary file encountered
+  any issues with specific files during the archiving process (like a poorly formatted
+  zipfile), then new run will reuse the draft deposition created by that run, and
+  only retry the problematic files.
+
+### `fsspec` Depositor
+While we have typically used Zenodo for storing and managing archives, we've recently
+added the ability to use any `fsspec` compatible filesystem as a storage backend. This
+functionality is necessary for datasets like FERC EQR, which require significantly
+more storage space than is available in a standard Zenodo archive, but also can be
+useful for testing. For example, if you are developing a new archiver or updating
+an existing one, you can use the `fsspec` depositor with a local path to download
+data directly to your computer for inspection.
+
+The `fsspec` depositor can be selected by setting the `--depositor` CLI option. When
+using this option, you must also set a `--deposition-path`. `--deposition-path` should
+be formatted like `protocol://path/to/deposition`. For a local path, you would use the
+protocol `file`, while `gs` can be used to specify a GCS bucket.
+
+### Retry failed run
+When running an archiver with the `--summary-file` CLI option it will save a list of
+failed partitions to the generated JSON file. In this context, a "failed parition" is
+a single data resource (often a zip file with data for a single period of time), for
+which the archiver detected errors. Generally, these errors would be an empty file,
+or a file which appears incorrectly formatted based on it's file-type extension (i.e.
+a `.zip` file that doesn't look like a zipfile). If the archiver encounters an
+unrecoverable error that causes it to fail before writing the JSON file, then retries
+will not be possible.
+
+Once you have a run summary JSON file with failed partitions, you can retry those
+partitions without having to re-download the rest of the successful partitions. This
+can be particularly useful for a dataset like FERC EQR, where the total archive size
+is ~100GB and each individual file can be several GB, which can lead to corruption
+during downloads. To actually execute a retry, you can use a command like the following:
+
+```
+pudl_archiver --datasets {dataset} --retry-run {path_to_run_summary}
+```
+
+To avoid conflicting settings in the retry run, all other CLI options will be overriden
+by the settings from the failed run. These settings also get written to the run summary
+JSON file, and will be loaded from there.
+
+During a retry, the archiver expects all successfully downloaded resources to still
+be in the draft deposition. If the state of the deposition has been changed in any
+way since the failed run, then the behavior of an attempted retry is undefined.
+
+Once a retry run has been kicked off, it will follow these steps below:
+
+1. Load the run summary from the previous run and get failed/successful resources
+and CLI settings.
+2. Filter out successful resources from previous run so we don't re-download them.
+3. Start downloading failed resources and adding new versions to the open draft deposition.
+4. Attempt to publish draft containing resources from original run and retry, following
+standard validation procedures.
 
 ## Adding a new dataset
 

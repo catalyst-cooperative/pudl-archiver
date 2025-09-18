@@ -417,7 +417,7 @@ async def archive_year(
         partitions={
             "year": year,
             "data_format": "XBRL",
-            "taxonomies_referenced": taxonomies_referenced,
+            "taxonomies_referenced": list(taxonomies_referenced),
         },
         layout=ZipLayout(file_paths=files_in_zip),
     )

@@ -82,7 +82,7 @@ async def test_archive_year_stability(mocker, tmp_path):
 
     async with aiohttp.ClientSession() as session:
         # Run once
-        await orchestrate_run(
+        summary, _ = await orchestrate_run(
             dataset="ferc1",
             downloader=Ferc1Archiver(
                 session,

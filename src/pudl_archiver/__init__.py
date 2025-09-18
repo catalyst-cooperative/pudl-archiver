@@ -120,7 +120,7 @@ async def archive_datasets(
             if not isinstance(result, BaseException)
         ]
 
-        with run_settings.summary_file.open("w") as f:
+        with Path(run_settings.summary_file).open("w") as f:
             f.write(json.dumps(run_summaries, indent=2))
 
     # Check validation results of all runs that aren't unchanged
