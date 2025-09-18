@@ -235,6 +235,7 @@ class FsspecPublishedDeposition(PublishedDeposition):
 
         # If we are retrying a previous run there may already be files in the workspace directory
         # Add these to the draft as well as files in the current published archive
+        # TODO: Check if we're doing a retry as we don't expect files here unless we're doing a retry
         draft_files |= {
             fname: self.deposition.get_deposition_path(DepositionDirectory.WORKSPACE)
             / fname
