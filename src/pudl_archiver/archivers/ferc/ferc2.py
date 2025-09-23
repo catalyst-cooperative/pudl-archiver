@@ -85,6 +85,7 @@ class Ferc2Archiver(AbstractDatasetArchiver):
             download_path = self.download_directory / f"ferc2-{year}-{part}.zip"
         else:
             assert year >= 1996 and year <= 2021  # nosec: B101
+            partitions = {"part": "monolithic"}
             url = f"https://forms.ferc.gov/f2allyears/f2_{year}.zip"
             download_path = self.download_directory / f"ferc2-{year}.zip"
 
