@@ -6,35 +6,35 @@ requires-python = ">=3.13,<3.14"
 
 dependencies = [
   "catalystcoop.pudl @ git+https://github.com/catalyst-cooperative/pudl.git",
-  "arelle-release>=2.37.53,<3",
+  "arelle-release>=2.37.60,<3",
   "beautifulsoup4>=4.13.5,<5",
   "cfgv>=3.4.0,<4",
   "coloredlogs>=14.0,<15",
-  "coverage>=7.10.6,<8",
-  "dask>=2025.7.0,<2026",
+  "coverage>=7.10.7,<8",
+  "dask>=2025.9.1,<2026",
   "deltalake>=1.1.4,<2",
   "doc8>=2.0.0,<3",
-  "feedparser>=6.0.11,<7",
+  "feedparser>=6.0.12,<7",
   "frictionless>=5.18.1,<6",
   "furo>=2025.7.19,<2026",
   "playwright>=1.55.0,<2",
   "pre-commit>=4.3.0,<5",
-  "pydantic>=2.11.7,<3",
+  "pydantic>=2.11.9,<3",
   "pydocstyle>=6.3.0,<7",
-  "pytest-asyncio>=1.1.0,<2",
+  "pytest-asyncio>=1.2.0,<2",
   "pytest-console-scripts>=1.4.1,<2",
-  "pytest-cov>=6.3.0,<7",
-  "pytest-mock>=3.15.0,<4",
+  "pytest-cov>=7.0.0,<8",
+  "pytest-mock>=3.15.1,<4",
   "pytest>=8.4.2,<9",
   "python-dotenv>=1.1.1,<2",
   "pyyaml>=6.0.2,<7",
-  "ruff>=0.12.12,<0.13",
+  "ruff>=0.13.1,<0.14",
   "semantic-version>=2.10.0,<3",
   "sphinx-autoapi>=3.6.0,<4",
   "sphinx-issues>=5.0.1,<6",
   "sphinx>=8.2.3,<9",
   "tqdm>=4.67.1,<5",
-  "types-requests>=2.32.4.20250809,<3",
+  "types-requests>=2.32.4.20250913,<3",
 ]
 
 classifiers = [
@@ -197,7 +197,7 @@ ci = [
 ]
 
 [tool.pixi.dependencies]
-gdal = ">=3.11.3,<4"
+gdal = ">=3.11.4,<4"
 psycopg2-binary = ">=2.9.10,<3"
 numba = ">=0.61.2,<0.62"
 pandas = ">=2.3.2,<3"
