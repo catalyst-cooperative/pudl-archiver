@@ -70,6 +70,7 @@ jobs:
             --deposition-path ${{ inputs.deposition_path }}/${{ matrix.dataset }} \
             --datasets ${{ matrix.dataset }} \
             --summary-file ${{ matrix.dataset }}_run_summary.json \
+            --auto-publish \
             --clobber-unchanged 2>&1 | tee ${{ matrix.dataset }}_log.txt
 
       - name: Save failed runs
