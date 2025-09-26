@@ -35,6 +35,7 @@ class FercEQRArchiver(AbstractDatasetArchiver):
     concurrency_limit = 1
     directory_per_resource_chunk = True
     max_wait_time = 36000
+    allowed_dataset_rel_diff = True
 
     async def get_resources(self) -> tuple[ArchiveAwaitable, Partitions]:
         """Download FERC EQR resources."""
