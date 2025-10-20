@@ -32,6 +32,8 @@ jobs:
         dataset: ${{ fromJSON(format('[{0}]', inputs.datasets || '"ferceqr"' )) }}
       fail-fast: false
     runs-on: ubuntu-latest
+    env:
+      DEPOSITION_PATH: ${{ inputs.deposition_path || 'gs://archives.catalyst.coop' }}
     permissions:
       contents: "read"
       id-token: "write"
