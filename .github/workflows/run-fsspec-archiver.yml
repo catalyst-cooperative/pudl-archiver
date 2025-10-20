@@ -69,7 +69,7 @@ jobs:
           set -o pipefail
           pixi run pudl_archiver \
             --depositor fsspec \
-            --deposition-path ${{ inputs.deposition_path }}/${{ matrix.dataset }} \
+            --deposition-path $DEPOSITION_PATH/${{ matrix.dataset }} \
             --datasets ${{ matrix.dataset }} \
             --summary-file ${{ matrix.dataset }}_run_summary.json \
             --auto-publish \
