@@ -23,7 +23,7 @@ on:
         required: true
         type: boolean
   schedule:
-    - cron: "21 9 2-31 6-7,9-10 0,2-6"
+    - cron: "21 9 2-31 6-7,9-10 1-6"
     # 9:21 AM UTC, every day in June, July, Sept, Oct.
     # Don't run on Mondays or the 1st of the month, when run-archiver.yml runs
 
@@ -138,18 +138,18 @@ jobs:
         run: |
           {
             echo 'ERRORS<<DELIM1'
-            pixi run ./scripts/make_github_notification.py --summary-files *_run_summary.json --error-files *_log.txt --summary-type error
+            pixi run ./scripts/make_github_notification.py --summary-files ./*_run_summary.json --error-files ./*_log.txt --summary-type error
             echo 'DELIM1'
             echo 'FAILURES<<DELIM2'
-            pixi run ./scripts/make_github_notification.py --summary-files *_run_summary.json --error-files *_log.txt --summary-type failure
+            pixi run ./scripts/make_github_notification.py --summary-files ./*_run_summary.json --error-files ./*_log.txt --summary-type failure
             echo 'DELIM2'
             echo 'CHANGES<<DELIM3'
-            pixi run ./scripts/make_github_notification.py --summary-files *_run_summary.json --error-files *_log.txt --summary-type change
+            pixi run ./scripts/make_github_notification.py --summary-files ./*_run_summary.json --error-files ./*_log.txt --summary-type change
             echo 'DELIM3'
             echo 'UNCHANGED<<DELIM4'
-            pixi run ./scripts/make_github_notification.py --summary-files *_run_summary.json --error-files *_log.txt --summary-type unchanged
+            pixi run ./scripts/make_github_notification.py --summary-files ./*_run_summary.json --error-files ./*_log.txt --summary-type unchanged
             echo 'DELIM4'
-          } | tee -a $GITHUB_OUTPUT
+          } | tee -a "$GITHUB_OUTPUT"
       # These steps only run if no Github issue is requested to be created.
       # The summary will show up in Slack instead.
       - name: Munge summaries for Slack
@@ -158,7 +158,7 @@ jobs:
         run: |
           {
             echo "SLACK_PAYLOAD<<EOF"
-            ./scripts/make_slack_notification_message.py --summary-files *_run_summary.json --error-files *_log.txt | tee slack-payload.json
+            ./scripts/make_slack_notification_message.py --summary-files ./*_run_summary.json --error-files ./*_log.txt | tee slack-payload.json
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
       - name: Post update to pudl-deployment
@@ -200,7 +200,7 @@ jobs:
           UNCHANGED: ${{ needs.archive-notify.outputs.unchanged }}
         with:
           filename: .github/ISSUE_TEMPLATE/monthly-archive-update.md
-      - run: echo "URL=${{ steps.create-issue.outputs.url }}" >> $GITHUB_ENV
+      - run: echo "URL=${{ steps.create-issue.outputs.url }}" >> "$GITHUB_ENV"
     outputs:
       url: ${{ steps.create-issue.outputs.URL}}
 
