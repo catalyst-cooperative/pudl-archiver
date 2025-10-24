@@ -25,7 +25,7 @@ on:
   schedule:
     - cron: "21 9 2-31 6-7,9-10 1-6"
     # 9:21 AM UTC, every day in June, July, Sept, Oct.
-    # Don't run on Mondays or the 1st of the month, when run-archiver.yml runs
+    # Don't run on Sundays or the 1st of the month, when run-archiver.yml runs
 
 jobs:
   archive-run:
