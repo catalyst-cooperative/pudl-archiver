@@ -6,7 +6,7 @@ requires-python = ">=3.13,<3.14"
 
 dependencies = [
   "catalystcoop.pudl @ git+https://github.com/catalyst-cooperative/pudl.git",
-  "arelle-release>=2.37.67,<3",
+  "arelle-release>=2.37.68,<3",
   "beautifulsoup4>=4.14.2,<5",
   "cfgv>=3.4.0,<4",
   "coloredlogs>=14.0,<15",
@@ -28,7 +28,7 @@ dependencies = [
   "pytest>=8.4.2,<9",
   "python-dotenv>=1.2.1,<2",
   "pyyaml>=6.0.3,<7",
-  "ruff>=0.14.2,<0.15",
+  "ruff>=0.14.3,<0.15",
   "semantic-version>=2.10.0,<3",
   "sphinx-autoapi>=3.6.1,<4",
   "sphinx-issues>=5.0.1,<6",
