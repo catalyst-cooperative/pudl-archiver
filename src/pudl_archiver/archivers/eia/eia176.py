@@ -144,10 +144,15 @@ class Eia176Archiver(EiaNGQVArchiver):
             dataset: the report we're downloading
         """
         archive_path = self.download_directory / f"{self.name}-{year}.zip"
+        data_paths_in_archive = set()
 
         for dataset in datasets_list:
             # If this is a valid year for this dataset
-            if int(year) in [year.ayear for year in dataset.available_years]:
+            # and skipping the custom data form
+            if (
+                int(year) in [year.ayear for year in dataset.available_years]
+                and dataset.code != "RPC"
+            ):
                 csv_name = f"{self.name}_{year}_{dataset.code.lower()}.csv"
 
                 download_url = (
@@ -192,6 +197,7 @@ class Eia176Archiver(EiaNGQVArchiver):
                     add_to_archive_stable_hash(
                         archive=archive, filename=csv_name, data=csv_data
                     )
+                data_paths_in_archive.add(csv_name)
                 await asyncio.sleep(5)  # Avoid getting cut off
 
         # Now handle custom form data
@@ -205,11 +211,13 @@ class Eia176Archiver(EiaNGQVArchiver):
             add_to_archive_stable_hash(
                 archive=archive, filename=csv_name, data=csv_data
             )
+        data_paths_in_archive.add(csv_name)
 
+        # Finally, write the zipfile
         partitions = await self.get_year_partitions(year)
 
         return ResourceInfo(
             local_path=archive_path,
             partitions=partitions,
-            layout=ZipLayout(file_paths={csv_name}),
+            layout=ZipLayout(file_paths=data_paths_in_archive),
         )
