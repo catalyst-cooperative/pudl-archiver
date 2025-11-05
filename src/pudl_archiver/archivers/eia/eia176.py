@@ -41,28 +41,26 @@ class Eia176Archiver(EiaNGQVArchiver):
         yield self.get_bulk_resource()
 
         # Then archive the already-defined reports
-        datasets_list = await self.get_datasets(url=self.base_url, form=self.form)
+        reports_list = await self.get_datasets(url=self.base_url, form=self.form)
 
         # For the custom fields, we want to ensure we're querying all possible
         # years of data availability across all EIA forms.
-        # We do this by updating the all_dataset_years to include all possible years
+        # We do this by updating the all_report_years to include all possible years
         # covered by all other reports.
-        all_dataset_years = set()
+        all_report_years = set()
 
-        for dataset in datasets_list:
+        for report in reports_list:
             # Get all available years
-            if dataset.code != "RPC":  # We handle the custom report separately
-                dataset_years = [year.ayear for year in dataset.available_years]
-                all_dataset_years.update(
-                    dataset_years
-                )  # Update the global list of years
+            if report.code != "RPC":  # We handle the custom report separately
+                report_years = [year.ayear for year in report.available_years]
+                all_report_years.update(report_years)  # Update the global list of years
 
         # Now, grab the data from the custom report
         items_list = await self.get_items(url=self.items_url)
 
-        for year in all_dataset_years:
+        for year in all_report_years:
             yield self.get_year_reports_and_custom_resource(
-                str(year), datasets_list, items_list
+                str(year), reports_list, items_list
             )
 
     async def get_bulk_resource(self) -> ResourceInfo:
@@ -131,7 +129,7 @@ class Eia176Archiver(EiaNGQVArchiver):
         return csv_name, csv_data
 
     async def get_year_reports_and_custom_resource(
-        self, year: str, datasets_list: list[EIANaturalGasData], items_list: list[str]
+        self, year: str, reports_list: list[EIANaturalGasData], items_list: list[str]
     ) -> ResourceInfo:
         """Download all available data for a year with multiple reports.
 
@@ -141,25 +139,29 @@ class Eia176Archiver(EiaNGQVArchiver):
 
         Args:
             year: the year we're downloading data for
-            dataset: the report we're downloading
+            report: the report we're downloading
         """
         archive_path = self.download_directory / f"{self.name}-{year}.zip"
         data_paths_in_archive = set()
 
-        for dataset in datasets_list:
-            # If this is a valid year for this dataset
+        for report in reports_list:
+            # If this is a valid year for this report
             # and skipping the custom data form
             if (
-                int(year) in [year.ayear for year in dataset.available_years]
-                and dataset.code != "RPC"
+                int(year) in [year.ayear for year in report.available_years]
+                and report.code != "RPC"
             ):
-                csv_name = f"{self.name}_{year}_{dataset.code.lower()}.csv"
+                # Get a string interpretable name for the report
+                report_name = (
+                    report.description.replace("176", "").replace(" ", "_").lower()
+                )
+                csv_name = f"{self.name}_{year}{report_name}.csv"
 
                 download_url = (
-                    self.base_url + f"/{dataset.code}/data/{year}/{year}/ICA/Name"
+                    self.base_url + f"/{report.code}/data/{year}/{year}/ICA/Name"
                 )
 
-                self.logger.info(f"Retrieving data for {year} {dataset.code}")
+                self.logger.info(f"Retrieving data for {year} {report.code}")
                 json_response = await self.get_json(download_url)
                 dataframe = pd.DataFrame.from_dict(
                     json_response["data"], orient="columns"
