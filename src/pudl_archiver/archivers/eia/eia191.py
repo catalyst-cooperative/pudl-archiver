@@ -18,13 +18,13 @@ class Eia191Archiver(EiaNGQVArchiver):
 
     async def get_resources(self) -> ArchiveAwaitable:
         """Download EIA 191 resources, keeping monthly data only."""
-        datasets_list = await self.get_datasets(url=self.base_url, form=self.form)
+        reports_list = await self.get_reports(url=self.base_url, form=self.form)
 
-        for dataset in datasets_list:
-            if "Monthly" in dataset.description:  # Archive monthly, not annual data
+        for report in reports_list:
+            if "Monthly" in report.description:  # Archive monthly, not annual data
                 # Get all available years
-                dataset_years = [year.ayear for year in dataset.available_years]
-                for year in dataset_years:
-                    yield self.get_year_resource(year, dataset)
+                report_years = [year.ayear for year in report.available_years]
+                for year in report_years:
+                    yield self.get_year_resource(year, report)
             else:
-                logger.info(f"Skipping archiving {dataset.description}")
+                logger.info(f"Skipping archiving {report.description}")

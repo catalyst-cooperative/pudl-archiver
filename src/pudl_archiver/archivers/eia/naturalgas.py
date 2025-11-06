@@ -1,10 +1,16 @@
-"""Shared methods for data from EIA Natural Gas Quarterly Viewer (NGQV)."""
+"""Shared methods for data from EIA Natural Gas Quarterly Viewer (NGQV).
+
+The Natural Gas Quarterly Viewer allows us to export data from EIA Forms 176, 191 and
+757A as individual "reports". A dataset's content may be split into multiple reports,
+as it is for EIA 176, or be contained entirely in one report (as it is for EIA 757A).
+
+"""
 
 import zipfile
 from collections.abc import Iterable
 
 import pandas as pd
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from pydantic.alias_generators import to_camel
 
 from pudl_archiver.archivers.classes import (
@@ -28,7 +34,9 @@ class EIANaturalGasData(BaseModel):
             alias_generator = to_camel
             populate_by_name = True
 
-    code: str
+    report_code: str = Field(
+        alias="code"
+    )  # The shortname of the report (e.g., RP1, RPC)
     defaultsortby: str
     defaultunittype: str
     description: str
@@ -51,38 +59,49 @@ class EiaNGQVArchiver(AbstractDatasetArchiver):
     form: str  # What to use to search for dataset in NGQV responses
     base_url: str = "https://www.eia.gov/naturalgas/ngqs/data/report"
 
-    async def get_datasets(self, url: str, form: str) -> Iterable[EIANaturalGasData]:
-        """Return metadata for all forms for selected dataset."""
-        datasets = await self.get_json(self.base_url)
-        datasets = [EIANaturalGasData(**record) for record in datasets]
-        datasets = [record for record in datasets if form in record.description]
-        return datasets
+    async def get_reports(self, url: str, form: str) -> Iterable[EIANaturalGasData]:
+        """Return metadata for all forms for selected report."""
+        reports = await self.get_json(self.base_url)
+        reports = [EIANaturalGasData(**record) for record in reports]
+        reports = [record for record in reports if form in record.description]
+        return reports
 
     async def get_resources(self) -> ArchiveAwaitable:
         """Download EIA NGQV resources for specified form."""
-        datasets_list = await self.get_datasets(url=self.base_url, form=self.form)
+        reports_list = await self.get_reports(url=self.base_url, form=self.form)
 
-        for dataset in datasets_list:
+        for report in reports_list:
             # Get all available years
-            dataset_years = [year.ayear for year in dataset.available_years]
-            for year in dataset_years:
-                yield self.get_year_resource(year, dataset)
+            report_years = [year.ayear for year in report.available_years]
+            for year in report_years:
+                yield self.get_year_resource(year, report)
+
+    async def get_year_partitions(self, year: str) -> dict[str, str]:
+        """Define partitions for year resource. Override to handle complex partitions."""
+        return {"year": year}
+
+    def clean_header_name(self, col: pd.Series) -> pd.Series:
+        """Perform a standard series of transformations on NGQV headername items."""
+        return col.lower().replace("<br>", "_").replace(" ", "_")
 
     async def get_year_resource(
-        self, year: str, dataset: EIANaturalGasData
+        self, year: str, report: EIANaturalGasData
     ) -> ResourceInfo:
-        """Download all available data for a year.
+        """Download all available data from one report for a year.
 
         We do this by constructing the URL based on the EIANaturalGasData object,
         getting the JSON and transforming it into a csv that is then zipped.
 
         Args:
             year: the year we're downloading data for
+            report: the report we're downloading
         """
         archive_path = self.download_directory / f"{self.name}-{year}.zip"
         csv_name = f"{self.name}_{year}.csv"
 
-        download_url = self.base_url + f"/{dataset.code}/data/{year}/{year}/ICA/Name"
+        download_url = (
+            self.base_url + f"/{report.report_code}/data/{year}/{year}/ICA/Name"
+        )
 
         self.logger.info(f"Retrieving data for {year}")
         json_response = await self.get_json(download_url)
@@ -90,10 +109,7 @@ class EiaNGQVArchiver(AbstractDatasetArchiver):
 
         # Rename columns
         column_dict = {
-            item["field"]: str(item["headerName"])
-            .lower()
-            .replace("<br>", "_")
-            .replace(" ", "_")
+            item["field"]: self.clean_header_name(str(item["headerName"]))
             for item in json_response["columns"]
         }
         dataframe = dataframe.rename(columns=column_dict)
@@ -112,10 +128,10 @@ class EiaNGQVArchiver(AbstractDatasetArchiver):
                 archive=archive, filename=csv_name, data=csv_data
             )
 
+        partitions = await self.get_year_partitions(year)
+
         return ResourceInfo(
             local_path=archive_path,
-            partitions={
-                "year": year,
-            },
+            partitions=partitions,
             layout=ZipLayout(file_paths={csv_name}),
         )
