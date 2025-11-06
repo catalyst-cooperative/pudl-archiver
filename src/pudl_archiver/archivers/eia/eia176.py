@@ -181,9 +181,10 @@ class Eia176Archiver(EiaNGQVArchiver):
         archive_path = self.download_directory / f"{self.name}-{year}.zip"
         data_paths_in_archive = set()
 
+        # Start by archiving all of the pre-defined reports for a given year
         for report in reports_list:
             # If this is a valid year for this report
-            # and skipping the custom data form
+            # and skipping the custom data form (RPC)
             if (
                 int(year) in [year.ayear for year in report.available_years]
                 and report.report_code != "RPC"
@@ -192,8 +193,10 @@ class Eia176Archiver(EiaNGQVArchiver):
                 report_name = (
                     report.description.replace("176", "").replace(" ", "_").lower()
                 )
+                # Construct the file name
                 csv_name = f"{self.name}_{year}{report_name}.csv"
 
+                # Download the data
                 download_url = (
                     self.base_url + f"/{report.report_code}/data/{year}/{year}/ICA/Name"
                 )
@@ -206,20 +209,19 @@ class Eia176Archiver(EiaNGQVArchiver):
 
                 if dataframe.empty and report.report_code == "RP6":
                     # The company list is expected to not have data in a known number of years.
-                    # Skip uploading an empty file, but warn us if other years don't
-                    # have data.
+                    # Skip uploading an empty file for these known years.
                     assert year in ["2000", "2001", "2019"]
                     self.logger.warn(f"No data found for {year} {report.report_code}")
                     continue
 
-                # Rename columns
+                # Rename columns from weirdly-formatted JSON response
                 column_dict = {
                     variable["field"]: self.clean_header_name(
                         str(variable["headerName"])
                     )
                     for variable in json_response["columns"]
                     if "children" not in variable
-                } | {  # Handle children
+                } | {  # Handle nested columns from JSON response
                     child["field"]: self.clean_header_name(str(child["headerName"]))
                     for variable in json_response["columns"]
                     if "children" in variable
@@ -241,9 +243,9 @@ class Eia176Archiver(EiaNGQVArchiver):
                         archive=archive, filename=csv_name, data=csv_data
                     )
                 data_paths_in_archive.add(csv_name)
-                await asyncio.sleep(5)  # Avoid getting cut off
+                await asyncio.sleep(5)  # Respect server limits
 
-        # Now handle custom form data
+        # Now get all data variables available through the custom form for this year
         csv_name, csv_data = await self.download_all_custom_fields(year, variables_list)
 
         with zipfile.ZipFile(
@@ -256,7 +258,7 @@ class Eia176Archiver(EiaNGQVArchiver):
             )
         data_paths_in_archive.add(csv_name)
 
-        # Finally, write the zipfile
+        # Finally, return the zipfile information
         partitions = await self.get_year_partitions(year)
 
         return ResourceInfo(
