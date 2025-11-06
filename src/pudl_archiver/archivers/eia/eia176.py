@@ -63,8 +63,9 @@ class Eia176Archiver(EiaNGQVArchiver):
 
         # Check that we don't have any unexpected reports here
         report_codes = {report.report_code for report in reports_list}
-        assert report_codes == {"RP1", "RP2", "RP3", "RP4", "RP5", "RP6", "RPC"}, (
-            f"Got unexpected reports for 176: {report_codes}."
+        expected_report_codes = {"RP1", "RP2", "RP3", "RP4", "RP5", "RP6", "RPC"}
+        assert report_codes == expected_report_codes, (
+            f"Got unexpected reports for 176: {report_codes - expected_report_codes}."
         )
 
         # For the custom fields, we want to ensure we're querying all possible
