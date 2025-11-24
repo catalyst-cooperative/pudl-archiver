@@ -33,7 +33,7 @@ jobs:
       contents: "read"
       id-token: "write"
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Set default GCP credentials
         id: gcloud-auth
@@ -87,7 +87,7 @@ jobs:
       - archive-run
     if: ${{ always() }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Download summaries
         id: download
         uses: actions/download-artifact@v6
