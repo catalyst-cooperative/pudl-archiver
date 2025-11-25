@@ -126,7 +126,11 @@ class AbstractDatasetArchiver(ABC):
     fail_on_dataset_size_change: bool = True
     allowed_dataset_rel_diff: float = 0.15
     fail_on_data_continuity: bool = True
-    ignore_file_size_diff_partitions: [dict[str, Any]] = []
+
+    # Allow specific partitions to be ignored by the relative file size diff test
+    # if the size has increased. This is useful for new data that will grow as more
+    # becomes available
+    ignore_file_size_increase_partitions: [dict[str, Any]] = []
 
     def __init__(
         self,
@@ -519,21 +523,22 @@ class AbstractDatasetArchiver(ABC):
             # Check to see that file size hasn't changed by more than |>allowed_file_rel_diff|
             # for each dataset in the baseline datapackage
             for resource_name in baseline_resources:
-                if any(
-                    baseline_resources[resource_name].parts == parts
-                    for parts in self.ignore_file_size_diff_partitions
-                ):
-                    continue
                 if resource_name in new_resources:
                     try:
-                        file_size_change = abs(
-                            (
-                                new_resources[resource_name].bytes_
-                                - baseline_resources[resource_name].bytes_
-                            )
-                            / baseline_resources[resource_name].bytes_
-                        )
-                        if file_size_change > self.allowed_file_rel_diff:
+                        file_size_change = (
+                            new_resources[resource_name].bytes_
+                            - baseline_resources[resource_name].bytes_
+                        ) / baseline_resources[resource_name].bytes_
+
+                        # Check if resource is included in set that should be ignored
+                        # on size increase
+                        if any(
+                            baseline_resources[resource_name].parts == parts
+                            for parts in self.ignore_file_size_increase_partitions
+                        ) and (file_size_change > 0):
+                            continue
+                        # Note failure
+                        if abs(file_size_change) > self.allowed_file_rel_diff:
                             too_changed_files.update({resource_name: file_size_change})
                     except ZeroDivisionError:
                         logger.warning(

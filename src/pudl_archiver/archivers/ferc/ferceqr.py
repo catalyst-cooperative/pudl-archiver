@@ -35,8 +35,6 @@ class FercEQRArchiver(AbstractDatasetArchiver):
     name = "ferceqr"
     concurrency_limit = 1
     directory_per_resource_chunk = True
-    # The most recent quarter of EQR data grows significantly as new data becomes available
-    fail_on_file_size_change = False
     max_wait_time = 36000
 
     async def get_resources(self) -> tuple[ArchiveAwaitable, Partitions]:
@@ -77,7 +75,7 @@ class FercEQRArchiver(AbstractDatasetArchiver):
         logger.info(
             f"Ignoring size diffs for quarter: {most_recent_quarter['year']}q{most_recent_quarter['quarter']}"
         )
-        self.ignore_file_size_diff_partitions = [most_recent_quarter]
+        self.ignore_file_size_increase_partitions = [most_recent_quarter]
 
     async def get_urls(self) -> list[str]:
         """Use playwright to dynamically grab URLs from the EQR webpage.

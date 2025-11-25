@@ -363,6 +363,18 @@ def test_check_missing_files(datapackage, baseline_resources, new_resources, suc
         ),
         (
             [
+                _resource_w_size("resource0", 20, parts={"key": "too small"}),
+                _resource_w_size("resource1", 10),
+            ],
+            [
+                _resource_w_size("resource0", 10, parts={"key": "too small"}),
+                _resource_w_size("resource1", 10),
+            ],
+            False,
+            {"key": "too small"},
+        ),
+        (
+            [
                 _resource_w_size("resource0", 10),
                 _resource_w_size("resource1", 10),
             ],
@@ -418,7 +430,8 @@ def test_check_missing_files(datapackage, baseline_resources, new_resources, suc
         ),
     ],
     ids=[
-        "ignore_diff",
+        "ignore_increase",
+        "ignore_decrease_fail",
         "file_too_big",
         "file_change_acceptable",
         "file_deleted",
@@ -441,7 +454,7 @@ def test_check_file_size(
     new_datapackage = copy.deepcopy(datapackage)
     new_datapackage.resources = new_resources
 
-    archiver.ignore_file_size_diff_partitions = [ignore_parts]
+    archiver.ignore_file_size_increase_partitions = [ignore_parts]
     validation_result = archiver._check_file_size(baseline_datapackage, new_datapackage)
     assert validation_result.success == success
 
