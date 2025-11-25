@@ -54,7 +54,7 @@ class FercEQRArchiver(AbstractDatasetArchiver):
                 f" Found the following URLs: {urls}"
             )
 
-        most_recent_quarter = {"year": 0, "quarter": 1}
+        most_recent_quarter = {"year": 1990, "quarter": 1}
         for url in urls:
             link_match = YEAR_QUARTER_PATT.search(url)
             partitions = {
