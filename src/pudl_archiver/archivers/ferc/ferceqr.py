@@ -74,6 +74,9 @@ class FercEQRArchiver(AbstractDatasetArchiver):
             yield self.get_quarter_csv(url, partitions), partitions
         # Don't fail on large size diffs for most recent quarter
         # We expect to see significant changes as new data is released
+        logger.info(
+            f"Ignoring size diffs for quarter: {most_recent_quarter['year']}q{most_recent_quarter['quarter']}"
+        )
         self.ignore_file_size_diff_partitions = [most_recent_quarter]
 
     async def get_urls(self) -> list[str]:
