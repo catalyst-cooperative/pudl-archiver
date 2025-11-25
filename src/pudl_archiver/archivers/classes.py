@@ -13,6 +13,7 @@ from contextlib import nullcontext
 from html.parser import HTMLParser
 from pathlib import Path
 from secrets import randbelow
+from typing import Any
 
 import aiohttp
 import bs4
@@ -125,6 +126,7 @@ class AbstractDatasetArchiver(ABC):
     fail_on_dataset_size_change: bool = True
     allowed_dataset_rel_diff: float = 0.15
     fail_on_data_continuity: bool = True
+    ignore_file_size_diff_partitions: [dict[str, Any]] = []
 
     def __init__(
         self,
@@ -506,26 +508,30 @@ class AbstractDatasetArchiver(ABC):
             too_changed_files = False  # No files to compare to
         else:
             baseline_resources = {
-                resource.name: resource.bytes_
-                for resource in baseline_datapackage.resources
+                resource.name: resource for resource in baseline_datapackage.resources
             }
             too_changed_files = {}
 
             new_resources = {
-                resource.name: resource.bytes_ for resource in new_datapackage.resources
+                resource.name: resource for resource in new_datapackage.resources
             }
 
             # Check to see that file size hasn't changed by more than |>allowed_file_rel_diff|
             # for each dataset in the baseline datapackage
             for resource_name in baseline_resources:
+                if any(
+                    baseline_resources[resource_name].parts == parts
+                    for parts in self.ignore_file_size_diff_partitions
+                ):
+                    continue
                 if resource_name in new_resources:
                     try:
                         file_size_change = abs(
                             (
-                                new_resources[resource_name]
-                                - baseline_resources[resource_name]
+                                new_resources[resource_name].bytes_
+                                - baseline_resources[resource_name].bytes_
                             )
-                            / baseline_resources[resource_name]
+                            / baseline_resources[resource_name].bytes_
                         )
                         if file_size_change > self.allowed_file_rel_diff:
                             too_changed_files.update({resource_name: file_size_change})

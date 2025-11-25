@@ -23,13 +23,13 @@ def file_data():
     return b"Junk test file data"
 
 
-def _resource_w_size(name: str, size: int):
+def _resource_w_size(name: str, size: int, parts: dict = {}):
     """Create resource with variable size for use in tests."""
     return Resource(
         name=name,
         path=f"https://www.example.com/{name}",
         title="",
-        parts={},
+        parts=parts,
         mediatype="",
         format="",
         bytes=size,
@@ -347,8 +347,20 @@ def test_check_missing_files(datapackage, baseline_resources, new_resources, suc
 
 
 @pytest.mark.parametrize(
-    "baseline_resources,new_resources,success",
+    "baseline_resources,new_resources,success,ignore_parts",
     [
+        (
+            [
+                _resource_w_size("resource0", 10, parts={"key": "too big"}),
+                _resource_w_size("resource1", 10),
+            ],
+            [
+                _resource_w_size("resource0", 20, parts={"key": "too big"}),
+                _resource_w_size("resource1", 10),
+            ],
+            True,
+            {"key": "too big"},
+        ),
         (
             [
                 _resource_w_size("resource0", 10),
@@ -359,6 +371,7 @@ def test_check_missing_files(datapackage, baseline_resources, new_resources, suc
                 _resource_w_size("resource1", 10),
             ],
             False,
+            None,
         ),
         (
             [
@@ -370,6 +383,7 @@ def test_check_missing_files(datapackage, baseline_resources, new_resources, suc
                 _resource_w_size("resource1", 9),
             ],
             True,
+            None,
         ),
         (
             [
@@ -380,6 +394,7 @@ def test_check_missing_files(datapackage, baseline_resources, new_resources, suc
                 _resource_w_size("resource0", 10),
             ],
             True,
+            None,
         ),
         (
             [
@@ -390,6 +405,7 @@ def test_check_missing_files(datapackage, baseline_resources, new_resources, suc
                 _resource_w_size("resource1", 10),
             ],
             True,
+            None,
         ),
         (
             None,
@@ -398,9 +414,11 @@ def test_check_missing_files(datapackage, baseline_resources, new_resources, suc
                 _resource_w_size("resource1", 10),
             ],
             True,
+            None,
         ),
     ],
     ids=[
+        "ignore_diff",
         "file_too_big",
         "file_change_acceptable",
         "file_deleted",
@@ -408,7 +426,9 @@ def test_check_missing_files(datapackage, baseline_resources, new_resources, suc
         "no_base_datapackage",
     ],
 )
-def test_check_file_size(datapackage, baseline_resources, new_resources, success):
+def test_check_file_size(
+    datapackage, baseline_resources, new_resources, success, ignore_parts
+):
     """Test the ``_check_file_size`` validation test."""
     archiver = MockArchiver(None)
 
@@ -421,6 +441,7 @@ def test_check_file_size(datapackage, baseline_resources, new_resources, success
     new_datapackage = copy.deepcopy(datapackage)
     new_datapackage.resources = new_resources
 
+    archiver.ignore_file_size_diff_partitions = [ignore_parts]
     validation_result = archiver._check_file_size(baseline_datapackage, new_datapackage)
     assert validation_result.success == success
 
