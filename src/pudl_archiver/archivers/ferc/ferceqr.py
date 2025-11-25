@@ -3,6 +3,7 @@
 import asyncio
 import logging
 import re
+from datetime import date
 from pathlib import Path
 
 from playwright.async_api import async_playwright
@@ -53,13 +54,27 @@ class FercEQRArchiver(AbstractDatasetArchiver):
                 f" Found the following URLs: {urls}"
             )
 
+        most_recent_quarter = {"year": 0, "quarter": 1}
         for url in urls:
             link_match = YEAR_QUARTER_PATT.search(url)
             partitions = {
                 "year": int(link_match.group(1)),
                 "quarter": int(link_match.group(2)),
             }
+
+            # Find most recent available quarter of data
+            new_date = date(partitions["year"], (partitions["quarter"] - 1) * 3 + 1, 1)
+            most_recent_date = date(
+                most_recent_quarter["year"],
+                (most_recent_quarter["quarter"] - 1) * 3 + 1,
+                1,
+            )
+            if new_date > most_recent_date:
+                most_recent_quarter = partitions
             yield self.get_quarter_csv(url, partitions), partitions
+        # Don't fail on large size diffs for most recent quarter
+        # We expect to see significant changes as new data is released
+        self.ignore_file_size_diff_partitions = [most_recent_quarter]
 
     async def get_urls(self) -> list[str]:
         """Use playwright to dynamically grab URLs from the EQR webpage.
