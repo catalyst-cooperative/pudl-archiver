@@ -3,9 +3,9 @@
 import asyncio
 import logging
 import re
-from datetime import date
 from pathlib import Path
 
+import pandas as pd
 from playwright.async_api import async_playwright
 
 from pudl_archiver.archivers.classes import (
@@ -61,12 +61,11 @@ class FercEQRArchiver(AbstractDatasetArchiver):
             }
 
             # Find most recent available quarter of data
-            new_date = date(partitions["year"], (partitions["quarter"] - 1) * 3 + 1, 1)
-            most_recent_date = date(
-                most_recent_quarter["year"],
-                (most_recent_quarter["quarter"] - 1) * 3 + 1,
-                1,
+            new_date = pd.to_datetime(f"{partitions['year']}-Q{partitions['quarter']}")
+            most_recent_date = pd.to_datetime(
+                f"{most_recent_quarter['year']}-Q{most_recent_quarter['quarter']}"
             )
+
             if new_date > most_recent_date:
                 most_recent_quarter = partitions
             yield self.get_quarter_csv(url, partitions), partitions

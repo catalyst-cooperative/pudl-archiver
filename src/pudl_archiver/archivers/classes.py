@@ -550,6 +550,12 @@ class AbstractDatasetArchiver(ABC):
                     f"The following files have absolute changes in file size >|{self.allowed_file_rel_diff:.0%}|: {too_changed_files}"
                 ]
 
+            if len(self.ignore_file_size_increase_partitions) > 0:
+                notes += [
+                    "Size increases ignored for resource with the following partitions: {partitions}"
+                    for partitions in self.ignore_file_size_increase_partitions
+                ]
+
         return validate.DatasetUniversalValidation(
             name="Individual file size test",
             description=f"Check for files from previous version of archive that have changed in size by more than {self.allowed_file_rel_diff:.0%}.",
