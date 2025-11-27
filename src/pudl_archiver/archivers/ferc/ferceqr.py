@@ -5,6 +5,7 @@ import logging
 import re
 from pathlib import Path
 
+import pandas as pd
 from playwright.async_api import async_playwright
 
 from pudl_archiver.archivers.classes import (
@@ -51,13 +52,29 @@ class FercEQRArchiver(AbstractDatasetArchiver):
                 f" Found the following URLs: {urls}"
             )
 
+        most_recent_quarter = {"year": 1990, "quarter": 1}
         for url in urls:
             link_match = YEAR_QUARTER_PATT.search(url)
             partitions = {
                 "year": int(link_match.group(1)),
                 "quarter": int(link_match.group(2)),
             }
+
+            # Find most recent available quarter of data
+            new_date = pd.to_datetime(f"{partitions['year']}-Q{partitions['quarter']}")
+            most_recent_date = pd.to_datetime(
+                f"{most_recent_quarter['year']}-Q{most_recent_quarter['quarter']}"
+            )
+
+            if new_date > most_recent_date:
+                most_recent_quarter = partitions
             yield self.get_quarter_csv(url, partitions), partitions
+        # Don't fail on large size diffs for most recent quarter
+        # We expect to see significant changes as new data is released
+        logger.info(
+            f"Ignoring size diffs for quarter: {most_recent_quarter['year']}q{most_recent_quarter['quarter']}"
+        )
+        self.ignore_file_size_increase_partitions = [most_recent_quarter]
 
     async def get_urls(self) -> list[str]:
         """Use playwright to dynamically grab URLs from the EQR webpage.

@@ -13,6 +13,7 @@ from contextlib import nullcontext
 from html.parser import HTMLParser
 from pathlib import Path
 from secrets import randbelow
+from typing import Any
 
 import aiohttp
 import bs4
@@ -125,6 +126,11 @@ class AbstractDatasetArchiver(ABC):
     fail_on_dataset_size_change: bool = True
     allowed_dataset_rel_diff: float = 0.15
     fail_on_data_continuity: bool = True
+
+    # Allow specific partitions to be ignored by the relative file size diff test
+    # if the size has increased. This is useful for new data that will grow as more
+    # becomes available
+    ignore_file_size_increase_partitions: [dict[str, Any]] = []
 
     def __init__(
         self,
@@ -506,13 +512,12 @@ class AbstractDatasetArchiver(ABC):
             too_changed_files = False  # No files to compare to
         else:
             baseline_resources = {
-                resource.name: resource.bytes_
-                for resource in baseline_datapackage.resources
+                resource.name: resource for resource in baseline_datapackage.resources
             }
             too_changed_files = {}
 
             new_resources = {
-                resource.name: resource.bytes_ for resource in new_datapackage.resources
+                resource.name: resource for resource in new_datapackage.resources
             }
 
             # Check to see that file size hasn't changed by more than |>allowed_file_rel_diff|
@@ -520,14 +525,20 @@ class AbstractDatasetArchiver(ABC):
             for resource_name in baseline_resources:
                 if resource_name in new_resources:
                     try:
-                        file_size_change = abs(
-                            (
-                                new_resources[resource_name]
-                                - baseline_resources[resource_name]
-                            )
-                            / baseline_resources[resource_name]
-                        )
-                        if file_size_change > self.allowed_file_rel_diff:
+                        file_size_change = (
+                            new_resources[resource_name].bytes_
+                            - baseline_resources[resource_name].bytes_
+                        ) / baseline_resources[resource_name].bytes_
+
+                        # Check if resource is included in set that should be ignored
+                        # on size increase
+                        if any(
+                            baseline_resources[resource_name].parts == parts
+                            for parts in self.ignore_file_size_increase_partitions
+                        ) and (file_size_change > 0):
+                            continue
+                        # Note failure
+                        if abs(file_size_change) > self.allowed_file_rel_diff:
                             too_changed_files.update({resource_name: file_size_change})
                     except ZeroDivisionError:
                         logger.warning(
@@ -537,6 +548,12 @@ class AbstractDatasetArchiver(ABC):
             if too_changed_files:  # If files are "too changed"
                 notes = [
                     f"The following files have absolute changes in file size >|{self.allowed_file_rel_diff:.0%}|: {too_changed_files}"
+                ]
+
+            if len(self.ignore_file_size_increase_partitions) > 0:
+                notes += [
+                    "Size increases ignored for resource with the following partitions: {partitions}"
+                    for partitions in self.ignore_file_size_increase_partitions
                 ]
 
         return validate.DatasetUniversalValidation(
