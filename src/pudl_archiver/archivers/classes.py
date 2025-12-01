@@ -552,7 +552,7 @@ class AbstractDatasetArchiver(ABC):
 
             if len(self.ignore_file_size_increase_partitions) > 0:
                 notes += [
-                    "Size increases ignored for resource with the following partitions: {partitions}"
+                    f"Size increases ignored for resource with the following partitions: {partitions}"
                     for partitions in self.ignore_file_size_increase_partitions
                 ]
 
