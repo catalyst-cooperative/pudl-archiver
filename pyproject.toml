@@ -197,7 +197,7 @@ ci = [
 ]
 
 [tool.pixi.dependencies]
-gdal = ">=3.12.0,<4"
+gdal = "==3.12.0"
 psycopg2-binary = ">=2.9.10,<3"
 numba = ">=0.62.1,<0.63"
 pandas = ">=2.3.3,<3"
