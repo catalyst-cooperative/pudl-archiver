@@ -9084,7 +9084,7 @@ packages:
 - pypi: ./
   name: pudl-archiver
   version: 0.2.0
-  sha256: 0ab850caeef8b3788dcccfbda94672357bfa74b76fc390f6b14e1b73903f62bb
+  sha256: 9ef0b1cde575889996de88b89a0da8cda791a2449eff99ec4918635d41cce9b4
   requires_dist:
   - catalystcoop-pudl @ git+https://github.com/catalyst-cooperative/pudl.git
   - arelle-release>=2.37.75,<3
@@ -9106,7 +9106,7 @@ packages:
   - pytest-console-scripts>=1.4.1,<2
   - pytest-cov>=7.0.0,<8
   - pytest-mock>=3.15.1,<4
-  - pytest>=9.0.1,<10
+  - pytest>=9.0.2,<10
   - python-dotenv>=1.2.1,<2
   - pyyaml>=6.0.3,<7
   - ruff>=0.14.8,<0.15
