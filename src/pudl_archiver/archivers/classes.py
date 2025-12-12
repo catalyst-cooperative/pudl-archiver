@@ -82,14 +82,14 @@ class _HyperlinkExtractor(HTMLParser):
                 self.current_hyperlink = val
                 if self.current_hyperlink not in self.hyperlinks:
                     # By default, set the name identical to the hyperlink
-                    self.hyperlinks[self.current_hyperlink] = self.current_hyperlink
+                    self.hyperlinks[self.current_hyperlink] = [self.current_hyperlink]
                 break
 
     def handle_data(self, data):
         """Capture text content and associate it with the current URL."""
         if self.current_hyperlink and data.strip():
             # If data is present, replace the hyperlink name
-            self.hyperlinks[self.current_hyperlink] = data.strip()
+            self.hyperlinks[self.current_hyperlink].append(data.strip())
 
     def handle_endtag(self, tag):
         """Reset the current URL after processing the content of the tag."""
@@ -368,7 +368,8 @@ class AbstractDatasetArchiver(ABC):
         filter_pattern: typing.Pattern | None = None,
         verify: bool = True,
         headers: dict | None = None,
-    ) -> dict[str, str]:
+        all_names: bool = False,
+    ) -> dict[str, str | list[str]]:
         """Return all hyperlinks from a specific web page.
 
         This is a helper function to perform very basic web-scraping functionality.
@@ -376,11 +377,17 @@ class AbstractDatasetArchiver(ABC):
         a specified pattern. This means it can find all hyperlinks that look like
         a download link to a single data resource.
 
+        If a URL appears multiple times with different anchor text, by default we return
+        the anchor text that appears closest to the end of the document. To return all
+        anchor text, run with all_names=True.
+
         Args:
             url: URL of web page.
             filter_pattern: If present, only return links that contain pattern.
             verify: Verify ssl certificate (EPACEMS https source has bad certificate).
             headers: Additional headers to send in the GET request.
+            all_names: default False; if True, return all anchor text found for each link,
+                not just the final one.
         """
         # Parse web page to get all hyperlinks
         response = await retry_async(
@@ -392,14 +399,15 @@ class AbstractDatasetArchiver(ABC):
             },
         )
         text = await retry_async(response.text)
-        return self.get_hyperlinks_from_text(text, filter_pattern, url)
+        return self.get_hyperlinks_from_text(text, filter_pattern, url, all_names)
 
     async def get_hyperlinks_via_playwright(
         self,
         url: str,
         playwright_browser: PlaywrightBrowser,
         filter_pattern: typing.Pattern | None = None,
-    ) -> dict[str, str]:
+        all_names: bool = False,
+    ) -> dict[str, str | list[str]]:
         """Return all hyperlinks from a specific web page.
 
         This is a helper function to perform very basic web-scraping functionality.
@@ -407,24 +415,31 @@ class AbstractDatasetArchiver(ABC):
         a specified pattern. This means it can find all hyperlinks that look like
         a download link to a single data resource.
 
+        If a URL appears multiple times with different anchor text, by default we return
+        the anchor text that appears closest to the end of the document. To return all
+        anchor text, run with all_names=True.
+
         Args:
             url: URL of web page.
             playwright_browser: async browser instance to use for fetching the URL.
             filter_pattern: If present, only return links that contain pattern.
             verify: Verify ssl certificate (EPACEMS https source has bad certificate).
+            all_names: default False; if True, return all anchor text found for each link,
+                not just the final one.
         """
         # Parse web page to get all hyperlinks
         page = await playwright_browser.new_page()
         await page.goto(url, timeout=10 * 60 * 1000)
         text = await page.content()
-        return self.get_hyperlinks_from_text(text, filter_pattern, url)
+        return self.get_hyperlinks_from_text(text, filter_pattern, url, all_names)
 
     def get_hyperlinks_from_text(
         self,
         text: str,
         filter_pattern: typing.Pattern | None = None,
         context: str = "text",
-    ) -> list[str]:
+        all_names: bool = False,
+    ) -> dict[str, str | list]:
         """Return all hyperlinks from HTML text.
 
         This is a helper-helper function to perform very basic HTML-parsing functionality.
@@ -432,32 +447,50 @@ class AbstractDatasetArchiver(ABC):
         a specified pattern. This means it can find all hyperlinks that look like
         a download link to a single data resource.
 
+        If a URL appears multiple times with different anchor text, by default we return
+        the anchor text that appears closest to the end of the document. To return all
+        anchor text, run with all_names=True.
+
         Args:
             text: text containing HTML.
             filter_pattern: If present, only return links that contain pattern.
             context: String used in error messages to describe what text was being searched.
+            all_names: default False; if True, return all anchor text found for each link,
+                not just the final one.
         """
         parser = _HyperlinkExtractor()
         parser.feed(text)
 
-        # Filter to those that match filter_pattern
         hyperlinks = parser.hyperlinks
 
+        # Filter to those that match filter_pattern
         if filter_pattern:
-            hyperlinks = {
-                link: name
-                for link, name in hyperlinks.items()
-                if filter_pattern.search(name) or filter_pattern.search(link)
-            }
+            matching_hyperlinks = {}
+            for link, names in hyperlinks.items():
+                if filter_pattern.search(link):
+                    matching_hyperlinks[link] = names
+                    continue
+                # make sure that if we're doing a name based match,
+                # the only names we return are matching names
+                for name in names:
+                    if filter_pattern.search(name):
+                        if link not in matching_hyperlinks:
+                            matching_hyperlinks[link] = []
+                        matching_hyperlinks[link].append(name)
+            hyperlinks = matching_hyperlinks
 
         # Warn if no links are found
         if not hyperlinks:
             self.logger.warning(
-                f"In {context}: the archiver couldn't find any hyperlinks {('that match: ' + filter_pattern.pattern) if filter_pattern else ''}."
+                f"In {context}: the archiver couldn't find any hyperlinks{(' that match: ' + filter_pattern.pattern) if filter_pattern else ''}. "
                 f"Make sure your filter_pattern is correct, and check if the structure of the page is not what you expect it to be."
             )
 
-        return hyperlinks
+        return (
+            hyperlinks
+            if all_names
+            else {link: names.pop() for link, names in hyperlinks.items()}
+        )
 
     def get_user_agent(self):
         """Get a random user agent from USER_AGENTS for use making requests.
