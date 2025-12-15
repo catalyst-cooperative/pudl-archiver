@@ -6,18 +6,18 @@ requires-python = ">=3.13,<3.14"
 
 dependencies = [
   "catalystcoop.pudl @ git+https://github.com/catalyst-cooperative/pudl.git",
-  "arelle-release>=2.37.75,<3",
+  "arelle-release>=2.37.77,<3",
   "beautifulsoup4>=4.14.3,<5",
   "cfgv>=3.5.0,<4",
   "coloredlogs>=14.0,<15",
-  "coverage>=7.12.0,<8",
-  "dask>=2025.11.0,<2026",
+  "coverage>=7.13.0,<8",
+  "dask>=2025.12.0,<2026",
   "deltalake>=1.2.1,<2",
   "doc8>=2.0.0,<3",
   "feedparser>=6.0.12,<7",
   "frictionless>=5.18.1,<6",
   "furo>=2025.9.25,<2026",
-  "playwright>=1.56.0,<2",
+  "playwright>=1.57.0,<2",
   "pre-commit>=4.5.0,<5",
   "pydantic>=2.12.5,<3",
   "pydocstyle>=6.3.0,<7",
@@ -28,7 +28,7 @@ dependencies = [
   "pytest>=9.0.2,<10",
   "python-dotenv>=1.2.1,<2",
   "pyyaml>=6.0.3,<7",
-  "ruff>=0.14.8,<0.15",
+  "ruff>=0.14.9,<0.15",
   "semantic-version>=2.10.0,<3",
   "sphinx-autoapi>=3.6.1,<4",
   "sphinx-issues>=5.0.1,<6",
@@ -199,7 +199,7 @@ ci = [
 [tool.pixi.dependencies]
 gdal = "==3.12.0"
 psycopg2-binary = ">=2.9.10,<3"
-numba = ">=0.62.1,<0.63"
+numba = ">=0.63.1,<0.64"
 pandas = ">=2.3.3,<3"
 numpy = ">=2.3.5,<3"
 
