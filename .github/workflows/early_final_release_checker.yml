@@ -94,7 +94,7 @@ jobs:
 
       - name: Save failed runs
         if: failure()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: error-log-${{ matrix.dataset }}
           path: ${{ matrix.dataset }}_log.txt
@@ -102,7 +102,7 @@ jobs:
       - name: Upload run summaries
         if: always()
         id: upload_summaries
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: run-summaries-${{ matrix.dataset }}
           path: ${{ matrix.dataset }}_run_summary.json
@@ -116,13 +116,13 @@ jobs:
       - uses: actions/checkout@v6
       - name: Download summaries
         id: download-summaries
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           pattern: run-summaries-*
           merge-multiple: true
       - name: Download failures
         id: download-artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           pattern: error-log-*
           merge-multiple: true
