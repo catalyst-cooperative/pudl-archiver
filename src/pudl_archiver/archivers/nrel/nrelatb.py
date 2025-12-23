@@ -31,11 +31,6 @@ class NrelAtbArchiver(AbstractDatasetArchiver):
     bucket = "oedi-data-lake"
     folder = "ATB"
 
-    async def after_download(self) -> None:
-        """Clean up playwright once downloads are complete."""
-        await self.browser.close()
-        await self.playwright.stop()
-
     async def get_resources(self) -> ArchiveAwaitable:
         """Using years gleaned from LINK_URL, iterate and download all files."""
         session = get_session()
