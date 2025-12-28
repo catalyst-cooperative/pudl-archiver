@@ -1,9 +1,12 @@
 """Archive FERC Central Identifier (CID) data."""
 
+import json
 import re
 from pathlib import Path
-from urllib.parse import unquote, urljoin, urlparse
+from typing import Any
 
+import pandas as pd
+from bs4 import Tag
 from playwright.async_api import async_playwright
 
 from pudl_archiver.archivers.classes import (
@@ -12,11 +15,12 @@ from pudl_archiver.archivers.classes import (
     ResourceInfo,
 )
 
-SOURCE_CSV_URL = "https://ferc.gov/media/ferc-cid-listing-csv"
-SOURCE_XLSX_URL = "https://www.ferc.gov/media/ferc-cid-listing"
+SOURCE_URL = (
+    "https://data.ferc.gov/company-registration/ferc-company-identifier-listing/"
+)
+DATASET_API_URL = "https://data.ferc.gov/api/v1/dataset/26/"
 
-
-BASE_URL = "https://ferc.gov/sites/default/files/"
+DATE_LAST_UPDATED_PATTERN = re.compile(r"(\d{2})\/(\d{2})\/(\d{4})\s+.*")
 
 
 class FercCIDArchiver(AbstractDatasetArchiver):
@@ -26,63 +30,140 @@ class FercCIDArchiver(AbstractDatasetArchiver):
 
     async def get_resources(self) -> ArchiveAwaitable:
         """Download FERC CID resources."""
-        # get CSV
-        # https://ferc.gov/sites/default/files/2025-06/FERC CID Listing 6-10-2025.csv
-        csv_link_pattern = re.compile(
-            r"FERC\sCID\sListing\s(\d{1,2})-(\d{1,2})-(\d{4}).csv"
-        )
-        links = await self.get_cid_hyperlinks(SOURCE_CSV_URL, csv_link_pattern)
-        for href in links:
-            # href: /sites/default/files/2025-06/FERC%20CID%20Listing%206-10-2025.csv
-            filename = Path(
-                urlparse(href).path
-            ).name  # -> 'FERC%20CID%20Listing%206-10-2025.csv'
-            decoded_filename = unquote(filename)  # FERC CID Listing 6-10-2025.csv
-            matches = csv_link_pattern.search(decoded_filename)
-            if not matches:
-                continue
-            month = int(matches.group(1))
-            day = int(matches.group(2))
-            year = int(matches.group(3))
-            url = urljoin(BASE_URL, href)
+        match = await self.get_last_updated_date(page_url=SOURCE_URL)
+        month = int(match.group(1))
+        day = int(match.group(2))
+        year = int(match.group(3))
+        if self.valid_year(year):
             download_path = (
                 self.download_directory / f"ferccid-{year}-{month}-{day}.csv"
             )
-            if self.valid_year(year):
-                yield self.get_cid_file(url, download_path)
-
-        # get XLSX
-        # https://www.ferc.gov/sites/default/files/2025-08/August_2025_CID.xlsx
-        xlsx_link_pattern = re.compile(r"(\d{4})-(\d{2}).+_CID.xlsx")
-        links = await self.get_cid_hyperlinks(SOURCE_XLSX_URL, xlsx_link_pattern)
-        for href in links:
-            # href: https://www.ferc.gov/sites/default/files/2025-08/August_2025_CID.xlsx
-            path = urlparse(href).path
-            matches = xlsx_link_pattern.search(path)
-            if not matches:
-                continue
-            year = int(matches.group(1))
-            month = int(matches.group(2))
-            url = urljoin(BASE_URL, href)
-            download_path = self.download_directory / f"ferccid-{year}-{month}.xlsx"
-            if self.valid_year(year):
-                yield self.get_cid_file(url, download_path)
-
-    async def get_cid_hyperlinks(self, source_url, link_pattern):
-        """Get hyperlinks that follow a link pattern from a source URL."""
-        async with async_playwright() as p:
-            browser = await p.webkit.launch()
-            links = await self.get_hyperlinks_via_playwright(
-                source_url, browser, link_pattern
+            yield self.download_cid_csv_by_paging_api(
+                SOURCE_URL, download_path=download_path
             )
-            await browser.close()
-        return links
 
-    async def get_cid_file(self, url, download_path) -> ResourceInfo:
-        """Download FERC CID file."""
-        async with async_playwright() as p:
-            browser = await p.webkit.launch()
-            await self.download_file_via_playwright(browser, url, download_path)
-            await browser.close()
+    async def get_last_updated_date(self, page_url: str) -> str:
+        """Get the Data Last Updated date from the FERC data viewer page."""
+        soup = await self.get_soup(page_url)
+        # Find the element that contains the label text
+        label_div = soup.find(
+            lambda t: (
+                isinstance(t, Tag)
+                and t.name == "div"
+                and t.get_text(strip=True) == "Data Last Updated"
+            )
+        )
+        if not label_div:
+            raise RuntimeError("Couldn't find 'Data Last Updated' label div")
 
-        return ResourceInfo(local_path=download_path, partitions={})
+        row = label_div.find_parent("div", class_="row")
+        if not row:
+            raise RuntimeError("Couldn't find parent row for 'Data Last Updated'")
+
+        # extract all text from row and remove the label itself
+        row_text = (
+            row.get_text(" ", strip=True).replace("Data Last Updated", "").strip()
+        )
+
+        match = DATE_LAST_UPDATED_PATTERN.search(row_text)
+        if not match:
+            raise RuntimeError(
+                f"Couldn't find date-like value near 'Data Last Updated'. Row text was: {row_text!r}"
+            )
+
+        return match
+
+    async def download_cid_csv_by_paging_api(
+        self,
+        page_url: str,
+        download_path: Path,
+        timeout_ms: int = 60_000,
+        page_size: int = 100,
+    ) -> ResourceInfo:
+        """Make request for CID data from inside the page and write to CSV."""
+        columns = [
+            "Organization_Name",
+            "CID",
+            "Program",
+            "Company_Website",
+            "Address",
+            "Address2",
+            "City",
+            "State",
+            "Zip",
+        ]
+
+        async with async_playwright() as pw:
+            browser = await pw.webkit.launch(headless=True)
+            page = await browser.new_page()
+            try:
+                await page.goto(
+                    page_url, wait_until="domcontentloaded", timeout=timeout_ms
+                )
+                await page.wait_for_load_state("networkidle", timeout=timeout_ms)
+
+                all_rows: list[dict[str, Any]] = []
+                start = 0
+                total_count: int | None = None
+
+                while True:
+                    payload = {
+                        "startRow": start,
+                        "endRow": start + page_size,
+                        "sortModel": [],
+                        "filterModel": {},
+                        "columns": columns,
+                        "castData": [],
+                    }
+                    # make the request from inside the page
+                    result = await page.evaluate(
+                        """
+    async ({url, payload}) => {
+    const resp = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        credentials: "include",
+    });
+    const text = await resp.text();
+    return { status: resp.status, ok: resp.ok, text };
+    }
+    """,
+                        {"url": DATASET_API_URL, "payload": payload},
+                    )
+
+                    if not result["ok"]:
+                        raise RuntimeError(
+                            f"In-page fetch failed: {result['status']} body head: {result['text'][:300]!r}"
+                        )
+
+                    data = json.loads(result["text"])
+                    rows = data.get("rowData")
+                    if rows is None:
+                        raise RuntimeError(
+                            f"rowData key is not present; unexpected response keys: {list(data.keys())}"
+                        )
+                    if total_count is None and "totalCount" in data:
+                        total_count = int(data.get("totalCount", 0))
+                    # check if there no more data left
+                    if not rows:
+                        break
+
+                    all_rows.extend(rows)
+                    start += page_size
+
+                    # Stop once we’ve reached the total
+                    if total_count is not None and start >= total_count:
+                        break
+
+                df = pd.DataFrame(all_rows)
+                # Order columns (and include any extra columns if they appear)
+                df = df.reindex(
+                    columns=columns + [c for c in df.columns if c not in columns]
+                )
+                df.to_csv(download_path, index=False, encoding="utf-8")
+
+                return ResourceInfo(local_path=download_path, partitions={})
+            finally:
+                await page.close()
+                await browser.close()
