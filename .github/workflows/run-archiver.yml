@@ -161,6 +161,17 @@ jobs:
             ./scripts/make_slack_notification_message.py --summary-files *_run_summary.json --error-files *_log.txt | tee slack-payload.json
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
+      # These steps only run if you requested a Github issue to be created but nothing
+      # changed.
+      - name: Post no-update update to Slack
+        id: slack_no_change_update
+        if: ${{ inputs.create_github_issue == true }}
+        run: |
+          {
+            echo "SLACK_PAYLOAD<<EOF"
+            ./scripts/make_slack_notification_message.py --summary-files *_run_summary.json --error-files *_log.txt | tee slack-payload.json
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
       - name: Post update to pudl-deployment
         if: ${{ inputs.create_github_issue == false }}
         uses: slackapi/slack-github-action@v2.1.1
@@ -181,7 +192,7 @@ jobs:
   make-github-issue:
     # If event is a scheduled run or a workflow run where an issue
     # is requested, create an issue.
-    if: ${{ always() && (github.event_name == 'schedule' || inputs.create_github_issue == true) }}
+    if: ${{ always() && (github.event_name == 'schedule' || inputs.create_github_issue == true) && (needs.archive-notify.outputs. errors != '' || needs.archive-notify.outputs.failures != '' || needs.archive-notify.outputs. changes != '') }}
     runs-on: ubuntu-latest
     needs:
       - archive-run
@@ -212,10 +223,22 @@ jobs:
     env:
       github-url: ${{ needs.make-github-issue.outputs.url }}
     steps:
-      - uses: slackapi/slack-github-action@v2.1.1
+      - name: Post successful archive run
+        if: ${{ needs.make-github-issue.result == 'success' }}
+        uses: slackapi/slack-github-action@v2.1.1
         with:
           method: chat.postMessage
           token: ${{ secrets.PUDL_DEPLOY_SLACK_TOKEN }}
           payload: |
             text: "PUDL data archive run complete: ${{ env.github-url }}"
             channel: "C03FHB9N0PQ"
+      - name: Post skipped announcement to Slack
+        if: ${{ needs.make-github-issue.result == 'skipped' }}
+        uses: slackapi/slack-github-action@v2.1.1
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.PUDL_DEPLOY_SLACK_TOKEN }}
+          payload: |
+            text:  "PUDL data archive run complete.  No new data has been archived, skipping creation of Github issue."
+            channel: "C03FHB9N0PQ"
+
