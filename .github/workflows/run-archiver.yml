@@ -146,9 +146,12 @@ jobs:
             echo 'CHANGES<<DELIM3'
             pixi run ./scripts/make_github_notification.py --summary-files *_run_summary.json --error-files *_log.txt --summary-type change
             echo 'DELIM3'
-            echo 'UNCHANGED<<DELIM4'
-            pixi run ./scripts/make_github_notification.py --summary-files *_run_summary.json --error-files *_log.txt --summary-type unchanged
+            echo 'TIMEDOUT'<<DELIM4'
+            pixi run ./scripts/detect_timeouts.py
             echo 'DELIM4'
+            echo 'UNCHANGED<<DELIM5'
+            pixi run ./scripts/make_github_notification.py --summary-files *_run_summary.json --error-files *_log.txt --summary-type unchanged
+            echo 'DELIM5'
           } | tee -a $GITHUB_OUTPUT
       # These steps only run if no Github issue is requested to be created.
       # The summary will show up in Slack instead.
@@ -168,7 +171,7 @@ jobs:
           method: chat.postMessage
           token: ${{ secrets.PUDL_DEPLOY_SLACK_TOKEN }}
           payload: |
-            text: "PUDL data archive run complete."
+            text: "Run of ${{ inputs.datasets }} archives run complete."
             blocks: ${{ steps.slack_summaries.outputs.SLACK_PAYLOAD }}
             channel: "C03FHB9N0PQ"
 
