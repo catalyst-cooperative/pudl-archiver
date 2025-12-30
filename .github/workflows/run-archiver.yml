@@ -200,6 +200,7 @@ jobs:
           UNCHANGED: ${{ needs.archive-notify.outputs.unchanged }}
         with:
           filename: .github/ISSUE_TEMPLATE/monthly-archive-update.md
+          update_existing: true
       - run: echo "URL=${{ steps.create-issue.outputs.url }}" >> $GITHUB_ENV
     outputs:
       url: ${{ steps.create-issue.outputs.URL}}
