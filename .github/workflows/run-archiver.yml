@@ -146,7 +146,7 @@ jobs:
             echo 'CHANGES<<DELIM3'
             pixi run ./scripts/make_github_notification.py --summary-files *_run_summary.json --error-files *_log.txt --summary-type change
             echo 'DELIM3'
-            echo 'TIMEDOUT'<<DELIM4'
+            echo 'TIMEDOUT<<DELIM4'
             pixi run ./scripts/detect_timeouts.py
             echo 'DELIM4'
             echo 'UNCHANGED<<DELIM5'
