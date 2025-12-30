@@ -30,6 +30,12 @@ If the validation failure is blocking (e.g., file format incorrect, whole datase
 
 {{ env.FAILURES }}
 
+# Timed out archives
+
+The following archives failed due to a timeout of the Github action runner after 6 hours - this is most likely due to server issues on the data provider or Zenodo end, and can be difficult to debug.
+
+{{ env.TIMEDOUT }}
+
 # Other failures
 
 For each run that failed because of another reason (e.g., underlying data changes, code failures), create an issue describing the failure and take necessary steps to resolve it.
