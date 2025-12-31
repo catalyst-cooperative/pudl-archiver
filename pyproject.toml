@@ -91,7 +91,6 @@ ignore = [
   "PD010",  # Use of df.stack()
   "PD013",  # Use of df.unstack()
   "PD015",  # Use of pd.merge() rather than df.merge()
-  "PD901",  # df as variable name
   "RET504", # Ignore unnecessary assignment before return
   "S101",   # Use of assert
 ]
@@ -134,11 +133,15 @@ channel-priority = "strict"
 
 [tool.pixi.pypi-dependencies]
 pudl_archiver = { path = ".", editable = true }
-# Install PUDL from git - pixi will handle its dependencies via pixi.toml
+# Install PUDL from git:
 "catalystcoop.pudl" = { git = "https://github.com/catalyst-cooperative/pudl.git", branch = "pixi-setup" }
-#"catalystcoop.pudl" = { path = "../pudl", editable = true }
+# Install PUDL from a local diretory for convenience during development:
+# "catalystcoop.pudl" = { path = "../pudl", editable = true }
+# furo version on conda-forge is very out of date and it is pure python.
 furo = ">=2025.12.19,<2026"
+# semantic-version is not available on conda-forge.
 semantic-version = ">=2.10.0,<3"
+# Something about the pixi activation script doesn't work when it's installed from conda-forge.
 playwright = ">=1.57.0,<2"
 
 [tool.pixi.environments]
@@ -167,7 +170,7 @@ aiohttp = ">3"
 arelle-release = ">=2.38.0,<3"
 beautifulsoup4 = ">=4.14.3,<5"
 cfgv = ">=3.5.0,<4"
-click = "<8.2"
+click = "<8.2"                          # click version must be kept compatible with PUDL.
 coloredlogs = ">=14.0,<15"
 coverage = ">=7.13.1,<8"
 dask = ">=2025.12.0,<2026"
@@ -175,13 +178,13 @@ deltalake = ">=1.2.1,<2"
 doc8 = ">=2.0.0,<3"
 feedparser = ">=6.0.12,<7"
 frictionless = ">=5.18.1,<6"
-gdal = "==3.12.1"
+gdal = "==3.12.1"                       # GDAL version must match what's in PUDL.
 numba = ">=0.63.1,<0.64"
 numpy = ">=2.3.5,<3"
 pandas = ">=2.3.3,<3"
 pre-commit = ">=4.5.1,<5"
 psycopg2-binary = ">=2.9.10,<3"
-pyarrow = "<21"
+pyarrow = "<21"                         # pyarrow version constraints must match what's in PUDL.
 pydantic = ">=2.12.5,<3"
 pydocstyle = ">=6.3.0,<7"
 pytest = ">=9.0.2,<10"
