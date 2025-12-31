@@ -1,41 +1,32 @@
 [project]
 name = "pudl_archiver"
 version = "0.2.0"
-authors = [{ name = "PUDL", email = "pudl@catalyst.coop" }]
+authors = [{ name = "Catalyst Cooperative", email = "pudl@catalyst.coop" }]
 requires-python = ">=3.13,<3.14"
+license = { file = "LICENSE.txt" }
+readme = { file = "README.md", content-type = "text/markdown" }
 
 dependencies = []
-
-classifiers = [
-  "Development Status :: 3 - Alpha",
-  "Environment :: Console",
-  "License :: OSI Approved :: MIT License",
-  "Natural Language :: English",
-  "Operating System :: OS Independent",
-  "Programming Language :: Python",
-  "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.13",
-]
 
 [project.scripts]
 pudl_archiver = "pudl_archiver.cli:main"
 
 [build-system]
-requires = ["setuptools>=75"]
-build-backend = "setuptools.build_meta"
+build-backend = "hatchling.build"
+requires = ["hatchling"]
 
 [tool.doc8]
 max-line-length = 88
 ignore-path = ["docs/_build"]
 
-[tool.pytest.ini_options]
-testpaths = "./"
+[tool.pytest]
+minversion = "9.0"
+testpaths = ["./"]
 filterwarnings = [
   "ignore:distutils Version classes are deprecated:DeprecationWarning",
   "ignore:Creating a LegacyVersion:DeprecationWarning:pkg_resources[.*]",
 ]
-addopts = "--verbose"
+addopts = ["--verbose"]
 log_format = "%(asctime)s [%(levelname)8s] %(name)s:%(lineno)s %(message)s"
 log_date_format = "%Y-%m-%d %H:%M:%S"
 log_cli = true
@@ -209,3 +200,6 @@ types-requests = ">=2.32.4.20250913,<3"
 
 [tool.pixi.activation]
 scripts = ["scripts/check_playwright_installation.sh"]
+# Prevents every single pixi run/install invocation from updating the lockfile.
+# Equivalent to `pixi install --locked` or `pixi run --locked`.
+env = { PIXI_LOCKED = "true" }
