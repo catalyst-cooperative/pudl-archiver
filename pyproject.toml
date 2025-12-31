@@ -2,7 +2,7 @@
 name = "pudl_archiver"
 version = "0.2.0"
 authors = [{ name = "Catalyst Cooperative", email = "pudl@catalyst.coop" }]
-requires-python = ">=3.13,<3.14"
+requires-python = ">=3.13"
 license = { file = "LICENSE.txt" }
 readme = { file = "README.md", content-type = "text/markdown" }
 
@@ -121,22 +121,16 @@ inline-quotes = "double"
 multiline-quotes = "double"
 
 [tool.pixi.workspace]
-channels = ["conda-forge"]
-platforms = [
-  "linux-64",
-  "osx-64",
-  "osx-arm64",
-  # The google-cloud-sdk conda package doesn't support Windows
-  # "win-64",
+channels = [
+  "https://prefix.dev/conda-forge",
+  "https://prefix.dev/pixi-build-backends",
 ]
+platforms = ["linux-64", "osx-64", "osx-arm64"]
 channel-priority = "strict"
+preview = ["pixi-build"]
 
 [tool.pixi.pypi-dependencies]
 pudl_archiver = { path = ".", editable = true }
-# Install PUDL from git:
-"catalystcoop.pudl" = { git = "https://github.com/catalyst-cooperative/pudl.git", branch = "pixi-setup" }
-# Install PUDL from a local diretory for convenience during development:
-# "catalystcoop.pudl" = { path = "../pudl", editable = true }
 # furo version on conda-forge is very out of date and it is pure python.
 furo = ">=2025.12.19,<2026"
 # semantic-version is not available on conda-forge.
@@ -169,8 +163,11 @@ ci = [
 aiohttp = ">3"
 arelle-release = ">=2.38.0,<3"
 beautifulsoup4 = ">=4.14.3,<5"
+# Install PUDL as a conda package from git:
+"catalystcoop.pudl" = { git = "https://github.com/catalyst-cooperative/pudl.git", branch = "pixi-setup" }
+# Install PUDL from a local directory for convenience during development:
+# "catalystcoop.pudl" = { path = "../pudl" }
 cfgv = ">=3.5.0,<4"
-click = "<8.2"                          # click version must be kept compatible with PUDL.
 coloredlogs = ">=14.0,<15"
 coverage = ">=7.13.1,<8"
 dask = ">=2025.12.0,<2026"
@@ -178,13 +175,12 @@ deltalake = ">=1.2.1,<2"
 doc8 = ">=2.0.0,<3"
 feedparser = ">=6.0.12,<7"
 frictionless = ">=5.18.1,<6"
-gdal = "==3.12.1"                       # GDAL version must match what's in PUDL.
 numba = ">=0.63.1,<0.64"
 numpy = ">=2.3.5,<3"
 pandas = ">=2.3.3,<3"
 pre-commit = ">=4.5.1,<5"
 psycopg2-binary = ">=2.9.10,<3"
-pyarrow = "<21"                         # pyarrow version constraints must match what's in PUDL.
+pyarrow = ">=20"
 pydantic = ">=2.12.5,<3"
 pydocstyle = ">=6.3.0,<7"
 pytest = ">=9.0.2,<10"
@@ -203,6 +199,8 @@ types-requests = ">=2.32.4.20250913,<3"
 
 [tool.pixi.activation]
 scripts = ["scripts/check_playwright_installation.sh"]
+
+[tool.pixi.activation.env]
 # Prevents every single pixi run/install invocation from updating the lockfile.
 # Equivalent to `pixi install --locked` or `pixi run --locked`.
-env = { PIXI_LOCKED = "true" }
+PIXI_LOCKED = "true"
