@@ -4,38 +4,7 @@ version = "0.2.0"
 authors = [{ name = "PUDL", email = "pudl@catalyst.coop" }]
 requires-python = ">=3.13,<3.14"
 
-dependencies = [
-  "catalystcoop.pudl @ git+https://github.com/catalyst-cooperative/pudl.git",
-  "arelle-release>=2.38.0,<3",
-  "beautifulsoup4>=4.14.3,<5",
-  "cfgv>=3.5.0,<4",
-  "coloredlogs>=14.0,<15",
-  "coverage>=7.13.1,<8",
-  "dask>=2025.12.0,<2026",
-  "deltalake>=1.2.1,<2",
-  "doc8>=2.0.0,<3",
-  "feedparser>=6.0.12,<7",
-  "frictionless>=5.18.1,<6",
-  "furo>=2025.12.19,<2026",
-  "playwright>=1.57.0,<2",
-  "pre-commit>=4.5.1,<5",
-  "pydantic>=2.12.5,<3",
-  "pydocstyle>=6.3.0,<7",
-  "pytest-asyncio>=1.3.0,<2",
-  "pytest-console-scripts>=1.4.1,<2",
-  "pytest-cov>=7.0.0,<8",
-  "pytest-mock>=3.15.1,<4",
-  "pytest>=9.0.2,<10",
-  "python-dotenv>=1.2.1,<2",
-  "pyyaml>=6.0.3,<7",
-  "ruff>=0.14.10,<0.15",
-  "semantic-version>=2.10.0,<3",
-  "sphinx-autoapi>=3.6.1,<4",
-  "sphinx-issues>=5.0.1,<6",
-  "sphinx>=9.0.4,<10",
-  "tqdm>=4.67.1,<5",
-  "types-requests>=2.32.4.20250913,<3",
-]
+dependencies = []
 
 classifiers = [
   "Development Status :: 3 - Alpha",
@@ -174,6 +143,12 @@ channel-priority = "strict"
 
 [tool.pixi.pypi-dependencies]
 pudl_archiver = { path = ".", editable = true }
+# Install PUDL from git - pixi will handle its dependencies via pixi.toml
+"catalystcoop.pudl" = { git = "https://github.com/catalyst-cooperative/pudl.git", branch = "pixi-setup" }
+#"catalystcoop.pudl" = { path = "../pudl", editable = true }
+furo = ">=2025.12.19,<2026"
+semantic-version = ">=2.10.0,<3"
+playwright = ">=1.57.0,<2"
 
 [tool.pixi.environments]
 default = { solve-group = "default" }
@@ -197,11 +172,40 @@ ci = [
 ]
 
 [tool.pixi.dependencies]
+aiohttp = ">3"
+arelle-release = ">=2.38.0,<3"
+beautifulsoup4 = ">=4.14.3,<5"
+cfgv = ">=3.5.0,<4"
+click = "<8.2"
+coloredlogs = ">=14.0,<15"
+coverage = ">=7.13.1,<8"
+dask = ">=2025.12.0,<2026"
+deltalake = ">=1.2.1,<2"
+doc8 = ">=2.0.0,<3"
+feedparser = ">=6.0.12,<7"
+frictionless = ">=5.18.1,<6"
 gdal = "==3.12.1"
-psycopg2-binary = ">=2.9.10,<3"
 numba = ">=0.63.1,<0.64"
-pandas = ">=2.3.3,<3"
 numpy = ">=2.3.5,<3"
+pandas = ">=2.3.3,<3"
+pre-commit = ">=4.5.1,<5"
+psycopg2-binary = ">=2.9.10,<3"
+pyarrow = "<21"
+pydantic = ">=2.12.5,<3"
+pydocstyle = ">=6.3.0,<7"
+pytest = ">=9.0.2,<10"
+pytest-asyncio = ">=1.3.0,<2"
+pytest-console-scripts = ">=1.4.1,<2"
+pytest-cov = ">=7.0.0,<8"
+pytest-mock = ">=3.15.1,<4"
+python-dotenv = ">=1.2.1,<2"
+pyyaml = ">=6.0.3,<7"
+ruff = ">=0.14.10,<0.15"
+sphinx = ">=9.0.4,<10"
+sphinx-autoapi = ">=3.6.1,<4"
+sphinx-issues = ">=5.0.1,<6"
+tqdm = ">=4.67.1,<5"
+types-requests = ">=2.32.4.20250913,<3"
 
 [tool.pixi.activation]
 scripts = ["scripts/check_playwright_installation.sh"]
