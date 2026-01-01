@@ -139,29 +139,48 @@ playwright = ">=1.57.0,<2"
 default = { solve-group = "default" }
 
 [tool.pixi.tasks]
-pre-commit-install = "pre-commit install"
-pre-commit-autoupdate = "pre-commit autoupdate"
-ruff = "ruff check ./"
-pre-commit = "pre-commit run --all-files --show-diff-on-failure check-merge-conflict; pre-commit run --all-files --show-diff-on-failure check-yaml; pre-commit run --all-files --show-diff-on-failure check-case-conflict; pre-commit run --all-files --show-diff-on-failure debug-statements; pre-commit run --all-files --show-diff-on-failure name-tests-test; pre-commit run --all-files taplo-format"
-
-unit = "pytest --cov-append --cov=src/pudl_archiver --cov-report=xml --doctest-modules src/pudl_archiver tests/unit"
-integration = "pytest --cov-append --cov=src/pudl_archiver --cov-report=xml --doctest-modules src/pudl_archiver tests/integration"
-coverage = "coverage report --sort=cover"
-
-lint = [{ task = "ruff" }, { task = "pre-commit" }]
-ci = [
-  { task = "lint" },
-  { task = "unit" },
-  { task = "integration" },
-  { task = "coverage" },
-]
+pre-commit-install = { cmd = "pre-commit install", description = "Install git pre-commit hooks" }
+pre-commit-run = { cmd = """
+pre-commit run --all-files --show-diff-on-failure check-merge-conflict; \
+pre-commit run --all-files --show-diff-on-failure check-yaml; \
+pre-commit run --all-files --show-diff-on-failure check-case-conflict; \
+pre-commit run --all-files --show-diff-on-failure debug-statements; \
+pre-commit run --all-files --show-diff-on-failure name-tests-test; \
+pre-commit run --all-files taplo-format
+""", description = "Run selected pre-commit hooks" }
+pre-commit-autoupdate = { cmd = "pre-commit autoupdate", description = "Update all pre-commit hooks" }
+ruff = { cmd = "ruff check ./", description = "Run ruff linter" }
+unit = { cmd = """
+pytest \
+    --cov-append \
+    --cov=src/pudl_archiver \
+    --cov-report=xml \
+    --doctest-modules \
+    src/pudl_archiver tests/unit
+""", description = "Run unit tests with coverage" }
+integration = { cmd = """
+pytest \
+    --cov-append \
+    --cov=src/pudl_archiver \
+    --cov-report=xml \
+    --doctest-modules \
+    tests/integration
+""", description = "Run integration tests with coverage" }
+coverage = { cmd = "coverage report --sort=cover", description = "Report test coverage" }
+lint = { depends-on = ["ruff", "pre-commit"], description = "Run all linters" }
+ci = { depends-on = [
+  "lint",
+  "unit",
+  "integration",
+  "coverage",
+], description = "Run full CI suite" }
 
 [tool.pixi.dependencies]
 aiohttp = ">3"
 arelle-release = ">=2.38.0,<3"
 beautifulsoup4 = ">=4.14.3,<5"
 # Install PUDL as a conda package from git:
-"catalystcoop.pudl" = { git = "https://github.com/catalyst-cooperative/pudl.git", branch = "pixi-setup" }
+"catalystcoop.pudl" = { git = "https://github.com/catalyst-cooperative/pudl.git" }
 # Install PUDL from a local directory for convenience during development:
 # "catalystcoop.pudl" = { path = "../pudl" }
 cfgv = ">=3.5.0,<4"
