@@ -6,8 +6,6 @@ requires-python = ">=3.13"
 license = { file = "LICENSE.txt" }
 readme = { file = "README.md", content-type = "text/markdown" }
 
-dependencies = []
-
 [project.scripts]
 pudl_archiver = "pudl_archiver.cli:main"
 
@@ -129,11 +127,11 @@ preview = ["pixi-build"]
 [tool.pixi.pypi-dependencies]
 pudl_archiver = { path = ".", editable = true }
 # furo version on conda-forge is very out of date and it is pure python.
-furo = ">=2025.12.19,<2026"
+furo = ">=2025.12.19, <2026"
 # semantic-version is not available on conda-forge.
-semantic-version = ">=2.10.0,<3"
+semantic-version = ">=2.10.0, <3"
 # Something about the pixi activation script doesn't work when it's installed from conda-forge.
-playwright = ">=1.57.0,<2"
+playwright = ">=1.57.0, <2"
 
 [tool.pixi.environments]
 default = { solve-group = "default" }
@@ -179,7 +177,7 @@ ci = { depends-on = [
 ], description = "Run full CI suite" }
 
 [tool.pixi.dependencies]
-aiohttp = ">3"
+aiohttp = ">=3.13.2,<4"
 arelle-release = ">=2.38.0,<3"
 beautifulsoup4 = ">=4.14.3,<5"
 # Install PUDL as a conda package from git:
@@ -199,7 +197,7 @@ numpy = ">=2.3.5,<3"
 pandas = ">=2.3.3,<3"
 pre-commit = ">=4.5.1,<5"
 psycopg2-binary = ">=2.9.10,<3"
-pyarrow = ">=20"
+pyarrow = ">=20.0.0,<21"
 pydantic = ">=2.12.5,<3"
 pydocstyle = ">=6.3.0,<7"
 pytest = ">=9.0.2,<10"
@@ -215,7 +213,7 @@ sphinx-autoapi = ">=3.6.1,<4"
 sphinx-issues = ">=5.0.1,<6"
 tqdm = ">=4.67.1,<5"
 types-requests = ">=2.32.4.20250913,<3"
-pyproj = "*"
+pyproj = ">=3.7.2,<4"
 
 [tool.pixi.activation]
 scripts = ["scripts/check_playwright_installation.sh"]

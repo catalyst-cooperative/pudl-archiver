@@ -10660,7 +10660,7 @@ packages:
   license: BSD-3-Clause
   license_family: BSD
   purls:
-  - pkg:pypi/pandas?source=hash-mapping
+  - pkg:pypi/pandas?source=compressed-mapping
   size: 14912799
   timestamp: 1764615091147
 - conda: https://conda.anaconda.org/conda-forge/osx-64/pandas-2.3.3-py313h2f264a9_1.conda
@@ -11128,7 +11128,7 @@ packages:
   license: MIT
   license_family: MIT
   purls:
-  - pkg:pypi/pre-commit?source=hash-mapping
+  - pkg:pypi/pre-commit?source=compressed-mapping
   size: 200827
   timestamp: 1765937577534
 - conda: https://conda.anaconda.org/conda-forge/linux-64/proj-9.7.1-h99ae125_0.conda
@@ -11495,7 +11495,7 @@ packages:
 - pypi: ./
   name: pudl-archiver
   version: 0.2.0
-  sha256: 8cd6ec5f6ddae789afbf6627376cc45a333826a5cc551472748ec5f5de9a8ad9
+  sha256: fa0963277c675ef7e3399a5af846cad0026587ca151819221ba81c6ec40c71c1
   requires_python: '>=3.13'
 - conda: https://conda.anaconda.org/conda-forge/linux-64/pyarrow-20.0.0-py313h78bf25f_0.conda
   sha256: 61b27da2d9512f2c0ddad4a86725fa1d04f482b6bad374f3535d8bf21ea4b84e
@@ -12073,7 +12073,7 @@ packages:
   license: Apache-2.0
   license_family: APACHE
   purls:
-  - pkg:pypi/pytest-asyncio?source=hash-mapping
+  - pkg:pypi/pytest-asyncio?source=compressed-mapping
   size: 39223
   timestamp: 1762797319837
 - conda: https://conda.anaconda.org/conda-forge/noarch/pytest-console-scripts-1.4.1-pyhd8ed1ab_1.conda
@@ -12857,7 +12857,7 @@ packages:
   license: MIT
   license_family: MIT
   purls:
-  - pkg:pypi/ruff?source=hash-mapping
+  - pkg:pypi/ruff?source=compressed-mapping
   size: 11472103
   timestamp: 1766094973645
 - conda: https://conda.anaconda.org/conda-forge/osx-64/ruff-0.14.10-hb17bafe_0.conda
