@@ -3,6 +3,7 @@
 import json
 import logging
 from pathlib import Path
+from typing import Any
 
 import aiohttp
 
@@ -23,15 +24,7 @@ def _load_failed_run_summary(
     failed_run_summary = None
     if run_summary_json is not None:
         with Path(run_summary_json).open() as f:
-            # A run can archive more than one dataset at a time, in which case the JSON
-            # may contain a summary for multiple datasets, so we need to ensure we
-            # are getting the correct summary.
-            [parsed_summary] = [
-                summary_dict
-                for summary_dict in json.load(f)
-                if summary_dict["dataset_name"] == requested_dataset
-            ]
-            failed_run_summary = RunSummary.model_validate(parsed_summary)
+            failed_run_summary = RunSummary.model_validate(json.load(f))
     return failed_run_summary
 
 
@@ -77,11 +70,14 @@ async def orchestrate_run(
     downloader: AbstractDatasetArchiver,
     run_settings: RunSettings,
     session: aiohttp.ClientSession,
+    depositor_args: dict[str, Any],
 ) -> tuple[RunSummary, PublishedDeposition | None]:
     """Use downloader and depositor to archive a dataset."""
     resources = {}
     # Get datapackage from previous version if there is one
-    draft, original_datapackage = await get_deposition(dataset, session, run_settings)
+    draft, original_datapackage = await get_deposition(
+        dataset, session, run_settings, depositor_args
+    )
 
     # Get partitions from previous run if retrying a run
     failed_run_summary = _load_failed_run_summary(dataset, run_settings.retry_run)

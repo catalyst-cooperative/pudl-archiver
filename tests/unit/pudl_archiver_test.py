@@ -2,7 +2,7 @@
 
 import pytest
 
-from pudl_archiver import archive_datasets
+from pudl_archiver import archive_dataset
 from pudl_archiver.archivers.validate import RunSummary, ValidationTestResult
 from pudl_archiver.utils import RunSettings
 
@@ -54,7 +54,7 @@ def failed_run():
 
 
 @pytest.mark.asyncio
-async def test_archive_datasets(
+async def test_archive_dataset(
     successful_run: RunSummary,
     failed_run: RunSummary,
     mocker,
@@ -79,13 +79,13 @@ async def test_archive_datasets(
         return_value=(successful_run, "published")
     )
     mocker.patch("pudl_archiver.orchestrate_run", new=mocked_orchestrator_success)
-    await archive_datasets(["eia860"], run_settings=settings)
-    mocked_json_dump.assert_called_once_with([successful_run.model_dump()], indent=2)
+    await archive_dataset("eia860", run_settings=settings, depositor_args={})
+    mocked_json_dump.assert_called_once_with(successful_run.model_dump(), indent=2)
 
     # Set run() return value to failure summary and test
     mocked_json_dump.reset_mock()
     mocked_orchestrator_fail = mocker.AsyncMock(return_value=(failed_run, "published"))
     mocker.patch("pudl_archiver.orchestrate_run", new=mocked_orchestrator_fail)
     with pytest.raises(RuntimeError):
-        await archive_datasets(["eia860"], run_settings=settings)
-    mocked_json_dump.assert_called_once_with([failed_run.model_dump()], indent=2)
+        await archive_dataset("eia860", run_settings=settings, depositor_args={})
+    mocked_json_dump.assert_called_once_with(failed_run.model_dump(), indent=2)

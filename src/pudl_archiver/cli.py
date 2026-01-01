@@ -1,128 +1,155 @@
 """A script for archiving raw PUDL data on Zenodo."""
 
-import argparse
 import asyncio
 import logging
-import typing
 
+import click
 import coloredlogs
 from dotenv import load_dotenv
 
-from pudl_archiver import ARCHIVERS, archive_datasets
-from pudl_archiver.utils import Depositors, RunSettings
+from pudl_archiver import ARCHIVERS, archive_dataset
+from pudl_archiver.utils import RunSettings
 
 logger = logging.getLogger("catalystcoop.pudl_archiver")
 
 
-def parse_main(args=None):
-    """Process base commands from the CLI."""
-    parser = argparse.ArgumentParser(description="Upload PUDL data archives to Zenodo")
-    parser.add_argument(
-        "--datasets",
-        nargs="*",
-        help="Name of the Zenodo deposition.",
-        choices=sorted(ARCHIVERS.keys()),
-    )
-    parser.add_argument(
-        "--list",
-        action="store_true",
-        help="List all available archivers.",
-    )
-    parser.add_argument(
-        "--only-years",
-        nargs="*",
-        help="Years to download data for. Supported datasets: censusdp1tract, censuspep, "
-        "eia176, eia191, eia757a, eia860, eia860m, eia861, eia923, eia930, "
-        "eiaaeo, eiamecs, eiawater, eiasteo, epacamd_eia, epacems, epaegrid, ferc1, ferc2, "
-        "ferc6, ferc60, ferc714, mshamines, nrelatb, phmsagas, usgsuswtdb",
-        type=int,
-    )
-    parser.add_argument(
-        "--all",
-        action="store_true",
-        help="Run all defined archivers.",
-    )
-    parser.add_argument(
-        "--sandbox",
-        action="store_true",
-        help="Use Zenodo sandbox server",
-    )
-    parser.add_argument(
-        "--initialize",
-        action="store_true",
-        help="Initialize new deposition by reserving a DOI. If used with the fsspec"
-        " depositor, this will try to create the directory at the specified deposition-path.",
-    )
-    parser.add_argument(
-        "--clobber-unchanged",
-        action="store_true",
-        help="Delete draft deposition if unchanged.",
-    )
-    parser.add_argument(
-        "--summary-file",
-        type=str,
-        help="Generate a JSON archive run summary",
-    )
-    parser.add_argument(
-        "--auto-publish",
-        action="store_true",
-        help="Automatically publish a deposition, rather than requiring manual review before publishing.",
-    )
-    parser.add_argument(
-        "--deposition-path",
-        help="Configurable base path used by `fsspec` depositor. Expects paths in `fsspec` compatible "
-        "format like: 'file://local/path/to/folder' or file:///absolute/path/to/folder or "
-        "gs://path/to/gcs_bucket",
-        default=None,
-    )
-    parser.add_argument(
-        "--refresh-metadata",
-        action="store_true",
-        help="Regenerate metadata from PUDL data source rather than existing archived metadata.",
-    )
-    parser.add_argument(
-        "--depositor",
-        type=str,
-        help="Specifies what backend engine will be used for archive storage. Current allowable options include zenodo and fsspec",
-        choices=list(typing.get_args(Depositors)),
-        default="zenodo",
-    )
-    parser.add_argument(
-        "--retry-run",
-        help="Specify a Run Summary JSON file that contains partitions to retry."
-        " This Run Summary JSON file should be output by a failed previous run of"
-        " the archiver. This file will contain a list of the failed and successful"
-        " partitions, so we can only re-run the partitions that failed. This assumes"
-        " that all of the files downloaded by the previous run still exist in an open"
-        " draft, and that you are running the archiver with the same depositor settings."
-        " If the state of the draft deposition has changed since the previous run, then"
-        " retrying that run may produce unexpected results.",
-        default=None,
-    )
-    return parser.parse_args(args)
-
-
-async def archiver_entry(args=None):
-    """Run desired archivers."""
+@click.group
+def pudl_archiver():
+    """Top level pudl_archiver command."""
     load_dotenv()
     logger.setLevel(logging.INFO)
     log_format = "%(asctime)s [%(levelname)8s] %(name)s:%(lineno)s %(message)s"
     coloredlogs.install(fmt=log_format, level=logging.INFO, logger=logger)
-    args = parse_main(args)
 
-    if args.list:
-        for name in sorted(ARCHIVERS.keys()):
-            print(name)
-        return
 
-    datasets = args.datasets
-    if args.all:
-        datasets = ARCHIVERS.keys()
-    del args.all
+@pudl_archiver.command
+def list_datasets():
+    """Command to list all datasets for which there is an archiver."""
+    for name in sorted(ARCHIVERS.keys()):
+        print(name)
 
-    await archive_datasets(datasets=datasets, run_settings=RunSettings(**vars(args)))
+
+@pudl_archiver.group
+def archive():
+    """Group for archive commands."""
+    pass
+
+
+# Define a set of shared options for the archive group of commands
+initialize_option = click.option(
+    "--initialize",
+    is_flag=True,
+    help="Initialize new deposition by reserving a DOI. If used with the fsspec"
+    " depositor, this will try to create the directory at the specified deposition-path.",
+)
+auto_publish_option = click.option(
+    "--auto-publish",
+    is_flag=True,
+    help="Automatically publish a deposition, rather than requiring manual review before publishing.",
+)
+clobber_unchanged_option = click.option(
+    "--clobber-unchanged",
+    is_flag=True,
+    help="Delete draft deposition if unchanged.",
+)
+refresh_metadata_option = click.option(
+    "--refresh-metadata",
+    is_flag=True,
+    help="Regenerate metadata from PUDL data source rather than existing archived metadata.",
+)
+only_years_option = click.option(
+    "--only-years",
+    "-y",
+    multiple=True,
+    type=int,
+    help="Years to download data for. Supported datasets: censusdp1tract, censuspep, "
+    "eia176, eia191, eia757a, eia860, eia860m, eia861, eia923, eia930, "
+    "eiaaeo, eiamecs, eiawater, eiasteo, epacamd_eia, epacems, epaegrid, ferc1, ferc2, "
+    "ferc6, ferc60, ferc714, mshamines, nrelatb, phmsagas, usgsuswtdb",
+)
+dataset_argument = click.argument("dataset", type=str)
+
+
+@archive.command
+@click.option("--sandbox", is_flag=True, help="Use Zenodo sandbox server")
+@initialize_option
+@auto_publish_option
+@clobber_unchanged_option
+@refresh_metadata_option
+@only_years_option
+@dataset_argument
+def zenodo(
+    sandbox: bool,
+    initialize: bool,
+    auto_publish: bool,
+    clobber_unchanged: bool,
+    refresh_metadata: bool,
+    only_years: tuple[int],
+    dataset: str,
+):
+    """Archive DATASET to zenodo."""
+    asyncio.run(
+        archive_dataset(
+            dataset=dataset,
+            run_settings=RunSettings(
+                initialize=initialize,
+                retry_run=None,
+                refresh_metadata=refresh_metadata,
+                auto_publish=auto_publish,
+                clobber_unchanged=clobber_unchanged,
+                summary_file=f"{dataset}_run_summary.json",
+                only_years=only_years,
+                depositor="zenodo",
+            ),
+            depositor_args={"sandbox": sandbox},
+        )
+    )
+
+
+@archive.command
+@initialize_option
+@auto_publish_option
+@clobber_unchanged_option
+@refresh_metadata_option
+@only_years_option
+@dataset_argument
+@click.argument(
+    "deposition-path",
+    type=str,
+)
+def fsspec(
+    initialize: bool,
+    auto_publish: bool,
+    clobber_unchanged: bool,
+    refresh_metadata: bool,
+    only_years: tuple[int],
+    dataset: str,
+    deposition_path: str,
+):
+    """Archive DATASET to DEPOSITION_PATH.
+
+    DEPOSITION_PATH is a configurable path used by the fsspec depositor that should
+    be in an fsspec compatible format like: 'file://local/path/to/folder' or
+    'file:///absolute/path/to/folder' or 'gs://path/to/gcs_bucket'
+    """
+    asyncio.run(
+        archive_dataset(
+            dataset=dataset,
+            run_settings=RunSettings(
+                initialize=initialize,
+                retry_run=None,
+                refresh_metadata=refresh_metadata,
+                auto_publish=auto_publish,
+                clobber_unchanged=clobber_unchanged,
+                summary_file=f"{dataset}_run_summary.json",
+                only_years=only_years,
+                depositor="fsspec",
+            ),
+            depositor_args={"deposition_path": deposition_path},
+        )
+    )
 
 
 def main():
     """Kick off async script."""
-    asyncio.run(archiver_entry())
+    pudl_archiver()

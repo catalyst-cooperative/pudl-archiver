@@ -157,7 +157,6 @@ class FsspecAPIClient(DepositorAPIClient):
     async def initialize_client(
         cls,
         session: aiohttp.ClientSession,
-        sandbox: bool,
         deposition_path: str,
     ) -> "FsspecAPIClient":
         """Return initialized fsspec api client."""
@@ -166,11 +165,6 @@ class FsspecAPIClient(DepositorAPIClient):
             "It currently does not support versioning so any existing archive will be overwritten "
             "after publishing. Please use with caution."
         )
-        if sandbox:
-            raise NotImplementedError(
-                "There is no sandbox available for fsspec archiver. "
-                "An alternative for testing would be to use the 'local' depositor backend."
-            )
         return cls(path=deposition_path)
 
     async def get_deposition(self, dataset_id: str):
