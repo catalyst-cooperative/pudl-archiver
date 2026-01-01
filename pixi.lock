@@ -11495,7 +11495,7 @@ packages:
 - pypi: ./
   name: pudl-archiver
   version: 0.2.0
-  sha256: 8160666793d4996e57e50f012ab6f891f4d1c7acd4912af3f8c86add9304bc80
+  sha256: 8cd6ec5f6ddae789afbf6627376cc45a333826a5cc551472748ec5f5de9a8ad9
   requires_python: '>=3.13'
 - conda: https://conda.anaconda.org/conda-forge/linux-64/pyarrow-20.0.0-py313h78bf25f_0.conda
   sha256: 61b27da2d9512f2c0ddad4a86725fa1d04f482b6bad374f3535d8bf21ea4b84e

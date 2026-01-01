@@ -167,7 +167,10 @@ pytest \
     tests/integration
 """, description = "Run integration tests with coverage" }
 coverage = { cmd = "coverage report --sort=cover", description = "Report test coverage" }
-lint = { depends-on = ["ruff", "pre-commit"], description = "Run all linters" }
+lint = { depends-on = [
+  "ruff",
+  "pre-commit-run",
+], description = "Run all linters" }
 ci = { depends-on = [
   "lint",
   "unit",
@@ -212,6 +215,7 @@ sphinx-autoapi = ">=3.6.1,<4"
 sphinx-issues = ">=5.0.1,<6"
 tqdm = ">=4.67.1,<5"
 types-requests = ">=2.32.4.20250913,<3"
+pyproj = "*"
 
 [tool.pixi.activation]
 scripts = ["scripts/check_playwright_installation.sh"]
