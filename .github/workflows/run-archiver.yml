@@ -161,17 +161,6 @@ jobs:
             ./scripts/make_slack_notification_message.py --summary-files *_run_summary.json --error-files *_log.txt | tee slack-payload.json
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
-      # These steps only run if you requested a Github issue to be created but nothing
-      # changed.
-      - name: Post no-update update to Slack
-        id: slack_no_change_update
-        if: ${{ inputs.create_github_issue == true }}
-        run: |
-          {
-            echo "SLACK_PAYLOAD<<EOF"
-            ./scripts/make_slack_notification_message.py --summary-files *_run_summary.json --error-files *_log.txt | tee slack-payload.json
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
       - name: Post update to pudl-deployment
         if: ${{ inputs.create_github_issue == false }}
         uses: slackapi/slack-github-action@v2.1.1
