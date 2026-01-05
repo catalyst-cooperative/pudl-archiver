@@ -22,7 +22,7 @@ jobs:
       - name: Update lockfiles and install
         run: |
           set -o pipefail
-          pixi upgrade --json --exclude gdal | pixi exec pixi-diff-to-markdown >> diff.md
+          pixi upgrade --json | pixi exec pixi-diff-to-markdown >> diff.md
           pixi reinstall --all
       - name: Generate GH token
         uses: actions/create-github-app-token@v2
