@@ -5,6 +5,10 @@ from pathlib import Path
 from typing import Literal
 from urllib.parse import urljoin
 
+from aiobotocore.session import get_session
+from botocore import UNSIGNED
+from botocore.config import Config
+
 from pudl_archiver.archivers.classes import (
     AbstractDatasetArchiver,
     ArchiveAwaitable,
@@ -24,35 +28,69 @@ class NrelAtbArchiver(AbstractDatasetArchiver):
     """NREL ATB for Electricity archiver."""
 
     name = "nrelatb"
+    bucket = "oedi-data-lake"
+    folder = "ATB"
 
     async def get_resources(self) -> ArchiveAwaitable:
         """Using years gleaned from LINK_URL, iterate and download all files."""
-        link_pattern = re.compile(r"parquet%2F(\d{4})")
-        # Even though we grab both CSV and Parquet data, the years should match
-        # here. Using just Parquet to get the year range from the
-        # hyperlinks is just fine.
+        session = get_session()
+
+        # The links to these files no longer appear on the webpage, so we
+        # use S3 to get the entire list of the bucket contents. To avoid
+        # adding additional methods to handle botocore objects, we continue to
+        # download these files through HTTPS.
+        async with session.create_client(
+            "s3", config=Config(signature_version=UNSIGNED)
+        ) as client:
+            paginator = client.get_paginator("list_objects_v2")
+            all_files = []
+            async for result in paginator.paginate(
+                Bucket=self.bucket, Prefix=self.folder
+            ):
+                results = result.get("Contents", [])
+                files = [
+                    item["Key"] for item in results if not item["Key"].endswith("/")
+                ]
+                all_files.extend(files)
+
+        # Since we no longer need this, we can close the client.
+        await client.close()
+
+        # For each ATB type, we get the list of years with data from these links
+        # We'll create one file per atb_type per year.
         atb_types = ["electricity", "transportation"]
         for atb_type in atb_types:
-            base_url = f"{S3_VIEWER_BASE_URL}{atb_type}%2Fparquet%2F"
-            for link in await self.get_hyperlinks(base_url, link_pattern):
-                matches = link_pattern.search(link)
-                if not matches:
-                    continue
-                year = int(matches.group(1))
-                # The default base url to grab the excel files works most of the time... but
-                # many of the electricity years requires bespoke urls
-                year_excel_base_url = f"https://atb.nrel.gov/{atb_type}/{year}/data"
-                if (atb_type == "electricity") and (year <= 2022):
-                    year_to_excel_url = {
-                        2022: "https://data.openei.org/submissions/5716",
-                        2021: "https://data.openei.org/submissions/4129",
-                        2020: f"https://atb-archive.nrel.gov/{atb_type}/{year}/data",
-                        2019: f"https://atb-archive.nrel.gov/{atb_type}/{year}/data",
-                    }
-                    year_excel_base_url = year_to_excel_url[year]
+            # First, get all relevant S3 links and use these
+            # to ascertain the year range of this dataset
+            s3_links = [file for file in all_files if atb_type in file]
+            link_pattern = re.compile(r"(parquet|csv)\/(\d{4})")
+            matches = [
+                link_pattern.search(link)
+                for link in s3_links
+                if link_pattern.search(link)
+            ]
+            # Get the set of years for iteration
+            years = {int(match.group(2)) for match in matches}
+
+            # Then, download the files for each year
+            for year in years:
                 if self.valid_year(year):
+                    # The default base url to grab the excel files works most of the time... but
+                    # many of the electricity years requires bespoke urls
+                    year_excel_base_url = f"https://atb.nrel.gov/{atb_type}/{year}/data"
+                    if (atb_type == "electricity") and (year <= 2022):
+                        year_to_excel_url = {
+                            2022: "https://data.openei.org/submissions/5716",
+                            2021: "https://data.openei.org/submissions/4129",
+                            2020: f"https://atb-archive.nrel.gov/{atb_type}/{year}/data",
+                            2019: f"https://atb-archive.nrel.gov/{atb_type}/{year}/data",
+                        }
+                        year_excel_base_url = year_to_excel_url[year]
+
+                    year_s3_links = [link for link in s3_links if str(year) in link]
+
                     yield self.get_year_type_resources(
-                        year, atb_type, year_excel_base_url
+                        year, atb_type, year_excel_base_url, year_s3_links
                     )
 
     def clean_filename(
@@ -99,33 +137,6 @@ class NrelAtbArchiver(AbstractDatasetArchiver):
         cleaned_filename = f"nrelatb-{year}-{atb_type}-{version}{og_filename}"
         return cleaned_filename
 
-    async def compile_s3_viewer_urls(
-        self,
-        s3_viewer_urls: list[str],
-        url_to_check: str,
-        year: int,
-        atb_type: Literal["transportation", "electricity"],
-        file_type: Literal["parquet", "csv"],
-    ) -> list[str]:
-        """Recursively search within S3 viewer directories to find parquet/CSV files."""
-        dir_pattern_str = r"%2F$"
-        file_pattern_str = rf"^{S3_VIEWER_FILE_BASE_URL}{atb_type}/{file_type}/{year}/(.*).{file_type}$"
-
-        either_pattern = re.compile(
-            rf"({file_pattern_str})|({dir_pattern_str})", re.IGNORECASE
-        )
-        for link in await self.get_hyperlinks(url_to_check, either_pattern):
-            link = urljoin(url_to_check, link)
-            if link.endswith("%2F"):
-                # this is a directory... so we want to go deeper
-                await self.compile_s3_viewer_urls(
-                    s3_viewer_urls, link, year, atb_type, file_type
-                )
-            elif link.endswith(f".{file_type}"):
-                # you found a file! add this link to the file list
-                s3_viewer_urls += [link]
-        return s3_viewer_urls
-
     async def download_s3_viewer_urls(
         self,
         s3_viewer_urls: list[str],
@@ -137,7 +148,7 @@ class NrelAtbArchiver(AbstractDatasetArchiver):
     ) -> set[str]:
         """Given a collection of parquet URLs, download add to archive.
 
-        This function takes a collection of URLs from compile_s3_viewer_urls and
+        This function takes a collection of URLs compiled from the S3 bucket and
         constructs file names from the context, before downloading each file
         and adding it to the data paths in archive.
         """
@@ -156,26 +167,24 @@ class NrelAtbArchiver(AbstractDatasetArchiver):
         year: int,
         atb_type: Literal["transportation", "electricity"],
         year_excel_base_url: str,
+        year_s3_links: list[str],
     ):
         """Get the files for a year and type (electricity/transport)."""
         zip_path = self.download_directory / f"nrelatb-{year}-{atb_type}.zip"
         data_paths_in_archive = set()
 
         # Compile URLs for Parquet and CSV files, download and add to archive
-
         for file_type in ["csv", "parquet"]:
-            s3_viewer_urls = []
             self.logger.info(
                 f"{year}/{atb_type}: Downloading {file_type} data from the S3 viewer."
             )
-            year_file_url = f"{S3_VIEWER_BASE_URL}{atb_type}%2F{file_type}%2F{year}%2F"
-            s3_viewer_urls = await self.compile_s3_viewer_urls(
-                s3_viewer_urls=s3_viewer_urls,
-                url_to_check=year_file_url,
-                year=year,
-                atb_type=atb_type,
-                file_type=file_type,
-            )
+            aws_base_url = "https://oedi-data-lake.s3.amazonaws.com/"
+            # Combine the S3 file key from the bucket with the base URL to get a
+            # download link
+            s3_viewer_urls = [
+                f"{aws_base_url}{link}" for link in year_s3_links if file_type in link
+            ]
+
             data_paths_in_archive = await self.download_s3_viewer_urls(
                 s3_viewer_urls=s3_viewer_urls,
                 data_paths_in_archive=data_paths_in_archive,
