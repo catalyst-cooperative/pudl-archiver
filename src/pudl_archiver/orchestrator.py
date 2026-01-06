@@ -3,7 +3,6 @@
 import json
 import logging
 from pathlib import Path
-from typing import Any
 
 import aiohttp
 
@@ -70,24 +69,22 @@ async def orchestrate_run(
     downloader: AbstractDatasetArchiver,
     run_settings: RunSettings,
     session: aiohttp.ClientSession,
-    depositor_args: dict[str, Any],
+    failed_partitions: dict[str, Partitions] | None = None,
+    successful_partitions: dict[str, Partitions] | None = None,
 ) -> tuple[RunSummary, PublishedDeposition | None]:
     """Use downloader and depositor to archive a dataset."""
     resources = {}
+    successful_partitions = (
+        {} if successful_partitions is None else successful_partitions
+    )
     # Get datapackage from previous version if there is one
-    draft, original_datapackage = await get_deposition(
-        dataset, session, run_settings, depositor_args
-    )
+    draft, original_datapackage = await get_deposition(dataset, session, run_settings)
 
-    # Get partitions from previous run if retrying a run
-    failed_run_summary = _load_failed_run_summary(dataset, run_settings.retry_run)
-    failed_partitions, successful_partitions = _get_partitions_from_previous_run(
-        failed_run_summary
-    )
-    run_settings = _get_failed_run_settings(run_settings, failed_run_summary)
-
+    # Download resources and add to archive
     async for name, resource in downloader.download_all_resources(
-        list(failed_partitions.values()),
+        retry_parts=failed_partitions
+        if failed_partitions is None
+        else list(failed_partitions.values()),
     ):
         resources[name] = resource
         draft = await draft.add_resource(name, resource)

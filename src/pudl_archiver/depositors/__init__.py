@@ -26,13 +26,12 @@ async def get_deposition(
     dataset: str,
     session: aiohttp.ClientSession,
     run_settings: RunSettings,
-    depositor_args: dict[str, Any],
 ) -> tuple[DraftDeposition, DataPackage | None]:
     """Create draft deposition from scratch or previous version."""
     deposition_backend = DEPOSITION_BACKENDS[run_settings.depositor]
     api_client = await deposition_backend.api_client.initialize_client(
         session=session,
-        **depositor_args,
+        **run_settings.depositor_args,
     )
     if run_settings.initialize:
         return await deposition_backend.draft_interface.new_draft(

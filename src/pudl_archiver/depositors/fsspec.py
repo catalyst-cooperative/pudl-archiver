@@ -221,27 +221,12 @@ class FsspecPublishedDeposition(PublishedDeposition):
 
     async def open_draft(self) -> "FsspecDraftDeposition":
         """Open a new draft to make edits."""
-        draft_files = {
-            fname: self.deposition.get_deposition_path(DepositionDirectory.PUBLISHED)
-            / fname
-            for fname in await self.list_files()
-        }
-
-        # If we are retrying a previous run there may already be files in the workspace directory
-        # Add these to the draft as well as files in the current published archive
-        # TODO: Check if we're doing a retry as we don't expect files here unless we're doing a retry
-        draft_files |= {
-            fname: self.deposition.get_deposition_path(DepositionDirectory.WORKSPACE)
-            / fname
-            for fname in self.deposition.deposition_files[DepositionDirectory.WORKSPACE]
-        }
         return FsspecDraftDeposition(
             deposition=self.deposition,
             settings=self.settings,
             api_client=self.api_client,
             dataset_id=self.dataset_id,
             # When we open a new draft we assume it starts with all files from previous version
-            resources_in_draft=draft_files,
         )
 
 
@@ -270,6 +255,25 @@ class FsspecDraftDeposition(DraftDeposition):
     dataset_id: str
     resources_in_draft: dict[str, UPath] = {}
     files_to_delete: dict[str, UPath] = {}
+
+    def model_post_init(self, _context):
+        """Find existing files in deposition after initialization."""
+        # Draft starts with all files in previous published deposition
+        draft_files = {
+            fname: self.deposition.get_deposition_path(DepositionDirectory.PUBLISHED)
+            / fname
+            for fname in self.deposition.deposition_files[DepositionDirectory.PUBLISHED]
+        }
+
+        # If we are retrying a previous run there may already be files in the workspace directory
+        # Add these to the draft as well as files in the current published archive
+        # TODO: Check if we're doing a retry as we don't expect files here unless we're doing a retry
+        draft_files |= {
+            fname: self.deposition.get_deposition_path(DepositionDirectory.WORKSPACE)
+            / fname
+            for fname in self.deposition.deposition_files[DepositionDirectory.WORKSPACE]
+        }
+        self.resources_in_draft = draft_files
 
     async def list_files(self):
         """Return files that are included in the current version of the draft."""

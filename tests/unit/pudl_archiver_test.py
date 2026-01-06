@@ -79,7 +79,7 @@ async def test_archive_dataset(
         return_value=(successful_run, "published")
     )
     mocker.patch("pudl_archiver.orchestrate_run", new=mocked_orchestrator_success)
-    await archive_dataset("eia860", run_settings=settings, depositor_args={})
+    await archive_dataset("eia860", run_settings=settings)
     mocked_json_dump.assert_called_once_with(successful_run.model_dump(), indent=2)
 
     # Set run() return value to failure summary and test
@@ -87,5 +87,5 @@ async def test_archive_dataset(
     mocked_orchestrator_fail = mocker.AsyncMock(return_value=(failed_run, "published"))
     mocker.patch("pudl_archiver.orchestrate_run", new=mocked_orchestrator_fail)
     with pytest.raises(RuntimeError):
-        await archive_dataset("eia860", run_settings=settings, depositor_args={})
+        await archive_dataset("eia860", run_settings=settings)
     mocked_json_dump.assert_called_once_with(failed_run.model_dump(), indent=2)

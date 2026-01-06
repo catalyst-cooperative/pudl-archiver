@@ -1,13 +1,16 @@
 """A script for archiving raw PUDL data on Zenodo."""
 
 import asyncio
+import json
 import logging
+from pathlib import Path
 
 import click
 import coloredlogs
 from dotenv import load_dotenv
 
 from pudl_archiver import ARCHIVERS, archive_dataset
+from pudl_archiver.archivers.validate import RunSummary
 from pudl_archiver.utils import RunSettings
 
 logger = logging.getLogger("catalystcoop.pudl_archiver")
@@ -100,8 +103,8 @@ def zenodo(
                 summary_file=f"{dataset}_run_summary.json",
                 only_years=only_years,
                 depositor="zenodo",
+                depositor_args={"sandbox": sandbox},
             ),
-            depositor_args={"sandbox": sandbox},
         )
     )
 
@@ -144,8 +147,49 @@ def fsspec(
                 summary_file=f"{dataset}_run_summary.json",
                 only_years=only_years,
                 depositor="fsspec",
+                depositor_args={"deposition_path": deposition_path},
             ),
-            depositor_args={"deposition_path": deposition_path},
+        )
+    )
+
+
+@archive.command
+@auto_publish_option
+@click.argument(
+    "summary-file",
+    type=str,
+)
+def retry_run(summary_file: str, auto_publish: bool):
+    """Retry a previous run of the archiver by passing a JSON summary file from the run.
+
+    SUMMARY_FILE Points to a Run Summary JSON file output by a previous run which
+    either failed, or which completed succesfully, but didn't publish its results.
+    All run settings will be inherited from the previous run except for ``auto-publish``,
+    which will be overridden by this CLI to avoid accidental publication on a retry.
+    """
+    # Load run summary file and parse
+    with Path(summary_file).open() as f:
+        failed_run_summary = RunSummary.model_validate(json.load(f))
+
+    # Extract settings from failed run
+    run_settings = failed_run_summary.run_settings.model_copy(
+        update={
+            "retry_run": summary_file,
+            "auto_publish": auto_publish,
+        },
+    )
+
+    # Find which partitions failed/succeeded in previous run
+    failed_partitions = failed_run_summary.failed_partitions
+    successful_partitions = failed_run_summary.successful_partitions
+
+    # Retry archiver run
+    asyncio.run(
+        archive_dataset(
+            dataset=failed_run_summary.dataset_name,
+            run_settings=run_settings,
+            failed_partitions=failed_partitions,
+            successful_partitions=successful_partitions,
         )
     )
 

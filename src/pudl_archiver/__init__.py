@@ -11,6 +11,7 @@ import aiohttp
 import pudl_archiver.orchestrator  # noqa: F401
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver
 from pudl_archiver.archivers.validate import RunSummary
+from pudl_archiver.frictionless import Partitions
 from pudl_archiver.orchestrator import orchestrate_run
 from pudl_archiver.utils import RunSettings
 
@@ -56,7 +57,8 @@ ARCHIVERS = {archiver.name: archiver for archiver in all_archivers()}
 async def archive_dataset(
     dataset: str,
     run_settings: RunSettings,
-    depositor_args: dict[str, Any],
+    failed_partitions: dict[str, Partitions] | None = None,
+    successful_partitions: dict[str, Partitions] | None = None,
 ):
     """A CLI for the PUDL Zenodo Storage system."""
 
@@ -95,7 +97,8 @@ async def archive_dataset(
             downloader=downloader,
             run_settings=run_settings,
             session=session,
-            depositor_args=depositor_args,
+            failed_partitions=failed_partitions,
+            successful_partitions=successful_partitions,
         )
 
     if run_settings.summary_file is not None:
