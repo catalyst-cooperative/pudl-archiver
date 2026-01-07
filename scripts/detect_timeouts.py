@@ -56,7 +56,7 @@ def format_timeout_text(timed_out_datasets: list[str]) -> str:
     """Format the timed out datasets into a list."""
     if timed_out_datasets:
         print(
-            "<br/><br/><ul>"
+            "<ul>"
             + "</li>".join([f"<li>{dataset}" for dataset in timed_out_datasets])
             + "</li></ul>"
         )
