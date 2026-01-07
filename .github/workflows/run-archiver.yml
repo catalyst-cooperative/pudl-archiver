@@ -180,6 +180,7 @@ jobs:
       errors: ${{ steps.github_summaries.outputs.ERRORS }}
       failures: ${{ steps.github_summaries.outputs.FAILURES }}
       changes: ${{ steps.github_summaries.outputs.CHANGES }}
+      timedout: ${{ steps.github_summaries.outputs.TIMEDOUT }}
       unchanged: ${{ steps.github_summaries.outputs.UNCHANGED }}
 
   make-github-issue:
@@ -201,6 +202,7 @@ jobs:
           ERRORS: ${{ needs.archive-notify.outputs.errors }}
           FAILURES: ${{ needs.archive-notify.outputs.failures }}
           CHANGES: ${{ needs.archive-notify.outputs.changes }}
+          TIMEDOUT: ${{ needs.archive-notify.outputs.changes }}
           UNCHANGED: ${{ needs.archive-notify.outputs.unchanged }}
         with:
           filename: .github/ISSUE_TEMPLATE/monthly-archive-update.md
@@ -211,7 +213,7 @@ jobs:
 
   close-issue-if-no-changes:
     # Close the issue if there are no errors, failures, or changes
-    if: ${{ always() && (github.event_name == 'schedule' || inputs.create_github_issue == true) && needs.archive-notify.outputs.errors == '' && needs.archive-notify.outputs.failures == '' && needs.archive-notify.outputs.changes == '' && needs.make-github-issue.outputs.issue_number != '' }}
+    if: ${{ always() && (github.event_name == 'schedule' || inputs.create_github_issue == true) && needs.archive-notify.outputs.errors == '' && needs.archive-notify.outputs.failures == '' && needs.archive-notify.outputs.changes == '' && needs.archive-notify.outputs.timedout == '' && needs.make-github-issue.outputs.issue_number != '' }}
     runs-on: ubuntu-latest
     needs:
       - archive-run
