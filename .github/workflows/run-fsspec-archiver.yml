@@ -61,6 +61,7 @@ jobs:
       - name: Additional Playwright setup
         run: |
           pixi run playwright install --with-deps webkit
+          pixi run playwright install --with-deps chromium
 
       - name: Run production archiver for ${{ matrix.dataset }}
         # set -o pipefail passes on any failure codes to the next step,

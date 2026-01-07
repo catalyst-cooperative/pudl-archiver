@@ -1,12 +1,10 @@
 """Archive FERC Central Identifier (CID) data."""
 
-import json
-import re
+from datetime import datetime
 from pathlib import Path
-from typing import Any
 
-import pandas as pd
 from bs4 import Tag
+from dateutil import parser as date_parser
 from playwright.async_api import async_playwright
 
 from pudl_archiver.archivers.classes import (
@@ -18,9 +16,6 @@ from pudl_archiver.archivers.classes import (
 SOURCE_URL = (
     "https://data.ferc.gov/company-registration/ferc-company-identifier-listing/"
 )
-DATASET_API_URL = "https://data.ferc.gov/api/v1/dataset/26/"
-
-DATE_LAST_UPDATED_PATTERN = re.compile(r"(\d{2})\/(\d{2})\/(\d{4})\s+.*")
 
 
 class FercCIDArchiver(AbstractDatasetArchiver):
@@ -30,22 +25,24 @@ class FercCIDArchiver(AbstractDatasetArchiver):
 
     async def get_resources(self) -> ArchiveAwaitable:
         """Download FERC CID resources."""
-        match = await self.get_last_updated_date(page_url=SOURCE_URL)
-        month = int(match.group(1))
-        day = int(match.group(2))
-        year = int(match.group(3))
+        last_updated = await self.get_last_updated_date(page_url=SOURCE_URL)
+        year = last_updated.year
+        month = last_updated.month
+        day = last_updated.day
         if self.valid_year(year):
-            download_path = (
-                self.download_directory / f"ferccid-{year}-{month}-{day}.csv"
+            dataset_path = self.download_directory / f"ferccid-{year}-{month}-{day}.csv"
+            data_dictionary_path = (
+                self.download_directory
+                / f"ferccid-data-dictionary-{year}-{month}-{day}.csv"
             )
-            yield self.download_cid_csv_by_paging_api(
-                SOURCE_URL, download_path=download_path
+            yield self.download_dataset(SOURCE_URL, download_path=dataset_path)
+            yield self.download_data_dictionary(
+                SOURCE_URL, download_path=data_dictionary_path
             )
 
-    async def get_last_updated_date(self, page_url: str) -> str:
+    async def get_last_updated_date(self, page_url: str) -> datetime:
         """Get the Data Last Updated date from the FERC data viewer page."""
         soup = await self.get_soup(page_url)
-        # Find the element that contains the label text
         label_div = soup.find(
             lambda t: (
                 isinstance(t, Tag)
@@ -60,108 +57,75 @@ class FercCIDArchiver(AbstractDatasetArchiver):
         if not row:
             raise RuntimeError("Couldn't find parent row for 'Data Last Updated'")
 
-        # extract all text from row and remove the label itself
         row_text = (
             row.get_text(" ", strip=True).replace("Data Last Updated", "").strip()
         )
 
-        match = DATE_LAST_UPDATED_PATTERN.search(row_text)
-        if not match:
-            raise RuntimeError(
-                f"Couldn't find date-like value near 'Data Last Updated'. Row text was: {row_text!r}"
-            )
+        return date_parser.parse(row_text)
 
-        return match
-
-    async def download_cid_csv_by_paging_api(
+    async def download_dataset(
         self,
         page_url: str,
         download_path: Path,
         timeout_ms: int = 60_000,
-        page_size: int = 100,
     ) -> ResourceInfo:
-        """Make request for CID data from inside the page and write to CSV."""
-        columns = [
-            "Organization_Name",
-            "CID",
-            "Program",
-            "Company_Website",
-            "Address",
-            "Address2",
-            "City",
-            "State",
-            "Zip",
-        ]
-
+        """Download FERC CID dataset using the Download button modal."""
         async with async_playwright() as pw:
-            browser = await pw.webkit.launch(headless=True)
+            browser = await pw.chromium.launch(headless=True)
+            page = await browser.new_page()
+
+            await page.goto(page_url, timeout=timeout_ms)
+
+            download_button = page.get_by_role("button", name="Download")
+            await download_button.click(timeout=timeout_ms)
+
+            dataset_radio = page.locator('label:has-text("Dataset")')
+            await dataset_radio.click()
+
+            csv_option = page.locator("text=CSV")
+            await csv_option.click(timeout=timeout_ms)
+
+            modal_download_button = page.get_by_role("button", name="Download").last
+
+            async with page.expect_download(timeout=timeout_ms) as download_info:
+                await modal_download_button.click(timeout=timeout_ms)
+
+            download = await download_info.value
+            await download.save_as(download_path)
+
+            return ResourceInfo(local_path=download_path, partitions={})
+
+    async def download_data_dictionary(
+        self,
+        page_url: str,
+        download_path: Path,
+        timeout_ms: int = 60_000,
+    ) -> ResourceInfo:
+        """Download FERC CID data dictionary using the Download button modal."""
+        async with async_playwright() as pw:
+            browser = await pw.chromium.launch(headless=True)
             page = await browser.new_page()
             try:
-                await page.goto(
-                    page_url, wait_until="domcontentloaded", timeout=timeout_ms
+                await page.goto(page_url, timeout=timeout_ms)
+
+                download_button = page.get_by_role("button", name="Download")
+                await download_button.click(timeout=timeout_ms)
+
+                data_dictionary_radio = page.locator(
+                    'label:has-text("Data Dictionary")'
                 )
-                await page.wait_for_load_state("networkidle", timeout=timeout_ms)
+                await data_dictionary_radio.click()
 
-                all_rows: list[dict[str, Any]] = []
-                start = 0
-                total_count: int | None = None
+                csv_option = page.locator("text=CSV")
+                await csv_option.click(timeout=timeout_ms)
 
-                while True:
-                    payload = {
-                        "startRow": start,
-                        "endRow": start + page_size,
-                        "sortModel": [],
-                        "filterModel": {},
-                        "columns": columns,
-                        "castData": [],
-                    }
-                    # make the request from inside the page
-                    result = await page.evaluate(
-                        """
-    async ({url, payload}) => {
-    const resp = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-        credentials: "include",
-    });
-    const text = await resp.text();
-    return { status: resp.status, ok: resp.ok, text };
-    }
-    """,
-                        {"url": DATASET_API_URL, "payload": payload},
-                    )
+                modal_download_button = page.get_by_role("button", name="Download").last
 
-                    if not result["ok"]:
-                        raise RuntimeError(
-                            f"In-page fetch failed: {result['status']} body head: {result['text'][:300]!r}"
-                        )
+                async with page.expect_download(timeout=timeout_ms) as download_info:
+                    await modal_download_button.click(timeout=timeout_ms)
 
-                    data = json.loads(result["text"])
-                    rows = data.get("rowData")
-                    if rows is None:
-                        raise RuntimeError(
-                            f"rowData key is not present; unexpected response keys: {list(data.keys())}"
-                        )
-                    if total_count is None and "totalCount" in data:
-                        total_count = int(data.get("totalCount", 0))
-                    # check if there no more data left
-                    if not rows:
-                        break
-
-                    all_rows.extend(rows)
-                    start += page_size
-
-                    # Stop once we’ve reached the total
-                    if total_count is not None and start >= total_count:
-                        break
-
-                df = pd.DataFrame(all_rows)
-                # Order columns (and include any extra columns if they appear)
-                df = df.reindex(
-                    columns=columns + [c for c in df.columns if c not in columns]
-                )
-                df.to_csv(download_path, index=False, encoding="utf-8")
+                download = await download_info.value
+                await download.save_as(download_path)
 
                 return ResourceInfo(local_path=download_path, partitions={})
             finally:
