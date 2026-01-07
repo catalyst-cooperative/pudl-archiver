@@ -147,7 +147,7 @@ jobs:
             pixi run ./scripts/make_github_notification.py --summary-files *_run_summary.json --error-files *_log.txt --summary-type change
             echo 'DELIM3'
             echo 'TIMEDOUT<<DELIM4'
-            pixi run python ./scripts/detect_timeouts.py
+            GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} GITHUB_REPOSITORY=${{ github.repository }} GITHUB_RUN_ID=${{ github.run_id }} pixi run python ./scripts/detect_timeouts.py
             echo 'DELIM4'
             echo 'UNCHANGED<<DELIM5'
             pixi run ./scripts/make_github_notification.py --summary-files *_run_summary.json --error-files *_log.txt --summary-type unchanged
