@@ -27,7 +27,7 @@ on:
 
 jobs:
   archive-run:
-    timeout-minutes: 5 # TEMP FOR TESTING
+    timeout-minutes: 1 # TEMP FOR TESTING
     defaults:
       run:
         shell: bash -l {0}
@@ -172,7 +172,7 @@ jobs:
           method: chat.postMessage
           token: ${{ secrets.PUDL_DEPLOY_SLACK_TOKEN }}
           payload: |
-            text: "Run of ${{ inputs.datasets }} archives run complete."
+            text: "Run of archives run complete."
             blocks: ${{ steps.slack_summaries.outputs.SLACK_PAYLOAD }}
             channel: "C03FHB9N0PQ"
 
