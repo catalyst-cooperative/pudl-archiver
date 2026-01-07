@@ -71,7 +71,7 @@ class FercCIDArchiver(AbstractDatasetArchiver):
     ) -> ResourceInfo:
         """Download FERC CID dataset using the Download button modal."""
         async with async_playwright() as pw:
-            browser = await pw.webkit.launch(headless=True)
+            browser = await pw.chromium.launch(headless=True)
             page = await browser.new_page()
 
             await page.goto(page_url, timeout=timeout_ms)
@@ -103,7 +103,7 @@ class FercCIDArchiver(AbstractDatasetArchiver):
     ) -> ResourceInfo:
         """Download FERC CID data dictionary using the Download button modal."""
         async with async_playwright() as pw:
-            browser = await pw.webkit.launch(headless=True)
+            browser = await pw.chromium.launch(headless=True)
             page = await browser.new_page()
             try:
                 await page.goto(page_url, timeout=timeout_ms)
