@@ -36,24 +36,17 @@ def get_timed_out_datasets() -> list[str]:
     data = run_status.json()
 
     jobs = data.get("jobs", [])
-    print(jobs)
 
-    # Extract dataset names from timed-out archive-run jobs
+    # Extract dataset names from cancelled archive-run jobs
     timed_out_datasets = []
     for job in jobs:
         job_name = job.get("name", "")
-        print(job_name)
         conclusion = job.get("conclusion")
-        print(conclusion)
 
-        # Match jobs that start with "archive-run" and timed out
-        if (
-            job_name.startswith("archive-run")
-            and conclusion == "timed_out"
-            and "dataset:" in job_name
-        ):
-            # Extract dataset name from job name format:  "archive-run (dataset:  dataset_name)"
-            dataset = job_name.split("dataset:")[-1].strip().rstrip(")")
+        # Match jobs that start with "archive-run" and timed out (marked cancelled)
+        if job_name.startswith("archive-run") and conclusion == "cancelled":
+            # Extract dataset name from job name format:  "archive-run (dataset_name)"
+            dataset = job_name.split("(")[-1].strip().rstrip(")")
             timed_out_datasets.append(dataset)
 
     return sorted(timed_out_datasets)
