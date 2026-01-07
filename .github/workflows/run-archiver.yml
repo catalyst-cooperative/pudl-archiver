@@ -27,6 +27,7 @@ on:
 
 jobs:
   archive-run:
+    timeout-minutes: 5 # TEMP FOR TESTING
     defaults:
       run:
         shell: bash -l {0}
