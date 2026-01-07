@@ -202,7 +202,7 @@ jobs:
           ERRORS: ${{ needs.archive-notify.outputs.errors }}
           FAILURES: ${{ needs.archive-notify.outputs.failures }}
           CHANGES: ${{ needs.archive-notify.outputs.changes }}
-          TIMEDOUT: ${{ needs.archive-notify.outputs.changes }}
+          TIMEDOUT: ${{ needs.archive-notify.outputs.timedout }}
           UNCHANGED: ${{ needs.archive-notify.outputs.unchanged }}
         with:
           filename: .github/ISSUE_TEMPLATE/monthly-archive-update.md
