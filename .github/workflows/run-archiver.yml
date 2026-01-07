@@ -76,7 +76,7 @@ jobs:
         # enabling us to see whether or not the pudl_archiver run failed.
         run: |
           set -o pipefail
-          pixi run pudl_archiver --datasets ${{ matrix.dataset }} --summary-file ${{ matrix.dataset }}_run_summary.json --clobber-unchanged 2>&1 | tee ${{ matrix.dataset }}_log.txt
+          pixi run pudl_archiver archive zenodo ${{ matrix.dataset }} --clobber-unchanged 2>&1 | tee ${{ matrix.dataset }}_log.txt
 
       - name: Run sandbox archiver for ${{ matrix.dataset }}
         env:
@@ -90,7 +90,7 @@ jobs:
         # enabling us to see whether or not the pudl_archiver run failed.
         run: |
           set -o pipefail
-          pixi run pudl_archiver --datasets ${{ matrix.dataset }} --sandbox --summary-file ${{ matrix.dataset }}_run_summary.json --clobber-unchanged 2>&1 | tee ${{ matrix.dataset }}_log.txt
+          pixi run pudl_archiver archive zenodo ${{ matrix.dataset }} --sandbox --clobber-unchanged 2>&1 | tee ${{ matrix.dataset }}_log.txt
 
       - name: Save failed runs
         if: failure()

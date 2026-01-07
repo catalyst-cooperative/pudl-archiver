@@ -136,15 +136,14 @@ Depositors = typing.Literal["zenodo", "fsspec"]
 class RunSettings(BaseModel):
     """Settings for an archive run taken from CLI options."""
 
-    sandbox: bool = True
     initialize: bool = False
     only_years: list[int] | None = []
     summary_file: str | None = None
-    deposition_path: str | None = None
     clobber_unchanged: bool = False
     auto_publish: bool = False
     refresh_metadata: bool = False
     depositor: Depositors = "zenodo"
+    depositor_args: dict[str, typing.Any] = {}
     retry_run: str | None = None
 
 

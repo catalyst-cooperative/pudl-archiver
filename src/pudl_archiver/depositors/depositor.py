@@ -75,15 +75,14 @@ class DepositorAPIClient(BaseModel, ABC):
     async def initialize_client(
         cls,
         session: aiohttp.ClientSession,
-        sandbox: bool,
-        deposition_path: str | None = None,
+        **depositor_args,
     ) -> "DepositorAPIClient":
         """Initialize API client connection.
 
         Args:
             session: HTTP handler - we don't use it directly, it's wrapped in self._request.
-            sandbox: False for production archives.
-            deposition_path: Some depositors take a configurable path.
+            depositor_args: Any arguments specific to one depositor can be passed
+                as key word arguments.
         """
         ...
 

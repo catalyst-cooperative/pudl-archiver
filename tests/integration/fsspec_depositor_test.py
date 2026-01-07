@@ -99,13 +99,12 @@ async def test_retry_run(
     deposition_path.mkdir()
 
     settings = RunSettings(
-        sandbox=False,
         clobber_unchanged=True,
         auto_publish=True,
         refresh_metadata=False,
         initialize=True,
         depositor="fsspec",
-        deposition_path=str(deposition_path),
+        depositor_args={"deposition_path": str(deposition_path)},
     )
     retry_part = {"part": "retry_part"}
     ok_part = {"part": "ok_part"}
@@ -156,6 +155,8 @@ async def test_retry_run(
         downloader=v2_downloader,
         run_settings=settings,
         session="session",
+        failed_partitions=v1_summary.failed_partitions,
+        successful_partitions=v1_summary.successful_partitions,
     )
     assert not v2_downloader.good_downloaded
     assert v2_summary.success
@@ -172,13 +173,12 @@ async def test_fsspec_depositor(
 ):
     """Test fsspec depositor backend."""
     settings = RunSettings(
-        sandbox=False,
         clobber_unchanged=True,
         auto_publish=False,
         refresh_metadata=False,
         initialize=True,
         depositor="fsspec",
-        deposition_path=str(tmp_path),
+        depositor_args={"deposition_path": str(tmp_path)},
     )
 
     def verify_files(expected, deposition_path: Path):
