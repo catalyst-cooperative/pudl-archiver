@@ -453,7 +453,7 @@ We automatically run all our archivers once a month to make sure we capture ongo
 changes to our archived datasets. To automate archiving of your new dataset, add the
 dataset to the list of quoted datasets in `.github/workflows/run-archiver.yml` where the
 `default` value of `datasets` is configured (line 9), as well as where the `dataset`
-inputs for the `matrix` are set (line 28). Also add the dataset to
+inputs for the `matrix` are set (line 36). Also add the dataset to
 the list of datasets in `.github/ISSUE_TEMPLATE/monthly-archive-update.md` to ensure
 that we track validation failures and publish the latest release with our automated
 monthly archive run.
