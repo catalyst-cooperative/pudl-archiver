@@ -776,7 +776,7 @@ class AbstractDatasetArchiver(ABC):
         This method uses the awaitables returned by `get_resources`. It
         coordinates downloading all resources concurrently.
         """
-        # If retrying a run with no failed partitions, retrun immediately
+        # If retrying a run with no failed partitions, return immediately
         if (retry_parts is not None) and (len(retry_parts) == 0):
             await self.after_download()
             return
