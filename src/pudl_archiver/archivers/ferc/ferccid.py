@@ -30,9 +30,7 @@ class FercCIDArchiver(AbstractDatasetArchiver):
         month = last_updated.month
         day = last_updated.day
         if self.valid_year(year):
-            dataset_path = (
-                self.download_directory / f"ferccid-{year}-{month}-{day}.csv"
-            )
+            dataset_path = self.download_directory / f"ferccid-{year}-{month}-{day}.csv"
             data_dictionary_path = (
                 self.download_directory
                 / f"ferccid-data-dictionary-{year}-{month}-{day}.csv"
@@ -113,7 +111,9 @@ class FercCIDArchiver(AbstractDatasetArchiver):
                 download_button = page.get_by_role("button", name="Download")
                 await download_button.click(timeout=timeout_ms)
 
-                data_dictionary_radio = page.locator('label:has-text("Data Dictionary")')
+                data_dictionary_radio = page.locator(
+                    'label:has-text("Data Dictionary")'
+                )
                 await data_dictionary_radio.click()
 
                 csv_option = page.locator("text=CSV")
