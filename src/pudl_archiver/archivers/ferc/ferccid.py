@@ -105,29 +105,23 @@ class FercCIDArchiver(AbstractDatasetArchiver):
         async with async_playwright() as pw:
             browser = await pw.chromium.launch(headless=True)
             page = await browser.new_page()
-            try:
-                await page.goto(page_url, timeout=timeout_ms)
+            await page.goto(page_url, timeout=timeout_ms)
 
-                download_button = page.get_by_role("button", name="Download")
-                await download_button.click(timeout=timeout_ms)
+            download_button = page.get_by_role("button", name="Download")
+            await download_button.click(timeout=timeout_ms)
 
-                data_dictionary_radio = page.locator(
-                    'label:has-text("Data Dictionary")'
-                )
-                await data_dictionary_radio.click()
+            data_dictionary_radio = page.locator('label:has-text("Data Dictionary")')
+            await data_dictionary_radio.click()
 
-                csv_option = page.locator("text=CSV")
-                await csv_option.click(timeout=timeout_ms)
+            csv_option = page.locator("text=CSV")
+            await csv_option.click(timeout=timeout_ms)
 
-                modal_download_button = page.get_by_role("button", name="Download").last
+            modal_download_button = page.get_by_role("button", name="Download").last
 
-                async with page.expect_download(timeout=timeout_ms) as download_info:
-                    await modal_download_button.click(timeout=timeout_ms)
+            async with page.expect_download(timeout=timeout_ms) as download_info:
+                await modal_download_button.click(timeout=timeout_ms)
 
-                download = await download_info.value
-                await download.save_as(download_path)
+            download = await download_info.value
+            await download.save_as(download_path)
 
-                return ResourceInfo(local_path=download_path, partitions={})
-            finally:
-                await page.close()
-                await browser.close()
+            return ResourceInfo(local_path=download_path, partitions={})
