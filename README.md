@@ -70,87 +70,89 @@ store it as an environment variable at `EPACEMS_API_KEY`.
 
 ## Usage
 
-A CLI is provided for creating and updating archives. The basic usage looks like:
+A CLI is provided for creating and updating archives. This CLI provides several
+commands for archiving data to different storage backends. For a high-level overview
+of these commands, run:
 
 ```bash
-pudl_archiver --datasets {list_of_datasources}
+pudl_archiver --help
 ```
 
-This command will download the latest available data and create archives for each
-requested datasource requested. The supported datasources include `eia860`, `eia923`,
+### Datasets
+Archivers have been developed for a number of datasets, including `eia860`, `eia923`,
 `ferc1`, `epacems`, and many more; see the full list of available datasets with
-`pudl_archiver --list`.
+`pudl_archiver list-datasets`. Any dataset can be used with any of the supported
+storage backends by specifying the `depositor`, which will be explained in the
+following section.
 
-There are also many optional flags available:
+### Depositors
+For each supported storage backend, there is a ``depositor`` that provides an interface
+for creating archives using that backend. The basic command to run the archiver with
+a using a given depositor looks like the following:
 
-- `--sandbox`: used for testing. It will only interact with Zenodo's
-  [sandbox](https://sandbox.zenodo.org/) instance.
+```bash
+pudl_archiver archive {depositor} {dataset}
+```
+
+Different backends have different arguments and options that can or must be passed to
+the CLI, so refer to the section below corresponding to a given backend before trying
+to use this command. There are also several options that apply to all backends, including:
+
 - `--initialize`: used for creating an archive for a new dataset that doesn't
   currently exist on zenodo. If used with the `fsspec` backend, this will attempt
   to create a new directory at the location specified by `deposition-path` and use
   this directory for archiving.
-- `--all`: shortcut for archiving all datasets that we have defined archivers
-  for. Overrides `--datasets`.
-- `--depositor`: select backend storage system. Defaults to `zenodo`, which is
-  the only fully featured backend at this point, but we are experimenting with an
-  `fsspec` based backend to allow storage to allow archiving to local and
-  generic cloud based storage options. To use this depositor, set this option to
-  `fsspec` and set the `--deposition-path` to an fsspec compliant path.
-- `--deposition-path`: Used with the `fsspec` option for `--depositor`. Should
-  point to an fsspec compliant path (e.g. `file://path/to/folder`).
 - `--auto-publish`: Automatically publish new version of an archive if all validation
-  tests pass. If any validation tests fail, then the new version will not be published,
-  even if `auto-publish` is set.
-- `--summary-file`: Specify a JSON file to write a structured summary of the archiver
-  run. This includes details about any files that were updated/deleted/added to the
-  new version of the archive, as well as the results of any validation tests.
-- `--retry-run`: Should point to a run summary JSON file produced by running the archiver
-  with the `--summary-file` option. If the run that produced the summary file encountered
-  any issues with specific files during the archiving process (like a poorly formatted
-  zipfile), then new run will reuse the draft deposition created by that run, and
-  only retry the problematic files.
 
-### `fsspec` Depositor
-While we have typically used Zenodo for storing and managing archives, we've recently
-added the ability to use any `fsspec` compatible filesystem as a storage backend. This
-functionality is necessary for datasets like FERC EQR, which require significantly
-more storage space than is available in a standard Zenodo archive, but also can be
-useful for testing. For example, if you are developing a new archiver or updating
-an existing one, you can use the `fsspec` depositor with a local path to download
-data directly to your computer for inspection.
+For the full list of options, run:
 
-The `fsspec` depositor can be selected by setting the `--depositor` CLI option. When
-using this option, you must also set a `--deposition-path`. `--deposition-path` should
-be formatted like `protocol://path/to/deposition`. For a local path, you would use the
-protocol `file`, while `gs` can be used to specify a GCS bucket.
-
-### Retry failed run
-When running an archiver with the `--summary-file` CLI option it will save a list of
-failed partitions to the generated JSON file. In this context, a "failed parition" is
-a single data resource (often a zip file with data for a single period of time), for
-which the archiver detected errors. Generally, these errors would be an empty file,
-or a file which appears incorrectly formatted based on it's file-type extension (i.e.
-a `.zip` file that doesn't look like a zipfile). If the archiver encounters an
-unrecoverable error that causes it to fail before writing the JSON file, then retries
-will not be possible.
-
-Once you have a run summary JSON file with failed partitions, you can retry those
-partitions without having to re-download the rest of the successful partitions. This
-can be particularly useful for a dataset like FERC EQR, where the total archive size
-is ~100GB and each individual file can be several GB, which can lead to corruption
-during downloads. To actually execute a retry, you can use a command like the following:
-
-```
-pudl_archiver --datasets {dataset} --retry-run {path_to_run_summary}
+```bash
+pudl_archiver archive {depositor} --help
 ```
 
-To avoid conflicting settings in the retry run, all other CLI options will be overriden
-by the settings from the failed run. These settings also get written to the run summary
-JSON file, and will be loaded from there.
+#### Zenodo
+The Zenodo backend is used for most of our production archives. The only option
+specific to Zenodo is `--sandbox`, which can be used to toggle the usage of the
+Zenodo sandbox server for testing.
+
+### fsspec
+The [fsspec](https://filesystem-spec.readthedocs.io/en/latest/) depositor can
+be used with any `fsspec` compatible filesystem. This functionality is necessary
+for datasets like FERC EQR, which require significantly more storage space than is
+available in a standard Zenodo archive, but also can be useful for testing. For
+example, if you are developing a new archiver or updating an existing one, you
+can use the `fsspec` depositor with a local path to download data directly to
+your computer for inspection. The `fsspec` depositor requires a `deposition-path`
+argument to specify the base path where archives should be created. Basic usage
+looks like the following:
+
+```bash
+pudl_archiver archive fsspec {dataset} {deposition-path}
+```
+
+The `deposition-path` argument should be formatted like `protocol://path/to/deposition`.
+For a local path, you would use the protocol `file`, while `gs` can be used to specify
+a GCS bucket.
+
+### Retrying a failed run
+All runs for the archiver will output a Run Summary file in the current working directory
+called `{dataset}_run_summary.json`, which contains information about the run, including
+any errors that were encountered during the run. The `retry-run` command can be used to
+retry such a run which encountered errors without having to re-download files that were
+successfully added to the archive in the previous run. Basic usage looks like the
+following:
+
+```bash
+pudl_archiver retry-run {run_summary_json_file}
+```
+
+This command will inherit all settings from the previous run except `--auto-publish` to
+avoid accidental publication. This also allows `retry-run` to be used to publish results
+from a successful run which did not have `--auto-publish` set.
 
 During a retry, the archiver expects all successfully downloaded resources to still
 be in the draft deposition. If the state of the deposition has been changed in any
-way since the failed run, then the behavior of an attempted retry is undefined.
+way since the failed run, then a retry may produce unexpected results.
 
 Once a retry run has been kicked off, it will follow these steps below:
 

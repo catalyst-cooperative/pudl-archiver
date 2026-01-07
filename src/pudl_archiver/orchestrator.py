@@ -1,8 +1,6 @@
 """Core routines for archiving raw data packages."""
 
-import json
 import logging
-from pathlib import Path
 
 import aiohttp
 
@@ -13,55 +11,6 @@ from pudl_archiver.frictionless import Partitions
 from pudl_archiver.utils import RunSettings
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
-
-
-def _load_failed_run_summary(
-    requested_dataset: str,
-    run_summary_json: str | None,
-) -> RunSummary | None:
-    """If ``retry_run`` is specified in ``RunSettings``, then return the parsed json file."""
-    failed_run_summary = None
-    if run_summary_json is not None:
-        with Path(run_summary_json).open() as f:
-            failed_run_summary = RunSummary.model_validate(json.load(f))
-    return failed_run_summary
-
-
-def _get_failed_run_settings(
-    current_run_settings: RunSettings,
-    failed_run_summary: RunSummary | None,
-) -> RunSettings:
-    """If retrying a run, get the settings from the previous run to reuse for current run."""
-    new_settings = current_run_settings
-    if failed_run_summary is not None:
-        new_settings = failed_run_summary.run_settings.model_copy(
-            update={"retry_run": new_settings.retry_run},
-        )
-    return new_settings
-
-
-def _get_partitions_from_previous_run(
-    failed_run_summary: RunSummary | None,
-) -> tuple[dict[str, Partitions], dict[str, Partitions]]:
-    """Return failed/successful partitions from previous run if requested.
-
-    In order to retry a previous failed run, we save the failed and
-    successful partitions from that run in the run summary json file
-    that the archiver outputs. This allows us to only re-run the partitions
-    that failed. If ``run_summary_json`` is None, then this function will
-    return two empty dict's.
-    """
-    failed_partitions, successful_partitions = {}, {}
-    if failed_run_summary is not None:
-        failed_partitions = failed_run_summary.failed_partitions
-        successful_partitions = failed_run_summary.successful_partitions
-
-        if failed_partitions == {}:
-            raise RuntimeError(
-                "Trying to retry a run that did not have any failed partitions is not supported!"
-                " Double check that you are passing the correct run summary file to ``--retry-run``."
-            )
-    return failed_partitions, successful_partitions
 
 
 async def orchestrate_run(
