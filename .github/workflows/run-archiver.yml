@@ -129,10 +129,10 @@ jobs:
           merge-multiple: true
       - name: Show downloaded artifacts
         run: ls -R
-      # These steps only run to create a Github issue summarizing the run.
       - name: Load pixi from cache
-        if: ${{ always() && (github.event_name == 'schedule' || inputs.create_github_issue == true) }}
+        if: ${{ always() }}
         uses: prefix-dev/setup-pixi@v0.9.3
+      # These steps only run to create a Github issue summarizing the run.
       - name: Munge summaries together for Github
         if: ${{ always() && (github.event_name == 'schedule' || inputs.create_github_issue == true) }}
         id: github_summaries
