@@ -1,6 +1,7 @@
-"""Archive USDA Rural Utility Service Form 7 data.
+"""Archive USDA Rural Utilities Service Form 7 data.
 
-This dataset was obtained through Freedom of Information Act (FOIA) requests. It is
+Archive the USDA RUS Financial and Operating Report - Electric Distribution data. This
+dataset was obtained through Freedom of Information Act (FOIA) requests. It is
 archived from files stored in the private sources.catalyst.coop GCS bucket.
 """
 
@@ -16,14 +17,14 @@ from pudl_archiver.archivers.classes import (
 )
 
 
-class VCERAREArchiver(AbstractDatasetArchiver):
-    """VCE RARE data archiver."""
+class RUS7Archiver(AbstractDatasetArchiver):
+    """RUS Form 7 data archiver."""
 
     name = "rus7"
     bucket_name = "sources.catalyst.coop"
 
     async def get_resources(self) -> ArchiveAwaitable:
-        """Download VCE RARE resources."""
+        """Download RUS Form 7 resources."""
         bucket = storage.Client().get_bucket(self.bucket_name)
         blobs = bucket.list_blobs(prefix=f"{self.name}")  # Get all blobs in folder
 
