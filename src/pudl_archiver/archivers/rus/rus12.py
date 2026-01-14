@@ -38,8 +38,10 @@ class RUS12Archiver(AbstractDatasetArchiver):
     async def get_gcs_resource(self, blob: storage.Blob) -> tuple[Path, dict]:
         """Download RUS Form 12 files from GCS.
 
-        There is one type of files: a series of zipped annual files that are named
-        rus12_{year}.zip.
+        There is one type of file: a series of zipped annual files that are named
+        rus12_{year}.zip. We skip rus-2010-state.zip, which contains duplicate
+        data with one year per file and state. This format is not replicated
+        in any other year.
         """
         # Remove folder name (identical to dataset name) and set download path
         file_name = blob.name.replace(f"{self.name}/", "")
@@ -58,17 +60,6 @@ class RUS12Archiver(AbstractDatasetArchiver):
         annual_match = annual_zip_pattern.match(file_name)
         if annual_match:
             year = int(annual_match.group(1))
-            return ResourceInfo(
-                local_path=path_to_file,
-                partitions={"year": year},
-            )
-
-        annual_state_zip_pattern = re.compile(
-            rf"^{self.name}-(\d{{4}})-state.zip"
-        )  # Double escape the {4}
-        annual_state_match = annual_state_zip_pattern.match(file_name)
-        if annual_state_match:
-            year = int(annual_state_match.group(1))
             return ResourceInfo(
                 local_path=path_to_file,
                 partitions={"year": year},
