@@ -30,7 +30,9 @@ class RUS12Archiver(AbstractDatasetArchiver):
 
         for blob in blobs:
             # Skip the folder, which appears in this list
-            if not blob.name.endswith("/"):
+            if not blob.name.endswith("/") and "rus12-2010-state.zip" not in blob.name:
+                # We skip rus-2010-state.zip, which contains duplicate data
+                # with one file per state.
                 yield self.get_gcs_resource(blob)
 
     async def get_gcs_resource(self, blob: storage.Blob) -> tuple[Path, dict]:
@@ -47,8 +49,7 @@ class RUS12Archiver(AbstractDatasetArchiver):
         blob.download_to_filename(path_to_file)
 
         # Set up partitions:
-        # rus-YYYY.zip should have partition year: YYYY, geography: all
-        # rus-YYYY-state.zip should have partition year: YYYY, geography: state
+        # rus-YYYY.zip should have partition year: YYYY
 
         # Handle annual zip files
         annual_zip_pattern = re.compile(
@@ -59,7 +60,7 @@ class RUS12Archiver(AbstractDatasetArchiver):
             year = int(annual_match.group(1))
             return ResourceInfo(
                 local_path=path_to_file,
-                partitions={"year": year, "geography": "all"},
+                partitions={"year": year},
             )
 
         annual_state_zip_pattern = re.compile(
@@ -70,7 +71,7 @@ class RUS12Archiver(AbstractDatasetArchiver):
             year = int(annual_state_match.group(1))
             return ResourceInfo(
                 local_path=path_to_file,
-                partitions={"year": year, "geography": "state"},
+                partitions={"year": year},
             )
 
         raise AssertionError(
