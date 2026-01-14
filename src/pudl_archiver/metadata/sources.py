@@ -546,4 +546,4 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         "license_pudl": LICENSES["cc-by-4.0"],
         "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
     },
-} | {f"nrelcambium{year}": nrel_cambium_generator(year) for year in range(2020, 2024)}
+} | {f"nrelcambium{year}": nrel_cambium_generator(year) for year in range(2020, 2025)}
