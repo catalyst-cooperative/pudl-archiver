@@ -132,9 +132,6 @@ class ZenodoAPIClient(DepositorAPIClient):
         self = cls(sandbox=sandbox)
         self._session = session
         self._request = self._make_requester(session)
-        self.user_agent = (
-            "pudl-archiver/1.0 (https://github.com/catalyst-cooperative/pudl-archiver)"
-        )
         self._dataset_settings_path = (
             importlib.resources.files("pudl_archiver.package_data") / "zenodo_doi.yaml"
         )
@@ -428,6 +425,13 @@ class ZenodoAPIClient(DepositorAPIClient):
         else:
             doi = dataset_settings.production_doi
         return doi
+
+    @property
+    def user_agent(self):
+        """Define a custom pudl-archiver user agent to sign Zenodo requests."""
+        return (
+            "pudl-archiver/1.0 (https://github.com/catalyst-cooperative/pudl-archiver)"
+        )
 
     @property
     def auth_write(self):
