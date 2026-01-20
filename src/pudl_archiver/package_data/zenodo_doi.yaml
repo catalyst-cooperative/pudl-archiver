@@ -123,6 +123,12 @@ nrelsts:
 phmsagas:
   production_doi: 10.5281/zenodo.7683351
   sandbox_doi: 10.5072/zenodo.45279
+rus7:
+  production_doi: 10.5281/zenodo.18248545
+  sandbox_doi: 10.5072/zenodo.422697
+rus12:
+  production_doi: 10.5281/zenodo.18315222
+  sandbox_doi: 10.5072/zenodo.425444
 sec10k:
   production_doi: 10.5281/zenodo.15161693
   sandbox_doi: 10.5072/zenodo.194705
