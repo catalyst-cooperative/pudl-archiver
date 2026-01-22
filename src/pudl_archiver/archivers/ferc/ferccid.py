@@ -93,7 +93,9 @@ class FercCIDArchiver(AbstractDatasetArchiver):
             download = await download_info.value
             await download.save_as(download_path)
 
-            return ResourceInfo(local_path=download_path, partitions={})
+            return ResourceInfo(
+                local_path=download_path, partitions={"data_set": "data_table"}
+            )
 
     async def download_data_dictionary(
         self,
@@ -124,4 +126,6 @@ class FercCIDArchiver(AbstractDatasetArchiver):
             download = await download_info.value
             await download.save_as(download_path)
 
-            return ResourceInfo(local_path=download_path, partitions={})
+            return ResourceInfo(
+                local_path=download_path, partitions={"data_set": "data_dictionary"}
+            )
