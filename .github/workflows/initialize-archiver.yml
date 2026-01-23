@@ -62,7 +62,7 @@ jobs:
           ZENODO_TOKEN_PUBLISH: ${{ secrets.ZENODO_TOKEN_PUBLISH }}
         if: ${{ inputs.server == 'production' }}
         run: |
-          pixi run pudl_archiver --datasets ${{ matrix.dataset }} --initialize --summary-file ${{ matrix.dataset }}_run_summary.json --clobber-unchanged
+          pixi run pudl_archiver archive zenodo ${{ matrix.dataset }} --initialize --clobber-unchanged
 
       - name: Initialize sandbox archive for ${{ matrix.dataset }}
         env:
@@ -71,7 +71,7 @@ jobs:
           EPACEMS_API_KEY: ${{ secrets.EPACEMS_API_KEY }}
         if: ${{ inputs.server == 'sandbox' }}
         run: |
-          pixi run pudl_archiver --datasets ${{ matrix.dataset }} --initialize --sandbox --summary-file ${{ matrix.dataset }}_run_summary.json --clobber-unchanged
+          pixi run pudl_archiver archive zenodo ${{ matrix.dataset }} --initialize --sandbox  --clobber-unchanged
 
       - name: Upload run summaries
         if: always()
