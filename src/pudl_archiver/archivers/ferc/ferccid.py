@@ -30,7 +30,9 @@ class FercCIDArchiver(AbstractDatasetArchiver):
         month = last_updated.month
         day = last_updated.day
         if self.valid_year(year):
-            dataset_path = self.download_directory / f"ferccid-{year}-{month}-{day}.csv"
+            dataset_path = (
+                self.download_directory / f"ferccid-data-table-{year}-{month}-{day}.csv"
+            )
             data_dictionary_path = (
                 self.download_directory
                 / f"ferccid-data-dictionary-{year}-{month}-{day}.csv"
@@ -93,7 +95,9 @@ class FercCIDArchiver(AbstractDatasetArchiver):
             download = await download_info.value
             await download.save_as(download_path)
 
-            return ResourceInfo(local_path=download_path, partitions={})
+            return ResourceInfo(
+                local_path=download_path, partitions={"data_set": "data_table"}
+            )
 
     async def download_data_dictionary(
         self,
@@ -124,4 +128,6 @@ class FercCIDArchiver(AbstractDatasetArchiver):
             download = await download_info.value
             await download.save_as(download_path)
 
-            return ResourceInfo(local_path=download_path, partitions={})
+            return ResourceInfo(
+                local_path=download_path, partitions={"data_set": "data_dictionary"}
+            )
