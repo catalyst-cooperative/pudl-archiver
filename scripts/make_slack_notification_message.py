@@ -144,7 +144,7 @@ def _load_summaries(summary_files: list[Path]) -> list[dict]:
     for summary_file in summary_files:
         if summary_file.exists():  # Handle case where no files are found
             with summary_file.open() as f:
-                summaries.extend(json.loads(f.read()))
+                summaries.append(json.loads(f.read()))
     return summaries
 
 
