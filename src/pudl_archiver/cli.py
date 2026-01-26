@@ -74,13 +74,13 @@ dataset_argument = click.argument("dataset", type=str)
 
 
 @archive.command
-@click.option("--sandbox", is_flag=True, help="Use Zenodo sandbox server")
 @initialize_option
 @auto_publish_option
 @clobber_unchanged_option
 @refresh_metadata_option
 @only_years_option
 @dataset_argument
+@click.option("--sandbox", is_flag=True, help="Use Zenodo sandbox server")
 def zenodo(
     sandbox: bool,
     initialize: bool,
@@ -166,6 +166,7 @@ def retry_run(summary_file: str, auto_publish: bool):
     either failed, or which completed succesfully, but didn't publish its results.
     All run settings will be inherited from the previous run except for ``auto-publish``,
     which will be overridden by this CLI to avoid accidental publication on a retry.
+    ``auto-publish`` defaults to False in all cases.
     """
     # Load run summary file and parse
     with Path(summary_file).open() as f:

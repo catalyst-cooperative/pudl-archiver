@@ -226,7 +226,6 @@ class FsspecPublishedDeposition(PublishedDeposition):
             settings=self.settings,
             api_client=self.api_client,
             dataset_id=self.dataset_id,
-            # When we open a new draft we assume it starts with all files from previous version
         )
 
 
