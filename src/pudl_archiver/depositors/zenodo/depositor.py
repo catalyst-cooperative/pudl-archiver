@@ -427,13 +427,20 @@ class ZenodoAPIClient(DepositorAPIClient):
         return doi
 
     @property
+    def user_agent(self):
+        """Define a custom pudl-archiver user agent to sign Zenodo requests."""
+        return (
+            "pudl-archiver/1.0 (https://github.com/catalyst-cooperative/pudl-archiver)"
+        )
+
+    @property
     def auth_write(self):
         """Format auth header with upload_key."""
         if self.sandbox:
             upload_key = os.environ["ZENODO_SANDBOX_TOKEN_UPLOAD"]
         else:
             upload_key = os.environ["ZENODO_TOKEN_UPLOAD"]
-        return {"Authorization": f"Bearer {upload_key}"}
+        return {"Authorization": f"Bearer {upload_key}", "User-Agent": self.user_agent}
 
     @property
     def auth_actions(self):
@@ -442,7 +449,7 @@ class ZenodoAPIClient(DepositorAPIClient):
             publish_key = os.environ["ZENODO_SANDBOX_TOKEN_PUBLISH"]
         else:
             publish_key = os.environ["ZENODO_TOKEN_PUBLISH"]
-        return {"Authorization": f"Bearer {publish_key}"}
+        return {"Authorization": f"Bearer {publish_key}", "User-Agent": self.user_agent}
 
     @property
     def api_root(self):
