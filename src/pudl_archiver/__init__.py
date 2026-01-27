@@ -4,12 +4,14 @@ import asyncio
 import json
 import logging
 from pathlib import Path
+from typing import Any
 
 import aiohttp
 
 import pudl_archiver.orchestrator  # noqa: F401
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver
 from pudl_archiver.archivers.validate import RunSummary
+from pudl_archiver.frictionless import Partitions
 from pudl_archiver.orchestrator import orchestrate_run
 from pudl_archiver.utils import RunSettings
 
@@ -52,9 +54,11 @@ def all_archivers():
 ARCHIVERS = {archiver.name: archiver for archiver in all_archivers()}
 
 
-async def archive_datasets(
-    datasets: list[str],
+async def archive_dataset(
+    dataset: str,
     run_settings: RunSettings,
+    failed_partitions: dict[str, Partitions] | None = None,
+    successful_partitions: dict[str, Partitions] | None = None,
 ):
     """A CLI for the PUDL Zenodo Storage system."""
 
@@ -81,53 +85,26 @@ async def archive_datasets(
         timeout=aiohttp.ClientTimeout(total=10 * 60),
     ) as session:
         # List to gather all archivers to run asyncronously
-        tasks = []
-        for dataset in datasets:
-            cls = ARCHIVERS.get(dataset)
-            if not cls:
-                raise RuntimeError(f"Dataset {dataset} not supported")
-            downloader = cls(
-                session,
-                run_settings.only_years,
-            )
-            tasks.append(
-                orchestrate_run(
-                    dataset,
-                    downloader,
-                    run_settings,
-                    session,
-                )
-            )
-
-        results = list(
-            zip(datasets, await asyncio.gather(*tasks, return_exceptions=True))
+        cls = ARCHIVERS.get(dataset)
+        if not cls:
+            raise RuntimeError(f"Dataset {dataset} not supported")
+        downloader = cls(
+            session,
+            run_settings.only_years,
         )
-        exceptions = [
-            (dataset, result)
-            for dataset, result in results
-            if isinstance(result, Exception)
-        ]
-        if exceptions:
-            print(
-                f"Encountered exceptions, showing traceback for last one: {[repr(e) for e in exceptions]}"
-            )
-            raise exceptions[-1][1]
+        summary, published = await orchestrate_run(
+            dataset=dataset,
+            downloader=downloader,
+            run_settings=run_settings,
+            session=session,
+            failed_partitions=failed_partitions,
+            successful_partitions=successful_partitions,
+        )
 
     if run_settings.summary_file is not None:
-        run_summaries = [
-            result.model_dump()
-            for _, [result, published] in results
-            if not isinstance(result, BaseException)
-        ]
-
         with Path(run_settings.summary_file).open("w") as f:
-            f.write(json.dumps(run_summaries, indent=2))
+            f.write(json.dumps(summary.model_dump(), indent=2))
 
     # Check validation results of all runs that aren't unchanged
-    validation_results = [
-        result.success
-        for _, [result, published] in results
-        if isinstance(result, RunSummary)
-    ]
-    if not all(validation_results):
+    if not summary.success:
         raise RuntimeError("Error: archive validation tests failed.")

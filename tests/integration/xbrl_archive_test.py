@@ -89,11 +89,10 @@ async def test_archive_year_stability(mocker, tmp_path):
                 only_years=[2022, 2023, 2024],
             ),
             run_settings=RunSettings(
-                sandbox=False,
                 initialize=True,
-                deposition_path=str(tmp_path),
                 auto_publish=True,
                 depositor="fsspec",
+                depositor_args={"deposition_path": str(tmp_path)},
             ),
             session=session,
         )
@@ -106,11 +105,10 @@ async def test_archive_year_stability(mocker, tmp_path):
                 only_years=[2022, 2023, 2024],
             ),
             run_settings=RunSettings(
-                sandbox=False,
                 initialize=False,
-                deposition_path=str(tmp_path),
                 auto_publish=True,
                 depositor="fsspec",
+                depositor_args={"deposition_path": str(tmp_path)},
             ),
             session=session,
         )

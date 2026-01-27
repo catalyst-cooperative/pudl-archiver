@@ -69,10 +69,10 @@ jobs:
         run: |
           set -o pipefail
           pixi run pudl_archiver \
-            --depositor fsspec \
-            --deposition-path $DEPOSITION_PATH/${{ matrix.dataset }} \
-            --datasets ${{ matrix.dataset }} \
-            --summary-file ${{ matrix.dataset }}_run_summary.json \
+            archive \
+            fsspec \
+            ${{ matrix.dataset }} \
+            $DEPOSITION_PATH/${{ matrix.dataset }} \
             --auto-publish \
             --clobber-unchanged 2>&1 | tee ${{ matrix.dataset }}_log.txt
 

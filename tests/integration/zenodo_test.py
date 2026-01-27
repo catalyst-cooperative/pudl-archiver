@@ -158,12 +158,12 @@ async def test_zenodo_workflow(
     )
 
     settings = RunSettings(
-        sandbox=True,
         clobber_unchanged=True,
         auto_publish=False,
         refresh_metadata=False,
         initialize=True,
         depositor="zenodo",
+        depositor_args={"sandbox": True},
     )
 
     def verify_files(expected, deposition: Deposition):
