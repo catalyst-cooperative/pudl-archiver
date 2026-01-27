@@ -356,16 +356,14 @@ Once you've written your archiver, it's time to test that it works as expected! 
 the archiver locally, run the following commands in your terminal:
 
 ```bash
-pudl_archiver --datasets {new_dataset_name} --initialize --summary-file {new_dataset_name}-summary.json --depositor fsspec --deposition-path {file://local/path/to/folder}
+pudl_archiver archive fsspec {new_dataset_name} {file://local/path/to/folder} --initialize
 ```
 
 - `--initialize` creates a new deposition, and is used when creating a brand new archive
-- `--summary-file` will save a .json file summarizing the results of all
-validation tests, which is useful for reviewing your dataset.
-- `--depositor` selects the backend engine used for archive storage - in this case,
-we save files locally, but by default this uploads files to Zenodo.
-- `--depositor-path`: the path to the folder where you want to download local files for
-inspection.
+- A JSON file file summarizing the results of all validation tests, will be saved at
+`{new_dataset_name}_run_summary.json`. This file can be useful for reviewing your dataset.
+- Using the `fsspec` backend with the argument `{file://local/path/to/folder}` will save
+the results of the run to this local path.
 
 Run the archiver and review the output in the specified folder, iterating as needed to
 ensure that all files download as expected.
