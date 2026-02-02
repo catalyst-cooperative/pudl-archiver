@@ -131,7 +131,7 @@ furo = ">=2025.12.19, <2026"
 # semantic-version is not available on conda-forge.
 semantic-version = ">=2.10.0, <3"
 # Something about the pixi activation script doesn't work when it's installed from conda-forge.
-playwright = ">=1.57.0, <2"
+playwright = ">=1.58.0, <2"
 
 [tool.pixi.environments]
 default = { solve-group = "default" }
@@ -178,18 +178,18 @@ ci = { depends-on = [
 
 [tool.pixi.dependencies]
 aiohttp = ">=3.13.3,<4"
-arelle-release = ">=2.38.6,<3"
+arelle-release = ">=2.38.7,<3"
 beautifulsoup4 = ">=4.14.3,<5"
 # Install PUDL as a conda package from git:
 "catalystcoop.pudl" = { git = "https://github.com/catalyst-cooperative/pudl.git" }
 # Install PUDL from a local directory for convenience during development:
 # "catalystcoop.pudl" = { path = "../pudl" }
 cfgv = ">=3.5.0,<4"
-click = ">=8,<8.2.0"
+click = ">=8.1.8,<9"
 coloredlogs = ">=14.0,<15"
 coverage = ">=7.13.2,<8"
-dask = ">=2026.1.1,<2027"
-deltalake = ">=1.3.2,<2"
+dask = ">=2026.1.2,<2027"
+deltalake = ">=1.4.1,<2"
 doc8 = ">=2.0.0,<3"
 feedparser = ">=6.0.12,<7"
 frictionless = ">=5.18.1,<6"
@@ -212,7 +212,7 @@ ruff = ">=0.14.14,<0.15"
 sphinx = ">=9.1.0,<10"
 sphinx-autoapi = ">=3.6.1,<4"
 sphinx-issues = ">=5.0.1,<6"
-tqdm = ">=4.67.1,<5"
+tqdm = ">=4.67.2,<5"
 types-requests = ">=2.32.4.20260107,<3"
 pyproj = ">=3.7.2,<4"
 
