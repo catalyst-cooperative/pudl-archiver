@@ -101,11 +101,36 @@ class NrelEFSArchiver(AbstractDatasetArchiver):
         # in order to get the filename associated with the link. This makes it
         # easier to label each PDF something informative
         pdf_pattern = re.compile(r"\/docs\/fy(\d{2})osti\/\w*.pdf")
-        pdf_links = await self.get_hyperlinks(BASE_URL, pdf_pattern)
+        pdf_links_all_anchors = await self.get_hyperlinks(
+            BASE_URL, pdf_pattern, all_names=True
+        )
+
+        # post-process pdf links to deal with some duplicate appearances
+        pdf_links = {}
+        for link, names in pdf_links_all_anchors.items():
+            unique_names = set(names)
+            if link.endswith("fy21osti/78783.pdf"):
+                # There are three versions with presentation slides PDFs, all titled just "presentation slides"
+                # but one of the sets of slides PDFs appears a second time on the page, this time with a more
+                # verbose title. For consistency with the other versions, we prefer "presentation slides"
+                preferred_name = [
+                    name for name in names if name.startswith("presentation")
+                ]
+                if preferred_name:
+                    pdf_links[link] = preferred_name.pop()
+                    continue
+            elif len(unique_names) <= 2:
+                pdf_links[link] = names.pop()
+                continue
+            raise AssertionError(
+                f"Unexpected multiple anchors for {link}:\n{'\n'.join(names[1:])}"
+            )
 
         # For each version, yield a method that will produce one zipfile containing
         # all the files for the method
-        for version, links in version_dict.items():
+        version_pdf_links = set()
+        for version, links in sorted(version_dict.items()):
+            version_pdf_links.update(links["pdf_links"])
             yield self.get_version_resource(
                 version=version, links=links, pdf_links=pdf_links
             )
@@ -114,9 +139,9 @@ class NrelEFSArchiver(AbstractDatasetArchiver):
         links_not_downloaded = [
             f"https://www.nrel.gov{link}"
             for link in pdf_links
-            if link not in version_dict
+            if link not in version_pdf_links
         ]
-        self.logger.warn(
+        self.logger.warning(
             f"Not downloading the following additional PDFs linked from the mainpage: {links_not_downloaded}"
         )
 
