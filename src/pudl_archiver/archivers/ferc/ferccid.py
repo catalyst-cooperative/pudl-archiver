@@ -5,6 +5,7 @@ from pathlib import Path
 
 from bs4 import Tag
 from dateutil import parser as date_parser
+from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 from playwright.async_api import async_playwright
 
 from pudl_archiver.archivers.classes import (
@@ -27,8 +28,8 @@ class FercCIDArchiver(AbstractDatasetArchiver):
         """Download FERC CID resources."""
         last_updated = await self.get_last_updated_date(page_url=SOURCE_URL)
         year = last_updated.year
-        month = last_updated.month
-        day = last_updated.day
+        month = str(last_updated.month).zfill(2)  # Zero pad to ISO-8601 compliance
+        day = str(last_updated.day).zfill(2)  # Zero pad to ISO-8601 compliance
         if self.valid_year(year):
             dataset_path = (
                 self.download_directory / f"ferccid-data-table-{year}-{month}-{day}.csv"
@@ -69,31 +70,44 @@ class FercCIDArchiver(AbstractDatasetArchiver):
         self,
         page_url: str,
         download_path: Path,
-        timeout_ms: int = 60_000,
+        timeout_ms: int = 15_000,
     ) -> ResourceInfo:
         """Download FERC CID dataset using the Download button modal."""
         async with async_playwright() as pw:
-            browser = await pw.chromium.launch(headless=True)
+            browser = await pw.chromium.launch(headless=False)
             page = await browser.new_page()
 
             await page.goto(page_url, timeout=timeout_ms)
 
-            download_button = page.get_by_role("button", name="Download")
-            await download_button.click(timeout=timeout_ms)
+            # Click the main Download button
+            # We specify this exactly to reduce possibility of selecting the wrong button
+            await page.locator(
+                "div.dataAsset div.fields.row div.d-flex.flex-row-reverse.mt-5 button.blueButton"
+            ).click()
 
-            dataset_radio = page.locator('label:has-text("Dataset")')
-            await dataset_radio.click()
+            # Wait for the pop-up download menu
+            modal = page.locator("#downloadModal")
+            await modal.wait_for(state="visible", timeout=timeout_ms)
 
-            csv_option = page.locator("text=CSV")
-            await csv_option.click(timeout=timeout_ms)
+            # Choose “Dataset"
+            await modal.get_by_label("Dataset").click()
 
-            modal_download_button = page.get_by_role("button", name="Download").last
+            # Choose CSV (this is the “File type” row)
+            await modal.get_by_text("csv").click()
 
-            async with page.expect_download(timeout=timeout_ms) as download_info:
-                await modal_download_button.click(timeout=timeout_ms)
+            # The modal has two buttons named “Download”; we want the one inside
+            modal_download_button = modal.get_by_role("button", name="Download")
 
-            download = await download_info.value
-            await download.save_as(download_path)
+            # Fail fast if no download starts within the timeout
+            try:
+                async with page.expect_download(timeout=timeout_ms) as download_info:
+                    await modal_download_button.click()
+                download = await download_info.value
+                await download.save_as(download_path)
+            except PlaywrightTimeoutError as e:
+                raise RuntimeError(
+                    "Timed out waiting for FERC data‑dictionary CSV download"
+                ) from e
 
             return ResourceInfo(
                 local_path=download_path, partitions={"data_set": "data_table"}
@@ -103,30 +117,44 @@ class FercCIDArchiver(AbstractDatasetArchiver):
         self,
         page_url: str,
         download_path: Path,
-        timeout_ms: int = 60_000,
+        timeout_ms: int = 15_000,
     ) -> ResourceInfo:
         """Download FERC CID data dictionary using the Download button modal."""
         async with async_playwright() as pw:
-            browser = await pw.chromium.launch(headless=True)
+            browser = await pw.chromium.launch(headless=False)
             page = await browser.new_page()
+
             await page.goto(page_url, timeout=timeout_ms)
 
-            download_button = page.get_by_role("button", name="Download")
-            await download_button.click(timeout=timeout_ms)
+            # Click the main Download button
+            # We specify this exactly to reduce possibility of selecting the wrong button
+            await page.locator(
+                "div.dataAsset div.fields.row div.d-flex.flex-row-reverse.mt-5 button.blueButton"
+            ).click()
 
-            data_dictionary_radio = page.locator('label:has-text("Data Dictionary")')
-            await data_dictionary_radio.click()
+            # Wait for the pop-up download menu
+            modal = page.locator("#downloadModal")
+            await modal.wait_for(state="visible", timeout=timeout_ms)
 
-            csv_option = page.locator("text=CSV")
-            await csv_option.click(timeout=timeout_ms)
+            # Choose “Data Dictionary”
+            await modal.get_by_label("Data Dictionary").click()
 
-            modal_download_button = page.get_by_role("button", name="Download").last
+            # Choose CSV (this is the “File type” row)
+            await modal.get_by_text("csv").click()
 
-            async with page.expect_download(timeout=timeout_ms) as download_info:
-                await modal_download_button.click(timeout=timeout_ms)
+            # The modal has two buttons named “Download”; we want the one inside
+            modal_download_button = modal.get_by_role("button", name="Download")
 
-            download = await download_info.value
-            await download.save_as(download_path)
+            # Fail fast if no download starts within the timeout
+            try:
+                async with page.expect_download(timeout=timeout_ms) as download_info:
+                    await modal_download_button.click()
+                download = await download_info.value
+                await download.save_as(download_path)
+            except PlaywrightTimeoutError as e:
+                raise RuntimeError(
+                    "Timed out waiting for FERC data‑dictionary CSV download"
+                ) from e
 
             return ResourceInfo(
                 local_path=download_path, partitions={"data_set": "data_dictionary"}
