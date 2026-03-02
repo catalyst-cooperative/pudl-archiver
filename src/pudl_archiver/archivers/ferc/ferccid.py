@@ -23,6 +23,9 @@ class FercCIDArchiver(AbstractDatasetArchiver):
     """FERC CID archiver."""
 
     name = "ferccid"
+    fail_on_missing_files = (
+        False  # each run will create a new file and delete the old one.
+    )
 
     async def get_resources(self) -> ArchiveAwaitable:
         """Download FERC CID resources."""
