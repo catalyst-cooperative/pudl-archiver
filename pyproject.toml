@@ -178,7 +178,7 @@ ci = { depends-on = [
 
 [tool.pixi.dependencies]
 aiohttp = ">=3.13.3,<4"
-arelle-release = ">=2.38.17,<3"
+arelle-release = ">=2.38.20,<3"
 beautifulsoup4 = ">=4.14.3,<5"
 # Install PUDL as a conda package from git:
 "catalystcoop.pudl" = { git = "https://github.com/catalyst-cooperative/pudl.git" }
@@ -193,8 +193,8 @@ deltalake = ">=1.4.1,<2"
 doc8 = ">=2.0.0,<3"
 feedparser = ">=6.0.12,<7"
 frictionless = ">=5.18.1,<6"
-numba = ">=0.63.1,<0.64"
-numpy = ">=2.3.5,<3"
+numba = ">=0.64.0,<0.65"
+numpy = ">=2.4.2,<3"
 pandas = ">=2.3.3,<3"
 pre-commit = ">=4.5.1,<5"
 psycopg2-binary = ">=2.9.10,<3"
@@ -208,7 +208,7 @@ pytest-cov = ">=7.0.0,<8"
 pytest-mock = ">=3.15.1,<4"
 python-dotenv = ">=1.2.2,<2"
 pyyaml = ">=6.0.3,<7"
-ruff = ">=0.15.2,<0.16"
+ruff = ">=0.15.5,<0.16"
 sphinx = ">=9.1.0,<10"
 sphinx-autoapi = ">=3.7.0,<4"
 sphinx-issues = ">=5.0.1,<6"
