@@ -147,7 +147,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
       - name: Post update to pudl-deployment
         if: ${{ inputs.create_github_issue == false }}
-        uses: slackapi/slack-github-action@v2.1.1
+        uses: slackapi/slack-github-action@v3.0.1
         with:
           method: chat.postMessage
           token: ${{ secrets.PUDL_DEPLOY_SLACK_TOKEN }}
@@ -196,7 +196,7 @@ jobs:
     env:
       github-url: ${{ needs.make-github-issue.outputs.url }}
     steps:
-      - uses: slackapi/slack-github-action@v2.1.1
+      - uses: slackapi/slack-github-action@v3.0.1
         with:
           method: chat.postMessage
           token: ${{ secrets.PUDL_DEPLOY_SLACK_TOKEN }}
