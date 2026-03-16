@@ -167,7 +167,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
       - name: Post update to pudl-deployment
         if: ${{ inputs.create_github_issue == false }}
-        uses: slackapi/slack-github-action@v2.1.1
+        uses: slackapi/slack-github-action@v3.0.1
         with:
           method: chat.postMessage
           token: ${{ secrets.PUDL_DEPLOY_SLACK_TOKEN }}
@@ -242,7 +242,7 @@ jobs:
     steps:
       - name: Post successful archive run
         if: ${{ needs.make-github-issue.result == 'success' && needs.close-issue-if-no-changes.result == 'skipped' }}
-        uses: slackapi/slack-github-action@v2.1.1
+        uses: slackapi/slack-github-action@v3.0.1
         with:
           method: chat.postMessage
           token: ${{ secrets.PUDL_DEPLOY_SLACK_TOKEN }}
@@ -251,7 +251,7 @@ jobs:
             channel: "C03FHB9N0PQ"
       - name: Post skipped announcement to Slack
         if: ${{ needs.make-github-issue.result == 'success' && needs.close-issue-if-no-changes.result == 'success' }}
-        uses: slackapi/slack-github-action@v2.1.1
+        uses: slackapi/slack-github-action@v3.0.1
         with:
           method: chat.postMessage
           token: ${{ secrets.PUDL_DEPLOY_SLACK_TOKEN }}
