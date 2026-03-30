@@ -47,7 +47,7 @@ jobs:
           pixi run ci
 
       - name: Upload test coverage report to CodeCov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
 
   ci-notify:
     runs-on: ubuntu-latest
