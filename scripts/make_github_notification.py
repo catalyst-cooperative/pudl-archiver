@@ -21,7 +21,6 @@ import argparse
 import json
 import logging
 import re
-from collections import defaultdict
 from pathlib import Path
 
 import pandas as pd
@@ -54,47 +53,51 @@ def _parse_args():
     return parser.parse_args()
 
 
-def _format_message(url: str | None, name: str, content: str) -> list[dict]:
-    """Format message for Markdown.
+def _format_message(
+    url: str | None, name: str, content: str, action: str | None = None
+) -> str:
+    """Format message for Markdown with the dataset, its URL and action items.
 
-    When archives fail, they may not have a URL.
+    When archives fail, they may not have a URL. If no action specified, don't add
+    a checkbox.
     """
-    if url:
-        text = f"[**{name}**]({url})<br/><br/>{content}"
-    else:
-        text = f"**{name}**<br/><br/>{content}"
-    return text
+    header = f"[**{name}**]({url})" if url else f"**{name}**"
+
+    if action:
+        return f"{header}\n- [ ] {action}\n\n{content}"
+    return f"{header}\n\n{content}"
 
 
 def _format_text_as_github_code(text: str) -> str:
     """Set up code to render nicely in one block, instead of per-line."""
-    start_string = "<pre><code><br/>"
-    end_string = "<br/></code></pre>"
-    return f"{start_string}{text}{end_string}"
+    return f"```\n{text}\n```"
 
 
-def _format_failures(summary: dict) -> list[dict]:
+def _format_failures(summary: dict) -> str | None:
     name = summary["dataset_name"]
     url = summary["record_url"]
 
-    test_failures = defaultdict(list)
+    test_failures = []
     for validation_test in summary["validation_tests"]:
         if (not validation_test["success"]) and (
             validation_test["required_for_run_success"]
         ):
-            test_failures = ". ".join(
-                [validation_test["name"]] + validation_test["notes"]
-            )  # Flatten list of lists
+            failure_text = validation_test["name"]
+            if validation_test.get("notes"):
+                failure_text += ": " + ". ".join(validation_test["notes"])
+            test_failures.append(failure_text)
 
     if test_failures:
-        failures = _format_text_as_github_code(json.dumps(test_failures, indent=2))
+        failures = "\n".join(test_failures)
     else:
         return None
 
-    return _format_message(url=url, name=name, content=failures)
+    return _format_message(
+        url=url, name=name, content=failures, action="Investigate failure"
+    )
 
 
-def _format_summary(summary: dict) -> list[dict]:
+def _format_summary(summary: dict) -> str | None:
     name = summary["dataset_name"]
     url = summary["record_url"]
     if any(not test["success"] for test in summary["validation_tests"]):
@@ -106,17 +109,18 @@ def _format_summary(summary: dict) -> list[dict]:
         file_change_table = file_change_table.rename(
             columns={"size_diff": "change_in_mb"}
         )
-        # Convert to HTML (GH was being very cranky about rendering mkdn, so we're
-        # just cutting straight to the source here.)
-        changes = file_change_table.to_html(index=False).replace("\n", "")
-
+        # Convert to Markdown table
+        changes = file_change_table.to_markdown(index=False)
+        action = "Reviewed and published to Zenodo"
     else:
+        # If no changes, don't specify an action.
         changes = "No changes."
+        action = None
 
-    return _format_message(url=url, name=name, content=changes)
+    return _format_message(url=url, name=name, content=changes, action=action)
 
 
-def _format_errors(log: str) -> str:
+def _format_errors(log: str) -> str | None:
     """Take a log file from a failed run and return the exception."""
     # First isolate traceback
     failure_match = list(re.finditer("Traceback", log))
@@ -130,7 +134,7 @@ def _format_errors(log: str) -> str:
     # Get last traceback
     failure = log[failure_match[-1].start() :]
     # Keep last three lines to get a sliver of the error message
-    failure = "  ".join(failure.splitlines()[-3:])
+    failure = "\n".join(failure.splitlines()[-3:])
     failure = _format_text_as_github_code(failure)  # Format as code
 
     name_re = re.search(
@@ -149,7 +153,9 @@ def _format_errors(log: str) -> str:
     # a hyperlink.
     url = url_re.group(1) if url_re else None
 
-    return _format_message(url=url, name=name, content=failure)
+    return _format_message(
+        url=url, name=name, content=failure, action="Investigate error"
+    )
 
 
 def _load_summaries(summary_files: list[Path]) -> list[dict]:
@@ -175,19 +181,17 @@ def main(summary_files: list[Path], error_files: list[Path], summary_type: str) 
     summaries = _load_summaries(summary_files)
     errors = _load_errors(error_files)
 
-    error_blocks = "<br/><br/>".join(filter(None, (_format_errors(e) for e in errors)))
+    error_blocks = "\n\n".join(filter(None, (_format_errors(e) for e in errors)))
 
-    failed_blocks = "<br/><br/>".join(
-        filter(None, (_format_failures(s) for s in summaries))
-    )
+    failed_blocks = "\n\n".join(filter(None, (_format_failures(s) for s in summaries)))
 
-    unchanged_blocks = "<br/><br/>".join(
+    unchanged_blocks = "\n\n".join(
         _format_summary(s)
         for s in summaries
         if (not s["file_changes"]) and (_format_summary(s) is not None)
     )
 
-    changed_blocks = "<br/><br/>".join(
+    changed_blocks = "\n\n".join(
         _format_summary(s)
         for s in summaries
         if (s["file_changes"]) and (_format_summary(s) is not None)
