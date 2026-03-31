@@ -70,7 +70,7 @@ def _format_message(
 
 def _format_text_as_github_code(text: str) -> str:
     """Set up code to render nicely in one block, instead of per-line."""
-    return f"```{text}```"
+    return f"```\n{text}\n```"
 
 
 def _format_failures(summary: dict) -> str | None:
