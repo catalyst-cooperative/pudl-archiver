@@ -64,13 +64,13 @@ def _format_message(
     header = f"[**{name}**]({url})" if url else f"**{name}**"
 
     if action:
-        return f"{header}\n- [ ] {action}\n\n{content}"
+        return f"{header}\n\n{content}\n\n- [ ] {action}"
     return f"{header}\n\n{content}"
 
 
 def _format_text_as_github_code(text: str) -> str:
     """Set up code to render nicely in one block, instead of per-line."""
-    return f"```\n{text}\n```"
+    return f"```{text}```"
 
 
 def _format_failures(summary: dict) -> str | None:
@@ -85,7 +85,7 @@ def _format_failures(summary: dict) -> str | None:
             failure_text = validation_test["name"]
             if validation_test.get("notes"):
                 failure_text += ": " + ". ".join(validation_test["notes"])
-            test_failures.append(failure_text)
+            test_failures.append(f"- {failure_text}")
 
     if test_failures:
         failures = "\n".join(test_failures)
@@ -109,6 +109,9 @@ def _format_summary(summary: dict) -> str | None:
         file_change_table = file_change_table.rename(
             columns={"size_diff": "change_in_mb"}
         )
+        file_change_table["partition_changes"] = (
+            file_change_table["partition_changes"].astype(str).replace("[]", "")
+        )  # Replace no partition change with empty string
         # Convert to Markdown table
         changes = file_change_table.to_markdown(index=False)
         action = "Reviewed and published to Zenodo"
