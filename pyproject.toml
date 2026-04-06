@@ -177,8 +177,8 @@ ci = { depends-on = [
 ], description = "Run full CI suite" }
 
 [tool.pixi.dependencies]
-aiohttp = ">=3.13.3,<4"
-arelle-release = ">=2.39.3,<3"
+aiohttp = ">=3.13.5,<4"
+arelle-release = ">=2.39.5,<3"
 beautifulsoup4 = ">=4.14.3,<5"
 # Install PUDL as a conda package from git:
 "catalystcoop.pudl" = { git = "https://github.com/catalyst-cooperative/pudl.git" }
@@ -193,7 +193,7 @@ deltalake = ">=1.5.0,<2"
 doc8 = ">=2.0.0,<3"
 feedparser = ">=6.0.12,<7"
 frictionless = ">=5.18.1,<6"
-numba = ">=0.64.0,<0.65"
+numba = ">=0.65.0,<0.66"
 numpy = ">=2.4.3,<3"
 pandas = ">=2.3.3,<3"
 pre-commit = ">=4.5.1,<5"
@@ -208,12 +208,12 @@ pytest-cov = ">=7.1.0,<8"
 pytest-mock = ">=3.15.1,<4"
 python-dotenv = ">=1.2.2,<2"
 pyyaml = ">=6.0.3,<7"
-ruff = ">=0.15.7,<0.16"
+ruff = ">=0.15.9,<0.16"
 sphinx = ">=9.1.0,<10"
 sphinx-autoapi = ">=3.8.0,<4"
 sphinx-issues = ">=6.0.0,<7"
 tqdm = ">=4.67.3,<5"
-types-requests = ">=2.32.4.20260107,<3"
+types-requests = ">=2.33.0.20260402,<3"
 pyproj = ">=3.7.2,<4"
 
 [tool.pixi.activation]
