@@ -154,7 +154,6 @@ def fsspec(
 
 
 @archive.command
-@auto_publish_option
 @click.argument(
     "summary-file",
     type=str,
