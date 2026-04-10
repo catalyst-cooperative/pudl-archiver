@@ -1,0 +1,19 @@
+name: publish-fsspec-archive
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Run ID pointing to run of run-fsspec-archiver action
+        required: true
+        type: string
+      dataset:
+        description: Name of dataset to publish from previous archive
+        required: true
+        type: string
+jobs:
+  noop:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Do nothing
+        run: echo "This is a stub for testing"
