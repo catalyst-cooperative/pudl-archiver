@@ -143,12 +143,11 @@ successfully added to the archive in the previous run. Basic usage looks like th
 following:
 
 ```bash
-pudl_archiver retry-run {run_summary_json_file}
+pudl_archiver archive retry-run {run_summary_json_file}
 ```
 
 This command will inherit all settings from the previous run except `--auto-publish` to
-avoid accidental publication. This also allows `retry-run` to be used to publish results
-from a successful run which did not have `--auto-publish` set.
+avoid accidental publication.
 
 During a retry, the archiver expects all successfully downloaded resources to still
 be in the draft deposition. If the state of the deposition has been changed in any
@@ -162,6 +161,18 @@ and CLI settings.
 3. Start downloading failed resources and adding new versions to the open draft deposition.
 4. Attempt to publish draft containing resources from original run and retry, following
 standard validation procedures.
+
+### Publishing a Successful Run
+There is also a command for publishing a successful run that did not have `auto-publish`
+set. This is meant primarily for the `fsspec` archiver since Zenodo provides an
+interface for publishing drafts. This command works almost exactly like the `retry-run`
+command, but it will always have `auto-publish` set to `True`.
+
+Example usage:
+
+```bash
+pudl_archiver archive publish-run {run_summary_json_file}
+```
 
 ## Adding a new dataset
 

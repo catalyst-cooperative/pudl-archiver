@@ -40,11 +40,6 @@ jobs:
           pixi info
           pixi list
 
-      - name: Additional Playwright setup
-        run: |
-          pixi run playwright install --with-deps webkit
-          pixi run playwright install --with-deps chromium
-
       - name: Download run summary
         uses: actions/download-artifact@v8
         with:
@@ -59,6 +54,5 @@ jobs:
           set -o pipefail
           pixi run pudl_archiver \
             archive \
-            retry-run \
-            --auto-publish \
+            publish-run \
             ${{ inputs.dataset }}_run_summary.json 2>&1 | tee ${{ inputs.dataset }}_log.txt
