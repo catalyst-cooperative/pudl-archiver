@@ -42,6 +42,13 @@ jobs:
           pixi run playwright install --with-deps webkit
           pixi run playwright install --with-deps chromium
 
+      - name: Download run summary
+        uses: actions/download-artifact@v8
+        with:
+          run-id: ${{ inputs.run_id }}
+          pattern: run-summaries-${{ inputs.dataset }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Attempt to publish deposition for ${{ inputs.dataset }}
         # set -o pipefail passes on any failure codes to the next step,
         # enabling us to see whether or not the pudl_archiver run failed.
@@ -51,11 +58,4 @@ jobs:
             archive \
             retry-run \
             --auto-publish \
-            2>&1 | tee ${{ inputs.dataset }}_log.txt
-
-      - name: Download run summary
-        uses: actions/download-artifact@v8
-        with:
-          run-id: ${{ inputs.run_id }}
-          pattern: run-summaries-${{ inputs.dataset }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+            ${{ inputs.dataset }}_run_summary.json 2>&1 | tee ${{ inputs.dataset }}_log.txt
