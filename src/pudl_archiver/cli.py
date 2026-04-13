@@ -161,7 +161,7 @@ def fsspec(
 def publish_run(summary_file: str):
     """Publish the results from a successful run that did not have ``auto-publish`` set.
 
-   Args:
+    Args:
          summary_file: A string pointing to a Run Summary JSON file output by a previous run which
     which completed succesfully, but didn't publish its results. All run settings will
     be inherited from the previous run except for ``auto-publish``, which will be
