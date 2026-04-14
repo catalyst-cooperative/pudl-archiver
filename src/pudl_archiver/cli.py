@@ -1,9 +1,7 @@
 """A script for archiving raw PUDL data on Zenodo."""
 
 import asyncio
-import json
 import logging
-from pathlib import Path
 
 import click
 import coloredlogs
@@ -167,16 +165,9 @@ def publish_run(summary_file: str):
     be inherited from the previous run except for ``auto-publish``, which will be
     set to ``True``.
     """
-    # Load run summary file and parse
-    with Path(summary_file).open() as f:
-        previous_run_summary = RunSummary.model_validate(json.load(f))
-
-    # Extract settings from failed run
-    run_settings = previous_run_summary.run_settings.model_copy(
-        update={
-            "retry_run": summary_file,
-            "auto_publish": True,
-        },
+    # Load run summary from successful run
+    previous_run_summary = RunSummary.load_previous_run(
+        summary_file=summary_file, auto_publish=True
     )
 
     # Find which partitions failed/succeeded in previous run
@@ -190,11 +181,13 @@ def publish_run(summary_file: str):
             f"Found the following failed partitions: {failed_partitions.keys()}"
         )
 
-    # Retry archiver run
+    # Run the archiver with settings from previous run
+    # Given that failed_partitions is empty, this will only attempt to
+    # publish the outputs of the previous run Publication is still subject to archive validation rules
     asyncio.run(
         archive_dataset(
             dataset=previous_run_summary.dataset_name,
-            run_settings=run_settings,
+            run_settings=previous_run_summary.run_settings,
             failed_partitions=failed_partitions,
             successful_partitions=successful_partitions,
         )
@@ -215,16 +208,9 @@ def retry_run(summary_file: str, auto_publish: bool):
     which will be overridden by this CLI to avoid accidental publication on a retry.
     ``auto-publish`` defaults to False in all cases.
     """
-    # Load run summary file and parse
-    with Path(summary_file).open() as f:
-        failed_run_summary = RunSummary.model_validate(json.load(f))
-
-    # Extract settings from failed run
-    run_settings = failed_run_summary.run_settings.model_copy(
-        update={
-            "retry_run": summary_file,
-            "auto_publish": auto_publish,
-        },
+    # Load run summary from failed run
+    failed_run_summary = RunSummary.load_previous_run(
+        summary_file=summary_file, auto_publish=auto_publish
     )
 
     # Find which partitions failed/succeeded in previous run
@@ -237,11 +223,12 @@ def retry_run(summary_file: str, auto_publish: bool):
             "Instead, use the publish-run command."
         )
 
-    # Retry archiver run
+    # Run the archiver with settings from previous run
+    # Given that failed partitions is not empty this will retry these partitions
     asyncio.run(
         archive_dataset(
             dataset=failed_run_summary.dataset_name,
-            run_settings=run_settings,
+            run_settings=failed_run_summary.run_settings,
             failed_partitions=failed_partitions,
             successful_partitions=successful_partitions,
         )
