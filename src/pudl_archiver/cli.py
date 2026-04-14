@@ -153,7 +153,7 @@ def fsspec(
     )
 
 
-@archive.command
+@pudl_archiver.command
 @click.argument(
     "summary-file",
     type=str,
@@ -200,7 +200,7 @@ def publish_run(summary_file: str):
     )
 
 
-@archive.command
+@pudl_archiver.command
 @auto_publish_option
 @click.argument(
     "summary-file",

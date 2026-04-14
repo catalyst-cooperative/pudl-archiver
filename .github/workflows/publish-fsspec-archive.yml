@@ -53,6 +53,5 @@ jobs:
         run: |
           set -o pipefail
           pixi run pudl_archiver \
-            archive \
             publish-run \
             ${{ inputs.dataset }}_run_summary.json 2>&1 | tee ${{ inputs.dataset }}_log.txt

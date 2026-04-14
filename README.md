@@ -143,7 +143,7 @@ successfully added to the archive in the previous run. Basic usage looks like th
 following:
 
 ```bash
-pudl_archiver archive retry-run {run_summary_json_file}
+pudl_archiver retry-run {run_summary_json_file}
 ```
 
 This command will inherit all settings from the previous run except `--auto-publish` to
@@ -171,7 +171,7 @@ command, but it will always have `auto-publish` set to `True`.
 Example usage:
 
 ```bash
-pudl_archiver archive publish-run {run_summary_json_file}
+pudl_archiver publish-run {run_summary_json_file}
 ```
 
 ## Adding a new dataset
