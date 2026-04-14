@@ -5,11 +5,11 @@ on:
   workflow_dispatch:
     inputs:
       run_id:
-        description: Run ID pointing to run of run-fsspec-archiver action
+        description: Github action run ID, which is the number at the end of the URL when looking at a run
         required: true
         type: string
       dataset:
-        description: Name of dataset to publish from previous archive
+        description: Name of dataset to publish from previous archiver run
         required: true
         type: string
 
