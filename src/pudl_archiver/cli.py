@@ -1,9 +1,7 @@
 """A script for archiving raw PUDL data on Zenodo."""
 
 import asyncio
-import json
 import logging
-from pathlib import Path
 
 import click
 import coloredlogs
@@ -153,7 +151,50 @@ def fsspec(
     )
 
 
-@archive.command
+@pudl_archiver.command
+@click.argument(
+    "summary-file",
+    type=str,
+)
+def publish_run(summary_file: str):
+    """Publish the results from a successful run that did not have ``auto-publish`` set.
+
+    Args:
+         summary_file: A string pointing to a Run Summary JSON file output by a previous run which
+    which completed succesfully, but didn't publish its results. All run settings will
+    be inherited from the previous run except for ``auto-publish``, which will be
+    set to ``True``.
+    """
+    # Load run summary from successful run
+    previous_run_summary = RunSummary.load_previous_run(
+        summary_file=summary_file, auto_publish=True
+    )
+
+    # Find which partitions failed/succeeded in previous run
+    failed_partitions = previous_run_summary.failed_partitions
+    successful_partitions = previous_run_summary.successful_partitions
+
+    if failed_partitions != {}:
+        raise RuntimeError(
+            "publish-run should not be called on a run with failed partitions."
+            "Instead, use the retry-run command."
+            f"Found the following failed partitions: {failed_partitions.keys()}"
+        )
+
+    # Run the archiver with settings from previous run
+    # Given that failed_partitions is empty, this will only attempt to
+    # publish the outputs of the previous run Publication is still subject to archive validation rules
+    asyncio.run(
+        archive_dataset(
+            dataset=previous_run_summary.dataset_name,
+            run_settings=previous_run_summary.run_settings,
+            failed_partitions=failed_partitions,
+            successful_partitions=successful_partitions,
+        )
+    )
+
+
+@pudl_archiver.command
 @auto_publish_option
 @click.argument(
     "summary-file",
@@ -163,32 +204,31 @@ def retry_run(summary_file: str, auto_publish: bool):
     """Retry a previous run of the archiver by passing a JSON summary file from the run.
 
     SUMMARY_FILE Points to a Run Summary JSON file output by a previous run which
-    either failed, or which completed succesfully, but didn't publish its results.
-    All run settings will be inherited from the previous run except for ``auto-publish``,
+    failed. All run settings will be inherited from the previous run except for ``auto-publish``,
     which will be overridden by this CLI to avoid accidental publication on a retry.
     ``auto-publish`` defaults to False in all cases.
     """
-    # Load run summary file and parse
-    with Path(summary_file).open() as f:
-        failed_run_summary = RunSummary.model_validate(json.load(f))
-
-    # Extract settings from failed run
-    run_settings = failed_run_summary.run_settings.model_copy(
-        update={
-            "retry_run": summary_file,
-            "auto_publish": auto_publish,
-        },
+    # Load run summary from failed run
+    failed_run_summary = RunSummary.load_previous_run(
+        summary_file=summary_file, auto_publish=auto_publish
     )
 
     # Find which partitions failed/succeeded in previous run
     failed_partitions = failed_run_summary.failed_partitions
     successful_partitions = failed_run_summary.successful_partitions
 
-    # Retry archiver run
+    if failed_partitions == {}:
+        raise RuntimeError(
+            "retry-run should not be called on a run with no failed partitions."
+            "Instead, use the publish-run command."
+        )
+
+    # Run the archiver with settings from previous run
+    # Given that failed partitions is not empty this will retry these partitions
     asyncio.run(
         archive_dataset(
             dataset=failed_run_summary.dataset_name,
-            run_settings=run_settings,
+            run_settings=failed_run_summary.run_settings,
             failed_partitions=failed_partitions,
             successful_partitions=successful_partitions,
         )
