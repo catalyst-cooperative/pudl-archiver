@@ -73,7 +73,6 @@ jobs:
             fsspec \
             ${{ matrix.dataset }} \
             $DEPOSITION_PATH/${{ matrix.dataset }} \
-            --auto-publish \
             --clobber-unchanged 2>&1 | tee ${{ matrix.dataset }}_log.txt
 
       - name: Save failed runs

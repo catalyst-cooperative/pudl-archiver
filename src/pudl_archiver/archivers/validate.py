@@ -1,5 +1,6 @@
 """Defines models used for validating/summarizing an archiver run."""
 
+import json
 import logging
 import re
 import xml.etree.ElementTree as Et  # nosec: B405
@@ -193,6 +194,35 @@ class RunSummary(BaseModel):
             failed_partitions=failed_partitions,
             successful_partitions=successful_partitions,
             run_settings=run_settings,
+        )
+
+    @classmethod
+    def load_previous_run(
+        cls, summary_file: str | Path, auto_publish: bool
+    ) -> "RunSummary":
+        """Create a RunSummary object from a JSON file output by a previous run.
+
+        Load settings from summary file, but always override ``auto_publish``
+        to avoid accidental publication.
+
+        Args:
+            summary_file: Points to JSON file containing serialized RunSummary metadata.
+            auto_publish: Explicitly set ``auto_publish``.
+        """
+        # Load run summary file and parse
+        with Path(summary_file).open() as f:
+            previous_run_summary = RunSummary.model_validate(json.load(f))
+
+        # Extract settings from failed run
+        return previous_run_summary.model_copy(
+            update={
+                "run_settings": previous_run_summary.run_settings.model_copy(
+                    update={
+                        "retry_run": summary_file,
+                        "auto_publish": True,
+                    },
+                )
+            }
         )
 
 

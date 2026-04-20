@@ -83,7 +83,7 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
             )
         resjson = file_list.content.decode("utf8").replace("'", '"')
         file_list.close()  # Close connection.
-        bulk_files = self.__filter_for_complete_metadata(json.loads(resjson))
+        bulk_files = self.__filter_for_complete_metadata(json.loads(resjson)["items"])
         quarterly_emissions_files = [
             file
             for file in bulk_files
