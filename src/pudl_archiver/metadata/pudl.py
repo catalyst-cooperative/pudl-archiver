@@ -6,8 +6,8 @@ import os
 
 from upath import UPath
 
-# PUDL_DATAPACKAGE_URL = "s3://pudl.catalyst.coop/nightly/pudl_parquet_datapackage.json"
-PUDL_DATAPACKAGE_URL = "gs://test.catalyst.coop/datapackage.json"
+PUDL_DATAPACKAGE_URL = "s3://pudl.catalyst.coop/nightly/pudl_parquet_datapackage.json"
+# PUDL_DATAPACKAGE_URL = "gs://test.catalyst.coop/datapackage.json"
 
 # Static license descriptors (frictionless License fields: name, title, path).
 # Keyed by the short identifiers used throughout the archiver.
