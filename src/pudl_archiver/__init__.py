@@ -1,16 +1,12 @@
 """Tool to download data resources and create archives on Zenodo for use in PUDL."""
 
-import asyncio
 import json
 import logging
 from pathlib import Path
-from typing import Any
 
 import aiohttp
 
-import pudl_archiver.orchestrator  # noqa: F401
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver
-from pudl_archiver.archivers.validate import RunSummary
 from pudl_archiver.frictionless import Partitions
 from pudl_archiver.orchestrator import orchestrate_run
 from pudl_archiver.utils import RunSettings

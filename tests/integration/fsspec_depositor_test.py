@@ -5,10 +5,9 @@ import tempfile
 from pathlib import Path
 
 import pytest
-from pudl.metadata.classes import DataSource
-from pudl.metadata.constants import LICENSES
 
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver, ResourceInfo
+from pudl_archiver.metadata.pudl import LICENSES
 from pudl_archiver.orchestrator import orchestrate_run
 from pudl_archiver.utils import RunSettings
 
@@ -62,19 +61,20 @@ def test_files():
 @pytest.fixture()
 def datasource(mocker):
     """Create fake datasource for testing."""
-    datasource = DataSource(
-        name="pudl_test",
-        title="Pudl Test",
-        description="Test dataset for the sandbox, thanks!",
-        path="https://fake.link",
-        license_raw=LICENSES["cc-by-4.0"],
-        license_pudl=LICENSES["cc-by-4.0"],
-    )
+    datasource = {
+        "name": "pudl_test",
+        "title": "Pudl Test",
+        "description": "Test dataset for the sandbox, thanks!",
+        "path": "https://fake.link",
+        "license_raw": LICENSES["cc-by-4.0"],
+        "contributors": [
+            {"title": "Catalyst Cooperative", "organization": "Catalyst Cooperative"}
+        ],
+    }
     # Mock out creating datapackage with fake data source
-    datasource_mock = mocker.MagicMock(return_value=datasource)
     mocker.patch(
-        "pudl_archiver.frictionless.DataSource.from_id",
-        new=datasource_mock,
+        "pudl_archiver.frictionless.get_sources",
+        return_value={"pudl_test": datasource},
     )
 
 
@@ -84,7 +84,7 @@ async def test_retry_run(
     bad_zipfile,
     fixed_bad_zipfile,
     tmp_path,
-    datasource: DataSource,
+    datasource: dict,
     mocker,
 ):
     """Test a an archiver retry run using fsspec depositor.
@@ -167,7 +167,7 @@ async def test_retry_run(
 @pytest.mark.asyncio
 async def test_fsspec_depositor(
     test_files: dict[str, list[dict[str, str]]],
-    datasource: DataSource,
+    datasource: dict,
     mocker,
     tmp_path,
 ):

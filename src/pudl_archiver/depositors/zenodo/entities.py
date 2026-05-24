@@ -8,11 +8,10 @@ import logging
 import re
 from typing import Annotated, Literal
 
-from pudl.metadata.classes import Contributor, DataSource
-from pudl.metadata.sources import SOURCES
 from pydantic import BaseModel, Field, StringConstraints, field_validator
 
 from pudl_archiver.depositors.depositor import DepositionState
+from pudl_archiver.metadata.pudl import get_sources
 from pudl_archiver.metadata.sources import NON_PUDL_SOURCES
 from pudl_archiver.utils import Url
 
@@ -77,11 +76,11 @@ class DepositionCreator(BaseModel):
     affiliation: str | None = None
 
     @classmethod
-    def from_contributor(cls, contributor: Contributor) -> "DepositionCreator":
-        """Construct deposition metadata object from PUDL Contributor model."""
+    def from_contributor(cls, contributor: dict) -> "DepositionCreator":
+        """Construct deposition metadata object from a contributor dict."""
         return cls(
-            name=contributor.title,
-            affiliation=contributor.organization,
+            name=contributor["title"],
+            affiliation=contributor.get("organization"),
         )
 
 
@@ -113,47 +112,38 @@ class DepositionMetadata(BaseModel):
 
     @classmethod
     def from_data_source(cls, data_source_id: str) -> "DepositionMetadata":
-        """Construct deposition metadata object from PUDL DataSource model."""
-        # Identify whether metadata originates from PUDL or archiver repo
-        sources = SOURCES if data_source_id in SOURCES else NON_PUDL_SOURCES
-        data_source = DataSource.from_id(data_source_id, sources=sources)
+        """Construct deposition metadata object from a data source dict."""
+        pudl_sources = get_sources()
+        if data_source_id in pudl_sources:
+            data_source = pudl_sources[data_source_id]
+        else:
+            data_source = NON_PUDL_SOURCES[data_source_id]
+
         creators = [
             DepositionCreator.from_contributor(contributor)
-            for contributor in data_source.contributors
+            for contributor in data_source["contributors"]
         ]
 
-        if not creators:
-            creators = [
-                DepositionCreator.from_contributor(
-                    Contributor.from_id("catalyst-cooperative")
-                )
-            ]
-
         if data_source_id in ["gridpathratoolkit", "vcerare"]:
-            # If data source was manually archived by us, specify that the
-            # data_source.path is a documentation link, rather than where we archived
-            # the data from. These datasets are highly processed, so we also drop the
-            # 'PUDL Raw' prefix from the title to avoid confusion.
-            title = f"{data_source.title}"
+            # data_source.path is a documentation link, not the archive source.
+            # Drop the 'PUDL Raw' prefix — these datasets are highly processed.
+            title = data_source["title"]
             description = (
-                f"<p>{data_source.description}</p> <p>Archived by Catalyst \n"
+                f"<p>{data_source['description']}</p> <p>Archived by Catalyst \n"
                 "Cooperative from data provided directly from the dataset's \n"
                 "creator. For more information, see \n"
-                f'<a href="{data_source.path}">{data_source.path}</a></p>'
+                f'<a href="{data_source["path"]}">{data_source["path"]}</a></p>'
                 f"{PUDL_DESCRIPTION}"
             )
         else:
-            # Otherwise, specify that data was archived from the data_source.path
-            # and can be found there. Only include PUDL Raw if this dataset does
-            # indeed wind up in PUDL.
             title = (
-                f"PUDL Raw {data_source.title}"
-                if data_source_id in SOURCES
-                else f"{data_source.title}"
+                f"PUDL Raw {data_source['title']}"
+                if data_source_id in pudl_sources
+                else data_source["title"]
             )
             description = (
-                f"<p>{data_source.description} Archived from \n"
-                f'<a href="{data_source.path}">{data_source.path}</a></p>'
+                f"<p>{data_source['description']} Archived from \n"
+                f'<a href="{data_source["path"]}">{data_source["path"]}</a></p>'
                 f"{PUDL_DESCRIPTION}"
             )
 
@@ -161,8 +151,8 @@ class DepositionMetadata(BaseModel):
             title=title,
             description=description,
             creators=creators,
-            license=data_source.license_raw.name,
-            keywords=data_source.keywords,
+            license=data_source["license_raw"]["name"],
+            keywords=data_source.get("keywords", []),
             version="1.0.0",
         )
 
