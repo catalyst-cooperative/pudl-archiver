@@ -2,7 +2,7 @@
 name = "pudl_archiver"
 version = "0.2.0"
 authors = [{ name = "Catalyst Cooperative", email = "pudl@catalyst.coop" }]
-requires-python = ">=3.13"
+requires-python = ">=3.14"
 license = { file = "LICENSE.txt" }
 readme = { file = "README.md", content-type = "text/markdown" }
 
@@ -37,8 +37,8 @@ doctest_optionflags = [
 asyncio_mode = "auto"
 
 [tool.ruff]
-# Assume Python 3.13
-target-version = "py313"
+# Assume Python 3.14
+target-version = "py314"
 line-length = 88
 indent-width = 4
 
