@@ -73,7 +73,13 @@ def get_datapackage() -> dict:
     Raises:
         RuntimeError: if the descriptor cannot be read from either source.
     """
-    path = UPath(os.getenv("PUDL_DATAPACKAGE_PATH", PUDL_DATAPACKAGE_URL))
+    raw_path = os.getenv("PUDL_DATAPACKAGE_PATH", PUDL_DATAPACKAGE_URL)
+    if raw_path.startswith("s3://"):
+        path = UPath(raw_path, anon=True)
+    elif raw_path.startswith("gs://"):
+        path = UPath(raw_path, token="anon")  # noqa: S106
+    else:
+        path = UPath(raw_path)
     try:
         return json.loads(path.read_text())
     except Exception as exc:
