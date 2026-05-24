@@ -93,7 +93,7 @@ class FercForm(Enum):
                 return 714
 
     @classmethod
-    def from_int(cls, form_number: int) -> "FercForm":
+    def from_int(cls, form_number: int) -> FercForm:
         """Create form from an integer."""
         if form_number not in [1, 2, 6, 60, 714]:
             raise ValueError(f"{form_number} is not a valid FERC form number")
@@ -133,7 +133,7 @@ class FeedEntry(BaseModel):
         """Implement hash so FeedEntry can be used in a set."""
         return hash(f"{self.download_url}")
 
-    def __eq__(self, other: "FeedEntry"):
+    def __eq__(self, other: FeedEntry):
         """Implement eq so FeedEntry can be used in a set."""
         return self.download_url == other.download_url
 
@@ -144,7 +144,7 @@ class IndexedFilings(BaseModel):
     filings_per_year: dict[Year, set[FeedEntry]]
 
     @classmethod
-    def index_available_entries(cls, form: FercForm) -> "IndexedFilings":
+    def index_available_entries(cls, form: FercForm) -> IndexedFilings:
         """Parse all RSS feeds and index the available filings by Form number and year.
 
         FERC provides an RSS feed for accessing XBRL filings. However, primary RSS feed
@@ -204,7 +204,7 @@ class FilingMetadata(BaseModel):
     @classmethod
     def from_rss_metadata(
         cls, rss_metadata: FeedEntry, filename: str, filing_data: bytes
-    ) -> "FilingMetadata":
+    ) -> FilingMetadata:
         """Construct metadata from RSS feed and filing data to extract taxonomy URL."""
         if not (match := TAXONOMY_URL_PATTERN.search(filing_data.decode().lower())):
             raise RuntimeError(

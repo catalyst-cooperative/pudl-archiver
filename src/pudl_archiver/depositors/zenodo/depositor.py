@@ -117,7 +117,7 @@ class ZenodoAPIClient(DepositorAPIClient):
         cls,
         session: aiohttp.ClientSession,
         sandbox: bool,
-    ) -> "ZenodoAPIClient":
+    ) -> ZenodoAPIClient:
         """Initialize API client connection.
 
         Args:
@@ -205,7 +205,7 @@ class ZenodoAPIClient(DepositorAPIClient):
         self,
         deposition: Deposition,
         filename: str,
-    ) -> "ZenodoDraftDeposition":
+    ) -> ZenodoDraftDeposition:
         """Delete a file from a deposition.
 
         Args:
@@ -592,7 +592,7 @@ class ZenodoPublishedDeposition(PublishedDeposition):
     api_client: ZenodoAPIClient
     dataset_id: str
 
-    async def open_draft(self) -> "ZenodoDraftDeposition":
+    async def open_draft(self) -> ZenodoDraftDeposition:
         """Open a new draft deposition to make edits."""
         draft_deposition = await self.api_client.get_new_version(
             self.dataset_id,
@@ -651,7 +651,7 @@ class ZenodoDraftDeposition(DraftDeposition):
         filename: str,
         data: BinaryIO,
         force_api: Literal["bucket", "files"] | None = None,
-    ) -> "ZenodoDraftDeposition":
+    ) -> ZenodoDraftDeposition:
         """Create a file in a deposition.
 
         Args:
@@ -674,7 +674,7 @@ class ZenodoDraftDeposition(DraftDeposition):
     async def delete_file(
         self,
         filename: str,
-    ) -> "ZenodoDraftDeposition":
+    ) -> ZenodoDraftDeposition:
         """Delete a file from a deposition.
 
         Args:

@@ -76,7 +76,7 @@ class DepositionCreator(BaseModel):
     affiliation: str | None = None
 
     @classmethod
-    def from_contributor(cls, contributor: dict) -> "DepositionCreator":
+    def from_contributor(cls, contributor: dict) -> DepositionCreator:
         """Construct deposition metadata object from a contributor dict."""
         return cls(
             name=contributor["title"],
@@ -111,7 +111,7 @@ class DepositionMetadata(BaseModel):
             return
 
     @classmethod
-    def from_data_source(cls, data_source_id: str) -> "DepositionMetadata":
+    def from_data_source(cls, data_source_id: str) -> DepositionMetadata:
         """Construct deposition metadata object from a data source dict."""
         pudl_sources = get_sources()
         if data_source_id in pudl_sources:

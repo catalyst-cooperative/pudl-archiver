@@ -120,7 +120,7 @@ class DataPackage(BaseModel):
         name: str,
         resources: Iterable[Resource],
         version: str | None,
-    ) -> "DataPackage":
+    ) -> DataPackage:
         """Create a frictionless datapackage from a list of files and partitions.
 
         Args:
@@ -144,7 +144,7 @@ class DataPackage(BaseModel):
         name: str,
         resources: Iterable[Resource],
         version: str | None,
-    ) -> "DataPackage":
+    ) -> DataPackage:
         """Create a datapackage using PUDL metadata associated with ``name``."""
         data_source = get_sources()[name]
 
