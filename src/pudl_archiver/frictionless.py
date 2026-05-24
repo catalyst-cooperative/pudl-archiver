@@ -10,7 +10,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from pudl_archiver.metadata.pudl import get_sources
-from pudl_archiver.metadata.sources import NON_PUDL_SOURCES
+from pudl_archiver.metadata.sources import get_non_pudl_sources
 from pudl_archiver.utils import Url
 
 MEDIA_TYPES: dict[str, str] = {
@@ -169,7 +169,7 @@ class DataPackage(BaseModel):
         version: str | None,
     ):
         """Create a datapackage for sources that won't end up in PUDL."""
-        data_source = NON_PUDL_SOURCES[name]
+        data_source = get_non_pudl_sources()[name]
 
         return DataPackage(
             name=name,
