@@ -126,10 +126,6 @@ preview = ["pixi-build"]
 
 [tool.pixi.pypi-dependencies]
 pudl_archiver = { path = ".", editable = true }
-# furo version on conda-forge is very out of date and it is pure python.
-furo = ">=2025.12.19, <2026"
-# semantic-version is not available on conda-forge.
-semantic-version = ">=2.10.0, <3"
 # Something about the pixi activation script doesn't work when it's installed from conda-forge.
 playwright = ">=1.58.0, <2"
 
@@ -205,6 +201,7 @@ pyyaml = ">=6.0.3,<7"
 requests = ">=2.34.2,<3"
 ruff = ">=0.15.11,<0.16"
 s3fs = ">=2026.4.0,<2027"
+semantic_version = ">=2.10.0, <3"
 sphinx = ">=9.1.0,<10"
 sphinx-autoapi = ">=3.8.0,<4"
 sphinx-issues = ">=6.0.0,<7"
