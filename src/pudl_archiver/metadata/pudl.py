@@ -6,8 +6,7 @@ import os
 
 from upath import UPath
 
-PUDL_DATAPACKAGE_URL = "s3://pudl.catalyst.coop/nightly/pudl_parquet_datapackage.json"
-# PUDL_DATAPACKAGE_URL = "gs://test.catalyst.coop/datapackage.json"
+PUDL_DATAPACKAGE_S3 = "s3://pudl.catalyst.coop/nightly/pudl_parquet_datapackage.json"
 
 # Static license descriptors (frictionless License fields: name, title, path).
 # Keyed by the short identifiers used throughout the archiver.
@@ -66,20 +65,18 @@ KEYWORDS: dict[str, list[str]] = {
 def get_datapackage() -> dict:
     """Return the PUDL datapackage descriptor, loading it exactly once.
 
-    Checks the ``PUDL_DATAPACKAGE_PATH`` environment variable first; if set,
-    reads from that local path.  Otherwise fetches from the public S3 URL
-    :data:`PUDL_DATAPACKAGE_URL`.
+    Checks the ``PUDL_DATAPACKAGE_PATH`` environment variable first; if set, reads from
+    that local path.  Otherwise fetches from the public S3 URL
+    :data:`PUDL_DATAPACKAGE_S3`.
 
     Raises:
         RuntimeError: if the descriptor cannot be read from either source.
     """
-    raw_path = os.getenv("PUDL_DATAPACKAGE_PATH", PUDL_DATAPACKAGE_URL)
-    if raw_path.startswith("s3://"):
-        path = UPath(raw_path, anon=True)
-    elif raw_path.startswith("gs://"):
-        path = UPath(raw_path, token="anon")  # noqa: S106
-    else:
-        path = UPath(raw_path)
+    raw_path = os.getenv("PUDL_DATAPACKAGE_PATH", PUDL_DATAPACKAGE_S3)
+    path = (
+        UPath(raw_path, anon=True) if raw_path.startswith("s3://") else UPath(raw_path)
+    )
+
     try:
         return json.loads(path.read_text())
     except Exception as exc:
