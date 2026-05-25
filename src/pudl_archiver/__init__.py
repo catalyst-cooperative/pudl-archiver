@@ -112,8 +112,4 @@ async def archive_dataset(
             if test.notes:
                 lines.append(f"    Notes: {'; '.join(test.notes)}")
             lines.append("")
-        logger.error("\n".join(lines))
-        raise RuntimeError(
-            f"Error: {len(failed)} archive validation test(s) failed: "
-            + ", ".join(t.name for t in failed)
-        )
+        raise RuntimeError("\n".join(lines))
