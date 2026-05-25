@@ -50,6 +50,7 @@ def get_non_pudl_sources() -> dict[str, Any]:
             ),
             "license_raw": LICENSES["us-govt"],
             "license_pudl": LICENSES["cc-by-4.0"],
+            "email": "LEAD.Tool@hq.doe.gov",
             "contributors": [catalyst],
         },
         "eiacbecs": {
@@ -101,6 +102,7 @@ def get_non_pudl_sources() -> dict[str, Any]:
             "keywords": sorted({"eia", "nems", "aeo"}),
             "license_raw": LICENSES["us-govt"],
             "license_pudl": LICENSES["cc-by-4.0"],
+            "email": "EIA-NEMS-GITHUB@eia.gov",
             "contributors": [catalyst],
         },
         "eiamecs": {
@@ -268,6 +270,7 @@ def get_non_pudl_sources() -> dict[str, Any]:
             "license_raw": LICENSES["us-govt"],
             "license_pudl": LICENSES["cc-by-4.0"],
             "contributors": [catalyst],
+            "email": "uswtdb@lbl.gov",
         },
         "usgsuspvdb": {
             "title": "USGS USPVDB -- U.S. Large-Scale Solar Photovoltaic Database",
@@ -310,6 +313,7 @@ def get_non_pudl_sources() -> dict[str, Any]:
             "license_raw": LICENSES["us-govt"],
             "license_pudl": LICENSES["cc-by-4.0"],
             "contributors": [catalyst],
+            "email": "uspvdb@lbl.gov",
         },
         "epaegrid": {
             "title": "EPA eGRID -- Emissions & Generation Resource Integrated Database",
@@ -372,6 +376,7 @@ def get_non_pudl_sources() -> dict[str, Any]:
             "license_raw": LICENSES["us-govt"],
             "license_pudl": LICENSES["cc-by-4.0"],
             "contributors": [catalyst],
+            "email": "briggs.white@netl.doe.gov",
         },
         "epadcejp": {
             "title": "EPA -- Disadvantaged Community Energy Justice Program",
@@ -443,6 +448,7 @@ def get_non_pudl_sources() -> dict[str, Any]:
             "keywords": sorted({"emissions", "ghg", "epa", "pcap", "cprg"}),
             "license_raw": LICENSES["us-govt"],
             "license_pudl": LICENSES["cc-by-4.0"],
+            "email": "CPRG@epa.gov",
             "contributors": [catalyst],
         },
         "nrelefs": {
@@ -535,6 +541,7 @@ def get_non_pudl_sources() -> dict[str, Any]:
             ),
             "license_raw": LICENSES["cc-by-4.0"],
             "license_pudl": LICENSES["cc-by-4.0"],
+            "email": "Brian.Sergi@nlr.gov",
         },
         "nrelsts": {
             "title": "NREL STS -- Sharing the Sun Community Solar Project Data",
@@ -550,6 +557,7 @@ def get_non_pudl_sources() -> dict[str, Any]:
             "keywords": sorted({"solar", "nrel", "community"}),
             "license_raw": LICENSES["us-govt"],
             "license_pudl": LICENSES["cc-by-4.0"],
+            "email": "sharingthesun@nlr.gov",
             "contributors": [catalyst],
         },
     } | {
