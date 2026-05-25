@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field, StringConstraints, field_validator
 
 from pudl_archiver.depositors.depositor import DepositionState
 from pudl_archiver.metadata.pudl import get_pudl_sources
-from pudl_archiver.metadata.sources import get_non_pudl_sources
+from pudl_archiver.metadata.sources import NON_PUDL_SOURCES
 from pudl_archiver.utils import Url
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
@@ -117,7 +117,7 @@ class DepositionMetadata(BaseModel):
         if data_source_id in pudl_sources:
             data_source = pudl_sources[data_source_id]
         else:
-            data_source = get_non_pudl_sources()[data_source_id]
+            data_source = NON_PUDL_SOURCES[data_source_id]
 
         creators = [
             DepositionCreator.from_contributor(contributor)

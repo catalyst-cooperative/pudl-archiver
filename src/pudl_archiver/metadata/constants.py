@@ -1,5 +1,7 @@
 """Constant metadata values referenced in various data sources."""
 
+from typing import Any
+
 LICENSES: dict[str, dict[str, str]] = {
     "cc-by-4.0": {
         "name": "CC-BY-4.0",
@@ -54,3 +56,15 @@ KEYWORDS: dict[str, list[str]] = {
     ],
 }
 """Topical lists of keywords not availble in this from from the PUDL datapackage metadata."""
+
+CONTRIBUTORS: dict[str, dict[str, Any]] = {
+    "catalyst-cooperative": {
+        "name": "catalyst-cooperative",
+        "title": "Catalyst Cooperative",
+        "email": "pudl@catalyst.coop",
+        "path": "https://catalyst.coop",
+        "roles": ["publisher"],
+        "zenodo_role": "distributor",
+        "organization": "Catalyst Cooperative",
+    }
+}
