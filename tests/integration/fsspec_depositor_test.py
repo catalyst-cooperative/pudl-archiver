@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver, ResourceInfo
-from pudl_archiver.metadata.pudl import LICENSES
+from pudl_archiver.metadata.constants import LICENSES
 from pudl_archiver.orchestrator import orchestrate_run
 from pudl_archiver.utils import RunSettings
 

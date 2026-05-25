@@ -17,7 +17,7 @@ from pudl_archiver.depositors.zenodo.entities import (
     DepositionCreator,
     DepositionMetadata,
 )
-from pudl_archiver.metadata.pudl import LICENSES
+from pudl_archiver.metadata.constants import LICENSES
 from pudl_archiver.orchestrator import orchestrate_run
 from pudl_archiver.utils import RunSettings
 
