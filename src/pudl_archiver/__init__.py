@@ -103,4 +103,17 @@ async def archive_dataset(
 
     # Check validation results of all runs that aren't unchanged
     if not summary.success:
-        raise RuntimeError("Error: archive validation tests failed.")
+        failed = summary.get_failed_tests()
+        lines = [f"Archive validation failed: {len(failed)} test(s) did not pass.\n"]
+        for test in failed:
+            required = "required" if test.required_for_run_success else "optional"
+            lines.append(f"  FAILED [{required}] {test.name}")
+            lines.append(f"    {test.description}")
+            if test.notes:
+                lines.append(f"    Notes: {'; '.join(test.notes)}")
+            lines.append("")
+        logger.error("\n".join(lines))
+        raise RuntimeError(
+            f"Error: {len(failed)} archive validation test(s) failed: "
+            + ", ".join(t.name for t in failed)
+        )
