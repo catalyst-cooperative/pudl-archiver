@@ -62,7 +62,7 @@ KEYWORDS: dict[str, list[str]] = {
 
 
 @functools.lru_cache(maxsize=1)
-def get_datapackage() -> dict:
+def get_pudl_datapackage() -> dict:
     """Return the PUDL datapackage descriptor, loading it exactly once.
 
     Checks the ``PUDL_DATAPACKAGE_PATH`` environment variable first; if set, reads from
@@ -87,18 +87,18 @@ def get_datapackage() -> dict:
 
 
 @functools.lru_cache(maxsize=1)
-def get_sources() -> dict[str, dict]:
+def get_pudl_sources() -> dict[str, dict]:
     """Return PUDL data sources keyed by name.
 
     Replaces ``pudl.metadata.sources.SOURCES``.
     Each value is a dict with at minimum: ``name``, ``title``, ``path``,
     ``description``, ``keywords``.
     """
-    return {source["name"]: source for source in get_datapackage()["sources"]}
+    return {source["name"]: source for source in get_pudl_datapackage()["sources"]}
 
 
 @functools.lru_cache(maxsize=1)
-def get_contributors() -> dict[str, dict]:
+def get_pudl_contributors() -> dict[str, dict]:
     """Return PUDL contributors keyed by slugified organization name.
 
     Replaces ``pudl.metadata.constants.CONTRIBUTORS``.
@@ -107,5 +107,5 @@ def get_contributors() -> dict[str, dict]:
     """
     return {
         contributor["name"]: contributor
-        for contributor in get_datapackage()["contributors"]
+        for contributor in get_pudl_datapackage()["contributors"]
     }

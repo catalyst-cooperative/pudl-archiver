@@ -9,7 +9,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from pudl_archiver.metadata.pudl import get_sources
+from pudl_archiver.metadata.pudl import get_pudl_sources
 from pudl_archiver.metadata.sources import get_non_pudl_sources
 from pudl_archiver.utils import Url
 
@@ -130,7 +130,7 @@ class DataPackage(BaseModel):
                 containing the local path to the resource, and its working partitions.
             version: Version string for current deposition version.
         """
-        if name in get_sources():  # If data source in PUDL source metadata
+        if name in get_pudl_sources():  # If data source in PUDL source metadata
             return cls.from_pudl_metadata(
                 name=name, resources=resources, version=version
             )
@@ -146,7 +146,7 @@ class DataPackage(BaseModel):
         version: str | None,
     ) -> DataPackage:
         """Create a datapackage using PUDL metadata associated with ``name``."""
-        data_source = get_sources()[name]
+        data_source = get_pudl_sources()[name]
 
         return DataPackage(
             name=f"pudl-raw-{data_source['name']}",

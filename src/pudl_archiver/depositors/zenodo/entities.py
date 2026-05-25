@@ -11,7 +11,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, Field, StringConstraints, field_validator
 
 from pudl_archiver.depositors.depositor import DepositionState
-from pudl_archiver.metadata.pudl import get_sources
+from pudl_archiver.metadata.pudl import get_pudl_sources
 from pudl_archiver.metadata.sources import get_non_pudl_sources
 from pudl_archiver.utils import Url
 
@@ -113,7 +113,7 @@ class DepositionMetadata(BaseModel):
     @classmethod
     def from_data_source(cls, data_source_id: str) -> DepositionMetadata:
         """Construct deposition metadata object from a data source dict."""
-        pudl_sources = get_sources()
+        pudl_sources = get_pudl_sources()
         if data_source_id in pudl_sources:
             data_source = pudl_sources[data_source_id]
         else:

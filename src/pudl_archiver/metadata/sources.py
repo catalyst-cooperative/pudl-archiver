@@ -6,7 +6,7 @@ from typing import Any
 import pandas as pd
 
 from pudl_archiver.metadata.nrelcambium import nrel_cambium_generator
-from pudl_archiver.metadata.pudl import KEYWORDS, LICENSES, get_contributors
+from pudl_archiver.metadata.pudl import KEYWORDS, LICENSES, get_pudl_contributors
 
 # To add a new contributor, follow the following format to add an entry to the
 # ADDL_CONTRIBUTORS dictionary below formatted like this:
@@ -28,7 +28,7 @@ ADDL_CONTRIBUTORS: dict[str, dict[str, str]] = {}
 @functools.lru_cache(maxsize=1)
 def get_non_pudl_sources() -> dict[str, Any]:
     """Return metadata for datasets archived by PUDL but not processed into it."""
-    catalyst = get_contributors()["catalyst-cooperative"]
+    catalyst = get_pudl_contributors()["catalyst-cooperative"]
     return {
         "doelead": {
             "title": "DOE LEAD -- Low Income Energy Affordability Data",

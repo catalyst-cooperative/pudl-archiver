@@ -213,7 +213,7 @@ async def test_zenodo_workflow(
 
     # Mock out creating datapackage with fake data source
     mocker.patch(
-        "pudl_archiver.frictionless.get_sources",
+        "pudl_archiver.frictionless.get_pudl_sources",
         return_value={"pudl_test": datasource},
     )
 

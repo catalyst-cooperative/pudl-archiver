@@ -1,6 +1,6 @@
 """NREL Cambium -specific metadata helper."""
 
-from pudl_archiver.metadata.pudl import KEYWORDS, LICENSES, get_contributors
+from pudl_archiver.metadata.pudl import KEYWORDS, LICENSES, get_pudl_contributors
 
 
 def nrel_cambium_generator(year):
@@ -46,7 +46,7 @@ The {year} Cambium release includes two products:\n\n
             ]
         },
         "contributors": [
-            get_contributors()["catalyst-cooperative"],
+            get_pudl_contributors()["catalyst-cooperative"],
         ],
         "keywords": sorted(
             set(
