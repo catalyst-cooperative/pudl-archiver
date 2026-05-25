@@ -84,9 +84,7 @@ async def test_cli(
     # Run CLI
     runner = CliRunner()
     if not success:
-        with pytest.raises(
-            RuntimeError, match="Error: archive validation tests failed."
-        ):
+        with pytest.raises(RuntimeError, match="Archive validation failed:"):
             runner.invoke(pudl_archiver, args)
             (future,) = asyncio_run_mock.call_args.args
             await future

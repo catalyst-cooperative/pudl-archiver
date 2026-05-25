@@ -1,6 +1,7 @@
 """NREL Cambium -specific metadata helper."""
 
-from pudl_archiver.metadata.pudl import KEYWORDS, LICENSES, get_pudl_contributors
+from pudl_archiver.metadata.constants import KEYWORDS, LICENSES
+from pudl_archiver.metadata.pudl import get_pudl_contributors
 
 
 def nrel_cambium_generator(year):

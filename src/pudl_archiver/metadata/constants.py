@@ -1,0 +1,56 @@
+"""Constant metadata values referenced in various data sources."""
+
+LICENSES: dict[str, dict[str, str]] = {
+    "cc-by-4.0": {
+        "name": "CC-BY-4.0",
+        "title": "Creative Commons Attribution 4.0",
+        "path": "https://creativecommons.org/licenses/by/4.0",
+    },
+    "cc-zero": {
+        "name": "CC0-1.0",
+        "title": "CC0 1.0 Universal",
+        "path": "https://creativecommons.org/publicdomain/zero/1.0/",
+    },
+    "us-govt": {
+        "name": "other-pd",
+        "title": "U.S. Government Work",
+        "path": "http://www.usa.gov/publicdomain/label/1.0/",
+    },
+}
+"""Static license descriptors (frictionless License fields: name, title, path).
+
+Keyed by the short identifiers used throughout the archiver and PUDL repos.
+"""
+
+KEYWORDS: dict[str, list[str]] = {
+    "electricity": [
+        "electricity",
+        "electric",
+        "generation",
+        "energy",
+        "utility",
+        "transmission",
+        "distribution",
+        "kWh",
+        "MWh",
+        "kW",
+        "MW",
+        "kilowatt hours",
+        "kilowatts",
+        "megawatts",
+        "megawatt hours",
+        "power",
+    ],
+    "eia": [
+        "eia",
+        "energy information administration",
+    ],
+    "us_govt": [
+        "united states",
+        "us",
+        "usa",
+        "government",
+        "federal",
+    ],
+}
+"""Topical lists of keywords not availble in this from from the PUDL datapackage metadata."""

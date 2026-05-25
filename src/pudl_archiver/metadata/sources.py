@@ -5,8 +5,9 @@ from typing import Any
 
 import pandas as pd
 
+from pudl_archiver.metadata.constants import KEYWORDS, LICENSES
 from pudl_archiver.metadata.nrelcambium import nrel_cambium_generator
-from pudl_archiver.metadata.pudl import KEYWORDS, LICENSES, get_pudl_contributors
+from pudl_archiver.metadata.pudl import get_pudl_contributors
 
 # To add a new contributor, follow the following format to add an entry to the
 # ADDL_CONTRIBUTORS dictionary below formatted like this:
