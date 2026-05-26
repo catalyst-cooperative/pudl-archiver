@@ -46,7 +46,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         "license_raw": LICENSES["us-govt"],
         "license_pudl": LICENSES["cc-by-4.0"],
         "email": "LEAD.Tool@hq.doe.gov",
-        "contributors": CONTRIBUTORS["catalyst-cooperative"],
+        "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
     },
     "eiacbecs": {
         "title": "EIA CBECS -- Commercial Buildings Energy Consumption Survey",
@@ -76,7 +76,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         ),
         "license_raw": LICENSES["us-govt"],
         "license_pudl": LICENSES["cc-by-4.0"],
-        "contributors": CONTRIBUTORS["catalyst-cooperative"],
+        "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
     },
     "eianems": {
         "title": "EIA NEMS -- National Energy Modeling System",
@@ -122,7 +122,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         ),
         "license_raw": LICENSES["us-govt"],
         "license_pudl": LICENSES["cc-by-4.0"],
-        "contributors": CONTRIBUTORS["catalyst-cooperative"],
+        "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
     },
     "eiarecs": {
         "title": "EIA RECS -- Residential Energy Consumption Survey",
@@ -155,7 +155,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         ),
         "license_raw": LICENSES["us-govt"],
         "license_pudl": LICENSES["cc-by-4.0"],
-        "contributors": CONTRIBUTORS["catalyst-cooperative"],
+        "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
     },
     "eiasteo": {
         "title": "EIA STEO -- Short-Term Energy Outlook",
@@ -200,7 +200,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         ),
         "license_raw": LICENSES["us-govt"],
         "license_pudl": LICENSES["cc-by-4.0"],
-        "contributors": CONTRIBUTORS["catalyst-cooperative"],
+        "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
     },
     "usgsuswtdb": {
         "title": "USGS USWTDB - U.S. Wind Turbine Database",
@@ -264,7 +264,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         ),
         "license_raw": LICENSES["us-govt"],
         "license_pudl": LICENSES["cc-by-4.0"],
-        "contributors": CONTRIBUTORS["catalyst-cooperative"],
+        "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
         "email": "uswtdb@lbl.gov",
     },
     "usgsuspvdb": {
@@ -307,7 +307,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         ),
         "license_raw": LICENSES["us-govt"],
         "license_pudl": LICENSES["cc-by-4.0"],
-        "contributors": CONTRIBUTORS["catalyst-cooperative"],
+        "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
         "email": "uspvdb@lbl.gov",
     },
     "epaegrid": {
@@ -338,7 +338,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         ),
         "license_raw": LICENSES["us-govt"],
         "license_pudl": LICENSES["cc-by-4.0"],
-        "contributors": CONTRIBUTORS["catalyst-cooperative"],
+        "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
     },
     "doeiraec": {
         "title": "DOE -- IRA Energy Community Data Layers",
@@ -370,7 +370,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         ),
         "license_raw": LICENSES["us-govt"],
         "license_pudl": LICENSES["cc-by-4.0"],
-        "contributors": CONTRIBUTORS["catalyst-cooperative"],
+        "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
         "email": "briggs.white@netl.doe.gov",
     },
     "epadcejp": {
@@ -391,7 +391,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         ),
         "license_raw": LICENSES["us-govt"],
         "license_pudl": LICENSES["cc-by-4.0"],
-        "contributors": CONTRIBUTORS["catalyst-cooperative"],
+        "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
     },
     "epamats": {
         "title": "EPA MATS -- Mercury and Air Toxics Standards",
