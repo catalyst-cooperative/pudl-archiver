@@ -316,6 +316,8 @@ class DraftDeposition(BaseModel, ABC):
     ) -> PublishedDeposition | None:
         """Check that deposition is valid and worth changing, then publish if so."""
         if not run_summary.success:
+            # WARNING: log parser searches for "Archive validation failed"
+            # to determine if an error was due to a failed validation.
             logger.error(
                 "Archive validation failed. Not publishing new archive, kept "
                 f"draft at {self.get_deposition_link()} for inspection."
