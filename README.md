@@ -37,9 +37,9 @@ uploaded to Zenodo.
 ## Installation
 
 We use `pixi` to create and manage the `pudl-archiver` development environment.
-The project uses Python 3.14+, which is managed automatically by pixi.
 
-First, follow the [installation instructions](https://pixi.sh/latest/#installation) for your operating system.
+First, follow the Pixi [installation
+instructions](https://pixi.sh/latest/#installation) for your operating system.
 
 Next, run:
 

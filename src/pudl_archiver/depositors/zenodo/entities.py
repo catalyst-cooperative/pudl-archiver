@@ -125,8 +125,10 @@ class DepositionMetadata(BaseModel):
         ]
 
         if data_source_id in ["gridpathratoolkit", "vcerare"]:
-            # data_source.path is a documentation link, not the archive source.
-            # Drop the 'PUDL Raw' prefix — these datasets are highly processed.
+            # If data source was manually archived by us, specify that the
+            # data_source.path is a documentation link, rather than where we archived
+            # the data from. These datasets are highly processed, so we also drop the
+            # 'PUDL Raw' prefix from the title to avoid confusion.
             title = data_source["title"]
             description = (
                 f"<p>{data_source['description']}</p> <p>Archived by Catalyst \n"
@@ -136,6 +138,9 @@ class DepositionMetadata(BaseModel):
                 f"{PUDL_DESCRIPTION}"
             )
         else:
+            # Otherwise, specify that data was archived from the data_source.path
+            # and can be found there. Only include PUDL Raw if this dataset does
+            # indeed wind up in PUDL.
             title = (
                 f"PUDL Raw {data_source['title']}"
                 if data_source_id in pudl_sources
