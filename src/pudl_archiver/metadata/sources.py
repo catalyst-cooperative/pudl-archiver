@@ -3,8 +3,8 @@
 from typing import Any
 
 import pandas as pd
-from pudl.metadata.constants import CONTRIBUTORS, KEYWORDS, LICENSES
 
+from pudl_archiver.metadata.constants import CONTRIBUTORS, KEYWORDS, LICENSES
 from pudl_archiver.metadata.nrelcambium import nrel_cambium_generator
 
 # To add a new contributor, follow the following format to add an entry to the
@@ -22,6 +22,7 @@ from pudl_archiver.metadata.nrelcambium import nrel_cambium_generator
 # (e.g., a link to your Github account, your ORCID site or a personal webpage), but
 # filling other fields is strongly encouraged!
 ADDL_CONTRIBUTORS: dict[str, dict[str, str]] = {}
+
 
 NON_PUDL_SOURCES: dict[str, Any] = {
     "doelead": {
@@ -44,6 +45,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         ),
         "license_raw": LICENSES["us-govt"],
         "license_pudl": LICENSES["cc-by-4.0"],
+        "email": "LEAD.Tool@hq.doe.gov",
         "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
     },
     "eiacbecs": {
@@ -95,6 +97,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         "keywords": sorted({"eia", "nems", "aeo"}),
         "license_raw": LICENSES["us-govt"],
         "license_pudl": LICENSES["cc-by-4.0"],
+        "email": "EIA-NEMS-GITHUB@eia.gov",
         "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
     },
     "eiamecs": {
@@ -262,6 +265,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         "license_raw": LICENSES["us-govt"],
         "license_pudl": LICENSES["cc-by-4.0"],
         "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
+        "email": "uswtdb@lbl.gov",
     },
     "usgsuspvdb": {
         "title": "USGS USPVDB -- U.S. Large-Scale Solar Photovoltaic Database",
@@ -304,6 +308,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         "license_raw": LICENSES["us-govt"],
         "license_pudl": LICENSES["cc-by-4.0"],
         "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
+        "email": "uspvdb@lbl.gov",
     },
     "epaegrid": {
         "title": "EPA eGRID -- Emissions & Generation Resource Integrated Database",
@@ -366,6 +371,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         "license_raw": LICENSES["us-govt"],
         "license_pudl": LICENSES["cc-by-4.0"],
         "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
+        "email": "briggs.white@netl.doe.gov",
     },
     "epadcejp": {
         "title": "EPA -- Disadvantaged Community Energy Justice Program",
@@ -437,6 +443,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         "keywords": sorted({"emissions", "ghg", "epa", "pcap", "cprg"}),
         "license_raw": LICENSES["us-govt"],
         "license_pudl": LICENSES["cc-by-4.0"],
+        "email": "CPRG@epa.gov",
         "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
     },
     "nrelefs": {
@@ -514,9 +521,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         "working_partitions": {
             "years": list(range(2016, 2025)),
         },
-        "contributors": [
-            CONTRIBUTORS["catalyst-cooperative"],
-        ],
+        "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
         "keywords": sorted(
             set(
                 [
@@ -529,6 +534,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         ),
         "license_raw": LICENSES["cc-by-4.0"],
         "license_pudl": LICENSES["cc-by-4.0"],
+        "email": "Brian.Sergi@nlr.gov",
     },
     "nrelsts": {
         "title": "NREL STS -- Sharing the Sun Community Solar Project Data",
@@ -544,6 +550,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         "keywords": sorted({"solar", "nrel", "community"}),
         "license_raw": LICENSES["us-govt"],
         "license_pudl": LICENSES["cc-by-4.0"],
+        "email": "sharingthesun@nlr.gov",
         "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
     },
 } | {f"nrelcambium{year}": nrel_cambium_generator(year) for year in range(2020, 2025)}

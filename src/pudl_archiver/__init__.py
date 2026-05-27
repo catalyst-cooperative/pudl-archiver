@@ -1,16 +1,12 @@
 """Tool to download data resources and create archives on Zenodo for use in PUDL."""
 
-import asyncio
 import json
 import logging
 from pathlib import Path
-from typing import Any
 
 import aiohttp
 
-import pudl_archiver.orchestrator  # noqa: F401
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver
-from pudl_archiver.archivers.validate import RunSummary
 from pudl_archiver.frictionless import Partitions
 from pudl_archiver.orchestrator import orchestrate_run
 from pudl_archiver.utils import RunSettings
@@ -107,4 +103,13 @@ async def archive_dataset(
 
     # Check validation results of all runs that aren't unchanged
     if not summary.success:
-        raise RuntimeError("Error: archive validation tests failed.")
+        failed = summary.get_failed_tests()
+        lines = [f"Archive validation failed: {len(failed)} test(s) did not pass.\n"]
+        for test in failed:
+            required = "required" if test.required_for_run_success else "optional"
+            lines.append(f"  FAILED [{required}] {test.name}")
+            lines.append(f"    {test.description}")
+            if test.notes:
+                lines.append(f"    Notes: {'; '.join(test.notes)}")
+            lines.append("")
+        raise RuntimeError("\n".join(lines))

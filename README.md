@@ -38,12 +38,13 @@ uploaded to Zenodo.
 
 We use `pixi` to create and manage the `pudl-archiver` development environment.
 
-First, follow the [installation instructions](https://pixi.sh/latest/#installation) for your operating system.
+First, follow the Pixi [installation
+instructions](https://pixi.sh/latest/#installation) for your operating system.
 
 Next, run:
 
 ```bash
-pixi run pre-commit-install
+pixi run prek-install
 pixi shell
 ```
 
@@ -51,10 +52,10 @@ This will setup and activate the environment, and install the pre-commit hooks.
 
 > [!TIP]
 > Instead of `pixi shell`, you can also use `pixi run` to run the archiver code in
-> the correct Python environment (e.g., `pixi run pudl_archiver --dataset eiawater`).
+> the correct Python environment (e.g., `pixi run pudl_archiver archive zenodo eiawater`).
 >
-> If you are running integration tests locally, you'll need to use the "tests" pixi
-> environment (e.g., `pixi shell -e tests`; `pixi run -e tests pytest ...`)
+> To run tests locally, use the default environment (e.g.,
+> `pixi run unit` or `pixi run pytest tests/integration`).
 
 ## Setting up the development environment
 
@@ -67,6 +68,15 @@ Catalyst uses a set of institutional tokens - you can contact a maintainer for t
 If you want to interact with the `epacems` archiver, you'll need to get a
 [personal API](https://www.epa.gov/power-sector/cam-api-portal#/api-key-signup) key and
 store it as an environment variable at `EPACEMS_API_KEY`.
+
+For datasets that use PUDL source metadata, `pudl-archiver` loads a PUDL
+`datapackage.json` descriptor at runtime rather than importing metadata from the
+`catalystcoop.pudl` Python package. By default it reads:
+
+`s3://pudl.catalyst.coop/nightly/pudl_parquet_datapackage.json`
+
+To develop or test against a local descriptor, set `PUDL_DATAPACKAGE_PATH` to be the
+absolute path to your local `datapackage.json` file.
 
 ## Usage
 
@@ -209,8 +219,13 @@ help people find our data on Zenodo.
 
 If your dataset will be integrated directly into
 [PUDL](https://github.com/catalyst-cooperative/pudl), you'll need to add the metadata
-for the dataset into the PUDL repository in the `SOURCES` dictionary in
-`src.pudl.metadata.sources.py`.
+in the PUDL repository and make sure it is included in the generated PUDL
+`pudl_parquet_datapackage.json` descriptor. `pudl-archiver` reads PUDL source
+metadata from that descriptor (via `PUDL_DATAPACKAGE_PATH`) In the PUDL
+repository you'll want to add your dataset's metadata as an entry into the
+`SOURCES` dictionary in `src/pudl/metadata/sources.py`. This will ensure that
+the metadata is included in the generated `pudl_parquet_datapackage.json`
+descriptor.
 
 If you aren't sure, or you're archiving data that won't go into PUDL, you'll want to
 add your metadata as an entry into the `NON_PUDL_SOURCES` dictionary in

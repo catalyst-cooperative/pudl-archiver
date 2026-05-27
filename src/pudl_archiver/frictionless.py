@@ -7,11 +7,9 @@ from io import BytesIO
 from pathlib import Path
 from typing import Any
 
-from pudl.metadata.classes import Contributor, DataSource, License
-from pudl.metadata.constants import CONTRIBUTORS
-from pudl.metadata.sources import SOURCES
-from pydantic import BaseModel, Field, field_serializer
+from pydantic import BaseModel, Field
 
+from pudl_archiver.metadata.pudl import get_pudl_sources
 from pudl_archiver.metadata.sources import NON_PUDL_SOURCES
 from pudl_archiver.utils import Url
 
@@ -107,37 +105,14 @@ class DataPackage(BaseModel):
     title: str
     description: str
     keywords: list[str]
-    contributors: list[Contributor]
+    contributors: list[dict[str, Any]]
     sources: list[dict[str, str]]
     profile: str = "data-package"
     homepage: str = "https://catalyst.coop/pudl/"
-    licenses: list[License]
+    licenses: list[dict[str, Any]]
     resources: list[Resource]
     created: str
     version: str | None = None
-
-    @field_serializer("contributors", "licenses")
-    def serialize_paths(self, contributors: list[Contributor | License], info):
-        """Convert URLs to strings within certain types.
-
-        Pydantic URL types no longer inherit from str, so when they are serialized they
-        don't nicely become string representations of the URL like frictionless expects.
-
-        Elsewhere this is handled using a custom type that handles serialization, but
-        Contributor and License both come from PUDL so we need to manually convert their
-        URLs.
-        """
-        serialized_contributors = []
-        for contributor in contributors:
-            serialized = contributor.model_dump(
-                # Pass kwargs from top-level model_dump call
-                # Do not serialize null values, e.g. contributor ORCID which is optional
-                **(info.__dict__ | {"exclude_none": True})
-            )
-            serialized["path"] = str(serialized["path"])
-            serialized_contributors.append(serialized)
-
-        return serialized_contributors
 
     @classmethod
     def new_datapackage(
@@ -145,7 +120,7 @@ class DataPackage(BaseModel):
         name: str,
         resources: Iterable[Resource],
         version: str | None,
-    ) -> "DataPackage":
+    ) -> DataPackage:
         """Create a frictionless datapackage from a list of files and partitions.
 
         Args:
@@ -155,7 +130,7 @@ class DataPackage(BaseModel):
                 containing the local path to the resource, and its working partitions.
             version: Version string for current deposition version.
         """
-        if name in SOURCES:  # If data source in PUDL source metadata
+        if name in get_pudl_sources():  # If data source in PUDL source metadata
             return cls.from_pudl_metadata(
                 name=name, resources=resources, version=version
             )
@@ -169,20 +144,20 @@ class DataPackage(BaseModel):
         name: str,
         resources: Iterable[Resource],
         version: str | None,
-    ) -> "DataPackage":
+    ) -> DataPackage:
         """Create a datapackage using PUDL metadata associated with ``name``."""
-        data_source = DataSource.from_id(name, sources=SOURCES)
+        data_source = get_pudl_sources()[name]
 
         return DataPackage(
-            name=f"pudl-raw-{data_source.name}",
-            title=f"PUDL Raw {data_source.title}",
-            sources=[{"title": data_source.title, "path": str(data_source.path)}],
-            licenses=[data_source.license_raw],
-            resources=sorted(resources, key=lambda x: x.name),  # Sort by filename
-            contributors=[CONTRIBUTORS["catalyst-cooperative"]],
+            name=f"pudl-raw-{data_source['name']}",
+            title=f"PUDL Raw {data_source['title']}",
+            sources=[{"title": data_source["title"], "path": data_source["path"]}],
+            licenses=[data_source["license_raw"]],
+            resources=sorted(resources, key=lambda x: x.name),
+            contributors=data_source["contributors"],
             created=datetime.datetime.now(tz=datetime.UTC).isoformat(),
-            keywords=data_source.keywords,
-            description=data_source.description,
+            keywords=data_source.get("keywords", []),
+            description=data_source.get("description", ""),
             version=version,
         )
 
@@ -194,18 +169,17 @@ class DataPackage(BaseModel):
         version: str | None,
     ):
         """Create a datapackage for sources that won't end up in PUDL."""
-        data_source = DataSource.from_id(name, sources=NON_PUDL_SOURCES)
+        data_source = NON_PUDL_SOURCES[name]
 
         return DataPackage(
-            name=data_source.name,
-            title=data_source.title,
-            sources=[{"title": data_source.title, "path": str(data_source.path)}],
-            licenses=[data_source.license_raw],
-            resources=sorted(resources, key=lambda x: x.name),  # Sort by filename
-            # Make it easier to add contributors directly into source dictionary
-            contributors=data_source.contributors,
+            name=name,
+            title=data_source["title"],
+            sources=[{"title": data_source["title"], "path": data_source["path"]}],
+            licenses=[data_source["license_raw"]],
+            resources=sorted(resources, key=lambda x: x.name),
+            contributors=data_source.get("contributors", []),
             created=datetime.datetime.now(tz=datetime.UTC).isoformat(),
-            keywords=data_source.keywords,
-            description=data_source.description,
+            keywords=data_source.get("keywords", []),
+            description=data_source.get("description", ""),
             version=version,
         )

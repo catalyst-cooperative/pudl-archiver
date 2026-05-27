@@ -158,7 +158,7 @@ class FsspecAPIClient(DepositorAPIClient):
         cls,
         session: aiohttp.ClientSession,
         deposition_path: str,
-    ) -> "FsspecAPIClient":
+    ) -> FsspecAPIClient:
         """Return initialized fsspec api client."""
         logger.warning(
             "The fsspec depositor backend is in an early/experimental state. "
@@ -219,7 +219,7 @@ class FsspecPublishedDeposition(PublishedDeposition):
             deposition_directory=DepositionDirectory.PUBLISHED,
         )
 
-    async def open_draft(self) -> "FsspecDraftDeposition":
+    async def open_draft(self) -> FsspecDraftDeposition:
         """Open a new draft to make edits."""
         return FsspecDraftDeposition(
             deposition=self.deposition,
@@ -323,7 +323,7 @@ class FsspecDraftDeposition(DraftDeposition):
         self,
         filename: str,
         data: BinaryIO,
-    ) -> "FsspecDraftDeposition":
+    ) -> FsspecDraftDeposition:
         """Create a file in a deposition."""
         self.deposition.get_deposition_path(DepositionDirectory.WORKSPACE).mkdir(
             exist_ok=True
@@ -343,7 +343,7 @@ class FsspecDraftDeposition(DraftDeposition):
             }
         )
 
-    async def delete_file(self, filename: str) -> "FsspecDraftDeposition":
+    async def delete_file(self, filename: str) -> FsspecDraftDeposition:
         """Delete a file from a deposition."""
         return self.model_copy(
             update={

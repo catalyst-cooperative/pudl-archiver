@@ -129,7 +129,7 @@ def _format_errors(log: str) -> str | None:
     failure_match = list(re.finditer("Traceback", log))
 
     if not failure_match or any(
-        "archive validation tests failed" in log[failure.start() :]
+        "Archive validation failed" in log[failure.start() :]
         for failure in failure_match
     ):
         # We already capture archive validation failures elsewhere, so ignore these.

@@ -152,7 +152,7 @@ class RunSummary(BaseModel):
         failed_partitions: dict[str, Partitions],
         successful_partitions: dict[str, Partitions],
         run_settings: RunSettings,
-    ) -> "RunSummary":
+    ) -> RunSummary:
         """Create a summary of archive changes from two DataPackage descriptors."""
         baseline_resources = {}
         datapackage_changed = True
@@ -199,7 +199,7 @@ class RunSummary(BaseModel):
     @classmethod
     def load_previous_run(
         cls, summary_file: str | Path, auto_publish: bool
-    ) -> "RunSummary":
+    ) -> RunSummary:
         """Create a RunSummary object from a JSON file output by a previous run.
 
         Load settings from summary file, but always override ``auto_publish``
@@ -409,7 +409,7 @@ def _validate_csv(buffer: BytesIO) -> bool:
     try:
         sliver = pd.read_csv(buffer, nrows=100)  # Try reading in a data slice
         return not sliver.empty
-    except (pd.errors.EmptyDataError, pd.errors.ParserError):
+    except pd.errors.EmptyDataError, pd.errors.ParserError:
         return False
     return True
 
@@ -418,7 +418,7 @@ def _validate_parquet(buffer: BytesIO) -> bool:
     try:
         pa.parquet.ParquetFile(buffer)
         return True
-    except (pa.lib.ArrowInvalid, pa.lib.ArrowException):
+    except pa.lib.ArrowInvalid, pa.lib.ArrowException:
         return False
 
 

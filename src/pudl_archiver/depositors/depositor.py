@@ -76,7 +76,7 @@ class DepositorAPIClient(BaseModel, ABC):
         cls,
         session: aiohttp.ClientSession,
         **depositor_args,
-    ) -> "DepositorAPIClient":
+    ) -> DepositorAPIClient:
         """Initialize API client connection.
 
         Args:
@@ -138,7 +138,7 @@ class PublishedDeposition(BaseModel, ABC):
         settings: RunSettings,
         api_client: DepositorAPIClient,
         dataset_id: str,
-    ) -> "PublishedDeposition":
+    ) -> PublishedDeposition:
         """Get most recent version of a published deposition."""
         deposition = await api_client.get_deposition(dataset_id)
 
@@ -150,7 +150,7 @@ class PublishedDeposition(BaseModel, ABC):
         )
 
     @abstractmethod
-    async def open_draft(self) -> "DraftDeposition":
+    async def open_draft(self) -> DraftDeposition:
         """Open a new draft deposition to make edits."""
         ...
 
@@ -199,7 +199,7 @@ class DraftDeposition(BaseModel, ABC):
         settings: RunSettings,
         api_client: DepositorAPIClient,
         dataset_id: str,
-    ) -> "DraftDeposition":
+    ) -> DraftDeposition:
         """Construct a new deposition from scratch."""
         deposition = await api_client.create_new_deposition(dataset_id)
         return cls(
@@ -247,7 +247,7 @@ class DraftDeposition(BaseModel, ABC):
         self,
         filename: str,
         data: BinaryIO,
-    ) -> "DraftDeposition":
+    ) -> DraftDeposition:
         """Create a file in a deposition.
 
         Args:
@@ -263,7 +263,7 @@ class DraftDeposition(BaseModel, ABC):
     async def delete_file(
         self,
         filename: str,
-    ) -> "DraftDeposition":
+    ) -> DraftDeposition:
         """Delete a file from a deposition.
 
         Args:
@@ -303,9 +303,7 @@ class DraftDeposition(BaseModel, ABC):
         """Generate new datapackage and return it."""
         ...
 
-    async def add_resource(
-        self, name: str, resource: ResourceInfo
-    ) -> "DraftDeposition":
+    async def add_resource(self, name: str, resource: ResourceInfo) -> DraftDeposition:
         """Apply correct change to deposition based on downloaded resource."""
         change = self.generate_change(name, resource)
         return await self._apply_change(change)
@@ -318,6 +316,8 @@ class DraftDeposition(BaseModel, ABC):
     ) -> PublishedDeposition | None:
         """Check that deposition is valid and worth changing, then publish if so."""
         if not run_summary.success:
+            # WARNING: log parser searches for "Archive validation failed"
+            # to determine if an error was due to a failed validation.
             logger.error(
                 "Archive validation failed. Not publishing new archive, kept "
                 f"draft at {self.get_deposition_link()} for inspection."
@@ -345,7 +345,7 @@ class DraftDeposition(BaseModel, ABC):
 
     async def _apply_change(
         self, change: DepositionChange, checksum_retry_count: int = 7
-    ) -> "DraftDeposition":
+    ) -> DraftDeposition:
         """Actually upload and delete what we listed in self.uploads/deletes.
 
         Args:
@@ -395,7 +395,7 @@ class DraftDeposition(BaseModel, ABC):
     async def attach_datapackage(
         self,
         partitions_in_deposition: dict[str, Partitions],
-    ) -> tuple["DraftDeposition", DataPackage]:
+    ) -> tuple[DraftDeposition, DataPackage]:
         """Generate new datapackage describing draft deposition in current state."""
         new_datapackage = self.generate_datapackage(partitions_in_deposition)
 
