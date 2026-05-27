@@ -55,7 +55,7 @@ KEYWORDS: dict[str, list[str]] = {
         "federal",
     ],
 }
-"""Topical lists of keywords not availble in this from from the PUDL datapackage metadata."""
+"""Topical lists of keywords used in this repository (copied from the PUDL datapackage metadata)."""
 
 CONTRIBUTORS: dict[str, dict[str, Any]] = {
     "catalyst-cooperative": {
