@@ -13,7 +13,7 @@ API_URL_FILE_LIST = "https://scenarioviewer.nlr.gov/api/file-list/"
 API_URL_FILE_DOWNLOAD = "https://scenarioviewer.nlr.gov/api/download/"
 
 REPORT_URL_PATTERN = re.compile(
-    r"https://www.nlr.gov/docs/(?P<fy>fy\d{2}osti)/(?P<number>\d{5}\.pdf)"
+    r"https://www.(?:nlr|nrel).gov/docs/(?P<fy>fy\d{2}osti)/(?P<number>\d{5}\.pdf)"
 )
 
 

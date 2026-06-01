@@ -36,7 +36,14 @@ class NrelStsArchiver(AbstractDatasetArchiver):
             year: the year we're downloading data for
         """
         filename = link.split("/")[-1]
-        filename = filename.replace("%20", "-").replace("_", "-").lower()
+        filename = (
+            filename.replace("%20", "-")
+            .replace("%28", "")
+            .replace("%29", "")
+            .replace("_", "-")
+            .replace("..", ".")
+            .lower()
+        )
         download_path = self.download_directory / f"nrelsts-{filename}"
         await self.download_file(link, download_path)
         return ResourceInfo(
