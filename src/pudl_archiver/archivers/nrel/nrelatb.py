@@ -74,13 +74,13 @@ class NrelAtbArchiver(AbstractDatasetArchiver):
                 if self.valid_year(year):
                     # The default base url to grab the excel files works most of the time... but
                     # many of the electricity years requires bespoke urls
-                    year_excel_base_url = f"https://atb.nrel.gov/{atb_type}/{year}/data"
+                    year_excel_base_url = f"https://atb.nlr.gov/{atb_type}/{year}/data"
                     if (atb_type == "electricity") and (year <= 2022):
                         year_to_excel_url = {
                             2022: "https://data.openei.org/submissions/5716",
                             2021: "https://data.openei.org/submissions/4129",
-                            2020: f"https://atb-archive.nrel.gov/{atb_type}/{year}/data",
-                            2019: f"https://atb-archive.nrel.gov/{atb_type}/{year}/data",
+                            2020: f"https://atb-archive.nlr.gov/{atb_type}/{year}/data",
+                            2019: f"https://atb-archive.nlr.gov/{atb_type}/{year}/data",
                         }
                         year_excel_base_url = year_to_excel_url[year]
 
