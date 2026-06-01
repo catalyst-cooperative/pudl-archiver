@@ -8,7 +8,7 @@ from pudl_archiver.archivers.classes import (
     ResourceInfo,
 )
 
-BASE_URL = "https://data.nrel.gov/submissions/244"
+BASE_URL = "https://data.nlr.gov/submissions/244"
 
 
 class NrelStsArchiver(AbstractDatasetArchiver):
