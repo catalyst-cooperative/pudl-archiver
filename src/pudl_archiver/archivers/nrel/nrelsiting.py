@@ -4,6 +4,7 @@ import asyncio
 import re
 from io import BytesIO
 
+import aiohttp
 from pydantic import BaseModel
 from pydantic.alias_generators import to_camel
 
@@ -26,6 +27,7 @@ class NrelAPIData(BaseModel):
         num_resources: int
         file_count: int
         status: str
+        size: int  # size in bytes
         # There are a few other fields that we don't parse here
         # e.g., update date formatted in unix timestamps. We could
         # revisit this in the future.
@@ -74,8 +76,14 @@ class NrelSitingArchiver(AbstractDatasetArchiver):
         self.logger.info(
             f"Downloading data for {data_dict.num_submissions} datasets. {data_dict.num_files} files ({data_dict.size_of_files * 1e-9} GB)."
         )
+
         for dataset in data_dict.submissions:
-            yield self.get_siting_resources(dataset=dataset)
+            if dataset.size < 1e10:  # If dataset < 10GB in size
+                yield self.get_siting_resources(dataset=dataset)
+            else:
+                self.logger.warn(
+                    f"Skipping dataset {dataset.submission_name}: total size is {dataset.size * 1e-9} GB"
+                )
 
     async def compile_nrel_download_links(
         self, dataset_id: str, dataset_link: str
@@ -169,9 +177,19 @@ class NrelSitingArchiver(AbstractDatasetArchiver):
                 filename = f"{dataset_name}-technical-report.pdf"
 
             self.logger.info(f"Downloading {link} to {filename} for {zip_path}.")
-            await self.download_add_to_archive_and_unlink(
-                url=link, filename=filename, zip_path=zip_path
-            )
+            try:
+                await self.download_add_to_archive_and_unlink(
+                    url=link, filename=filename, zip_path=zip_path
+                )
+            except aiohttp.client_exceptions.ClientConnectorDNSError:
+                # In June 2026, nrel.gov was retired and links were *hopefully*
+                # migrated to nlr.gov. Upstream references in OEDI haven't
+                # necessarily been updated to reflect this.
+                await self.download_add_to_archive_and_unlink(
+                    url=link.replace("nrel.gov", "nlr.gov"),
+                    filename=filename,
+                    zip_path=zip_path,
+                )
             data_paths_in_archive.add(filename)
             await asyncio.sleep(10)  # Attempt to reduce server throttling
 
