@@ -5,6 +5,10 @@ and occasionally other files. The reports are linked on the main page, while dat
 is contained on other websites that are linked to from the main page. The reports
 were released over the span of a few years, and we bundle files associated with
 each report into one zip file in this archive.
+
+02/2026: The NREL EFS webpage was taken down. This archive is considered to be retired,
+as the main index page has been taken offline. The original data links themselves are
+still online but are not expected to be updated.
 """
 
 import re
