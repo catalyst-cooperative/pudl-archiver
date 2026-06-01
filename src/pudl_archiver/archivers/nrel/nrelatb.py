@@ -53,9 +53,6 @@ class NrelAtbArchiver(AbstractDatasetArchiver):
                 ]
                 all_files.extend(files)
 
-        # Since we no longer need this, we can close the client.
-        await client.close()
-
         # For each ATB type, we get the list of years with data from these links
         # We'll create one file per atb_type per year.
         atb_types = ["electricity", "transportation"]
