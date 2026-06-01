@@ -57,6 +57,16 @@ This will setup and activate the environment, and install the pre-commit hooks.
 > To run tests locally, use the default environment (e.g.,
 > `pixi run unit` or `pixi run pytest tests/integration`).
 
+
+In order for the tests and archivers to run without error, you'll also need to setup Playwright.
+[Playwright](https://playwright.dev/python/) is used to navigate more complex webpages, performing
+actions such as clicking buttons and navigating Javascript.
+
+``` bash
+pixi run playwright install --with-deps webkit
+pixi run playwright install --with-deps chromium
+```
+
 ## Setting up the development environment
 
 API tokens are required to interact with Zenodo. There is one set of tokens for accessing
