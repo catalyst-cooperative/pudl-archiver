@@ -23,17 +23,47 @@ on:
         required: true
         type: boolean
   schedule:
-    - cron: "21 10 1 * 0" # 10:21 AM UTC, first of every month and every Sunday
+    - cron: "21 10 1 * *" # 10:21 AM UTC, first of every month
+    - cron: "21 10 * * 0" # 10:21 AM UTC, every Sunday
+    - cron: "21 14 * 6-7,9-10 1-6" # 2:21 PM UTC, every day June-July and Sept-Oct except for Sundays
 
 jobs:
+  determine-datasets:
+    runs-on: ubuntu-latest
+
+    outputs:
+      datasets: ${{ steps.datasets.outputs.datasets }}
+
+    steps:
+      - id: datasets
+        env:
+          INPUT_DATASETS: ${{ inputs.datasets }}
+        run: |
+          if [ -n "$INPUT_DATASETS" ]; then
+            echo "datasets=[$INPUT_DATASETS]" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          DOW=$(date -u +%u) # Get day of week
+          DOM=$(date -u +%d) # Get day of month
+
+          if [ "$DOW" -eq 7 ] || [ "$DOM" -eq 01 ]; then
+          ## On sundays and the 1st of the month, run the full matrix
+            echo 'datasets=["censuspep","doeiraec","doelead","eia176","eia191","eia757a","eia860","eia860m","eia861","eia923","eia930","eiaaeo","eiaapi","eiacbecs","eiamecs","eianems","eiarecs","eiasteo","eiawater","epacamd_eia","epacems","epaegrid","epamats","epapcap","ferc1","ferc2","ferc6","ferc60","ferc714","ferccid","gridpathratoolkit","mshamines","nrelatb","nrelsiting","nrelss","nrelsts","phmsagas","usgsuspvdb","usgsuswtdb","vcerare"]' >> "$GITHUB_OUTPUT"
+          else
+            # Look for the early and final release outputs for EIA datasets
+            echo 'datasets=["eia860","eia861","eia923"]' >> "$GITHUB_OUTPUT"
+          fi
+
   archive-run:
+    needs: determine-datasets
     defaults:
       run:
         shell: bash -l {0}
     strategy:
       matrix:
         # Note that we can't pass global env variables to the matrix, so we manually reproduce the list of datasets here.
-        dataset: ${{ fromJSON(format('[{0}]', inputs.datasets || '"censuspep","doeiraec","doelead","eia176","eia191","eia757a","eia860","eia860m","eia861","eia923","eia930","eiaaeo","eiaapi","eiacbecs","eiamecs","eianems","eiarecs","eiasteo","eiawater","epacamd_eia","epacems","epaegrid","epamats","epapcap","ferc1","ferc2","ferc6","ferc60","ferc714","ferccid","gridpathratoolkit","mshamines","nrelatb","nrelsiting","nrelss","nrelsts","phmsagas","usgsuspvdb","usgsuswtdb","vcerare"' )) }}
+        dataset: ${{ fromJSON(needs.determine-datasets.outputs.datasets) }}
       fail-fast: false
     runs-on: ubuntu-latest
     permissions:
