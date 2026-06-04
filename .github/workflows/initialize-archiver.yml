@@ -1,12 +1,12 @@
 ---
-name: initialize-archiver
+name: run-archiver
 
 on:
   workflow_dispatch:
     inputs:
       datasets:
         description: 'Comma-separated list of datasets to archive (e.g., "ferc2","ferc6").'
-        default: ""
+        default: '"censuspep","doeiraec","doelead","eia176","eia191","eia757a","eia860","eia860m","eia861","eia923","eia930","eiaaeo","eiaapi","eiacbecs","eiamecs","eianems","eiarecs","eiasteo","eiawater","epacamd_eia","epacems","epaegrid","epamats","epapcap","ferc1","ferc2","ferc6","ferc60","ferc714","ferccid","gridpathratoolkit","mshamines","nrelatb","nrelsiting","nrelss","nrelsts","phmsagas","usgsuspvdb","usgsuswtdb","vcerare"'
         required: true
         type: string
       server:
@@ -17,18 +17,60 @@ on:
           - production
         required: true
         type: choice
+      create_github_issue:
+        description: "Create a Github issue from this run?"
+        default: false
+        required: true
+        type: boolean
+      use_large_runner:
+        description: "Use a larger runner?"
+        default: false
+        required: false
+        type: boolean
+  schedule:
+    - cron: "21 10 1 * *" # 10:21 AM UTC, first of every month
+    - cron: "21 10 * * 0" # 10:21 AM UTC, every Sunday
+    - cron: "21 14 * 6-7,9-10 1-6" # 2:21 PM UTC, every day June-July and Sept-Oct except for Sundays
 
 jobs:
+  determine-datasets:
+    runs-on: ubuntu-latest
+
+    outputs:
+      datasets: ${{ steps.datasets.outputs.datasets }}
+
+    steps:
+      - id: datasets
+        env:
+          INPUT_DATASETS: ${{ inputs.datasets }}
+        run: |
+          if [ -n "$INPUT_DATASETS" ]; then
+            echo "datasets=[$INPUT_DATASETS]" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          DOW=$(date -u +%u) # Get day of week
+          DOM=$(date -u +%d) # Get day of month
+
+          if [ "$DOW" -eq 7 ] || [ "$DOM" -eq 01 ]; then
+          ## On sundays and the 1st of the month, run the full matrix
+            echo 'datasets=["censuspep","doeiraec","doelead","eia176","eia191","eia757a","eia860","eia860m","eia861","eia923","eia930","eiaaeo","eiaapi","eiacbecs","eiamecs","eianems","eiarecs","eiasteo","eiawater","epacamd_eia","epacems","epaegrid","epamats","epapcap","ferc1","ferc2","ferc6","ferc60","ferc714","ferccid","gridpathratoolkit","mshamines","nrelatb","nrelsiting","nrelss","nrelsts","phmsagas","usgsuspvdb","usgsuswtdb","vcerare"]' >> "$GITHUB_OUTPUT"
+          else
+            # Look for the early and final release outputs for EIA datasets
+            echo 'datasets=["eia860","eia861","eia923"]' >> "$GITHUB_OUTPUT"
+          fi
+
   archive-run:
+    runs-on: ${{ github.event.inputs.use_large_runner == 'true' && 'ubuntu-latest-4core' || 'ubuntu-latest' }}
+    needs: determine-datasets
     defaults:
       run:
         shell: bash -l {0}
     strategy:
       matrix:
         # Note that we can't pass global env variables to the matrix, so we manually reproduce the list of datasets here.
-        dataset: ${{ fromJSON(format('[{0}]', inputs.datasets || '' )) }}
+        dataset: ${{ fromJSON(needs.determine-datasets.outputs.datasets) }}
       fail-fast: false
-    runs-on: ubuntu-latest
     permissions:
       contents: "read"
       id-token: "write"
@@ -45,6 +87,8 @@ jobs:
 
       - name: Set up pixi
         uses: prefix-dev/setup-pixi@v0.9.6
+        with:
+          cache: true
 
       - name: Log the pixi environment
         run: |
@@ -56,23 +100,40 @@ jobs:
           pixi run playwright install --with-deps webkit
           pixi run playwright install --with-deps chromium
 
-      - name: Initialize production archive for ${{ matrix.dataset }}
-        env:
-          EPACEMS_API_KEY: ${{ secrets.EPACEMS_API_KEY }}
-          ZENODO_TOKEN_UPLOAD: ${{ secrets.ZENODO_TOKEN_UPLOAD }}
-          ZENODO_TOKEN_PUBLISH: ${{ secrets.ZENODO_TOKEN_PUBLISH }}
-        if: ${{ inputs.server == 'production' }}
-        run: |
-          pixi run pudl_archiver archive zenodo ${{ matrix.dataset }} --initialize --clobber-unchanged
-
-      - name: Initialize sandbox archive for ${{ matrix.dataset }}
+      - name: Run production archiver for ${{ matrix.dataset }}
         env:
           ZENODO_SANDBOX_TOKEN_UPLOAD: ${{ secrets.ZENODO_SANDBOX_TOKEN_UPLOAD }}
           ZENODO_SANDBOX_TOKEN_PUBLISH: ${{ secrets.ZENODO_SANDBOX_TOKEN_PUBLISH }}
           EPACEMS_API_KEY: ${{ secrets.EPACEMS_API_KEY }}
-        if: ${{ inputs.server == 'sandbox' }}
+          ZENODO_TOKEN_UPLOAD: ${{ secrets.ZENODO_TOKEN_UPLOAD }}
+          ZENODO_TOKEN_PUBLISH: ${{ secrets.ZENODO_TOKEN_PUBLISH }}
+        if: ${{inputs.server == 'production' || github.event_name == 'schedule'}}
+        # set -o pipefail passes on any failure codes to the next step,
+        # enabling us to see whether or not the pudl_archiver run failed.
         run: |
-          pixi run pudl_archiver archive zenodo ${{ matrix.dataset }} --initialize --sandbox  --clobber-unchanged
+          set -o pipefail
+          pixi run pudl_archiver archive zenodo ${{ matrix.dataset }} --initialize 2>&1 | tee ${{ matrix.dataset }}_log.txt
+
+      - name: Run sandbox archiver for ${{ matrix.dataset }}
+        env:
+          ZENODO_SANDBOX_TOKEN_UPLOAD: ${{ secrets.ZENODO_SANDBOX_TOKEN_UPLOAD }}
+          ZENODO_SANDBOX_TOKEN_PUBLISH: ${{ secrets.ZENODO_SANDBOX_TOKEN_PUBLISH }}
+          EPACEMS_API_KEY: ${{ secrets.EPACEMS_API_KEY }}
+          ZENODO_TOKEN_UPLOAD: ${{ secrets.ZENODO_TOKEN_UPLOAD }}
+          ZENODO_TOKEN_PUBLISH: ${{ secrets.ZENODO_TOKEN_PUBLISH }}
+        if: ${{ inputs.server == 'sandbox' }}
+        # set -o pipefail passes on any failure codes to the next step,
+        # enabling us to see whether or not the pudl_archiver run failed.
+        run: |
+          set -o pipefail
+          pixi run pudl_archiver archive zenodo ${{ matrix.dataset }} --sandbox --initialize 2>&1 | tee ${{ matrix.dataset }}_log.txt
+
+      - name: Save failed runs
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: error-log-${{ matrix.dataset }}
+          path: ${{ matrix.dataset }}_log.txt
 
       - name: Upload run summaries
         if: always()
@@ -90,27 +151,145 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Download summaries
-        id: download
+        id: download-summaries
         uses: actions/download-artifact@v8
         with:
           pattern: run-summaries-*
           merge-multiple: true
-      - name: show summaries
+      - name: Download failures
+        id: download-artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: error-log-*
+          merge-multiple: true
+      - name: Show downloaded artifacts
         run: ls -R
-      - name: Munge summaries together
-        id: all_summaries
+      - name: Load pixi from cache
+        if: ${{ always() }}
+        uses: prefix-dev/setup-pixi@v0.9.6
+      # These steps only run to create a Github issue summarizing the run.
+      - name: Munge summaries together for Github
+        if: ${{ always() && (github.event_name == 'schedule' || inputs.create_github_issue == true) }}
+        id: github_summaries
+        run: |
+          {
+            echo 'ERRORS<<DELIM1'
+            pixi run ./scripts/make_github_notification.py --summary-files *_run_summary.json --error-files *_log.txt --summary-type error
+            echo 'DELIM1'
+            echo 'FAILURES<<DELIM2'
+            pixi run ./scripts/make_github_notification.py --summary-files *_run_summary.json --error-files *_log.txt --summary-type failure
+            echo 'DELIM2'
+            echo 'CHANGES<<DELIM3'
+            pixi run ./scripts/make_github_notification.py --summary-files *_run_summary.json --error-files *_log.txt --summary-type change
+            echo 'DELIM3'
+            echo 'TIMEDOUT<<DELIM4'
+            GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} GITHUB_REPOSITORY=${{ github.repository }} GITHUB_RUN_ID=${{ github.run_id }} pixi run python ./scripts/detect_timeouts.py
+            echo 'DELIM4'
+            echo 'UNCHANGED<<DELIM5'
+            pixi run ./scripts/make_github_notification.py --summary-files *_run_summary.json --error-files *_log.txt --summary-type unchanged
+            echo 'DELIM5'
+          } | tee -a $GITHUB_OUTPUT
+      # These steps only run if no Github issue is requested to be created.
+      # The summary will show up in Slack instead.
+      - name: Munge summaries for Slack
+        id: slack_summaries
+        if: ${{ inputs.create_github_issue == false }}
         run: |
           {
             echo "SLACK_PAYLOAD<<EOF"
-            ./scripts/make_slack_notification_message.py --summary-files *_run_summary.json | tee slack-payload.json
+            pixi run ./scripts/make_slack_notification_message.py --summary-files *_run_summary.json --error-files *_log.txt
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
       - name: Post update to pudl-deployment
+        if: ${{ inputs.create_github_issue == false }}
         uses: slackapi/slack-github-action@v3.0.3
         with:
           method: chat.postMessage
           token: ${{ secrets.PUDL_DEPLOY_SLACK_TOKEN }}
           payload: |
-            text: "Created new archiver(s)."
-            blocks: ${{ steps.all_summaries.outputs.SLACK_PAYLOAD }}
+            text: "Run of archives run complete."
+            blocks: ${{ steps.slack_summaries.outputs.SLACK_PAYLOAD }}
+            channel: "C03FHB9N0PQ"
+
+    outputs:
+      errors: ${{ steps.github_summaries.outputs.ERRORS }}
+      failures: ${{ steps.github_summaries.outputs.FAILURES }}
+      changes: ${{ steps.github_summaries.outputs.CHANGES }}
+      timedout: ${{ steps.github_summaries.outputs.TIMEDOUT }}
+      unchanged: ${{ steps.github_summaries.outputs.UNCHANGED }}
+
+  make-github-issue:
+    # If event is a scheduled run or a workflow run where an issue
+    # is requested, create an issue.
+    if: ${{ always() && (github.event_name == 'schedule' || inputs.create_github_issue == true) }}
+    runs-on: ubuntu-latest
+    needs:
+      - archive-run
+      - archive-notify
+    steps:
+      - uses: actions/checkout@v6
+      - name: Create an issue
+        id: create-issue
+        uses: JasonEtco/create-an-issue@v2.9.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          ERRORS: ${{ needs.archive-notify.outputs.errors }}
+          FAILURES: ${{ needs.archive-notify.outputs.failures }}
+          CHANGES: ${{ needs.archive-notify.outputs.changes }}
+          TIMEDOUT: ${{ needs.archive-notify.outputs.timedout }}
+          UNCHANGED: ${{ needs.archive-notify.outputs.unchanged }}
+        with:
+          filename: .github/ISSUE_TEMPLATE/monthly-archive-update.md
+      - run: echo "URL=${{ steps.create-issue.outputs.url }}" >> $GITHUB_ENV
+    outputs:
+      url: ${{ steps.create-issue.outputs.URL}}
+      issue_number: ${{ steps.create-issue.outputs.number }}
+
+  close-issue-if-no-changes:
+    # Close the issue if there are no errors, failures, or changes
+    if: ${{ always() && (github.event_name == 'schedule' || inputs.create_github_issue == true) && needs.archive-notify.outputs.errors == '' && needs.archive-notify.outputs.failures == '' && needs.archive-notify.outputs.changes == '' && needs.archive-notify.outputs.timedout == '' && needs.make-github-issue.outputs.issue_number != '' }}
+    runs-on: ubuntu-latest
+    needs:
+      - archive-run
+      - archive-notify
+      - make-github-issue
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/checkout@v6
+      - name: Close issue with no changes
+        env:
+          GH_TOKEN: ${{ secrets. GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ needs.make-github-issue.outputs.issue_number }}
+        run: |
+          gh issue close $ISSUE_NUMBER --reason "not planned" --repo ${{ github.repository }} --comment "No changes observed in any archive, auto-closing issue."
+
+  make-slack-announcement-for-github-issue:
+    runs-on: ubuntu-latest
+    needs:
+      - archive-run
+      - archive-notify
+      - make-github-issue
+      - close-issue-if-no-changes
+    env:
+      github-url: ${{ needs.make-github-issue.outputs.url }}
+    steps:
+      - name: Post successful archive run
+        if: ${{ needs.make-github-issue.result == 'success' && needs.close-issue-if-no-changes.result == 'skipped' }}
+        uses: slackapi/slack-github-action@v3.0.3
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.PUDL_DEPLOY_SLACK_TOKEN }}
+          payload: |
+            text: "PUDL data archive run complete: ${{ env.github-url }}"
+            channel: "C03FHB9N0PQ"
+      - name: Post skipped announcement to Slack
+        if: ${{ needs.make-github-issue.result == 'success' && needs.close-issue-if-no-changes.result == 'success' }}
+        uses: slackapi/slack-github-action@v3.0.3
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.PUDL_DEPLOY_SLACK_TOKEN }}
+          payload: |
+            text:  "PUDL data archive run complete.  No new data has been archived, issue was auto-closed: ${{ env.github-url }}"
             channel: "C03FHB9N0PQ"

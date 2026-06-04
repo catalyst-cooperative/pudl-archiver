@@ -22,6 +22,11 @@ on:
         default: false
         required: true
         type: boolean
+      use_large_runner:
+        description: "Use a larger runner?"
+        default: false
+        required: false
+        type: boolean
   schedule:
     - cron: "21 10 1 * *" # 10:21 AM UTC, first of every month
     - cron: "21 10 * * 0" # 10:21 AM UTC, every Sunday
@@ -56,6 +61,7 @@ jobs:
           fi
 
   archive-run:
+    runs-on: ${{ github.event.inputs.use_large_runner == 'true' && 'ubuntu-latest-4core' || 'ubuntu-latest' }}
     needs: determine-datasets
     defaults:
       run:
@@ -65,7 +71,6 @@ jobs:
         # Note that we can't pass global env variables to the matrix, so we manually reproduce the list of datasets here.
         dataset: ${{ fromJSON(needs.determine-datasets.outputs.datasets) }}
       fail-fast: false
-    runs-on: ubuntu-latest
     permissions:
       contents: "read"
       id-token: "write"
