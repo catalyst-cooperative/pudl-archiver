@@ -2,8 +2,6 @@
 
 import re
 
-import aiohttp
-
 from pudl_archiver.archivers.classes import (
     AbstractDatasetArchiver,
     ArchiveAwaitable,
@@ -187,12 +185,7 @@ class AbstractNrelScenarioArchiver(AbstractDatasetArchiver):
         # reports: direct URL
         for filename, url in reports:
             self.logger.info(f"Downloading report {year} {filename} {uuid} from {url}")
-            try:
-                await self.download_add_to_archive_and_unlink(url, filename, zip_path)
-            except aiohttp.client_exceptions.ClientConnectorDNSError:
-                await self.download_add_to_archive_and_unlink(
-                    url.replace("nrel.gov", "nlr.gov"), filename, zip_path
-                )
+            await self.download_add_to_archive_and_unlink_nrel(url, filename, zip_path)
         # files: API call
         for filename, file_id in file_ids:
             self.logger.info(f"Downloading file {year} {file_id} {uuid}")

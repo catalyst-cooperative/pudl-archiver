@@ -350,6 +350,30 @@ class AbstractDatasetArchiver(ABC):
         # immediately after they're safely stored in the ZIP
         download_path.unlink()
 
+    async def download_add_to_archive_and_unlink_nrel(
+        self, url: str, filename: str, zip_path: Path
+    ):
+        """Download a file, add it to an zip file in and unlink, handling NREL domain change.
+
+        Little helper function that combines three common steps often repeated together:
+        * :meth:`download_file`
+        * :meth:`add_to_archive`
+        * :meth:`Path.unlink`
+
+        This implements a special variation of this method to handle widespread failures to
+        correctly update links to account for the retirement of the nrel.gov domain in May 2026 and the
+        creation of the nlr.gov domain. Where there is a DNS error, try manually updating the
+        provided link to use the new domain.
+        """
+        try:
+            await self.download_add_to_archive_and_unlink(url, filename, zip_path)
+        except aiohttp.client_exceptions.ClientConnectorDNSError:
+            await self.download_add_to_archive_and_unlink(
+                url.replace("nrel.gov", "nlr.gov"),
+                filename,
+                zip_path,
+            )
+
     async def get_json(self, url: str, post: bool = False, **kwargs) -> dict[str, str]:
         """Get a JSON and return it as a dictionary."""
         response = await retry_async(

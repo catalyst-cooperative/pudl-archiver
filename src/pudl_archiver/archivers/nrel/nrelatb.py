@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Literal
 from urllib.parse import urljoin
 
-import aiohttp
 from aiobotocore.session import get_session
 from botocore import UNSIGNED
 from botocore.config import Config
@@ -154,7 +153,7 @@ class NrelAtbArchiver(AbstractDatasetArchiver):
             s3_viewer_filename = self.clean_filename(
                 url=s3_viewer_url, year=year, atb_type=atb_type
             )
-            await self.download_add_to_archive_and_unlink(
+            await self.download_add_to_archive_and_unlink_nrel(
                 s3_viewer_url, s3_viewer_filename, zip_path
             )
             data_paths_in_archive.add(s3_viewer_filename)
@@ -201,7 +200,7 @@ class NrelAtbArchiver(AbstractDatasetArchiver):
             excel_filename = self.clean_filename(excel_url, year, atb_type)
             if excel_filename not in data_paths_in_archive:  # Avoid duplicates
                 excel_url = urljoin(year_excel_base_url, excel_url)
-                await self.download_add_to_archive_and_unlink(
+                await self.download_add_to_archive_and_unlink_nrel(
                     excel_url, excel_filename, zip_path
                 )
                 data_paths_in_archive.add(excel_filename)
@@ -226,16 +225,9 @@ class NrelAtbArchiver(AbstractDatasetArchiver):
                     oedi_filename = self.clean_filename(oedi_url, year, atb_type)
                     if oedi_filename not in data_paths_in_archive:
                         oedi_url = urljoin(url, oedi_url)
-                        try:
-                            await self.download_add_to_archive_and_unlink(
-                                oedi_url, oedi_filename, zip_path
-                            )
-                        except aiohttp.client_exceptions.ClientConnectorDNSError:
-                            await self.download_add_to_archive_and_unlink(
-                                oedi_url.replace("nrel.gov", "nlr.gov"),
-                                oedi_filename,
-                                zip_path,
-                            )
+                        await self.download_add_to_archive_and_unlink_nrel(
+                            oedi_url, oedi_filename, zip_path
+                        )
                         data_paths_in_archive.add(oedi_filename)
 
         return ResourceInfo(
