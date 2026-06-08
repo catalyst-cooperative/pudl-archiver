@@ -1,5 +1,5 @@
 ---
-name: run-archiver
+name: initialize-archiver
 
 on:
   workflow_dispatch:
@@ -100,7 +100,7 @@ jobs:
           pixi run playwright install --with-deps webkit
           pixi run playwright install --with-deps chromium
 
-      - name: Run production archiver for ${{ matrix.dataset }}
+      - name: Initialize production archiver for ${{ matrix.dataset }}
         env:
           ZENODO_SANDBOX_TOKEN_UPLOAD: ${{ secrets.ZENODO_SANDBOX_TOKEN_UPLOAD }}
           ZENODO_SANDBOX_TOKEN_PUBLISH: ${{ secrets.ZENODO_SANDBOX_TOKEN_PUBLISH }}
@@ -114,7 +114,7 @@ jobs:
           set -o pipefail
           pixi run pudl_archiver archive zenodo ${{ matrix.dataset }} --initialize 2>&1 | tee ${{ matrix.dataset }}_log.txt
 
-      - name: Run sandbox archiver for ${{ matrix.dataset }}
+      - name: Initialize sandbox archiver for ${{ matrix.dataset }}
         env:
           ZENODO_SANDBOX_TOKEN_UPLOAD: ${{ secrets.ZENODO_SANDBOX_TOKEN_UPLOAD }}
           ZENODO_SANDBOX_TOKEN_PUBLISH: ${{ secrets.ZENODO_SANDBOX_TOKEN_PUBLISH }}
