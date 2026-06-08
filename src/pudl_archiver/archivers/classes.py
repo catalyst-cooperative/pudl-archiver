@@ -330,7 +330,11 @@ class AbstractDatasetArchiver(ABC):
             )
 
     async def download_add_to_archive_and_unlink(
-        self, url: str, filename: str, zip_path: Path
+        self,
+        url: str,
+        filename: str,
+        zip_path: Path,
+        headers: dict[str, str] | None = None,
     ):
         """Download a file, add it to an zip file in and archive and unlink.
 
@@ -340,7 +344,7 @@ class AbstractDatasetArchiver(ABC):
         * :meth:`Path.unlink`
         """
         download_path = self.download_directory / filename
-        await self.download_file(url, download_path)
+        await self.download_file(url, download_path, headers=headers)
         self.add_to_archive(
             zip_path=zip_path,
             filename=filename,
@@ -351,7 +355,11 @@ class AbstractDatasetArchiver(ABC):
         download_path.unlink()
 
     async def download_add_to_archive_and_unlink_nrel(
-        self, url: str, filename: str, zip_path: Path
+        self,
+        url: str,
+        filename: str,
+        zip_path: Path,
+        headers: dict[str, str] | None = None,
     ):
         """Download a file, add it to an zip file in and unlink, handling NREL domain change.
 
@@ -366,12 +374,12 @@ class AbstractDatasetArchiver(ABC):
         provided link to use the new domain.
         """
         try:
-            await self.download_add_to_archive_and_unlink(url, filename, zip_path)
+            await self.download_add_to_archive_and_unlink(
+                url, filename, zip_path, headers
+            )
         except aiohttp.client_exceptions.ClientConnectorDNSError:
             await self.download_add_to_archive_and_unlink(
-                url.replace("nrel.gov", "nlr.gov"),
-                filename,
-                zip_path,
+                url.replace("nrel.gov", "nlr.gov"), filename, zip_path, headers
             )
 
     async def get_json(self, url: str, post: bool = False, **kwargs) -> dict[str, str]:

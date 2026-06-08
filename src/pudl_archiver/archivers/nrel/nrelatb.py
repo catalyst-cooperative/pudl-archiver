@@ -168,6 +168,7 @@ class NrelAtbArchiver(AbstractDatasetArchiver):
     ):
         """Get the files for a year and type (electricity/transport)."""
         zip_path = self.download_directory / f"nrelatb-{year}-{atb_type}.zip"
+        user_agent = self.get_user_agent()
         data_paths_in_archive = set()
 
         # Compile URLs for Parquet and CSV files, download and add to archive
@@ -196,12 +197,17 @@ class NrelAtbArchiver(AbstractDatasetArchiver):
         self.logger.info(
             f"{year}/{atb_type}: Downloading spreadsheet data from {year_excel_base_url}."
         )
-        for excel_url in await self.get_hyperlinks(year_excel_base_url, link_pattern):
+        for excel_url in await self.get_hyperlinks(
+            year_excel_base_url, link_pattern, headers={"User-Agent": user_agent}
+        ):
             excel_filename = self.clean_filename(excel_url, year, atb_type)
             if excel_filename not in data_paths_in_archive:  # Avoid duplicates
                 excel_url = urljoin(year_excel_base_url, excel_url)
                 await self.download_add_to_archive_and_unlink_nrel(
-                    excel_url, excel_filename, zip_path
+                    excel_url,
+                    excel_filename,
+                    zip_path,
+                    headers={"User-Agent": user_agent},
                 )
                 data_paths_in_archive.add(excel_filename)
 
@@ -216,20 +222,26 @@ class NrelAtbArchiver(AbstractDatasetArchiver):
             )
             oedi_link_pattern = re.compile(r"data.openei.org\/submissions\/(\d)")
             oedi_links = await self.get_hyperlinks(
-                year_excel_base_url, oedi_link_pattern
+                year_excel_base_url,
+                oedi_link_pattern,
+                headers={"User-Agent": user_agent},
             )
             for url in oedi_links:
                 # If there's an OEDI page linked
                 # On the OEDI page, iterate through and add any files we missed
-                for oedi_url in await self.get_hyperlinks(url, link_pattern):
+                for oedi_url in await self.get_hyperlinks(
+                    url, link_pattern, headers={"User-Agent": user_agent}
+                ):
                     oedi_filename = self.clean_filename(oedi_url, year, atb_type)
                     if oedi_filename not in data_paths_in_archive:
                         oedi_url = urljoin(url, oedi_url)
                         await self.download_add_to_archive_and_unlink_nrel(
-                            oedi_url, oedi_filename, zip_path
+                            oedi_url,
+                            oedi_filename,
+                            zip_path,
+                            headers={"User-Agent": user_agent},
                         )
                         data_paths_in_archive.add(oedi_filename)
-
         return ResourceInfo(
             local_path=zip_path,
             partitions={"year": year, "sector": atb_type},
