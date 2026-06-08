@@ -181,7 +181,7 @@ class NrelSitingArchiver(AbstractDatasetArchiver):
                 filename = f"{dataset_name}-technical-report.pdf"
 
             self.logger.info(f"Downloading {link} to {filename} for {zip_path}.")
-            self.download_add_to_archive_and_unlink_nrel(
+            await self.download_add_to_archive_and_unlink_nrel(
                 url=link, filename=filename, zip_path=zip_path
             )
             data_paths_in_archive.add(filename)
