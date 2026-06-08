@@ -4,7 +4,6 @@ import asyncio
 import re
 from io import BytesIO
 
-import aiohttp
 from pydantic import BaseModel
 from pydantic.alias_generators import to_camel
 
@@ -106,7 +105,12 @@ class NrelSitingArchiver(AbstractDatasetArchiver):
 
         # Get PDFs
         pdf_download_links = await self.get_hyperlinks(dataset_link, pdf_data_pattern)
-        download_links.update(pdf_download_links)
+        # 06/2026 NOTE:
+        # Despite retry method below, PDF files download invalid files rather than returning a server error.
+        # Accordingly, we manually update the domain of PDF links to be downloaded.
+        download_links.update(
+            [link.replace("nrel.gov", "nlr.gov") for link in pdf_download_links]
+        )
         return download_links
 
     async def get_siting_resources(self, dataset: NrelAPIData.Submission):
@@ -177,19 +181,9 @@ class NrelSitingArchiver(AbstractDatasetArchiver):
                 filename = f"{dataset_name}-technical-report.pdf"
 
             self.logger.info(f"Downloading {link} to {filename} for {zip_path}.")
-            try:
-                await self.download_add_to_archive_and_unlink(
-                    url=link, filename=filename, zip_path=zip_path
-                )
-            except aiohttp.client_exceptions.ClientConnectorDNSError:
-                # In June 2026, nrel.gov was retired and links were *hopefully*
-                # migrated to nlr.gov. Upstream references in OEDI haven't
-                # necessarily been updated to reflect this.
-                await self.download_add_to_archive_and_unlink(
-                    url=link.replace("nrel.gov", "nlr.gov"),
-                    filename=filename,
-                    zip_path=zip_path,
-                )
+            self.download_add_to_archive_and_unlink_nrel(
+                url=link, filename=filename, zip_path=zip_path
+            )
             data_paths_in_archive.add(filename)
             await asyncio.sleep(10)  # Attempt to reduce server throttling
 
