@@ -8,7 +8,7 @@ from pudl_archiver.archivers.classes import (
     ResourceInfo,
 )
 
-BASE_URL = "https://data.nrel.gov/submissions/244"
+BASE_URL = "https://data.nlr.gov/submissions/244"
 
 
 class NrelStsArchiver(AbstractDatasetArchiver):
@@ -36,7 +36,14 @@ class NrelStsArchiver(AbstractDatasetArchiver):
             year: the year we're downloading data for
         """
         filename = link.split("/")[-1]
-        filename = filename.replace("%20", "-").replace("_", "-").lower()
+        filename = (
+            filename.replace("%20", "-")  # space " "
+            .replace("%28", "")  # open parenthesis "("
+            .replace("%29", "")  # close parenthesis ")"
+            .replace("_", "-")
+            .replace("..", ".")
+            .lower()
+        )
         download_path = self.download_directory / f"nrelsts-{filename}"
         await self.download_file(link, download_path)
         return ResourceInfo(

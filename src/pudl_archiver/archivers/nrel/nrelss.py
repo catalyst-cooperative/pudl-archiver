@@ -8,12 +8,12 @@ from pudl_archiver.archivers.classes import (
     ResourceInfo,
 )
 
-API_URL_PROJECTS_LIST = "https://scenarioviewer.nrel.gov/api/projects/"
-API_URL_FILE_LIST = "https://scenarioviewer.nrel.gov/api/file-list/"
-API_URL_FILE_DOWNLOAD = "https://scenarioviewer.nrel.gov/api/download/"
+API_URL_PROJECTS_LIST = "https://scenarioviewer.nlr.gov/api/projects/"
+API_URL_FILE_LIST = "https://scenarioviewer.nlr.gov/api/file-list/"
+API_URL_FILE_DOWNLOAD = "https://scenarioviewer.nlr.gov/api/download/"
 
 REPORT_URL_PATTERN = re.compile(
-    r"https://www.nrel.gov/docs/(?P<fy>fy\d{2}osti)/(?P<number>\d{5}\.pdf)"
+    r"https://www.(?:nlr|nrel).gov/docs/(?P<fy>fy\d{2}osti)/(?P<number>\d{5}\.pdf)"
 )
 
 
@@ -100,7 +100,7 @@ class AbstractNrelScenarioArchiver(AbstractDatasetArchiver):
                     f"Bad report link {report_link} found in {scenario_project['name']} {project_uuid}: {scenario_project}"
                 )
             # Generate a new report entry with a filename and link, e.g.,
-            # (fy17osti_66939.pdf, https://www.nrel.gov/docs/fy17osti/66939.pdf)
+            # (fy17osti_66939.pdf, https://www.nlr.gov/docs/fy17osti/66939.pdf)
             report_data.append((f"{m.group('fy')}_{m.group('number')}", report_link))
 
         file_list = await self.get_json(
@@ -185,8 +185,7 @@ class AbstractNrelScenarioArchiver(AbstractDatasetArchiver):
         # reports: direct URL
         for filename, url in reports:
             self.logger.info(f"Downloading report {year} {filename} {uuid} from {url}")
-            await self.download_add_to_archive_and_unlink(url, filename, zip_path)
-
+            await self.download_add_to_archive_and_unlink_nrel(url, filename, zip_path)
         # files: API call
         for filename, file_id in file_ids:
             self.logger.info(f"Downloading file {year} {file_id} {uuid}")
@@ -229,5 +228,5 @@ class NrelStandardScenariosArchiver(AbstractNrelScenarioArchiver):
             # The citation field for Standard Scenarios 2021 is blank, but they linked to the
             # 2021 report from the description of one of the other available projects, so we're
             # able to hard-code it for now:
-            return "https://www.nrel.gov/docs/fy22osti/80641.pdf"
+            return "https://www.nlr.gov/docs/fy22osti/80641.pdf"
         return super().handle_report_link_exceptions(project_year, scenario_project)

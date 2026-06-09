@@ -11,6 +11,7 @@ from typing import Any, Literal
 
 import pandas as pd
 import pyarrow as pa
+import pyarrow.parquet as pq
 from pydantic import BaseModel
 
 from pudl_archiver.frictionless import (
@@ -416,7 +417,7 @@ def _validate_csv(buffer: BytesIO) -> bool:
 
 def _validate_parquet(buffer: BytesIO) -> bool:
     try:
-        pa.parquet.ParquetFile(buffer)
+        pq.ParquetFile(buffer)
         return True
     except pa.lib.ArrowInvalid, pa.lib.ArrowException:
         return False

@@ -26,6 +26,7 @@ class NrelAPIData(BaseModel):
         num_resources: int
         file_count: int
         status: str
+        size: int  # size in bytes
         # There are a few other fields that we don't parse here
         # e.g., update date formatted in unix timestamps. We could
         # revisit this in the future.
@@ -74,8 +75,14 @@ class NrelSitingArchiver(AbstractDatasetArchiver):
         self.logger.info(
             f"Downloading data for {data_dict.num_submissions} datasets. {data_dict.num_files} files ({data_dict.size_of_files * 1e-9} GB)."
         )
+
         for dataset in data_dict.submissions:
-            yield self.get_siting_resources(dataset=dataset)
+            if dataset.size < 1e10:  # If dataset < 10GB in size
+                yield self.get_siting_resources(dataset=dataset)
+            else:
+                self.logger.warn(
+                    f"Skipping dataset {dataset.submission_name}: total size is {dataset.size * 1e-9} GB"
+                )
 
     async def compile_nrel_download_links(
         self, dataset_id: str, dataset_link: str
@@ -98,7 +105,12 @@ class NrelSitingArchiver(AbstractDatasetArchiver):
 
         # Get PDFs
         pdf_download_links = await self.get_hyperlinks(dataset_link, pdf_data_pattern)
-        download_links.update(pdf_download_links)
+        # 06/2026 NOTE:
+        # Despite retry method below, PDF files download invalid files rather than returning a server error.
+        # Accordingly, we manually update the domain of PDF links to be downloaded.
+        download_links.update(
+            [link.replace("nrel.gov", "nlr.gov") for link in pdf_download_links]
+        )
         return download_links
 
     async def get_siting_resources(self, dataset: NrelAPIData.Submission):
@@ -169,7 +181,7 @@ class NrelSitingArchiver(AbstractDatasetArchiver):
                 filename = f"{dataset_name}-technical-report.pdf"
 
             self.logger.info(f"Downloading {link} to {filename} for {zip_path}.")
-            await self.download_add_to_archive_and_unlink(
+            await self.download_add_to_archive_and_unlink_nrel(
                 url=link, filename=filename, zip_path=zip_path
             )
             data_paths_in_archive.add(filename)
