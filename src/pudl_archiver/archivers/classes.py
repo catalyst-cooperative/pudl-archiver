@@ -372,6 +372,9 @@ class AbstractDatasetArchiver(ABC):
         correctly update links to account for the retirement of the nrel.gov domain in May 2026 and the
         creation of the nlr.gov domain. Where there is a DNS error, try manually updating the
         provided link to use the new domain.
+
+        This is intended to be a temporary method, and should be removed as soon as links are updated
+        in the source data files (e.g., OEDI archives).
         """
         try:
             await self.download_add_to_archive_and_unlink(
