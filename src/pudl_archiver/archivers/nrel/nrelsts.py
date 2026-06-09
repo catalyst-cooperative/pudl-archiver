@@ -37,9 +37,9 @@ class NrelStsArchiver(AbstractDatasetArchiver):
         """
         filename = link.split("/")[-1]
         filename = (
-            filename.replace("%20", "-") # space " "
-            .replace("%28", "") # open parenthesis "("
-            .replace("%29", "") # close parenthesis ")"
+            filename.replace("%20", "-")  # space " "
+            .replace("%28", "")  # open parenthesis "("
+            .replace("%29", "")  # close parenthesis ")"
             .replace("_", "-")
             .replace("..", ".")
             .lower()
