@@ -199,7 +199,7 @@ jobs:
         run: |
           {
             echo "ZULIP_CONTENT<<EOF"
-            pixi run ./scripts/make_zulip_notification_message.py --summary-files ./*_run_summary.json --error-files ./*_log.txt --workflow-url "$WORKFLOW_URL"
+            pixi run ./scripts/make_github_notification.py --summary-files ./*_run_summary.json --error-files ./*_log.txt --summary-type zulip --workflow-url "$WORKFLOW_URL"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
       - name: Notify Zulip of archive run completion
