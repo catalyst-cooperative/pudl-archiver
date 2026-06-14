@@ -31,6 +31,12 @@ def _parse_args():
         help="Paths to log files for failed runs.",
         default=None,
     )
+    parser.add_argument(
+        "--workflow-url",
+        type=str,
+        help="URL of the GitHub Actions workflow run.",
+        default=None,
+    )
     return parser.parse_args()
 
 
@@ -133,7 +139,9 @@ def _load_errors(error_files: list[Path]) -> list[str]:
     return errors
 
 
-def main(summary_files: list[Path], error_files: list[Path]) -> None:
+def main(
+    summary_files: list[Path], error_files: list[Path], workflow_url: str | None = None
+) -> None:
     """Format summary files for Zulip perusal."""
     summaries = _load_summaries(summary_files)
     errors = _load_errors(error_files)
@@ -147,7 +155,12 @@ def main(summary_files: list[Path], error_files: list[Path]) -> None:
         filter(None, (_format_summary(s) for s in summaries if not s["file_changes"]))
     )
 
-    parts = ["## Archiver Run Outcomes"]
+    parts = ["### PUDL data archive run complete."]
+
+    if workflow_url:
+        parts.append(f"[View workflow run]({workflow_url})")
+
+    parts.append("## Archiver Run Outcomes")
 
     if error_entries:
         parts.append("### Run Failures")

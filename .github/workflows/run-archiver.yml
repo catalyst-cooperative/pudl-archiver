@@ -194,10 +194,12 @@ jobs:
       - name: Create Zulip notification content
         id: zulip_summaries
         if: ${{ inputs.create_github_issue == false }}
+        env:
+          WORKFLOW_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           {
             echo "ZULIP_CONTENT<<EOF"
-            pixi run ./scripts/make_zulip_notification_message.py --summary-files "./*_run_summary.json" --error-files "./*_log.txt"
+            pixi run ./scripts/make_zulip_notification_message.py --summary-files "./*_run_summary.json" --error-files "./*_log.txt" --workflow-url "$WORKFLOW_URL"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
       - name: Notify Zulip of archive run completion
@@ -210,11 +212,7 @@ jobs:
           type: "stream"
           to: "pudl-deployments"
           topic: "pudl-archiver"
-          content: |
-            ### PUDL data archive run complete.
-            [View workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
-
-            ${{ steps.zulip_summaries.outputs.ZULIP_CONTENT }}
+          content: ${{ steps.zulip_summaries.outputs.ZULIP_CONTENT }}
 
     outputs:
       errors: ${{ steps.github_summaries.outputs.ERRORS }}
