@@ -54,17 +54,18 @@ def _format_failures(summary: dict) -> str | None:
     name = summary["dataset_name"]
     url = summary["record_url"]
 
-    test_failures = defaultdict(list)
+    test_failures: list[str] = []
     for validation_test in summary["validation_tests"]:
         if (not validation_test["success"]) and (
             validation_test["required_for_run_success"]
         ):
-            test_failures = ". ".join(
-                [validation_test["name"]] + validation_test["notes"]
-            )
+            failure_text = validation_test["name"]
+            if validation_test.get("notes"):
+                failure_text += ": " + ". ".join(validation_test["notes"])
+            test_failures.append(failure_text)
 
     if test_failures:
-        failures = f"```\n{json.dumps(test_failures, indent=2)}\n```"
+        failures = "\n".join(f"- {failure}" for failure in test_failures)
     else:
         return None
 
@@ -95,8 +96,12 @@ def _format_errors(log: str) -> str | None:
     """Take a log file from a failed run and return the exception."""
     failure_match = list(re.finditer("Traceback", log))
     if not failure_match or any(
-        "archive validation tests failed" in log[failure.start() :]
+        validation_message in log[failure.start() :]
         for failure in failure_match
+        for validation_message in [
+            "archive validation tests failed",
+            "Archive validation failed",
+        ]
     ):
         # We already capture archive validation failures elsewhere, so ignore these.
         return None
@@ -177,6 +182,9 @@ def main(
     if unchanged_entries:
         parts.append("### Unchanged")
         parts.append("\n---\n".join(unchanged_entries))
+
+    if not any([error_entries, failed_entries, changed_entries, unchanged_entries]):
+        parts.append("_No downloaded summary or error artifacts were found._")
 
     print("\n\n".join(parts))
 
