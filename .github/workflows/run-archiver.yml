@@ -74,7 +74,7 @@ jobs:
         run: |
           {
             echo "LAUNCH_CONTENT<<EOF"
-            echo "# :rocket: Launching \`$WORKFLOW_NAME\` ($TARGET_SERVER) workflow ([view run]($RUN_URL))"
+            echo "# :rocket: Launching \`$WORKFLOW_NAME\` $TARGET_SERVER workflow ([view run]($RUN_URL))"
             echo
             echo "Datasets:"
             printf '%s\n' "$DATASETS_JSON" | jq -r '.[] | "- `\(.)`"'

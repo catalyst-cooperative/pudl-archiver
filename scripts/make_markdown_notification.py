@@ -1,20 +1,15 @@
 #! /usr/bin/env python
-"""Format summary and error files into Github issue template.
+"""Format archiver summary and error files as Markdown.
 
-Creates chunks that can be added to the Github issue template
-`monthly-archiver-update.yml`. Only uses stdlib.
+This script reads run summary JSON files and optional failure logs, then emits
+Markdown suitable for either:
 
-Sets a series of env variables to put into the Slack Github Action:
+- GitHub issue template sections describing errors, failures, changes, or
+    unchanged datasets.
+- Zulip notifications containing a full run summary and a workflow-run link.
 
-https://github.com/slackapi/slack-github-action
-
-Which follows the attachments format (see
-https://api.slack.com/methods/chat.postMessage#arg_attachments) in the Slack API
-- see the Block Kit Builder (https://app.slack.com/block-kit-builder/) for an
-interactive playground for the API.
-
-We stuff everything into an attachment because that lets us automatically
-hide large messages (such as a file diff) behind a "See more" action.
+GitHub outputs include action checkboxes so follow-up work can be tracked in
+issues. Zulip outputs omit those actions and serve as notifications only.
 """
 
 import argparse
