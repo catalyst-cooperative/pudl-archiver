@@ -60,17 +60,21 @@ def _parse_args():
 
 
 def _format_message(
-    url: str | None, name: str, content: str, action: str | None = None
+    url: str | None,
+    name: str,
+    content: str,
+    action: str | None = None,
+    include_action: bool = True,
 ) -> str:
     """Format message for Markdown with the dataset, its URL and action items.
 
-    When archives fail, they may not have a URL. If no action specified, don't add
-    a checkbox.
+    When archives fail, they may not have a URL.
     """
-    header = f"[**{name}**]({url})" if url else f"**{name}**"
+    header = f"### [{name}]({url})" if url else f"### {name}"
 
-    if action:
-        return f"{header}\n\n{content}\n\n- [ ] {action}"
+    if action and include_action:
+        action_prefix = "- [ ]" if include_action else "-"
+        return f"{header}\n\n{content}\n\n{action_prefix} {action}"
     return f"{header}\n\n{content}"
 
 
@@ -79,7 +83,10 @@ def _format_text_as_github_code(text: str) -> str:
     return f"```\n{text}\n```"
 
 
-def _format_failures(summary: dict) -> str | None:
+def _format_failures(
+    summary: dict,
+    include_action: bool = True,
+) -> str | None:
     name = summary["dataset_name"]
     url = summary["record_url"]
 
@@ -99,11 +106,18 @@ def _format_failures(summary: dict) -> str | None:
         return None
 
     return _format_message(
-        url=url, name=name, content=failures, action="Investigate failure"
+        url=url,
+        name=name,
+        content=failures,
+        action="Investigate failure",
+        include_action=include_action,
     )
 
 
-def _format_summary(summary: dict) -> str | None:
+def _format_summary(
+    summary: dict,
+    include_action: bool = True,
+) -> str | None:
     name = summary["dataset_name"]
     url = summary["record_url"]
     if any(not test["success"] for test in summary["validation_tests"]):
@@ -126,10 +140,19 @@ def _format_summary(summary: dict) -> str | None:
         changes = "No changes."
         action = None
 
-    return _format_message(url=url, name=name, content=changes, action=action)
+    return _format_message(
+        url=url,
+        name=name,
+        content=changes,
+        action=action,
+        include_action=include_action,
+    )
 
 
-def _format_errors(log: str) -> str | None:
+def _format_errors(
+    log: str,
+    include_action: bool = True,
+) -> str | None:
     """Take a log file from a failed run and return the exception."""
     # First isolate traceback
     failure_match = list(re.finditer("Traceback", log))
@@ -167,39 +190,47 @@ def _format_errors(log: str) -> str | None:
     url = url_re.group(1) if url_re else None
 
     return _format_message(
-        url=url, name=name, content=failure, action="Investigate error"
+        url=url,
+        name=name,
+        content=failure,
+        action="Investigate error",
+        include_action=include_action,
     )
 
 
-def _build_zulip_message(
+def _build_markdown_report(
     error_blocks: str,
     failed_blocks: str,
     changed_blocks: str,
     unchanged_blocks: str,
-    workflow_url: str | None,
+    workflow_url: str | None = None,
+    title: str | None = None,
 ) -> str:
-    """Build a single Markdown message for Zulip."""
-    parts = ["### PUDL data archive run complete."]
+    """Build a single Markdown report from the formatted summary blocks."""
+    parts: list[str] = []
+
+    if title:
+        parts.append(title)
 
     if workflow_url:
         parts.append(f"[View workflow run]({workflow_url})")
 
-    parts.append("## Archiver Run Outcomes")
+    parts.append("# Archiver Run Outcomes")
 
     if error_blocks:
-        parts.append("### Run Failures")
+        parts.append("## Run Failures")
         parts.append(error_blocks)
 
     if failed_blocks:
-        parts.append("### Validation Failures")
+        parts.append("## Validation Failures")
         parts.append(failed_blocks)
 
     if changed_blocks:
-        parts.append("### Changed")
+        parts.append("## Changed")
         parts.append(changed_blocks)
 
     if unchanged_blocks:
-        parts.append("### Unchanged")
+        parts.append("## Unchanged")
         parts.append(unchanged_blocks)
 
     if not any([error_blocks, failed_blocks, changed_blocks, unchanged_blocks]):
@@ -235,22 +266,41 @@ def main(
     """Format summary files for GitHub issue text or Zulip Markdown."""
     summaries = _load_summaries(summary_files)
     errors = _load_errors(error_files)
+    include_action = summary_type != "zulip"
 
-    error_blocks = "\n\n".join(filter(None, (_format_errors(e) for e in errors)))
+    error_blocks = "\n\n".join(
+        filter(
+            None,
+            (_format_errors(e, include_action) for e in errors),
+        )
+    )
 
-    failed_blocks = "\n\n".join(filter(None, (_format_failures(s) for s in summaries)))
+    failed_blocks = "\n\n".join(
+        filter(
+            None,
+            (_format_failures(s, include_action) for s in summaries),
+        )
+    )
 
     unchanged_blocks = "\n\n".join(
         filter(
             None,
-            (_format_summary(s) for s in summaries if not s["file_changes"]),
+            (
+                _format_summary(s, include_action)
+                for s in summaries
+                if not s["file_changes"]
+            ),
         )
     )
 
     changed_blocks = "\n\n".join(
         filter(
             None,
-            (_format_summary(s) for s in summaries if s["file_changes"]),
+            (
+                _format_summary(s, include_action)
+                for s in summaries
+                if s["file_changes"]
+            ),
         )
     )
 
@@ -264,12 +314,13 @@ def main(
         print(unchanged_blocks)
     elif summary_type == "zulip":
         print(
-            _build_zulip_message(
+            _build_markdown_report(
                 error_blocks=error_blocks,
                 failed_blocks=failed_blocks,
                 changed_blocks=changed_blocks,
                 unchanged_blocks=unchanged_blocks,
                 workflow_url=workflow_url,
+                title="## PUDL data archive run complete.",
             )
         )
     else:
