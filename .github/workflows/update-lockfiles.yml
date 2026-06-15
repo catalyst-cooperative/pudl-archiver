@@ -35,10 +35,10 @@ jobs:
         uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ steps.generate-token.outputs.token }}
-          commit-message: Update pixi lockfile
-          title: Update pixi lockfile
+          commit-message: Update pixi lockfile and pre-commit hooks
+          title: Update pixi lockfile and pre-commit hooks
           body-path: diff.md
-          branch: update-pixi
+          branch: update-lockfiles
           base: main
           labels: pixi
           delete-branch: true
