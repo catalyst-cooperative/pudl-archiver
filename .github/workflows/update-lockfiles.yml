@@ -1,4 +1,4 @@
-name: Update pixi lockfiles
+name: Update lockfiles
 
 permissions:
   contents: write
@@ -11,7 +11,7 @@ on:
     - cron: 0 5 * * 1 # Run every Monday
 
 jobs:
-  pixi-update:
+  update-lockfiles:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -24,6 +24,7 @@ jobs:
           set -o pipefail
           pixi upgrade --json | pixi exec pixi-diff-to-markdown >> diff.md
           pixi reinstall --all
+          pixi run --frozen prek-autoupdate
       - name: Generate GH token
         uses: actions/create-github-app-token@v3
         id: generate-token
@@ -44,3 +45,4 @@ jobs:
           add-paths: |
             pixi.lock
             pyproject.toml
+            .pre-commit-config.yaml
