@@ -60,9 +60,42 @@ jobs:
             echo 'datasets=["eia860","eia861","eia923"]' >> "$GITHUB_OUTPUT"
           fi
 
+  notify-start:
+    runs-on: ubuntu-latest
+    needs: determine-datasets
+    steps:
+      - name: Build launch notification
+        id: launch_message
+        env:
+          DATASETS_JSON: ${{ needs.determine-datasets.outputs.datasets }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          TARGET_SERVER: ${{ github.event_name == 'schedule' && 'production' || inputs.server }}
+          WORKFLOW_NAME: ${{ github.workflow }}
+        run: |
+          {
+            echo "LAUNCH_CONTENT<<EOF"
+            echo "# :rocket: Launching \`$WORKFLOW_NAME\` ($TARGET_SERVER) workflow ([view run]($RUN_URL))"
+            echo
+            echo "Datasets:"
+            printf '%s\n' "$DATASETS_JSON" | jq -r '.[] | "- `\(.)`"'
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+      - name: Notify Zulip of workflow launch
+        uses: zulip/github-actions-zulip/send-message@v2
+        with:
+          api-key: ${{ secrets.ZULIP_API_KEY }}
+          email: "build-status-bot@catalyst-cooperative.zulipchat.com"
+          organization-url: "https://catalyst-cooperative.zulipchat.com"
+          type: "stream"
+          to: "pudl-deployments"
+          topic: "pudl-archiver"
+          content: ${{ steps.launch_message.outputs.LAUNCH_CONTENT }}
+
   archive-run:
     runs-on: ${{ github.event.inputs.use_large_runner == 'true' && 'ubuntu-latest-4core' || 'ubuntu-latest' }}
-    needs: determine-datasets
+    needs:
+      - determine-datasets
+      - notify-start
     defaults:
       run:
         shell: bash -l {0}
