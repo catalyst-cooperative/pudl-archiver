@@ -70,7 +70,7 @@ def _format_message(
 
     When archives fail, they may not have a URL.
     """
-    header = f"### `[{name}]({url})`" if url else f"### `{name}`"
+    header = f"### [{name}]({url})" if url else f"### {name}"
 
     if action and include_action:
         action_prefix = "- [ ]" if include_action else "-"
