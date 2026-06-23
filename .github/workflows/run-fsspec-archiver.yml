@@ -166,11 +166,11 @@ jobs:
       # These steps only run if no Github issue is requested to be created.
       # The summary will show up in Zulip instead.
       - name: Load pixi from cache for Zulip notification
-        if: ${{ inputs.create_github_issue == false }}
+        if: ${{ always() }}
         uses: prefix-dev/setup-pixi@v0.9.6
       - name: Create Zulip notification content
         id: zulip_summaries
-        if: ${{ inputs.create_github_issue == false }}
+        if: ${{ always() }}
         env:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
@@ -180,7 +180,7 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
       - name: Notify Zulip of archive run completion
-        if: ${{ inputs.create_github_issue == false }}
+        if: ${{ always() }}
         uses: zulip/github-actions-zulip/send-message@v2
         with:
           api-key: ${{ secrets.ZULIP_API_KEY }}

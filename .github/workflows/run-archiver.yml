@@ -226,7 +226,7 @@ jobs:
       # The summary will show up in Zulip instead.
       - name: Create Zulip notification content
         id: zulip_summaries
-        if: ${{ inputs.create_github_issue == false }}
+        if: ${{ always() }}
         env:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
@@ -236,7 +236,7 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
       - name: Notify Zulip of archive run completion
-        if: ${{ inputs.create_github_issue == false }}
+        if: ${{ always() }}
         uses: zulip/github-actions-zulip/send-message@v2
         with:
           api-key: ${{ secrets.ZULIP_API_KEY }}
