@@ -46,7 +46,7 @@ def _parse_args():
         default=None,
     )
     parser.add_argument(
-        "--workflow-url",
+        "--run-url",
         type=str,
         help="URL of the GitHub Actions workflow run for Zulip notifications.",
         default=None,
@@ -198,7 +198,7 @@ def _build_markdown_report(
     failed_blocks: str,
     changed_blocks: str,
     unchanged_blocks: str,
-    workflow_url: str | None = None,
+    run_url: str | None = None,
     title: str | None = None,
 ) -> str:
     """Build a single Markdown report from the formatted summary blocks."""
@@ -207,8 +207,8 @@ def _build_markdown_report(
     if title:
         parts.append(title)
 
-    if workflow_url:
-        parts.append(f"[View workflow run]({workflow_url})")
+    if run_url:
+        parts.append(f"[View workflow run]({run_url})")
 
     parts.append("# Archiver Run Outcomes")
 
@@ -256,7 +256,7 @@ def main(
     summary_files: list[Path],
     error_files: list[Path],
     summary_type: str,
-    workflow_url: str | None = None,
+    run_url: str | None = None,
 ) -> None:
     """Format summary files for GitHub issue text or Zulip Markdown."""
     summaries = _load_summaries(summary_files)
@@ -314,7 +314,7 @@ def main(
                 failed_blocks=failed_blocks,
                 changed_blocks=changed_blocks,
                 unchanged_blocks=unchanged_blocks,
-                workflow_url=workflow_url,
+                run_url=run_url,
                 title="# PUDL data archive run complete.",
             )
         )

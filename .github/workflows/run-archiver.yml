@@ -228,11 +228,11 @@ jobs:
         id: zulip_summaries
         if: ${{ inputs.create_github_issue == false }}
         env:
-          WORKFLOW_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           {
             echo "ZULIP_CONTENT<<EOF"
-            pixi run ./scripts/make_markdown_notification.py --summary-files ./*_run_summary.json --error-files ./*_log.txt --summary-type zulip --workflow-url "$WORKFLOW_URL"
+            pixi run ./scripts/make_markdown_notification.py --summary-files ./*_run_summary.json --error-files ./*_log.txt --summary-type zulip --run-url "$RUN_URL"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
       - name: Notify Zulip of archive run completion
