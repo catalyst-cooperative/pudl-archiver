@@ -19,7 +19,38 @@ on:
         type: choice
 
 jobs:
+  notify-start:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build launch notification
+        id: launch_message
+        env:
+          DATASETS_JSON: ${{ format('[{0}]', inputs.datasets || '' ) }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          TARGET_SERVER: ${{ inputs.server }}
+          WORKFLOW_NAME: ${{ github.workflow }}
+        run: |
+          {
+            echo "LAUNCH_CONTENT<<EOF"
+            echo "# :rocket: Launching \`$WORKFLOW_NAME\` $TARGET_SERVER workflow ([view run]($RUN_URL))"
+            echo
+            echo "Datasets:"
+            printf '%s\n' "$DATASETS_JSON" | jq -r '.[] | "- `\(.)`"'
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+      - name: Notify Zulip of workflow launch
+        uses: zulip/github-actions-zulip/send-message@v2
+        with:
+          api-key: ${{ secrets.ZULIP_API_KEY }}
+          email: "build-status-bot@catalyst-cooperative.zulipchat.com"
+          organization-url: "https://catalyst-cooperative.zulipchat.com"
+          type: "stream"
+          to: "pudl-deployments"
+          topic: "pudl-archiver"
+          content: ${{ steps.launch_message.outputs.LAUNCH_CONTENT }}
+
   archive-run:
+    needs: notify-start
     defaults:
       run:
         shell: bash -l {0}
@@ -97,20 +128,25 @@ jobs:
           merge-multiple: true
       - name: show summaries
         run: ls -R
-      - name: Munge summaries together
-        id: all_summaries
+      - name: Load pixi from cache
+        uses: prefix-dev/setup-pixi@v0.9.6
+      - name: Create Zulip notification content
+        id: zulip_summaries
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           {
-            echo "SLACK_PAYLOAD<<EOF"
-            ./scripts/make_slack_notification_message.py --summary-files *_run_summary.json | tee slack-payload.json
+            echo "ZULIP_CONTENT<<EOF"
+            pixi run ./scripts/make_markdown_notification.py --summary-files ./*_run_summary.json --error-files ./*_log.txt --summary-type zulip --run-url "$RUN_URL"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
-      - name: Post update to pudl-deployment
-        uses: slackapi/slack-github-action@v3.0.3
+      - name: Notify Zulip of archive initialization
+        uses: zulip/github-actions-zulip/send-message@v2
         with:
-          method: chat.postMessage
-          token: ${{ secrets.PUDL_DEPLOY_SLACK_TOKEN }}
-          payload: |
-            text: "Created new archiver(s)."
-            blocks: ${{ steps.all_summaries.outputs.SLACK_PAYLOAD }}
-            channel: "C03FHB9N0PQ"
+          api-key: ${{ secrets.ZULIP_API_KEY }}
+          email: "build-status-bot@catalyst-cooperative.zulipchat.com"
+          organization-url: "https://catalyst-cooperative.zulipchat.com"
+          type: "stream"
+          to: "pudl-deployments"
+          topic: "pudl-archiver"
+          content: ${{ steps.zulip_summaries.outputs.ZULIP_CONTENT }}

@@ -1,20 +1,15 @@
 #! /usr/bin/env python
-"""Format summary and error files into Github issue template.
+"""Format archiver summary and error files as Markdown.
 
-Creates chunks that can be added to the Github issue template
-`monthly-archiver-update.yml`. Only uses stdlib.
+This script reads run summary JSON files and optional failure logs, then emits
+Markdown suitable for either:
 
-Sets a series of env variables to put into the Slack Github Action:
+- GitHub issue template sections describing errors, failures, changes, or
+    unchanged datasets.
+- Zulip notifications containing a full run summary and a workflow-run link.
 
-https://github.com/slackapi/slack-github-action
-
-Which follows the attachments format (see
-https://api.slack.com/methods/chat.postMessage#arg_attachments) in the Slack API
-- see the Block Kit Builder (https://app.slack.com/block-kit-builder/) for an
-interactive playground for the API.
-
-We stuff everything into an attachment because that lets us automatically
-hide large messages (such as a file diff) behind a "See more" action.
+GitHub outputs include action checkboxes so follow-up work can be tracked in
+issues. Zulip outputs omit those actions and serve as notifications only.
 """
 
 import argparse
@@ -47,21 +42,29 @@ def _parse_args():
     parser.add_argument(
         "--summary-type",
         type=str,
-        help="What category of text to get (changes, failures).",
+        help="What category of text to get (changes, failures, zulip).",
+        default=None,
+    )
+    parser.add_argument(
+        "--run-url",
+        type=str,
+        help="URL of the GitHub Actions workflow run for Zulip notifications.",
         default=None,
     )
     return parser.parse_args()
 
 
 def _format_message(
-    url: str | None, name: str, content: str, action: str | None = None
+    url: str | None,
+    name: str,
+    content: str,
+    action: str | None = None,
 ) -> str:
     """Format message for Markdown with the dataset, its URL and action items.
 
-    When archives fail, they may not have a URL. If no action specified, don't add
-    a checkbox.
+    When archives fail, they may not have a URL.
     """
-    header = f"[**{name}**]({url})" if url else f"**{name}**"
+    header = f"### [{name}]({url})" if url else f"### {name}"
 
     if action:
         return f"{header}\n\n{content}\n\n- [ ] {action}"
@@ -73,7 +76,10 @@ def _format_text_as_github_code(text: str) -> str:
     return f"```\n{text}\n```"
 
 
-def _format_failures(summary: dict) -> str | None:
+def _format_failures(
+    summary: dict,
+    include_action: bool = True,
+) -> str | None:
     name = summary["dataset_name"]
     url = summary["record_url"]
 
@@ -92,12 +98,19 @@ def _format_failures(summary: dict) -> str | None:
     else:
         return None
 
+    action = "Investigate failure" if include_action else None
     return _format_message(
-        url=url, name=name, content=failures, action="Investigate failure"
+        url=url,
+        name=name,
+        content=failures,
+        action=action,
     )
 
 
-def _format_summary(summary: dict) -> str | None:
+def _format_summary(
+    summary: dict,
+    include_action: bool = True,
+) -> str | None:
     name = summary["dataset_name"]
     url = summary["record_url"]
     if any(not test["success"] for test in summary["validation_tests"]):
@@ -114,23 +127,35 @@ def _format_summary(summary: dict) -> str | None:
         )  # Replace no partition change with empty string
         # Convert to Markdown table
         changes = file_change_table.to_markdown(index=False)
-        action = "Reviewed and published to Zenodo"
+        action = "Reviewed and published to Zenodo" if include_action else None
     else:
         # If no changes, don't specify an action.
         changes = "No changes."
         action = None
 
-    return _format_message(url=url, name=name, content=changes, action=action)
+    return _format_message(
+        url=url,
+        name=name,
+        content=changes,
+        action=action,
+    )
 
 
-def _format_errors(log: str) -> str | None:
+def _format_errors(
+    log: str,
+    include_action: bool = True,
+) -> str | None:
     """Take a log file from a failed run and return the exception."""
     # First isolate traceback
     failure_match = list(re.finditer("Traceback", log))
 
     if not failure_match or any(
-        "Archive validation failed" in log[failure.start() :]
+        validation_message in log[failure.start() :]
         for failure in failure_match
+        for validation_message in [
+            "Archive validation failed",
+            "archive validation tests failed",
+        ]
     ):
         # We already capture archive validation failures elsewhere, so ignore these.
         return None
@@ -144,7 +169,7 @@ def _format_errors(log: str) -> str | None:
         r"(?:catalystcoop.pudl_archiver.archivers.classes:\d+ Archiving )([a-z0-9]*)",
         log,
     )
-    name = name_re.group(1)
+    name = name_re.group(1) if name_re else "Unknown"
 
     # TODO: Change to link to the Github job URL when they make the Job ID accessible
     # from a given job's context
@@ -156,9 +181,54 @@ def _format_errors(log: str) -> str | None:
     # a hyperlink.
     url = url_re.group(1) if url_re else None
 
+    action = "Investigate error" if include_action else None
     return _format_message(
-        url=url, name=name, content=failure, action="Investigate error"
+        url=url,
+        name=name,
+        content=failure,
+        action=action,
     )
+
+
+def _build_markdown_report(
+    error_blocks: str,
+    failed_blocks: str,
+    changed_blocks: str,
+    unchanged_blocks: str,
+    run_url: str | None = None,
+    title: str | None = None,
+) -> str:
+    """Build a single Markdown report from the formatted summary blocks."""
+    parts: list[str] = []
+
+    if title:
+        parts.append(title)
+
+    if run_url:
+        parts.append(f"[View workflow run]({run_url})")
+
+    parts.append("# Archiver Run Outcomes")
+
+    if error_blocks:
+        parts.append("## Run Failures")
+        parts.append(error_blocks)
+
+    if failed_blocks:
+        parts.append("## Validation Failures")
+        parts.append(failed_blocks)
+
+    if changed_blocks:
+        parts.append("## Changed")
+        parts.append(changed_blocks)
+
+    if unchanged_blocks:
+        parts.append("## Unchanged")
+        parts.append(unchanged_blocks)
+
+    if not any([error_blocks, failed_blocks, changed_blocks, unchanged_blocks]):
+        parts.append("*No downloaded summary or error artifacts were found.*")
+
+    return "\n\n".join(parts)
 
 
 def _load_summaries(summary_files: list[Path]) -> list[dict]:
@@ -179,25 +249,51 @@ def _load_errors(error_files: list[Path]) -> list[str]:
     return errors
 
 
-def main(summary_files: list[Path], error_files: list[Path], summary_type: str) -> None:
-    """Format summary files for Slack perusal."""
+def main(
+    summary_files: list[Path],
+    error_files: list[Path],
+    summary_type: str,
+    run_url: str | None = None,
+) -> None:
+    """Format summary files for GitHub issue text or Zulip Markdown."""
     summaries = _load_summaries(summary_files)
     errors = _load_errors(error_files)
+    include_action = summary_type != "zulip"
 
-    error_blocks = "\n\n".join(filter(None, (_format_errors(e) for e in errors)))
+    error_blocks = "\n\n".join(
+        filter(
+            None,
+            (_format_errors(e, include_action) for e in errors),
+        )
+    )
 
-    failed_blocks = "\n\n".join(filter(None, (_format_failures(s) for s in summaries)))
+    failed_blocks = "\n\n".join(
+        filter(
+            None,
+            (_format_failures(s, include_action) for s in summaries),
+        )
+    )
 
     unchanged_blocks = "\n\n".join(
-        _format_summary(s)
-        for s in summaries
-        if (not s["file_changes"]) and (_format_summary(s) is not None)
+        filter(
+            None,
+            (
+                _format_summary(s, include_action)
+                for s in summaries
+                if not s["file_changes"]
+            ),
+        )
     )
 
     changed_blocks = "\n\n".join(
-        _format_summary(s)
-        for s in summaries
-        if (s["file_changes"]) and (_format_summary(s) is not None)
+        filter(
+            None,
+            (
+                _format_summary(s, include_action)
+                for s in summaries
+                if s["file_changes"]
+            ),
+        )
     )
 
     if summary_type == "change":
@@ -208,6 +304,17 @@ def main(summary_files: list[Path], error_files: list[Path], summary_type: str) 
         print(failed_blocks)
     elif summary_type == "unchanged":
         print(unchanged_blocks)
+    elif summary_type == "zulip":
+        print(
+            _build_markdown_report(
+                error_blocks=error_blocks,
+                failed_blocks=failed_blocks,
+                changed_blocks=changed_blocks,
+                unchanged_blocks=unchanged_blocks,
+                run_url=run_url,
+                title="# PUDL data archive run complete.",
+            )
+        )
     else:
         print([changed_blocks, unchanged_blocks, failed_blocks, error_blocks])
 
