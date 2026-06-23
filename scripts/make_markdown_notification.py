@@ -59,7 +59,6 @@ def _format_message(
     name: str,
     content: str,
     action: str | None = None,
-    include_action: bool = True,
 ) -> str:
     """Format message for Markdown with the dataset, its URL and action items.
 
@@ -67,9 +66,8 @@ def _format_message(
     """
     header = f"### [{name}]({url})" if url else f"### {name}"
 
-    if action and include_action:
-        action_prefix = "- [ ]" if include_action else "-"
-        return f"{header}\n\n{content}\n\n{action_prefix} {action}"
+    if action:
+        return f"{header}\n\n{content}\n\n- [ ] {action}"
     return f"{header}\n\n{content}"
 
 
@@ -100,12 +98,12 @@ def _format_failures(
     else:
         return None
 
+    action = "Investigate failure" if include_action else None
     return _format_message(
         url=url,
         name=name,
         content=failures,
-        action="Investigate failure",
-        include_action=include_action,
+        action=action,
     )
 
 
@@ -129,7 +127,7 @@ def _format_summary(
         )  # Replace no partition change with empty string
         # Convert to Markdown table
         changes = file_change_table.to_markdown(index=False)
-        action = "Reviewed and published to Zenodo"
+        action = "Reviewed and published to Zenodo" if include_action else None
     else:
         # If no changes, don't specify an action.
         changes = "No changes."
@@ -140,7 +138,6 @@ def _format_summary(
         name=name,
         content=changes,
         action=action,
-        include_action=include_action,
     )
 
 
@@ -184,12 +181,12 @@ def _format_errors(
     # a hyperlink.
     url = url_re.group(1) if url_re else None
 
+    action = "Investigate error" if include_action else None
     return _format_message(
         url=url,
         name=name,
         content=failure,
-        action="Investigate error",
-        include_action=include_action,
+        action=action,
     )
 
 
@@ -229,7 +226,7 @@ def _build_markdown_report(
         parts.append(unchanged_blocks)
 
     if not any([error_blocks, failed_blocks, changed_blocks, unchanged_blocks]):
-        parts.append("_No downloaded summary or error artifacts were found._")
+        parts.append("*No downloaded summary or error artifacts were found.*")
 
     return "\n\n".join(parts)
 
