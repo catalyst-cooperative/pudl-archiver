@@ -61,7 +61,7 @@ jobs:
         run: |
           set -o pipefail
           pixi run pudl_archiver \
-            publish-run \
+            ${{ inputs.command }} \
             ${{ inputs.dataset }}_run_summary.json 2>&1 | tee ${{ inputs.dataset }}_log.txt
 
       - name: Upload run summaries
