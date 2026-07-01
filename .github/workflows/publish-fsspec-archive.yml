@@ -12,6 +12,14 @@ on:
         description: Name of dataset to publish from previous archiver run
         required: true
         type: string
+      command:
+        description: Switch between the retry-run and publish-run command
+        required: true
+        type: choice
+        default: "publish-run"
+        options:
+          - publish-run
+          - retry-run
 
 jobs:
   publish-run:
@@ -55,3 +63,11 @@ jobs:
           pixi run pudl_archiver \
             publish-run \
             ${{ inputs.dataset }}_run_summary.json 2>&1 | tee ${{ inputs.dataset }}_log.txt
+
+      - name: Upload run summaries
+        if: always()
+        id: upload_summaries
+        uses: actions/upload-artifact@v7
+        with:
+          name: run-summaries-${{ inputs.dataset }}
+          path: ${{ inputs.dataset }}_run_summary.json
