@@ -113,8 +113,11 @@ def _format_summary(
 ) -> str | None:
     name = summary["dataset_name"]
     url = summary["record_url"]
-    if any(not test["success"] for test in summary["validation_tests"]):
-        return None  # Don't report on file changes if any test failed.
+    if any(
+        (not test["success"] and test["required_for_run_success"])
+        for test in summary["validation_tests"]
+    ):
+        return None  # Don't report on file changes if any test failed that was required for the run to succeed.
 
     if file_changes := summary["file_changes"]:
         file_change_table = pd.DataFrame.from_records(file_changes)
