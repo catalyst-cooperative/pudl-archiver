@@ -188,8 +188,7 @@ def publish_run(summary_file: str):
         archive_dataset(
             dataset=previous_run_summary.dataset_name,
             run_settings=previous_run_summary.run_settings,
-            failed_partitions=failed_partitions,
-            successful_partitions=successful_partitions,
+            skip_partitions=successful_partitions,
         )
     )
 
@@ -229,8 +228,7 @@ def retry_run(summary_file: str, auto_publish: bool):
         archive_dataset(
             dataset=failed_run_summary.dataset_name,
             run_settings=failed_run_summary.run_settings,
-            failed_partitions=failed_partitions,
-            successful_partitions=successful_partitions,
+            skip_partitions=successful_partitions,
         )
     )
 

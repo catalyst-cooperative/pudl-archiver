@@ -18,22 +18,18 @@ async def orchestrate_run(
     downloader: AbstractDatasetArchiver,
     run_settings: RunSettings,
     session: aiohttp.ClientSession,
-    failed_partitions: dict[str, Partitions] | None = None,
-    successful_partitions: dict[str, Partitions] | None = None,
+    skip_partitions: dict[str, Partitions] | None = None,
 ) -> tuple[RunSummary, PublishedDeposition | None]:
     """Use downloader and depositor to archive a dataset."""
     resources = {}
-    successful_partitions = (
-        {} if successful_partitions is None else successful_partitions
-    )
     # Get datapackage from previous version if there is one
     draft, original_datapackage = await get_deposition(dataset, session, run_settings)
 
     # Download resources and add to archive
     async for name, resource in downloader.download_all_resources(
-        retry_parts=failed_partitions
-        if failed_partitions is None
-        else list(failed_partitions.values()),
+        skip_partitions=skip_partitions
+        if skip_partitions is None
+        else list(skip_partitions.values()),
     ):
         resources[name] = resource
         draft = await draft.add_resource(name, resource)
@@ -43,7 +39,7 @@ async def orchestrate_run(
         if (
             filename not in resources
             and filename != "datapackage.json"
-            and filename not in successful_partitions
+            and filename not in skip_partitions
         ):
             logger.info(f"Deleting {filename} from deposition.")
             draft = await draft.delete_file(filename)
@@ -53,7 +49,7 @@ async def orchestrate_run(
         partitions_in_deposition={
             name: resource.partitions for name, resource in resources.items()
         }
-        | successful_partitions
+        | skip_partitions
     )
 
     # Validate run
@@ -71,7 +67,8 @@ async def orchestrate_run(
             name: resource.partitions
             for name, resource in resources.items()
             if name not in downloader.failed_partitions
-        },
+        }
+        | skip_partitions,
         run_settings=run_settings,
     )
     published = await draft.publish_if_valid(
