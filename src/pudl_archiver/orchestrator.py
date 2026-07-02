@@ -5,7 +5,7 @@ import logging
 import aiohttp
 
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver
-from pudl_archiver.archivers.validate import RunSummary
+from pudl_archiver.archivers.validate import RunSummary, exception_validation
 from pudl_archiver.depositors import PublishedDeposition, get_deposition
 from pudl_archiver.frictionless import Partitions
 from pudl_archiver.utils import RunSettings
@@ -26,13 +26,18 @@ async def orchestrate_run(
     draft, original_datapackage = await get_deposition(dataset, session, run_settings)
 
     # Download resources and add to archive
-    async for name, resource in downloader.download_all_resources(
-        skip_partitions=skip_partitions
-        if skip_partitions is None
-        else list(skip_partitions.values()),
-    ):
-        resources[name] = resource
-        draft = await draft.add_resource(name, resource)
+    run_exception = None
+    try:
+        async for name, resource in downloader.download_all_resources(
+            skip_partitions=skip_partitions
+            if skip_partitions is None
+            else list(skip_partitions.values()),
+        ):
+            resources[name] = resource
+            draft = await draft.add_resource(name, resource)
+    except Exception as e:
+        run_exception = e
+        logger.error(f"download_all_resources failed!\n{e}")
 
     # Delete files in draft that weren't downloaded by downloader
     for filename in await draft.list_files():
@@ -56,6 +61,7 @@ async def orchestrate_run(
     validations = downloader.validate_dataset(
         original_datapackage, new_datapackage, resources
     )
+    validations.append(exception_validation(run_exception))
     summary = RunSummary.create_summary(
         name=dataset,
         baseline_datapackage=original_datapackage,

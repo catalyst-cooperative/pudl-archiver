@@ -48,6 +48,21 @@ class FileUniversalValidation(ValidationTestResult):
     resource_name: Path
 
 
+def exception_validation(e: Exception | None) -> DatasetUniversalValidation:
+    """Represents whether an exception was encountered while downloading / uploading resources."""
+    return DatasetUniversalValidation(
+        name="Run exception validation test",
+        description="Represents whether an exception was encountered while downloading / uploading resources.",
+        required_for_run_success=True,
+        success=e is None,
+        notes=[
+            f"Encountered the following exception while downloading resources and adding them to the deposition: {e}"
+            if e is not None
+            else "Run completed without error!"
+        ],
+    )
+
+
 def validate_filetype(
     path: Path, required_for_run_success: bool
 ) -> FileUniversalValidation:
@@ -410,7 +425,7 @@ def _validate_csv(buffer: BytesIO) -> bool:
     try:
         sliver = pd.read_csv(buffer, nrows=100)  # Try reading in a data slice
         return not sliver.empty
-    except pd.errors.EmptyDataError, pd.errors.ParserError:
+    except (pd.errors.EmptyDataError, pd.errors.ParserError) as _:
         return False
     return True
 
@@ -419,7 +434,7 @@ def _validate_parquet(buffer: BytesIO) -> bool:
     try:
         pq.ParquetFile(buffer)
         return True
-    except pa.lib.ArrowInvalid, pa.lib.ArrowException:
+    except (pa.lib.ArrowInvalid, pa.lib.ArrowException) as _:
         return False
 
 
