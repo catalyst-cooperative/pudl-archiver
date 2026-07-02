@@ -53,8 +53,7 @@ ARCHIVERS = {archiver.name: archiver for archiver in all_archivers()}
 async def archive_dataset(
     dataset: str,
     run_settings: RunSettings,
-    failed_partitions: dict[str, Partitions] | None = None,
-    successful_partitions: dict[str, Partitions] | None = None,
+    skip_partitions: dict[str, Partitions] | None = None,
 ):
     """A CLI for the PUDL Zenodo Storage system."""
 
@@ -93,8 +92,7 @@ async def archive_dataset(
             downloader=downloader,
             run_settings=run_settings,
             session=session,
-            failed_partitions=failed_partitions,
-            successful_partitions=successful_partitions,
+            skip_partitions=skip_partitions,
         )
 
     if run_settings.summary_file is not None:
