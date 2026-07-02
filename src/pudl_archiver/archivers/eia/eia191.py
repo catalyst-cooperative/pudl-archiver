@@ -26,7 +26,6 @@ class Eia191Archiver(EiaNGQVArchiver):
     async def get_resources(self) -> ArchiveAwaitable:
         """Download EIA 191 resources, keeping monthly data only."""
         reports_list = await self.get_reports(url=self.base_url, form=self.form)
-
         # Annual and monthly data have different date ranges, but we want to end up
         # with one zipfile per year with one file per data format.
         # To do this, we iterate through the reports to get the total date range
@@ -39,7 +38,7 @@ class Eia191Archiver(EiaNGQVArchiver):
             reports = [
                 report
                 for report in reports_list
-                if report.report_code in freq_dict[2005]
+                if report.report_code in freq_dict[year]
             ]
             yield self.get_year_resource(year, reports)
 
