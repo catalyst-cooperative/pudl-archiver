@@ -53,7 +53,7 @@ ARCHIVERS = {archiver.name: archiver for archiver in all_archivers()}
 async def archive_dataset(
     dataset: str,
     run_settings: RunSettings,
-    skip_partitions: dict[str, Partitions] | None = None,
+    skip_partitions: dict[str, Partitions] = {},
 ):
     """A CLI for the PUDL Zenodo Storage system."""
 
