@@ -18,7 +18,7 @@ async def orchestrate_run(
     downloader: AbstractDatasetArchiver,
     run_settings: RunSettings,
     session: aiohttp.ClientSession,
-    skip_partitions: dict[str, Partitions] | None = None,
+    skip_partitions: dict[str, Partitions] = {},
 ) -> tuple[RunSummary, PublishedDeposition | None]:
     """Use downloader and depositor to archive a dataset."""
     resources = {}
@@ -29,9 +29,7 @@ async def orchestrate_run(
     run_exception = None
     try:
         async for name, resource in downloader.download_all_resources(
-            skip_partitions=skip_partitions
-            if skip_partitions is None
-            else list(skip_partitions.values()),
+            skip_partitions.values(),
         ):
             resources[name] = resource
             draft = await draft.add_resource(name, resource)

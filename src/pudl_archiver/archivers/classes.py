@@ -781,13 +781,13 @@ class AbstractDatasetArchiver(ABC):
 
     async def _filter_resources(
         self,
-        skip_partitions: list[Partitions] | None = None,
+        skip_partitions: list[Partitions],
     ) -> list[Partitions]:
         """Filter to only partitions that failed in previous run if retrying."""
         # Get all awaitables from get_resources
         resources, partitions = await self._unpack_resources()
 
-        if skip_partitions is not None:
+        if len(skip_partitions) > 0:
             if len(partitions) == 0:
                 raise RuntimeError(
                     "Archiver must return partions from `get_resources` to be able "
@@ -804,7 +804,7 @@ class AbstractDatasetArchiver(ABC):
 
     async def download_all_resources(
         self,
-        skip_partitions: list[Partitions] | None = None,
+        skip_partitions: list[Partitions] = [],
     ) -> typing.Generator[tuple[str, ResourceInfo]]:
         """Download all resources.
 
