@@ -119,7 +119,7 @@ jobs:
           service_account: "pudl-sources@catalyst-cooperative-pudl.iam.gserviceaccount.com"
 
       - name: Set up pixi
-        uses: prefix-dev/setup-pixi@v0.9.6
+        uses: prefix-dev/setup-pixi@v0.10.0
         with:
           cache: true
 
@@ -199,7 +199,7 @@ jobs:
         run: ls -R
       - name: Load pixi from cache
         if: ${{ always() }}
-        uses: prefix-dev/setup-pixi@v0.9.6
+        uses: prefix-dev/setup-pixi@v0.10.0
       # These steps only run to create a Github issue summarizing the run.
       - name: Munge summaries together for Github
         if: ${{ always() && (github.event_name == 'schedule' || inputs.create_github_issue == true) }}
