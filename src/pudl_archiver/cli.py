@@ -174,7 +174,7 @@ def publish_run(summary_file: str):
     failed_partitions = previous_run_summary.failed_partitions
     successful_partitions = previous_run_summary.successful_partitions
 
-    if failed_partitions != {}:
+    if (failed_partitions != {}) or (not previous_run_summary.success):
         raise RuntimeError(
             "publish-run should not be called on a run with failed partitions."
             "Instead, use the retry-run command."

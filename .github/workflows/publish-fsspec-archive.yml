@@ -48,6 +48,11 @@ jobs:
           pixi info
           pixi list
 
+      - name: Additional Playwright setup
+        run: |
+          pixi run playwright install --with-deps webkit
+          pixi run playwright install --with-deps chromium
+
       - name: Download run summary
         uses: actions/download-artifact@v8
         with:
