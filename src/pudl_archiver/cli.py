@@ -213,13 +213,12 @@ def retry_run(summary_file: str, auto_publish: bool):
     )
 
     # Find which partitions failed/succeeded in previous run
-    failed_partitions = failed_run_summary.failed_partitions
     successful_partitions = failed_run_summary.successful_partitions
 
-    if failed_partitions == {}:
+    if failed_run_summary.success:
         raise RuntimeError(
-            "retry-run should not be called on a run with no failed partitions."
-            "Instead, use the publish-run command."
+            "retry-run should not be called on a run with no failed partitions"
+            " or validation errors. Instead, use the publish-run command."
         )
 
     # Run the archiver with settings from previous run
