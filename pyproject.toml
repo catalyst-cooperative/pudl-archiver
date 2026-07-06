@@ -127,7 +127,7 @@ preview = ["pixi-build"]
 [tool.pixi.pypi-dependencies]
 pudl_archiver = { path = ".", editable = true }
 # Something about the pixi activation script doesn't work when it's installed from conda-forge.
-playwright = ">=1.60.0, <2"
+playwright = ">=1.61.0, <2"
 
 [tool.pixi.environments]
 default = { solve-group = "default" }
@@ -175,9 +175,9 @@ aiohttp = ">=3.14.1,<4"
 arelle-release = ">=2.41.6,<3"
 beautifulsoup4 = ">=4.15.0,<5"
 botocore = ">=1.43.0,<2"
-click = ">=8.4.1,<9"
+click = ">=8.4.2,<9"
 coloredlogs = ">=15.0.1,<16"
-coverage = ">=7.14.3,<8"
+coverage = ">=7.15.0,<8"
 deltalake = ">=1.5.0,<2"
 doc8 = ">=2.0.0,<3"
 feedparser = ">=6.0.12,<7"
@@ -186,7 +186,7 @@ fsspec = ">=2026.6.0,<2027"
 gcsfs = ">=2026.6.0,<2027"
 google-cloud-storage = ">=3.12.0,<4"
 pandas = ">=3.0.3,<4"
-prek = ">=0.4.5,<0.5"
+prek = ">=0.4.8,<0.5"
 pyarrow = ">=24.0.0,<25"
 pydantic = ">=2.13.4,<3"
 pydocstyle = ">=6.3.0,<7"
