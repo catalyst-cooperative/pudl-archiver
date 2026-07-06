@@ -55,6 +55,7 @@ class Eia191Archiver(EiaNGQVArchiver):
             report: the report we're downloading
         """
         archive_path = self.download_directory / f"{self.name}-{year}.zip"
+        csv_names = set()
 
         for report in reports:
             freq = (
@@ -97,10 +98,12 @@ class Eia191Archiver(EiaNGQVArchiver):
                     archive=archive, filename=csv_name, data=csv_data
                 )
 
+            csv_names.add(csv_name)
+
         partitions = await self.get_year_partitions(year)
 
         return ResourceInfo(
             local_path=archive_path,
             partitions=partitions,
-            layout=ZipLayout(file_paths={csv_name}),
+            layout=ZipLayout(file_paths=csv_names),
         )
