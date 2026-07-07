@@ -235,7 +235,7 @@ class RunSummary(BaseModel):
                 "run_settings": previous_run_summary.run_settings.model_copy(
                     update={
                         "retry_run": summary_file,
-                        "auto_publish": True,
+                        "auto_publish": auto_publish,
                     },
                 )
             }
