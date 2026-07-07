@@ -8,10 +8,6 @@ on:
         description: Github action run ID, which is the number at the end of the URL when looking at a run
         required: true
         type: string
-      dataset:
-        description: Name of dataset to publish from previous archiver run
-        required: true
-        type: string
       command:
         description: Switch between the retry-run and publish-run command
         required: true
@@ -57,22 +53,35 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           run-id: ${{ inputs.run_id }}
-          pattern: run-summaries-${{ inputs.dataset }}
+          pattern: run-summaries-*
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Attempt to publish deposition for ${{ inputs.dataset }}
+      - name: Get dataset from run summary filename
+        id: dataset_name
+        run: |
+          file=$(find summaries -name '*_run_summary.json')
+          echo "dataset=$(basename "$file" _run_summary.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Attempt to publish deposition for ${{ steps.dataset_name.outputs.dataset }}
         # set -o pipefail passes on any failure codes to the next step,
         # enabling us to see whether or not the pudl_archiver run failed.
         run: |
           set -o pipefail
           pixi run pudl_archiver \
             ${{ inputs.command }} \
-            ${{ inputs.dataset }}_run_summary.json 2>&1 | tee ${{ inputs.dataset }}_log.txt
+            ${{ steps.dataset_name.outputs.dataset }}_run_summary.json 2>&1 | tee ${{ steps.dataset_name.outputs.dataset }}_log.txt
 
       - name: Upload run summaries
         if: always()
         id: upload_summaries
         uses: actions/upload-artifact@v7
         with:
-          name: run-summaries-${{ inputs.dataset }}
-          path: ${{ inputs.dataset }}_run_summary.json
+          name: run-summaries-${{ steps.dataset_name.outputs.dataset }}
+          path: ${{ steps.dataset_name.outputs.dataset }}_run_summary.json
+
+      - name: Save failed runs
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: error-log-${{ steps.dataset_name.outputs.dataset }}
+          path: ${{ steps.dataset_name.outputs.dataset }}_log.txt

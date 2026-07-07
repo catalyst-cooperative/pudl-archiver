@@ -4,9 +4,9 @@ name: run-fsspec-archiver
 on:
   workflow_dispatch:
     inputs:
-      datasets:
-        description: 'Comma-separated list of datasets to archive (e.g., "ferceqr","sec10k").'
-        default: '"ferceqr"'
+      dataset:
+        description: Name of dataset to archive
+        default: ferceqr
         required: true
         type: string
       deposition_path:
@@ -28,7 +28,7 @@ jobs:
       - name: Build launch notification
         id: launch_message
         env:
-          DATASETS_JSON: ${{ format('[{0}]', inputs.datasets || '"ferceqr"' ) }}
+          DATASET: ${{ inputs.dataset }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           WORKFLOW_NAME: ${{ github.workflow }}
         run: |
@@ -36,8 +36,7 @@ jobs:
             echo "LAUNCH_CONTENT<<EOF"
             echo "# :rocket: Launching \`$WORKFLOW_NAME\` workflow ([view run]($RUN_URL))"
             echo
-            echo "Datasets:"
-            printf '%s\n' "$DATASETS_JSON" | jq -r '.[] | "- `\(.)`"'
+            echo "Dataset: $DATASET"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
       - name: Notify Zulip of workflow launch
@@ -56,11 +55,6 @@ jobs:
     defaults:
       run:
         shell: bash -l {0}
-    strategy:
-      matrix:
-        # Note that we can't pass global env variables to the matrix, so we manually reproduce the list of datasets here.
-        dataset: ${{ fromJSON(format('[{0}]', inputs.datasets || '"ferceqr"' )) }}
-      fail-fast: false
     runs-on: ubuntu-latest
     env:
       DEPOSITION_PATH: ${{ inputs.deposition_path || 'gs://archives.catalyst.coop' }}
@@ -93,7 +87,7 @@ jobs:
           pixi run playwright install --with-deps webkit
           pixi run playwright install --with-deps chromium
 
-      - name: Run production archiver for ${{ matrix.dataset }}
+      - name: Run production archiver for ${{ inputs.dataset }}
         # set -o pipefail passes on any failure codes to the next step,
         # enabling us to see whether or not the pudl_archiver run failed.
         run: |
@@ -101,24 +95,24 @@ jobs:
           pixi run pudl_archiver \
             archive \
             fsspec \
-            ${{ matrix.dataset }} \
-            "$DEPOSITION_PATH"/${{ matrix.dataset }} \
-            --clobber-unchanged 2>&1 | tee ${{ matrix.dataset }}_log.txt
+            ${{ inputs.dataset }} \
+            "$DEPOSITION_PATH"/${{ inputs.dataset }} \
+            --clobber-unchanged 2>&1 | tee ${{ inputs.dataset }}_log.txt
 
       - name: Save failed runs
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: error-log-${{ matrix.dataset }}
-          path: ${{ matrix.dataset }}_log.txt
+          name: error-log-${{ inputs.dataset }}
+          path: ${{ inputs.dataset }}_log.txt
 
       - name: Upload run summaries
         if: always()
         id: upload_summaries
         uses: actions/upload-artifact@v7
         with:
-          name: run-summaries-${{ matrix.dataset }}
-          path: ${{ matrix.dataset }}_run_summary.json
+          name: run-summaries-${{ inputs.dataset }}
+          path: ${{ inputs.dataset }}_run_summary.json
 
   archive-notify:
     runs-on: ubuntu-latest
