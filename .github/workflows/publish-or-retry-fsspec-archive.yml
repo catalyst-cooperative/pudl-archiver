@@ -1,5 +1,5 @@
 ---
-name: publish-fsspec-archive
+name: publish-or-retry-fsspec-archive
 
 on:
   # Retry failed runs of fsspec archiver
