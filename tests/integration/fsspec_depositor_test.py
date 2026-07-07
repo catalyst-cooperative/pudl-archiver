@@ -155,8 +155,7 @@ async def test_retry_run(
         downloader=v2_downloader,
         run_settings=settings,
         session="session",
-        failed_partitions=v1_summary.failed_partitions,
-        successful_partitions=v1_summary.successful_partitions,
+        skip_partitions=v1_summary.successful_partitions,
     )
     assert not v2_downloader.good_downloaded
     assert v2_summary.success
