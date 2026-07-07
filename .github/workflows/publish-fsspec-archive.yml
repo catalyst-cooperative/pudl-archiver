@@ -2,6 +2,11 @@
 name: publish-fsspec-archive
 
 on:
+  # Retry failed runs of fsspec archiver
+  workflow_run:
+    workflows: ["run-fsspec-archiver"]
+    types:
+      - completed
   workflow_dispatch:
     inputs:
       run_id:
@@ -19,7 +24,14 @@ on:
 
 jobs:
   publish-run:
+    # Only run when manually triggered or fsspec archiver failed
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'failure'
     runs-on: ubuntu-latest
+    env:
+      RUN_ID: ${{ github.event_name == 'workflow_dispatch' && inputs.run_id || github.event.workflow_run.id }}
+      COMMAND: ${{ github.event_name == 'workflow_dispatch' && inputs.command || 'retry-run' }}
     permissions:
       contents: "read"
       id-token: "write"
@@ -52,7 +64,7 @@ jobs:
       - name: Download run summary
         uses: actions/download-artifact@v8
         with:
-          run-id: ${{ inputs.run_id }}
+          run-id: "$RUN_ID"
           pattern: run-summaries-*
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -68,7 +80,7 @@ jobs:
         run: |
           set -o pipefail
           pixi run pudl_archiver \
-            ${{ inputs.command }} \
+            "$COMMAND" \
             ${{ steps.dataset_name.outputs.dataset }}_run_summary.json 2>&1 | tee ${{ steps.dataset_name.outputs.dataset }}_log.txt
 
       - name: Upload run summaries
