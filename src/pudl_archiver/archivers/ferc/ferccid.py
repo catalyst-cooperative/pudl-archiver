@@ -84,9 +84,7 @@ class FercCIDArchiver(AbstractDatasetArchiver):
 
             # Click the main Download button
             # We specify this exactly to reduce possibility of selecting the wrong button
-            await page.locator(
-                "div.dataAsset div.fields.row div.d-flex.flex-row-reverse.mt-5 button.blueButton"
-            ).click()
+            await page.get_by_role("button", name="Download button").click()
 
             # Wait for the pop-up download menu
             modal = page.locator("#downloadModal")
@@ -131,9 +129,7 @@ class FercCIDArchiver(AbstractDatasetArchiver):
 
             # Click the main Download button
             # We specify this exactly to reduce possibility of selecting the wrong button
-            await page.locator(
-                "div.dataAsset div.fields.row div.d-flex.flex-row-reverse.mt-5 button.blueButton"
-            ).click()
+            await page.get_by_role("button", name="Download button").click()
 
             # Wait for the pop-up download menu
             modal = page.locator("#downloadModal")
