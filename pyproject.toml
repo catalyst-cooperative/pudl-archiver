@@ -124,13 +124,16 @@ platforms = ["linux-64", "linux-aarch64", "osx-64", "osx-arm64"]
 channel-priority = "strict"
 preview = ["pixi-build"]
 
-[tool.pixi.pypi-dependencies]
+[tool.pixi.feature.dev.pypi-dependencies]
 pudl_archiver = { path = ".", editable = true }
+
+[tool.pixi.pypi-dependencies]
 # Something about the pixi activation script doesn't work when it's installed from conda-forge.
 playwright = ">=1.61.0, <2"
 
 [tool.pixi.environments]
-default = { solve-group = "default" }
+default = { features = ["dev"] }
+docker = { features = [] }
 
 [tool.pixi.tasks]
 prek-install = { cmd = "prek install", description = "Install git pre-commit hooks" }

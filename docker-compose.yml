@@ -3,6 +3,8 @@ services:
     build: .
     env_file:
       - .env
+    volumes:
+      - .:/app
   # fsspec archives use GCS for production backend
   pudl-archiver-fsspec:
     extends:
@@ -12,4 +14,4 @@ services:
   pudl-archiver-pytest:
     extends:
       service: pudl-archiver
-    entrypoint: ["pixi", "run", "pytest"]
+    entrypoint: ["pixi", "run", "python", "-m", "pytest"]
