@@ -74,7 +74,7 @@ repos:
         verbose: false
         pass_filenames: false
         always_run: true
-        entry: docker compose run --rm pudl-archiver-pytest tests/unit
+        entry: ./scripts/run-unit-tests.sh
 
 # Configuration for pre-commit.ci
 ci:
