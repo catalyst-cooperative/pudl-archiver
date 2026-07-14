@@ -7,7 +7,7 @@ from pudl_archiver.archivers.classes import (
     ArchiveAwaitable,
     ResourceInfo,
 )
-from pudl_archiver.archivers.ferc import xbrl
+from pudl_archiver.archivers.ferc import ferc_online_helpers, xbrl
 
 
 class Ferc60Archiver(AbstractDatasetArchiver):
@@ -22,6 +22,13 @@ class Ferc60Archiver(AbstractDatasetArchiver):
             if not self.valid_year(year):
                 continue
             yield self.get_year_dbf(year)
+        dbf_years = [year for year in range(2006, 2022) if self.valid_year(year)]
+        yield ferc_online_helpers.get_resources_for_form(
+            ferc_form="1",
+            years=dbf_years,
+            partitions_base={"data_format": "DBF"},
+            download_directory=self.download_directory,
+        )
 
         # Get XBRL filings
         yield xbrl.archive_xbrl_for_form(

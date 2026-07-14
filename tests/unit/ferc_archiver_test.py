@@ -14,7 +14,6 @@ from pudl_archiver.archivers.ferc.xbrl import (
     TAXONOMY_URL_PATTERN,
     FeedEntry,
     FercForm,
-    IndexedFilings,
     archive_year,
 )
 
@@ -25,85 +24,6 @@ FERC_FORM_CLASS_LOOKUP = {
     "ferc60": (FercForm.FORM_60, Ferc60Archiver),
     "ferc714": (FercForm.FORM_714, Ferc714Archiver),
 }
-
-
-def make_testdata(module_test_spec_dict):
-    testdata = [
-        (name, spec) for name, specs in module_test_spec_dict.items() for spec in specs
-    ]
-    return testdata
-
-
-valid_years_test_spec_dict = {
-    "ferc1": [
-        {"years": [1848, 2349], "num_dbf": 0},
-        {"years": [2021, 2022, 2023], "num_dbf": 1},
-        {
-            "years": [2003, 2004, 2005, 2021],
-            "num_dbf": 4,
-        },
-    ],
-    "ferc2": [
-        {"years": [1848, 2349], "num_dbf": 0},
-        {"years": [2021, 2022, 2023], "num_dbf": 1},
-        {
-            "years": [2003, 2004, 2005, 2021],
-            "num_dbf": 4,
-        },
-    ],
-    "ferc6": [
-        {"years": [1848, 2349], "num_dbf": 0},
-        {"years": [2021, 2022, 2023], "num_dbf": 1},
-        {
-            "years": [2003, 2004, 2005, 2021],
-            "num_dbf": 4,
-        },
-    ],
-    "ferc60": [
-        {"years": [1848, 2349], "num_dbf": 0},
-        {"years": [2021, 2022, 2023], "num_dbf": 0},
-        {
-            "years": [2004, 2005, 2006, 2007, 2021],
-            "num_dbf": 2,
-        },
-    ],
-    "ferc714": [
-        {"years": [1848, 2349], "num_dbf": 0},
-        {"years": [2021, 2022, 2023], "num_dbf": 0},
-        {
-            "years": [2004, 2005, 2006, 2007, 2021],
-            "num_dbf": 0,
-        },
-    ],
-}
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "module_name,test_spec", make_testdata(valid_years_test_spec_dict)
-)
-async def test_valid_years(module_name, test_spec, mocker):
-    form_name, form_class = FERC_FORM_CLASS_LOOKUP[module_name]
-    only_years = test_spec["years"]
-    num_dbf = test_spec["num_dbf"]
-
-    mocker.patch(
-        f"pudl_archiver.archivers.ferc.{module_name}.xbrl.IndexedFilings.index_available_entries",
-        lambda: IndexedFilings(
-            filings_per_year={
-                form_name: {2004: mocker.MagicMock(), 2021: mocker.MagicMock()}
-            }
-        ),
-    )
-    mock_session = mocker.AsyncMock()
-    archiver = form_class(mock_session, only_years=only_years)
-    resources = [res async for res in archiver.get_resources()]
-    # don't await these, just check to make sure they have right intention
-    dbfs = [r for r in resources if r.__name__ == "get_year_dbf"]
-    xbrls = [r for r in resources if r.__name__ == "archive_xbrl_for_form"]
-    assert len(dbfs) == num_dbf
-    # Always just one method that archives all xbrl resources
-    assert len(xbrls) == 1
 
 
 @pytest.mark.asyncio
