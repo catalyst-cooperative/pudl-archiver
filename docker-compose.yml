@@ -1,17 +1,17 @@
 services:
-  pudl-archiver:
+  pudl_archiver:
     build: .
     env_file:
       - .env
     volumes:
       - .:/app
   # fsspec archives use GCS for production backend
-  pudl-archiver-fsspec:
+  pudl_archiver_fsspec:
     extends:
-      service: pudl-archiver
+      service: pudl_archiver
     volumes:
       - ~/.config/gcloud:/home/appuser/.config/gcloud:ro
-  pudl-archiver-pytest:
+  pudl_archiver_pytest:
     extends:
-      service: pudl-archiver
+      service: pudl_archiver
     entrypoint: ["pixi", "run", "python", "-m", "pytest"]
