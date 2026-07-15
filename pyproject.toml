@@ -13,6 +13,9 @@ pudl_archiver = "pudl_archiver.cli:main"
 build-backend = "hatchling.build"
 requires = ["hatchling"]
 
+[tool.hatch.build.targets.wheel]
+packages = ["src/pudl_archiver"]
+
 [tool.doc8]
 max-line-length = 88
 ignore-path = ["docs/_build"]

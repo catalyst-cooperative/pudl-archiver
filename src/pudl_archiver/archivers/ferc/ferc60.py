@@ -18,11 +18,7 @@ class Ferc60Archiver(AbstractDatasetArchiver):
 
     async def get_resources(self) -> ArchiveAwaitable:
         """Download FERC 60 resources."""
-        for year in range(2006, 2021):
-            if not self.valid_year(year):
-                continue
-            yield self.get_year_dbf(year)
-        dbf_years = [year for year in range(2006, 2022) if self.valid_year(year)]
+        dbf_years = [year for year in range(2006, 2021) if self.valid_year(year)]
         yield ferc_online_helpers.get_resources_for_form(
             ferc_form="1",
             years=dbf_years,
