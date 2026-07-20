@@ -11,7 +11,11 @@ from pudl_archiver.archivers.classes import (
 )
 from pudl_archiver.frictionless import ZipLayout
 
-RELEASE_TO_YEAR_MAP = {"AEO2025-Public-Release": 2025, "Initial-GitHub-Release": 2023}
+RELEASE_TO_YEAR_MAP = {
+    "AEO2026-Public-Release": 2026,
+    "AEO2025-Public-Release": 2025,
+    "Initial-GitHub-Release": 2023,
+}
 """We manually map the release to the corresponding year of AEO, since there isn't
 a consistent way to infer this."""
 
@@ -20,6 +24,7 @@ class EiaNEMSArchiver(AbstractDatasetArchiver):
     """EIA NEMS archiver."""
 
     name = "eianems"
+    concurrency_limit = 1  # All the files originate from the same repository, so we can only archive one at a time.
 
     async def get_resources(self) -> ArchiveAwaitable:
         """Download EPA CAMD to EIA crosswalk resources."""
@@ -67,7 +72,7 @@ class EiaNEMSArchiver(AbstractDatasetArchiver):
         # We sanitize tag above using the assertion, so this should be ok.
         subprocess.run(["/usr/bin/git", "lfs", "pull"], shell=False)  # noqa:S603
 
-        directory = Path(self.download_directory / "NEMS")
+        directory = (self.download_directory / "NEMS").resolve()
 
         for entry in directory.rglob("*"):
             if entry.is_file():
@@ -77,9 +82,6 @@ class EiaNEMSArchiver(AbstractDatasetArchiver):
                     blob=entry.open("rb"),
                 )
                 data_paths_in_archive.add(entry.relative_to(directory))
-                # Don't want to leave multiple giant files on disk, so delete
-                # immediately after they're safely stored in the ZIP
-                entry.unlink()
 
         return ResourceInfo(
             local_path=zip_path,
