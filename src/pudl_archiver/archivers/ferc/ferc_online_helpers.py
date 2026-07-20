@@ -26,14 +26,14 @@ async def get_resources_for_form(
         await page.goto("https://forms.ferc.gov/")
 
         # Navigate to form specific page
-        await page.locator(f"#lnkFormData{ferc_form}").click()
+        await page.get_by_role("link", name=f"Form {ferc_form} Data").click()
 
         # Loop through all years and download
         resources = []
         for year in years:
             logging.info(f"Attempting to download ferc{ferc_form} {year}")
             async with page.expect_download() as download_info:
-                await page.locator(f"#Content1_lnk{year}f{ferc_form}").click()
+                await page.get_by_role("link", name=str(year)).click()
 
             download = await download_info.value
             download_path = download_directory / f"ferc{ferc_form}-{year}.zip"
