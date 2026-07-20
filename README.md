@@ -106,8 +106,8 @@ pudl_archiver --help
 ```
 
 ### Using Docker
-When using docker to run the archiver, you prefix each command with `docker compose
-run --rm`, so the above command would become:
+When using docker to run the archiver, prefix each command with `docker compose
+run --rm`. For example, the above command would become:
 
 ```bash
 docker compose run --rm pudl_archiver --help
