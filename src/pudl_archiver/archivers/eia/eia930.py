@@ -13,7 +13,7 @@ from pudl_archiver.frictionless import ZipLayout
 
 BASE_URL = "https://www.eia.gov/electricity/gridmonitor/sixMonthFiles/"
 FILE_LIST_URL = "https://www.eia.gov/electricity/gridmonitor/sixMonthFiles/EIA930_File_List_Meta.csv"
-
+REFERENCE_URL = "https://www.eia.gov/electricity/930-content/EIA930_Reference_Tables.xlsx"
 
 class Eia930Archiver(AbstractDatasetArchiver):
     """EIA 930 archiver."""
@@ -23,6 +23,15 @@ class Eia930Archiver(AbstractDatasetArchiver):
     async def get_file_list(self) -> pd.DataFrame:
         """Get EIA 930 file list dataframe."""
         return pd.read_csv(FILE_LIST_URL)
+
+    async def get_reference_table(self) -> pd.DataFrame:
+        """Get EIA 930 reference table."""
+        ref_path = self.download_directory / f"eia930-reference-tables.xlsx"
+        await self.download_file(REFERENCE_URL, ref_path)
+        return ResourceInfo(
+            local_path=ref_path,
+            partitions={"half_year": "all", "form": "reference"},
+        )
 
     async def get_resources(self) -> ArchiveAwaitable:
         """Download EIA-930 resources."""
@@ -39,6 +48,7 @@ class Eia930Archiver(AbstractDatasetArchiver):
                 yield self.get_year_resource(
                     file_list=file_list, year=period.YEAR, half_year=period.PERIOD
                 )
+        yield self.get_reference_table()
 
     async def get_year_resource(
         self, file_list: pd.DataFrame, year=int, half_year=int
