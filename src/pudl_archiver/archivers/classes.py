@@ -13,6 +13,7 @@ from contextlib import nullcontext
 from html.parser import HTMLParser
 from pathlib import Path
 from secrets import randbelow
+from typing import Any
 
 import aiohttp
 import bs4
@@ -21,7 +22,7 @@ from playwright.async_api import Browser as PlaywrightBrowser
 from playwright.async_api import Error as PlaywrightError
 
 from pudl_archiver.archivers import validate
-from pudl_archiver.frictionless import DataPackage, ResourceInfo
+from pudl_archiver.frictionless import DataPackage, Partitions, ResourceInfo
 from pudl_archiver.utils import (
     add_to_archive_stable_hash,
     retry_async,
@@ -52,7 +53,7 @@ USER_AGENTS: list[str] = [
 updated periodically."""
 
 ArchiveAwaitable = typing.AsyncGenerator[
-    typing.Awaitable[ResourceInfo | list[ResourceInfo]], None
+    typing.Awaitable[ResourceInfo | list[ResourceInfo]]
 ]
 """Return type of method get_resources.
 
@@ -126,6 +127,11 @@ class AbstractDatasetArchiver(ABC):
     allowed_dataset_rel_diff: float = 0.15
     fail_on_data_continuity: bool = True
 
+    # Allow specific partitions to be ignored by the relative file size diff test
+    # if the size has increased. This is useful for new data that will grow as more
+    # becomes available
+    ignore_file_size_increase_partitions: [dict[str, Any]] = []
+
     def __init__(
         self,
         session: aiohttp.ClientSession,
@@ -150,6 +156,8 @@ class AbstractDatasetArchiver(ABC):
         self.only_years = only_years
         self.file_validations: list[validate.FileUniversalValidation] = []
 
+        self.failed_partitions: dict[str, Partitions] = {}
+
         # Create logger
         self.logger = logging.getLogger(f"catalystcoop.{__name__}")
         self.logger.info(f"Archiving {self.name}")
@@ -163,7 +171,7 @@ class AbstractDatasetArchiver(ABC):
         return bs4.BeautifulSoup(await response.text(), "html.parser")
 
     @abstractmethod
-    def get_resources(self) -> ArchiveAwaitable:
+    def get_resources(self) -> ArchiveAwaitable | tuple[ArchiveAwaitable, Partitions]:
         """Abstract method that each data source must implement to download all resources.
 
         This method should be a generator that yields awaitable objects that will download
@@ -322,7 +330,11 @@ class AbstractDatasetArchiver(ABC):
             )
 
     async def download_add_to_archive_and_unlink(
-        self, url: str, filename: str, zip_path: Path
+        self,
+        url: str,
+        filename: str,
+        zip_path: Path,
+        headers: dict[str, str] | None = None,
     ):
         """Download a file, add it to an zip file in and archive and unlink.
 
@@ -332,7 +344,7 @@ class AbstractDatasetArchiver(ABC):
         * :meth:`Path.unlink`
         """
         download_path = self.download_directory / filename
-        await self.download_file(url, download_path)
+        await self.download_file(url, download_path, headers=headers)
         self.add_to_archive(
             zip_path=zip_path,
             filename=filename,
@@ -341,6 +353,37 @@ class AbstractDatasetArchiver(ABC):
         # Don't want to leave multiple files on disk, so delete
         # immediately after they're safely stored in the ZIP
         download_path.unlink()
+
+    async def download_add_to_archive_and_unlink_nrel(
+        self,
+        url: str,
+        filename: str,
+        zip_path: Path,
+        headers: dict[str, str] | None = None,
+    ):
+        """Download a file, add it to an zip file in and unlink, handling NREL domain change.
+
+        Little helper function that combines three common steps often repeated together:
+        * :meth:`download_file`
+        * :meth:`add_to_archive`
+        * :meth:`Path.unlink`
+
+        This implements a special variation of this method to handle widespread failures to
+        correctly update links to account for the retirement of the nrel.gov domain in May 2026 and the
+        creation of the nlr.gov domain. Where there is a DNS error, try manually updating the
+        provided link to use the new domain.
+
+        This is intended to be a temporary method, and should be removed as soon as links are updated
+        in the source data files (e.g., OEDI archives).
+        """
+        try:
+            await self.download_add_to_archive_and_unlink(
+                url, filename, zip_path, headers
+            )
+        except aiohttp.client_exceptions.ClientConnectorDNSError:
+            await self.download_add_to_archive_and_unlink(
+                url.replace("nrel.gov", "nlr.gov"), filename, zip_path, headers
+            )
 
     async def get_json(self, url: str, post: bool = False, **kwargs) -> dict[str, str]:
         """Get a JSON and return it as a dictionary."""
@@ -375,7 +418,6 @@ class AbstractDatasetArchiver(ABC):
             headers: Additional headers to send in the GET request.
         """
         # Parse web page to get all hyperlinks
-
         response = await retry_async(
             self.session.get,
             args=[url],
@@ -385,6 +427,31 @@ class AbstractDatasetArchiver(ABC):
             },
         )
         text = await retry_async(response.text)
+        return self.get_hyperlinks_from_text(text, filter_pattern, url)
+
+    async def get_hyperlinks_via_playwright(
+        self,
+        url: str,
+        playwright_browser: PlaywrightBrowser,
+        filter_pattern: typing.Pattern | None = None,
+    ) -> dict[str, str]:
+        """Return all hyperlinks from a specific web page.
+
+        This is a helper function to perform very basic web-scraping functionality.
+        It extracts all hyperlinks from a web page, and returns those that match
+        a specified pattern. This means it can find all hyperlinks that look like
+        a download link to a single data resource.
+
+        Args:
+            url: URL of web page.
+            playwright_browser: async browser instance to use for fetching the URL.
+            filter_pattern: If present, only return links that contain pattern.
+            verify: Verify ssl certificate (EPACEMS https source has bad certificate).
+        """
+        # Parse web page to get all hyperlinks
+        page = await playwright_browser.new_page()
+        await page.goto(url, timeout=10 * 60 * 1000)
+        text = await page.content()
         return self.get_hyperlinks_from_text(text, filter_pattern, url)
 
     def get_hyperlinks_from_text(
@@ -480,13 +547,12 @@ class AbstractDatasetArchiver(ABC):
             too_changed_files = False  # No files to compare to
         else:
             baseline_resources = {
-                resource.name: resource.bytes_
-                for resource in baseline_datapackage.resources
+                resource.name: resource for resource in baseline_datapackage.resources
             }
             too_changed_files = {}
 
             new_resources = {
-                resource.name: resource.bytes_ for resource in new_datapackage.resources
+                resource.name: resource for resource in new_datapackage.resources
             }
 
             # Check to see that file size hasn't changed by more than |>allowed_file_rel_diff|
@@ -494,14 +560,20 @@ class AbstractDatasetArchiver(ABC):
             for resource_name in baseline_resources:
                 if resource_name in new_resources:
                     try:
-                        file_size_change = abs(
-                            (
-                                new_resources[resource_name]
-                                - baseline_resources[resource_name]
-                            )
-                            / baseline_resources[resource_name]
-                        )
-                        if file_size_change > self.allowed_file_rel_diff:
+                        file_size_change = (
+                            new_resources[resource_name].bytes_
+                            - baseline_resources[resource_name].bytes_
+                        ) / baseline_resources[resource_name].bytes_
+
+                        # Check if resource is included in set that should be ignored
+                        # on size increase
+                        if any(
+                            baseline_resources[resource_name].parts == parts
+                            for parts in self.ignore_file_size_increase_partitions
+                        ) and (file_size_change > 0):
+                            continue
+                        # Note failure
+                        if abs(file_size_change) > self.allowed_file_rel_diff:
                             too_changed_files.update({resource_name: file_size_change})
                     except ZeroDivisionError:
                         logger.warning(
@@ -511,6 +583,12 @@ class AbstractDatasetArchiver(ABC):
             if too_changed_files:  # If files are "too changed"
                 notes = [
                     f"The following files have absolute changes in file size >|{self.allowed_file_rel_diff:.0%}|: {too_changed_files}"
+                ]
+
+            if len(self.ignore_file_size_increase_partitions) > 0:
+                notes += [
+                    f"Size increases ignored for resource with the following partitions: {partitions}"
+                    for partitions in self.ignore_file_size_increase_partitions
                 ]
 
         return validate.DatasetUniversalValidation(
@@ -681,16 +759,64 @@ class AbstractDatasetArchiver(ABC):
         """
         return (not self.only_years) or int(year) in self.only_years
 
+    async def _unpack_resources(
+        self,
+    ) -> tuple[list[ArchiveAwaitable], list[Partitions]]:
+        """Run ``get_resources`` method for archiver and separate partitons/resources.
+
+        Some archivers will only return resources from ``get_resources``, while some
+        will return tuples of resources and a dictionary of partitions that correspond
+        to those resources. If no partitions are returned, then this function will
+        return an empty list of partitions.
+        """
+        resources = []
+        partitions = []
+        async for resource in self.get_resources():
+            if type(resource) is tuple:
+                resource, partition = resource
+                partitions.append(partition)
+            resources.append(resource)
+
+        return resources, partitions
+
+    async def _filter_resources(
+        self,
+        retry_parts: list[Partitions] | None = None,
+    ) -> list[Partitions]:
+        """Filter to only partitions that failed in previous run if retrying."""
+        # Get all awaitables from get_resources
+        resources, partitions = await self._unpack_resources()
+
+        if retry_parts is not None:
+            if len(partitions) == 0:
+                raise RuntimeError(
+                    "Archiver must return partions from `get_resources` to be able "
+                    "to retry a set of partitions from a failed run. See ferceqr "
+                    "archiver for an example of how to implement this."
+                )
+            logger.info(f"Only downloading the following partitions: {retry_parts}")
+            resources = [
+                resource
+                for resource, parts in zip(resources, partitions)
+                if parts in retry_parts
+            ]
+        return resources
+
     async def download_all_resources(
         self,
-    ) -> typing.Generator[tuple[str, ResourceInfo], None, None]:
+        retry_parts: list[Partitions] | None = None,
+    ) -> typing.Generator[tuple[str, ResourceInfo]]:
         """Download all resources.
 
         This method uses the awaitables returned by `get_resources`. It
         coordinates downloading all resources concurrently.
         """
-        # Get all awaitables from get_resources
-        resources = [resource async for resource in self.get_resources()]
+        # If retrying a run with no failed partitions, return immediately
+        if (retry_parts is not None) and (len(retry_parts) == 0):
+            await self.after_download()
+            return
+
+        resources = await self._filter_resources(retry_parts)
 
         # Split resources into chunks to limit concurrency
         chunksize = self.concurrency_limit if self.concurrency_limit else len(resources)
@@ -716,23 +842,37 @@ class AbstractDatasetArchiver(ABC):
                     self.logger.info(f"Downloaded {resource_info.local_path}.")
 
                     # Perform various file validations
-                    self.file_validations.extend(
-                        [
-                            validate.validate_filetype(
-                                resource_info.local_path,
-                                self.fail_on_empty_invalid_files,
-                            ),
-                            validate.validate_file_not_empty(
-                                resource_info.local_path,
-                                self.fail_on_empty_invalid_files,
-                            ),
-                            validate.validate_zip_layout(
-                                resource_info.local_path,
-                                resource_info.layout,
-                                self.fail_on_empty_invalid_files,
-                            ),
-                        ]
-                    )
+                    current_file_validations = [
+                        validate.validate_filetype(
+                            resource_info.local_path,
+                            self.fail_on_empty_invalid_files,
+                        ),
+                        validate.validate_file_not_empty(
+                            resource_info.local_path,
+                            self.fail_on_empty_invalid_files,
+                        ),
+                        validate.validate_zip_layout(
+                            resource_info.local_path,
+                            resource_info.layout,
+                            self.fail_on_empty_invalid_files,
+                        ),
+                    ]
+
+                    # Check if there are failed file level validations
+                    failed_validations = [
+                        validation
+                        for validation in current_file_validations
+                        if not validation.success
+                    ]
+                    self.file_validations.extend(current_file_validations)
+                    if len(failed_validations) > 0:
+                        logger.error(
+                            "The following validation tests failed with file-validation-fail-fast set:"
+                            f" {[validation.name for validation in failed_validations]}"
+                        )
+                        self.failed_partitions[resource_info.local_path.name] = (
+                            resource_info.partitions
+                        )
 
                     # Return downloaded
                     yield str(resource_info.local_path.name), resource_info

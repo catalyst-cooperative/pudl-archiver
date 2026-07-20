@@ -195,3 +195,10 @@ class NrelCambium2023Archiver(AbstractNrelCambiumArchiver):
 
     name = "nrelcambium2023"
     project_year = 2023
+
+
+class NrelCambium2024Archiver(AbstractNrelCambiumArchiver):
+    """NREL Cambium archiver for 2024."""
+
+    name = "nrelcambium2024"
+    project_year = 2024

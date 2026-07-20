@@ -88,6 +88,9 @@ ferc60:
 ferc714:
   production_doi: 10.5281/zenodo.4127100
   sandbox_doi: 10.5072/zenodo.3279
+ferccid:
+  production_doi: 10.5281/zenodo.18176680
+  sandbox_doi: 10.5072/zenodo.422986
 gridpathratoolkit:
   production_doi: 10.5281/zenodo.10844661
   sandbox_doi: 10.5072/zenodo.120698
@@ -120,6 +123,12 @@ nrelsts:
 phmsagas:
   production_doi: 10.5281/zenodo.7683351
   sandbox_doi: 10.5072/zenodo.45279
+rus7:
+  production_doi: 10.5281/zenodo.18248545
+  sandbox_doi: 10.5072/zenodo.422697
+rus12:
+  production_doi: 10.5281/zenodo.18315222
+  sandbox_doi: 10.5072/zenodo.425444
 sec10k:
   production_doi: 10.5281/zenodo.15161693
   sandbox_doi: 10.5072/zenodo.194705

@@ -38,12 +38,13 @@ uploaded to Zenodo.
 
 We use `pixi` to create and manage the `pudl-archiver` development environment.
 
-First, follow the [installation instructions](https://pixi.sh/latest/#installation) for your operating system.
+First, follow the Pixi [installation
+instructions](https://pixi.sh/latest/#installation) for your operating system.
 
 Next, run:
 
 ```bash
-pixi run pre-commit-install
+pixi run prek-install
 pixi shell
 ```
 
@@ -51,10 +52,20 @@ This will setup and activate the environment, and install the pre-commit hooks.
 
 > [!TIP]
 > Instead of `pixi shell`, you can also use `pixi run` to run the archiver code in
-> the correct Python environment (e.g., `pixi run pudl_archiver --dataset eiawater`).
+> the correct Python environment (e.g., `pixi run pudl_archiver archive zenodo eiawater`).
 >
-> If you are running integration tests locally, you'll need to use the "tests" pixi
-> environment (e.g., `pixi shell -e tests`; `pixi run -e tests pytest ...`)
+> To run tests locally, use the default environment (e.g.,
+> `pixi run unit` or `pixi run pytest tests/integration`).
+
+
+In order for the tests and archivers to run without error, you'll also need to setup Playwright.
+[Playwright](https://playwright.dev/python/) is used to navigate more complex webpages, performing
+actions such as clicking buttons and navigating Javascript.
+
+``` bash
+pixi run playwright install --with-deps webkit
+pixi run playwright install --with-deps chromium
+```
 
 ## Setting up the development environment
 
@@ -68,35 +79,120 @@ If you want to interact with the `epacems` archiver, you'll need to get a
 [personal API](https://www.epa.gov/power-sector/cam-api-portal#/api-key-signup) key and
 store it as an environment variable at `EPACEMS_API_KEY`.
 
+For datasets that use PUDL source metadata, `pudl-archiver` loads a PUDL
+`datapackage.json` descriptor at runtime rather than importing metadata from the
+`catalystcoop.pudl` Python package. By default it reads:
+
+`s3://pudl.catalyst.coop/nightly/pudl_parquet_datapackage.json`
+
+To develop or test against a local descriptor, set `PUDL_DATAPACKAGE_PATH` to be the
+absolute path to your local `datapackage.json` file.
+
 ## Usage
 
-A CLI is provided for creating and updating archives. The basic usage looks like:
+A CLI is provided for creating and updating archives. This CLI provides several
+commands for archiving data to different storage backends. For a high-level overview
+of these commands, run:
 
 ```bash
-pudl_archiver --datasets {list_of_datasources}
+pudl_archiver --help
 ```
 
-This command will download the latest available data and create archives for each
-requested datasource requested. The supported datasources include `eia860`, `eia923`,
+### Datasets
+Archivers have been developed for a number of datasets, including `eia860`, `eia923`,
 `ferc1`, `epacems`, and many more; see the full list of available datasets with
-`pudl_archiver --list`.
+`pudl_archiver list-datasets`. Any dataset can be used with any of the supported
+storage backends by specifying the `depositor`, which will be explained in the
+following section.
 
-There are also five optional flags available:
+### Depositors
+For each supported storage backend, there is a ``depositor`` that provides an interface
+for creating archives using that backend. The basic command to run the archiver with
+a using a given depositor looks like the following:
 
-- `--sandbox`: used for testing. It will only interact with Zenodo's
-  [sandbox](https://sandbox.zenodo.org/) instance.
+```bash
+pudl_archiver archive {depositor} {dataset}
+```
+
+Different backends have different arguments and options that can or must be passed to
+the CLI, so refer to the section below corresponding to a given backend before trying
+to use this command. There are also several options that apply to all backends, including:
+
 - `--initialize`: used for creating an archive for a new dataset that doesn't
-  currently exist on zenodo. If successful, this command will automatically add
-  the new Zenodo DOI to the `dataset_doi.yaml` file.
-- `--all`: shortcut for archiving all datasets that we have defined archivers
-  for. Overrides `--datasets`.
-- `--depositor`: select backend storage system. Defaults to `zenodo`, which is
-  the only fully featured backend at this point, but we are experimenting with an
-  `fsspec` based backend to allow storage to allow archiving to local and
-  generic cloud based storage options. To use this depositor, set this option to
-  `fsspec` and set the `--deposition-path` to an fsspec compliant path.
-- `--deposition-path`: Used with the `fsspec` option for `--depositor`. Should
-  point to an fsspec compliant path (e.g. `file://path/to/folder`).
+  currently exist on zenodo. If used with the `fsspec` backend, this will attempt
+  to create a new directory at the location specified by `deposition-path` and use
+  this directory for archiving.
+- `--auto-publish`: Automatically publish new version of an archive if all validation
+
+For the full list of options, run:
+
+```bash
+pudl_archiver archive {depositor} --help
+```
+
+#### Zenodo
+The Zenodo backend is used for most of our production archives. The only option
+specific to Zenodo is `--sandbox`, which can be used to toggle the usage of the
+Zenodo sandbox server for testing.
+
+### fsspec
+The [fsspec](https://filesystem-spec.readthedocs.io/en/latest/) depositor can
+be used with any `fsspec` compatible filesystem. This functionality is necessary
+for datasets like FERC EQR, which require significantly more storage space than is
+available in a standard Zenodo archive, but also can be useful for testing. For
+example, if you are developing a new archiver or updating an existing one, you
+can use the `fsspec` depositor with a local path to download data directly to
+your computer for inspection. The `fsspec` depositor requires a `deposition-path`
+argument to specify the base path where archives should be created. Basic usage
+looks like the following:
+
+```bash
+pudl_archiver archive fsspec {dataset} {deposition-path}
+```
+
+The `deposition-path` argument should be formatted like `protocol://path/to/deposition`.
+For a local path, you would use the protocol `file`, while `gs` can be used to specify
+a GCS bucket.
+
+### Retrying a failed run
+All runs for the archiver will output a Run Summary file in the current working directory
+called `{dataset}_run_summary.json`, which contains information about the run, including
+any errors that were encountered during the run. The `retry-run` command can be used to
+retry such a run which encountered errors without having to re-download files that were
+successfully added to the archive in the previous run. Basic usage looks like the
+following:
+
+```bash
+pudl_archiver retry-run {run_summary_json_file}
+```
+
+This command will inherit all settings from the previous run except `--auto-publish` to
+avoid accidental publication.
+
+During a retry, the archiver expects all successfully downloaded resources to still
+be in the draft deposition. If the state of the deposition has been changed in any
+way since the failed run, then a retry may produce unexpected results.
+
+Once a retry run has been kicked off, it will follow these steps below:
+
+1. Load the run summary from the previous run and get failed/successful resources
+and CLI settings.
+2. Filter out successful resources from previous run so we don't re-download them.
+3. Start downloading failed resources and adding new versions to the open draft deposition.
+4. Attempt to publish draft containing resources from original run and retry, following
+standard validation procedures.
+
+### Publishing a Successful Run
+There is also a command for publishing a successful run that did not have `auto-publish`
+set. This is meant primarily for the `fsspec` archiver since Zenodo provides an
+interface for publishing drafts. This command works almost exactly like the `retry-run`
+command, but it will always have `auto-publish` set to `True`.
+
+Example usage:
+
+```bash
+pudl_archiver publish-run {run_summary_json_file}
+```
 
 ## Adding a new dataset
 
@@ -133,8 +229,13 @@ help people find our data on Zenodo.
 
 If your dataset will be integrated directly into
 [PUDL](https://github.com/catalyst-cooperative/pudl), you'll need to add the metadata
-for the dataset into the PUDL repository in the `SOURCES` dictionary in
-`src.pudl.metadata.sources.py`.
+in the PUDL repository and make sure it is included in the generated PUDL
+`pudl_parquet_datapackage.json` descriptor. `pudl-archiver` reads PUDL source
+metadata from that descriptor (via `PUDL_DATAPACKAGE_PATH`) In the PUDL
+repository you'll want to add your dataset's metadata as an entry into the
+`SOURCES` dictionary in `src/pudl/metadata/sources.py`. This will ensure that
+the metadata is included in the generated `pudl_parquet_datapackage.json`
+descriptor.
 
 If you aren't sure, or you're archiving data that won't go into PUDL, you'll want to
 add your metadata as an entry into the `NON_PUDL_SOURCES` dictionary in
@@ -291,16 +392,14 @@ Once you've written your archiver, it's time to test that it works as expected! 
 the archiver locally, run the following commands in your terminal:
 
 ```bash
-pudl_archiver --datasets {new_dataset_name} --initialize --summary-file {new_dataset_name}-summary.json --depositor fsspec --deposition-path {file://local/path/to/folder}
+pudl_archiver archive fsspec {new_dataset_name} {file://local/path/to/folder} --initialize
 ```
 
 - `--initialize` creates a new deposition, and is used when creating a brand new archive
-- `--summary-file` will save a .json file summarizing the results of all
-validation tests, which is useful for reviewing your dataset.
-- `--depositor` selects the backend engine used for archive storage - in this case,
-we save files locally, but by default this uploads files to Zenodo.
-- `--depositor-path`: the path to the folder where you want to download local files for
-inspection.
+- A JSON file file summarizing the results of all validation tests, will be saved at
+`{new_dataset_name}_run_summary.json`. This file can be useful for reviewing your dataset.
+- Using the `fsspec` backend with the argument `{file://local/path/to/folder}` will save
+the results of the run to this local path.
 
 Run the archiver and review the output in the specified folder, iterating as needed to
 ensure that all files download as expected.
@@ -390,7 +489,7 @@ We automatically run all our archivers once a month to make sure we capture ongo
 changes to our archived datasets. To automate archiving of your new dataset, add the
 dataset to the list of quoted datasets in `.github/workflows/run-archiver.yml` where the
 `default` value of `datasets` is configured (line 9), as well as where the `dataset`
-inputs for the `matrix` are set (line 28). Also add the dataset to
+inputs for the `matrix` are set (line 36). Also add the dataset to
 the list of datasets in `.github/ISSUE_TEMPLATE/monthly-archive-update.md` to ensure
 that we track validation failures and publish the latest release with our automated
 monthly archive run.

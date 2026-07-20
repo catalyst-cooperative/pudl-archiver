@@ -2,7 +2,6 @@
 
 import io
 import logging
-import re
 import typing
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -14,7 +13,7 @@ import aiohttp
 from pydantic import BaseModel, ConfigDict
 
 from pudl_archiver.archivers.validate import RunSummary
-from pudl_archiver.frictionless import DataPackage, ResourceInfo
+from pudl_archiver.frictionless import DataPackage, Partitions, ResourceInfo
 from pudl_archiver.utils import RunSettings, Url, compute_md5
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
@@ -76,15 +75,14 @@ class DepositorAPIClient(BaseModel, ABC):
     async def initialize_client(
         cls,
         session: aiohttp.ClientSession,
-        sandbox: bool,
-        deposition_path: str | None = None,
-    ) -> "DepositorAPIClient":
+        **depositor_args,
+    ) -> DepositorAPIClient:
         """Initialize API client connection.
 
         Args:
             session: HTTP handler - we don't use it directly, it's wrapped in self._request.
-            sandbox: False for production archives.
-            deposition_path: Some depositors take a configurable path.
+            depositor_args: Any arguments specific to one depositor can be passed
+                as key word arguments.
         """
         ...
 
@@ -140,7 +138,7 @@ class PublishedDeposition(BaseModel, ABC):
         settings: RunSettings,
         api_client: DepositorAPIClient,
         dataset_id: str,
-    ) -> "PublishedDeposition":
+    ) -> PublishedDeposition:
         """Get most recent version of a published deposition."""
         deposition = await api_client.get_deposition(dataset_id)
 
@@ -152,7 +150,7 @@ class PublishedDeposition(BaseModel, ABC):
         )
 
     @abstractmethod
-    async def open_draft(self) -> "DraftDeposition":
+    async def open_draft(self) -> DraftDeposition:
         """Open a new draft deposition to make edits."""
         ...
 
@@ -201,7 +199,7 @@ class DraftDeposition(BaseModel, ABC):
         settings: RunSettings,
         api_client: DepositorAPIClient,
         dataset_id: str,
-    ) -> "DraftDeposition":
+    ) -> DraftDeposition:
         """Construct a new deposition from scratch."""
         deposition = await api_client.create_new_deposition(dataset_id)
         return cls(
@@ -249,7 +247,7 @@ class DraftDeposition(BaseModel, ABC):
         self,
         filename: str,
         data: BinaryIO,
-    ) -> "DraftDeposition":
+    ) -> DraftDeposition:
         """Create a file in a deposition.
 
         Args:
@@ -265,7 +263,7 @@ class DraftDeposition(BaseModel, ABC):
     async def delete_file(
         self,
         filename: str,
-    ) -> "DraftDeposition":
+    ) -> DraftDeposition:
         """Delete a file from a deposition.
 
         Args:
@@ -299,15 +297,13 @@ class DraftDeposition(BaseModel, ABC):
         ...
 
     @abstractmethod
-    def generate_datapackage(
-        self, resource_info: dict[str, ResourceInfo]
+    async def generate_datapackage(
+        self, partitions_in_deposition: dict[str, Partitions]
     ) -> DataPackage:
         """Generate new datapackage and return it."""
         ...
 
-    async def add_resource(
-        self, name: str, resource: ResourceInfo
-    ) -> "DraftDeposition":
+    async def add_resource(self, name: str, resource: ResourceInfo) -> DraftDeposition:
         """Apply correct change to deposition based on downloaded resource."""
         change = self.generate_change(name, resource)
         return await self._apply_change(change)
@@ -315,18 +311,19 @@ class DraftDeposition(BaseModel, ABC):
     async def publish_if_valid(
         self,
         run_summary: RunSummary,
-        datapackage_updated: bool,
         clobber_unchanged: bool,
         auto_publish: bool,
     ) -> PublishedDeposition | None:
         """Check that deposition is valid and worth changing, then publish if so."""
         if not run_summary.success:
+            # WARNING: log parser searches for "Archive validation failed"
+            # to determine if an error was due to a failed validation.
             logger.error(
                 "Archive validation failed. Not publishing new archive, kept "
                 f"draft at {self.get_deposition_link()} for inspection."
             )
             return run_summary
-        if len(run_summary.file_changes) == 0 and not datapackage_updated:
+        if len(run_summary.file_changes) == 0 and not run_summary.datapackage_changed:
             if clobber_unchanged:
                 await self.delete_deposition()
                 logger.info("No changes detected, deleted draft.")
@@ -348,7 +345,7 @@ class DraftDeposition(BaseModel, ABC):
 
     async def _apply_change(
         self, change: DepositionChange, checksum_retry_count: int = 7
-    ) -> "DraftDeposition":
+    ) -> DraftDeposition:
         """Actually upload and delete what we listed in self.uploads/deletes.
 
         Args:
@@ -395,53 +392,21 @@ class DraftDeposition(BaseModel, ABC):
         wrapped_file.actually_close()
         return draft
 
-    def _datapackage_worth_changing(
-        self, old_datapackage: DataPackage | None, new_datapackage: DataPackage
-    ) -> bool:
-        # Copy datapackages so we can modify without causing problems down the line
-        new_datapackage_copy = new_datapackage.model_copy(deep=True)
-        if old_datapackage is not None:
-            old_datapackage_copy = old_datapackage.model_copy(deep=True)
-        # ignore differences in created/version
-        # ignore differences resource paths if it's just some ID number changing...
-        if old_datapackage is None:
-            return True
-        for field in new_datapackage_copy.model_dump():
-            if field in {"created", "version"}:
-                continue
-            if field == "resources":
-                for r in (
-                    old_datapackage_copy.resources + new_datapackage_copy.resources
-                ):
-                    r.path = re.sub(r"/\d+/", "/ID_NUMBER/", str(r.path))
-            if getattr(new_datapackage_copy, field) != getattr(
-                old_datapackage_copy, field
-            ):
-                return True
-
-        # Due to a bug in an earlier version some resources ended up with ID_NUMBER in path.
-        # These should be replaced
-        return any("ID_NUMBER" in str(r.path) for r in old_datapackage.resources)
-
     async def attach_datapackage(
         self,
-        resources: dict[str, ResourceInfo],
-        old_datapackage: DataPackage,
-    ) -> tuple[DataPackage, bool]:
+        partitions_in_deposition: dict[str, Partitions],
+    ) -> tuple[DraftDeposition, DataPackage]:
         """Generate new datapackage describing draft deposition in current state."""
-        new_datapackage = self.generate_datapackage(resources)
+        new_datapackage = self.generate_datapackage(partitions_in_deposition)
 
-        # Add datapackage if it's changed
-        # copy new datapackage so temporary modifications aren't saved
-        if update := self._datapackage_worth_changing(old_datapackage, new_datapackage):
-            datapackage_json = io.BytesIO(
-                bytes(
-                    new_datapackage.model_dump_json(by_alias=True, indent=4),
-                    encoding="utf-8",
-                )
+        datapackage_json = io.BytesIO(
+            bytes(
+                new_datapackage.model_dump_json(by_alias=True, indent=4),
+                encoding="utf-8",
             )
-            await self.create_file("datapackage.json", datapackage_json)
-        return new_datapackage, update
+        )
+        draft = await self.create_file("datapackage.json", datapackage_json)
+        return draft, new_datapackage
 
 
 @dataclass

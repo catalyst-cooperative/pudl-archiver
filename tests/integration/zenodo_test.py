@@ -10,8 +10,6 @@ import aiohttp
 import pytest
 import requests
 from dotenv import load_dotenv
-from pudl.metadata.classes import DataSource
-from pudl.metadata.constants import LICENSES
 
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver, ResourceInfo
 from pudl_archiver.depositors.zenodo.entities import (
@@ -19,6 +17,7 @@ from pudl_archiver.depositors.zenodo.entities import (
     DepositionCreator,
     DepositionMetadata,
 )
+from pudl_archiver.metadata.constants import LICENSES
 from pudl_archiver.orchestrator import orchestrate_run
 from pudl_archiver.utils import RunSettings
 
@@ -116,14 +115,16 @@ def test_files():
 @pytest.fixture()
 def datasource():
     """Create fake datasource for testing."""
-    return DataSource(
-        name="pudl_test",
-        title="Pudl Test",
-        description="Test dataset for the sandbox, thanks!",
-        path="https://fake.link",
-        license_raw=LICENSES["cc-by-4.0"],
-        license_pudl=LICENSES["cc-by-4.0"],
-    )
+    return {
+        "name": "pudl_test",
+        "title": "Pudl Test",
+        "description": "Test dataset for the sandbox, thanks!",
+        "path": "https://fake.link",
+        "license_raw": LICENSES["cc-by-4.0"],
+        "contributors": [
+            {"title": "Catalyst Cooperative", "organization": "Catalyst Cooperative"}
+        ],
+    }
 
 
 @pytest.fixture()
@@ -145,7 +146,7 @@ async def test_zenodo_workflow(
     test_settings: Path,
     test_files: dict[str, list[dict[str, str]]],
     deposition_metadata: DepositionMetadata,
-    datasource: DataSource,
+    datasource: dict,
     mocker,
     caplog,
 ):
@@ -158,12 +159,12 @@ async def test_zenodo_workflow(
     )
 
     settings = RunSettings(
-        sandbox=True,
         clobber_unchanged=True,
         auto_publish=False,
         refresh_metadata=False,
         initialize=True,
         depositor="zenodo",
+        depositor_args={"sandbox": True},
     )
 
     def verify_files(expected, deposition: Deposition):
@@ -211,10 +212,9 @@ async def test_zenodo_workflow(
     )
 
     # Mock out creating datapackage with fake data source
-    datasource_mock = mocker.MagicMock(return_value=datasource)
     mocker.patch(
-        "pudl_archiver.frictionless.DataSource.from_id",
-        new=datasource_mock,
+        "pudl_archiver.frictionless.get_pudl_sources",
+        return_value={"pudl_test": datasource},
     )
 
     # Create new deposition and add files
@@ -330,7 +330,7 @@ async def test_zenodo_workflow(
 
     # force a datapackage.json update
     with unittest.mock.patch(
-        "pudl_archiver.depositors.depositor.DraftDeposition._datapackage_worth_changing",
+        "pudl_archiver.archivers.validate._datapackage_changed",
         lambda *_args: True,
     ):
         v3_summary, v3_refreshed = await orchestrate_run(

@@ -17,3 +17,5 @@ node_modules/*
 # pixi environments
 .pixi
 *.egg-info
+
+*_run_summary.json

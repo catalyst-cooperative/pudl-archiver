@@ -19,7 +19,38 @@ on:
         type: choice
 
 jobs:
+  notify-start:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build launch notification
+        id: launch_message
+        env:
+          DATASETS_JSON: ${{ format('[{0}]', inputs.datasets || '' ) }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          TARGET_SERVER: ${{ inputs.server }}
+          WORKFLOW_NAME: ${{ github.workflow }}
+        run: |
+          {
+            echo "LAUNCH_CONTENT<<EOF"
+            echo "# :rocket: Launching \`$WORKFLOW_NAME\` $TARGET_SERVER workflow ([view run]($RUN_URL))"
+            echo
+            echo "Datasets:"
+            printf '%s\n' "$DATASETS_JSON" | jq -r '.[] | "- `\(.)`"'
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+      - name: Notify Zulip of workflow launch
+        uses: zulip/github-actions-zulip/send-message@v2
+        with:
+          api-key: ${{ secrets.ZULIP_API_KEY }}
+          email: "build-status-bot@catalyst-cooperative.zulipchat.com"
+          organization-url: "https://catalyst-cooperative.zulipchat.com"
+          type: "stream"
+          to: "pudl-deployments"
+          topic: "pudl-archiver"
+          content: ${{ steps.launch_message.outputs.LAUNCH_CONTENT }}
+
   archive-run:
+    needs: notify-start
     defaults:
       run:
         shell: bash -l {0}
@@ -33,18 +64,18 @@ jobs:
       contents: "read"
       id-token: "write"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set default GCP credentials
         id: gcloud-auth
         continue-on-error: true
-        uses: "google-github-actions/auth@v2"
+        uses: "google-github-actions/auth@v3"
         with:
           workload_identity_provider: "projects/345950277072/locations/global/workloadIdentityPools/gh-actions-pool/providers/gh-actions-provider"
           service_account: "pudl-sources@catalyst-cooperative-pudl.iam.gserviceaccount.com"
 
       - name: Set up pixi
-        uses: prefix-dev/setup-pixi@v0.8.10
+        uses: prefix-dev/setup-pixi@v0.10.0
 
       - name: Log the pixi environment
         run: |
@@ -54,6 +85,7 @@ jobs:
       - name: Additional Playwright setup
         run: |
           pixi run playwright install --with-deps webkit
+          pixi run playwright install --with-deps chromium
 
       - name: Initialize production archive for ${{ matrix.dataset }}
         env:
@@ -62,7 +94,7 @@ jobs:
           ZENODO_TOKEN_PUBLISH: ${{ secrets.ZENODO_TOKEN_PUBLISH }}
         if: ${{ inputs.server == 'production' }}
         run: |
-          pixi run pudl_archiver --datasets ${{ matrix.dataset }} --initialize --summary-file ${{ matrix.dataset }}_run_summary.json --clobber-unchanged
+          pixi run pudl_archiver archive zenodo ${{ matrix.dataset }} --initialize --clobber-unchanged
 
       - name: Initialize sandbox archive for ${{ matrix.dataset }}
         env:
@@ -71,12 +103,12 @@ jobs:
           EPACEMS_API_KEY: ${{ secrets.EPACEMS_API_KEY }}
         if: ${{ inputs.server == 'sandbox' }}
         run: |
-          pixi run pudl_archiver --datasets ${{ matrix.dataset }} --initialize --sandbox --summary-file ${{ matrix.dataset }}_run_summary.json --clobber-unchanged
+          pixi run pudl_archiver archive zenodo ${{ matrix.dataset }} --initialize --sandbox  --clobber-unchanged
 
       - name: Upload run summaries
         if: always()
         id: upload_summaries
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: run-summaries-${{ matrix.dataset }}
           path: ${{ matrix.dataset }}_run_summary.json
@@ -87,29 +119,34 @@ jobs:
       - archive-run
     if: ${{ always() }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Download summaries
         id: download
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: run-summaries-*
           merge-multiple: true
       - name: show summaries
         run: ls -R
-      - name: Munge summaries together
-        id: all_summaries
+      - name: Load pixi from cache
+        uses: prefix-dev/setup-pixi@v0.10.0
+      - name: Create Zulip notification content
+        id: zulip_summaries
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           {
-            echo "SLACK_PAYLOAD<<EOF"
-            ./scripts/make_slack_notification_message.py --summary-files *_run_summary.json | tee slack-payload.json
+            echo "ZULIP_CONTENT<<EOF"
+            pixi run ./scripts/make_markdown_notification.py --summary-files ./*_run_summary.json --error-files ./*_log.txt --summary-type zulip --run-url "$RUN_URL"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
-      - name: Post update to pudl-deployment
-        uses: slackapi/slack-github-action@v2.1.0
+      - name: Notify Zulip of archive initialization
+        uses: zulip/github-actions-zulip/send-message@v2
         with:
-          method: chat.postMessage
-          token: ${{ secrets.PUDL_DEPLOY_SLACK_TOKEN }}
-          payload: |
-            text: "Created new archiver(s)."
-            blocks: ${{ steps.all_summaries.outputs.SLACK_PAYLOAD }}
-            channel: "C03FHB9N0PQ"
+          api-key: ${{ secrets.ZULIP_API_KEY }}
+          email: "build-status-bot@catalyst-cooperative.zulipchat.com"
+          organization-url: "https://catalyst-cooperative.zulipchat.com"
+          type: "stream"
+          to: "pudl-deployments"
+          topic: "pudl-archiver"
+          content: ${{ steps.zulip_summaries.outputs.ZULIP_CONTENT }}

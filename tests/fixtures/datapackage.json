@@ -1,0 +1,44 @@
+{
+  "contributors": [
+    {
+      "title": "Catalyst Cooperative",
+      "path": "https://catalyst.coop/",
+      "email": "pudl@catalyst.coop",
+      "roles": ["publisher"],
+      "zenodo_role": "distributor",
+      "organization": "Catalyst Cooperative",
+      "name": "catalyst-cooperative"
+    }
+  ],
+  "sources": [
+    {
+      "name": "ferc1",
+      "title": "FERC Form 1 -- Annual Report of Major Electric Utilities",
+      "path": "https://www.ferc.gov/industries-data/electric/general-information/electric-industry-forms/form-1-electric-utility-annual",
+      "description": "The Federal Energy Regulatory Commission (FERC) Form 1 is a comprehensive financial and operating report submitted annually for electric rate regulation, market oversight analysis, and financial audits by Major electric utilities, licensees and others.",
+      "keywords": ["electric", "electricity", "ferc", "ferc1", "federal", "government", "united states"],
+      "license_raw": {
+        "name": "other-pd",
+        "title": "U.S. Government Works",
+        "path": "https://www.usa.gov/publicdomain/label/1.0/"
+      },
+      "license_pudl": {
+        "name": "CC-BY-4.0",
+        "title": "Creative Commons Attribution 4.0",
+        "path": "https://creativecommons.org/licenses/by/4.0"
+      },
+      "contributors": [
+        {
+          "title": "Catalyst Cooperative",
+          "path": "https://catalyst.coop/",
+          "email": "pudl@catalyst.coop",
+          "roles": ["publisher"],
+          "zenodo_role": "distributor",
+          "organization": "Catalyst Cooperative",
+          "name": "catalyst-cooperative"
+        }
+      ]
+    }
+  ],
+  "resources": []
+}

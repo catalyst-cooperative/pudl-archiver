@@ -77,12 +77,15 @@ class Ferc2Archiver(AbstractDatasetArchiver):
             (1999, 2): "https://www.ferc.gov/sites/default/files/2020-07/F2Y99-2.zip",
         }
         # Special rules for grabbing the early two-part data:
+        partitions = {}
         if part is not None:
             assert year >= 1991 and year <= 1999  # nosec: B101
+            partitions = {"part": part}
             url = early_urls[(year, part)]
             download_path = self.download_directory / f"ferc2-{year}-{part}.zip"
         else:
             assert year >= 1996 and year <= 2021  # nosec: B101
+            partitions = {"part": "all"}
             url = f"https://forms.ferc.gov/f2allyears/f2_{year}.zip"
             download_path = self.download_directory / f"ferc2-{year}.zip"
 
@@ -90,5 +93,5 @@ class Ferc2Archiver(AbstractDatasetArchiver):
 
         return ResourceInfo(
             local_path=download_path,
-            partitions={"year": year, "data_format": "dbf", "part": part},
+            partitions=partitions | {"year": year, "data_format": "dbf"},
         )

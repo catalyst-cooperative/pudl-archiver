@@ -1,92 +1,120 @@
 """Download FERC EQR data."""
 
-import ftplib  # nosec: B402
+import asyncio
+import logging
+import re
 from pathlib import Path
+
+import pandas as pd
+from playwright.async_api import async_playwright
 
 from pudl_archiver.archivers.classes import (
     AbstractDatasetArchiver,
     ArchiveAwaitable,
+    Partitions,
     ResourceInfo,
 )
 
-BASE_URL = "https://eqrreportviewer.ferc.gov/"
+logger = logging.getLogger(f"catalystcoop.{__name__}")
+YEAR_QUARTER_PATT = re.compile(r"CSV_(\d{4})_Q(\d).zip")
 
 
 class FercEQRArchiver(AbstractDatasetArchiver):
-    """FERC EQR archiver."""
+    """FERC EQR archiver.
+
+    EQR data is much too large to use with Zenodo, so this archiver
+    is meant to be used with be used with the `fsspec` storage
+    backend. To run the archiver with this backend, execute the
+    following command:
+
+    ```
+    pudl_archiver --datasets ferceqr --deposition-path gs://archives.catalyst.coop/ferceqr --depositor fsspec
+    ```
+    """
 
     name = "ferceqr"
-    concurrency_limit = 5
+    concurrency_limit = 1
     directory_per_resource_chunk = True
     max_wait_time = 36000
 
-    async def get_resources(self) -> ArchiveAwaitable:
+    async def get_resources(self) -> tuple[ArchiveAwaitable, Partitions]:
         """Download FERC EQR resources."""
-        # Get non-transaction data (pre-2013)
-        # Skip all pre-2013 data until access to FTP server is figured out
-        """
-        for i in range(self.max_wait_time):
-            self.logger.info(
-                f"Waiting for EQR to be available, attempt: {i}/{self.max_wait_time}"
+        # Dynamically get links to all quarters of EQR data
+        urls = await self.get_urls()
+
+        # Check how many quarters of data we found from EQR webpage
+        # The number we expect will change as data is released
+        # but as of writing there are 48, so this provides reasonable lower bound
+        logger.info(f"Found {len(urls)} quarters of available EQR data.")
+        if len(urls) < 48:
+            raise RuntimeError(
+                "Expected a minimum of 48 quarters of EQR data to be available."
+                f" Found the following URLs: {urls}"
             )
-            try:
-                ftp = ftplib.FTP("eqrdds.ferc.gov")  # nosec: B321
-            except Exception as e:
-                self.logger.info(f"Error: {e}")
-                await asyncio.sleep(1)
 
-        yield self.get_bulk_csv(ftp)
+        most_recent_quarter = {"year": 1990, "quarter": 1}
+        for url in urls:
+            link_match = YEAR_QUARTER_PATT.search(url)
+            partitions = {
+                "year": int(link_match.group(1)),
+                "quarter": int(link_match.group(2)),
+            }
 
-        # Get 2002-2013 annual transaction data
-        for year in range(2002, 2014):
-            yield self.get_year_dbf(year, ftp)
+            # Find most recent available quarter of data
+            new_date = pd.to_datetime(f"{partitions['year']}-Q{partitions['quarter']}")
+            most_recent_date = pd.to_datetime(
+                f"{most_recent_quarter['year']}-Q{most_recent_quarter['quarter']}"
+            )
+
+            if new_date > most_recent_date:
+                most_recent_quarter = partitions
+            yield self.get_quarter_csv(url, partitions), partitions
+        # Don't fail on large size diffs for most recent quarter
+        # We expect to see significant changes as new data is released
+        logger.info(
+            f"Ignoring size diffs for quarter: {most_recent_quarter['year']}q{most_recent_quarter['quarter']}"
+        )
+        self.ignore_file_size_increase_partitions = [most_recent_quarter]
+
+    async def get_urls(self) -> list[str]:
+        """Use playwright to dynamically grab URLs from the EQR webpage.
+
+        Only grabs URLs that match the expected pattern for the quarterly CSV files.
         """
-
-        # Get quarterly EQR data
-        for year in range(2013, 2023):
-            for quarter in range(1, 5):
-                if quarter < 3:
-                    continue
-                yield self.get_quarter_dbf(year, quarter)
-
-    async def get_bulk_csv(self, ftp: ftplib.FTP) -> tuple[Path, dict]:
-        """Download all 2002-2013 non-transaction data."""
-        download_path = self.download_directory / "ferceqr_nontrans.zip"
-        with download_path.open() as f:
-            ftp.retrbinary("RETR eqrdbdownloads/eqr_nontransaction.zip", f.write)
-
-        return ResourceInfo(
-            local_path=download_path, partitions={"data_type": "non-transaction"}
+        logger.info(
+            "Launching browser with playwright to get EQR year-quarter download links"
         )
+        async with async_playwright() as pw:
+            browser = await pw.webkit.launch(headless=True)
+            context = await browser.new_context()
+            page = await context.new_page()
 
-    async def get_year_dbf(
-        self,
-        year: int,
-        ftp: ftplib.FTP,
+            await page.goto("https://eqrreportviewer.ferc.gov/")
+            # Navigate to Downlaods tab, and wait for tab to finish loading
+            await page.get_by_text("Downloads", exact=True).click()
+            await asyncio.sleep(10)
+
+            # Find all links matching expected pattern and return
+            return [
+                await locator.get_attribute("href")
+                for locator in await page.get_by_text(YEAR_QUARTER_PATT).all()
+            ]
+
+    async def get_quarter_csv(
+        self, url: str, partitions: Partitions
     ) -> tuple[Path, dict]:
-        """Download a year (2002-2013) of FERC EQR transaction data."""
-        download_path = self.download_directory / f"ferceqr-{year}-trans.zip"
+        """Download a quarter of 2013-present data."""
+        # Extract year-quarter from URL
+        logger.info(f"Found EQR data for {partitions['year']}q{partitions['quarter']}")
 
-        with download_path.open() as f:
-            ftp.retrbinary(f"RETR eqrdbdownloads/eqr_transaction_{year}.zip", f.write)
-
-        return ResourceInfo(
-            local_path=download_path,
-            partitions={"year": year, "data_type": "transaction"},
+        # Download quarter
+        download_path = (
+            self.download_directory
+            / f"ferceqr-{partitions['year']}q{partitions['quarter']}.zip"
         )
-
-    async def get_quarter_dbf(
-        self,
-        year: int,
-        quarter: int | None = None,
-    ) -> tuple[Path, dict]:
-        """Download a quarter of 2014-present data."""
-        url = f"https://eqrreportviewer.ferc.gov/DownloadRepositoryProd/BulkNew/CSV/CSV_{year}_Q{quarter}.zip"
-        download_path = self.download_directory / f"ferceqr-{year}-Q{quarter}.zip"
-
         await self.download_zipfile(url, download_path)
 
         return ResourceInfo(
             local_path=download_path,
-            partitions={"year": year, "quarter": quarter},
+            partitions=partitions,
         )

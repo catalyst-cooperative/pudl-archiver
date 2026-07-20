@@ -22,7 +22,13 @@ from pudl_archiver.depositors.depositor import (
     PublishedDeposition,
     register_depositor,
 )
-from pudl_archiver.frictionless import MEDIA_TYPES, DataPackage, Resource, ResourceInfo
+from pudl_archiver.frictionless import (
+    MEDIA_TYPES,
+    DataPackage,
+    Partitions,
+    Resource,
+    ResourceInfo,
+)
 from pudl_archiver.utils import RunSettings, Url, compute_md5, retry_async
 
 from .entities import (
@@ -111,18 +117,12 @@ class ZenodoAPIClient(DepositorAPIClient):
         cls,
         session: aiohttp.ClientSession,
         sandbox: bool,
-        deposition_path: str | None = None,
-    ) -> "ZenodoAPIClient":
+    ) -> ZenodoAPIClient:
         """Initialize API client connection.
 
         Args:
             session: HTTP handler - we don't use it directly, it's wrapped in self._request.
         """
-        if deposition_path:
-            raise RuntimeError(
-                "Zenodo depositor does not use deposition_path parameter."
-            )
-
         self = cls(sandbox=sandbox)
         self._session = session
         self._request = self._make_requester(session)
@@ -205,7 +205,7 @@ class ZenodoAPIClient(DepositorAPIClient):
         self,
         deposition: Deposition,
         filename: str,
-    ) -> "ZenodoDraftDeposition":
+    ) -> ZenodoDraftDeposition:
         """Delete a file from a deposition.
 
         Args:
@@ -421,13 +421,20 @@ class ZenodoAPIClient(DepositorAPIClient):
         return doi
 
     @property
+    def user_agent(self):
+        """Define a custom pudl-archiver user agent to sign Zenodo requests."""
+        return (
+            "pudl-archiver/1.0 (https://github.com/catalyst-cooperative/pudl-archiver)"
+        )
+
+    @property
     def auth_write(self):
         """Format auth header with upload_key."""
         if self.sandbox:
             upload_key = os.environ["ZENODO_SANDBOX_TOKEN_UPLOAD"]
         else:
             upload_key = os.environ["ZENODO_TOKEN_UPLOAD"]
-        return {"Authorization": f"Bearer {upload_key}"}
+        return {"Authorization": f"Bearer {upload_key}", "User-Agent": self.user_agent}
 
     @property
     def auth_actions(self):
@@ -436,7 +443,7 @@ class ZenodoAPIClient(DepositorAPIClient):
             publish_key = os.environ["ZENODO_SANDBOX_TOKEN_PUBLISH"]
         else:
             publish_key = os.environ["ZENODO_TOKEN_PUBLISH"]
-        return {"Authorization": f"Bearer {publish_key}"}
+        return {"Authorization": f"Bearer {publish_key}", "User-Agent": self.user_agent}
 
     @property
     def api_root(self):
@@ -585,7 +592,7 @@ class ZenodoPublishedDeposition(PublishedDeposition):
     api_client: ZenodoAPIClient
     dataset_id: str
 
-    async def open_draft(self) -> "ZenodoDraftDeposition":
+    async def open_draft(self) -> ZenodoDraftDeposition:
         """Open a new draft deposition to make edits."""
         draft_deposition = await self.api_client.get_new_version(
             self.dataset_id,
@@ -644,7 +651,7 @@ class ZenodoDraftDeposition(DraftDeposition):
         filename: str,
         data: BinaryIO,
         force_api: Literal["bucket", "files"] | None = None,
-    ) -> "ZenodoDraftDeposition":
+    ) -> ZenodoDraftDeposition:
         """Create a file in a deposition.
 
         Args:
@@ -667,7 +674,7 @@ class ZenodoDraftDeposition(DraftDeposition):
     async def delete_file(
         self,
         filename: str,
-    ) -> "ZenodoDraftDeposition":
+    ) -> ZenodoDraftDeposition:
         """Delete a file from a deposition.
 
         Args:
@@ -742,14 +749,14 @@ class ZenodoDraftDeposition(DraftDeposition):
         )
 
     def generate_datapackage(
-        self, resource_info: dict[str, ResourceInfo]
+        self, partitions_in_deposition: dict[str, Partitions]
     ) -> DataPackage:
         """Generate new datapackage, attach to deposition, and return."""
         logger.info(f"Creating new datapackage.json for {self.dataset_id}")
 
         # Create updated datapackage
         resources = [
-            _resource_from_file(f, resource_info[f.filename].partitions)
+            _resource_from_file(f, partitions_in_deposition[f.filename])
             for f in self.deposition.files
             if f.filename != "datapackage.json"
         ]

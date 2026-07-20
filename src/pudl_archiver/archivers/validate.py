@@ -1,6 +1,8 @@
 """Defines models used for validating/summarizing an archiver run."""
 
+import json
 import logging
+import re
 import xml.etree.ElementTree as Et  # nosec: B405
 import zipfile
 from io import BytesIO
@@ -9,10 +11,16 @@ from typing import Any, Literal
 
 import pandas as pd
 import pyarrow as pa
+import pyarrow.parquet as pq
 from pydantic import BaseModel
 
-from pudl_archiver.frictionless import DataPackage, Resource, ZipLayout
-from pudl_archiver.utils import Url, is_html_file
+from pudl_archiver.frictionless import (
+    DataPackage,
+    Partitions,
+    Resource,
+    ZipLayout,
+)
+from pudl_archiver.utils import RunSettings, Url, is_html_file
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
@@ -57,7 +65,7 @@ def validate_filetype(
 def validate_file_not_empty(
     path: Path, required_for_run_success: bool
 ) -> FileUniversalValidation:
-    """Check that file is valid based on type."""
+    """Check that file is not empty."""
     return FileUniversalValidation(
         name="Empty File Test",
         description="Check that files are not empty.",
@@ -116,6 +124,10 @@ class RunSummary(BaseModel):
     date: str
     previous_version_date: str
     record_url: Url
+    datapackage_changed: bool
+    failed_partitions: dict[str, Partitions]
+    successful_partitions: dict[str, Partitions]
+    run_settings: RunSettings
 
     def get_failed_tests(self) -> list[ValidationTestResult]:
         """Return any tests that failed."""
@@ -138,13 +150,21 @@ class RunSummary(BaseModel):
         new_datapackage: DataPackage,
         validation_tests: list[ValidationTestResult],
         record_url: Url,
-    ) -> "RunSummary":
+        failed_partitions: dict[str, Partitions],
+        successful_partitions: dict[str, Partitions],
+        run_settings: RunSettings,
+    ) -> RunSummary:
         """Create a summary of archive changes from two DataPackage descriptors."""
         baseline_resources = {}
+        datapackage_changed = True
         if baseline_datapackage is not None:
             baseline_resources = {
                 resource.name: resource for resource in baseline_datapackage.resources
             }
+            datapackage_changed = _datapackage_changed(
+                baseline_datapackage, new_datapackage
+            )
+
         new_resources = {
             resource.name: resource for resource in new_datapackage.resources
         }
@@ -171,7 +191,59 @@ class RunSummary(BaseModel):
             date=new_datapackage.created,
             previous_version_date=previous_version_date,
             record_url=record_url,
+            datapackage_changed=datapackage_changed,
+            failed_partitions=failed_partitions,
+            successful_partitions=successful_partitions,
+            run_settings=run_settings,
         )
+
+    @classmethod
+    def load_previous_run(
+        cls, summary_file: str | Path, auto_publish: bool
+    ) -> RunSummary:
+        """Create a RunSummary object from a JSON file output by a previous run.
+
+        Load settings from summary file, but always override ``auto_publish``
+        to avoid accidental publication.
+
+        Args:
+            summary_file: Points to JSON file containing serialized RunSummary metadata.
+            auto_publish: Explicitly set ``auto_publish``.
+        """
+        # Load run summary file and parse
+        with Path(summary_file).open() as f:
+            previous_run_summary = RunSummary.model_validate(json.load(f))
+
+        # Extract settings from failed run
+        return previous_run_summary.model_copy(
+            update={
+                "run_settings": previous_run_summary.run_settings.model_copy(
+                    update={
+                        "retry_run": summary_file,
+                        "auto_publish": True,
+                    },
+                )
+            }
+        )
+
+
+def _datapackage_changed(
+    baseline_datapackage: DataPackage,
+    new_datapackage: DataPackage,
+) -> bool:
+    """Check if any fields in datapackage have changed."""
+    # Copy datapackages so we can modify without causing problems down the line
+    new_datapackage_copy = new_datapackage.model_copy(deep=True)
+    old_datapackage_copy = baseline_datapackage.model_copy(deep=True)
+    for field in new_datapackage_copy.model_dump():
+        if field in {"created", "version"}:
+            continue
+        if field == "resources":
+            for r in old_datapackage_copy.resources + new_datapackage_copy.resources:
+                r.path = re.sub(r"/\d+/", "/ID_NUMBER/", str(r.path))
+        if getattr(new_datapackage_copy, field) != getattr(old_datapackage_copy, field):
+            return True
+    return False
 
 
 def _process_partition_diffs(
@@ -338,16 +410,16 @@ def _validate_csv(buffer: BytesIO) -> bool:
     try:
         sliver = pd.read_csv(buffer, nrows=100)  # Try reading in a data slice
         return not sliver.empty
-    except (pd.errors.EmptyDataError, pd.errors.ParserError):
+    except pd.errors.EmptyDataError, pd.errors.ParserError:
         return False
     return True
 
 
 def _validate_parquet(buffer: BytesIO) -> bool:
     try:
-        pa.parquet.ParquetFile(buffer)
+        pq.ParquetFile(buffer)
         return True
-    except (pa.lib.ArrowInvalid, pa.lib.ArrowException):
+    except pa.lib.ArrowInvalid, pa.lib.ArrowException:
         return False
 
 

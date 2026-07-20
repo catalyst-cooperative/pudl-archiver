@@ -1,4 +1,4 @@
-name: Update pixi lockfiles
+name: Update lockfiles
 
 permissions:
   contents: write
@@ -11,27 +11,38 @@ on:
     - cron: 0 5 * * 1 # Run every Monday
 
 jobs:
-  pixi-update:
+  update-lockfiles:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Set up pixi
-        uses: prefix-dev/setup-pixi@v0.8.10
+        uses: prefix-dev/setup-pixi@v0.10.0
         with:
           run-install: false
-      - name: Update lockfiles
+      - name: Update lockfiles and install
         run: |
           set -o pipefail
           pixi upgrade --json | pixi exec pixi-diff-to-markdown >> diff.md
-      - name: Create pull request
-        uses: peter-evans/create-pull-request@v7
+          pixi reinstall --all
+          pixi run --frozen prek-autoupdate
+      - name: Generate GH token
+        uses: actions/create-github-app-token@v3
+        id: generate-token
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: Update pixi lockfile
-          title: Update pixi lockfile
+          app-id: ${{ secrets.WORKFLOW_TRIGGERER_APP_ID }}
+          private-key: ${{ secrets.WORKFLOW_TRIGGERER_PRIVATE_KEY }}
+      - name: Create pull request
+        uses: peter-evans/create-pull-request@v8
+        with:
+          token: ${{ steps.generate-token.outputs.token }}
+          commit-message: Update pixi lockfile and pre-commit hooks
+          title: Update pixi lockfile and pre-commit hooks
           body-path: diff.md
-          branch: update-pixi
+          branch: update-lockfiles
           base: main
           labels: pixi
           delete-branch: true
-          add-paths: pixi.lock
+          add-paths: |
+            pixi.lock
+            pyproject.toml
+            .pre-commit-config.yaml

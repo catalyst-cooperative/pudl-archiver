@@ -21,7 +21,7 @@ class EpaCamdEiaArchiver(AbstractDatasetArchiver):
         simplest solution is to use the 2018 data from the EPA repo and the latest data
         from our fork as static outputs. At some point it would be best to either
         integrate the notebook into our ETL so we can dynamically run it with all years
-        interest, or develop our own linkage.
+        of interest, or develop our own linkage.
         """
         yield self.get_2018()
         yield self.get_latest_years()
@@ -29,7 +29,7 @@ class EpaCamdEiaArchiver(AbstractDatasetArchiver):
     async def get_latest_years(self) -> ResourceInfo:
         """Get latest version from our forked repo."""
         resources = []
-        for year in [2019, 2020, 2021, 2022, 2023]:
+        for year in [2019, 2020, 2021, 2022, 2023, 2024]:
             url = f"https://github.com/catalyst-cooperative/camd-eia-crosswalk-latest/archive/refs/tags/v{year}.zip"
             download_path = self.download_directory / f"epacamd_eia_{year}.zip"
             await self.download_zipfile(url, download_path)

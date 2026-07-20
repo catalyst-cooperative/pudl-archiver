@@ -7,7 +7,6 @@ import zipfile
 from collections.abc import Awaitable, Callable
 from hashlib import md5
 from io import BytesIO
-from pathlib import Path
 from time import time
 
 import aiohttp
@@ -137,16 +136,15 @@ Depositors = typing.Literal["zenodo", "fsspec"]
 class RunSettings(BaseModel):
     """Settings for an archive run taken from CLI options."""
 
-    sandbox: bool = True
     initialize: bool = False
     only_years: list[int] | None = []
-    summary_file: Path | None = None
-    deposition_path: str | None = None
+    summary_file: str | None = None
     clobber_unchanged: bool = False
     auto_publish: bool = False
     refresh_metadata: bool = False
-    resume_run: bool = False
     depositor: Depositors = "zenodo"
+    depositor_args: dict[str, typing.Any] = {}
+    retry_run: str | None = None
 
 
 def compute_md5(file_path: UPath) -> str:

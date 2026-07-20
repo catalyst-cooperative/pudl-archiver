@@ -18,43 +18,18 @@ from pudl_archiver.frictionless import Resource, ResourceInfo
 
 
 @pytest.fixture()
-def bad_zipfile():
-    """Create a fake bad zipfile as a temp file."""
-    with tempfile.TemporaryDirectory() as path:
-        zip_path = Path(path) / "test.zip"
-        with Path.open(zip_path, "wb") as archive:
-            archive.write(b"Fake non-zipfile data")
-
-        yield zip_path
-
-
-@pytest.fixture()
-def good_zipfile():
-    """Create a fake good zipfile in temporary directory."""
-    with tempfile.TemporaryDirectory() as path:
-        zip_path = Path(path) / "test.zip"
-        with (
-            zipfile.ZipFile(zip_path, "w") as archive,
-            archive.open("test.txt", "w") as file,
-        ):
-            file.write(b"Test good zipfile")
-
-        yield zip_path
-
-
-@pytest.fixture()
 def file_data():
     """Create test file data for download_file test."""
     return b"Junk test file data"
 
 
-def _resource_w_size(name: str, size: int):
+def _resource_w_size(name: str, size: int, parts: dict = {}):
     """Create resource with variable size for use in tests."""
     return Resource(
         name=name,
         path=f"https://www.example.com/{name}",
         title="",
-        parts={},
+        parts=parts,
         mediatype="",
         format="",
         bytes=size,
@@ -164,6 +139,33 @@ async def test_resource_chunks(
     archiver = MockArchiver(concurrency_limit, directory_per_resource_chunk)
     async for name, resource in archiver.download_all_resources():
         assert download_paths[resource.partitions["idx"]] == name
+
+
+@pytest.mark.asyncio
+async def test_failed_parts(bad_zipfile, good_zipfile):
+    """Test that the archiver will add a resource to failed_partitions if it detects a bad file."""
+
+    class MockArchiver(AbstractDatasetArchiver):
+        name = "mock"
+
+        async def get_resources(self):
+            yield self.get_bad_zip()
+            yield self.get_good_zip()
+
+        async def get_bad_zip(self):
+            return ResourceInfo(
+                local_path=bad_zipfile, partitions={"bad_zip": True, "good_zip": False}
+            )
+
+        async def get_good_zip(self):
+            return ResourceInfo(
+                local_path=good_zipfile, partitions={"bad_zip": False, "good_zip": True}
+            )
+
+    archiver = MockArchiver(session=None)
+    [_ async for _ in archiver.download_all_resources()]
+    assert list(archiver.failed_partitions.keys()) == ["bad.zip"]
+    assert archiver.failed_partitions["bad.zip"] == {"bad_zip": True, "good_zip": False}
 
 
 @pytest.mark.asyncio
@@ -345,8 +347,32 @@ def test_check_missing_files(datapackage, baseline_resources, new_resources, suc
 
 
 @pytest.mark.parametrize(
-    "baseline_resources,new_resources,success",
+    "baseline_resources,new_resources,success,ignore_parts",
     [
+        (
+            [
+                _resource_w_size("resource0", 10, parts={"key": "too big"}),
+                _resource_w_size("resource1", 10),
+            ],
+            [
+                _resource_w_size("resource0", 20, parts={"key": "too big"}),
+                _resource_w_size("resource1", 10),
+            ],
+            True,
+            {"key": "too big"},
+        ),
+        (
+            [
+                _resource_w_size("resource0", 20, parts={"key": "too small"}),
+                _resource_w_size("resource1", 10),
+            ],
+            [
+                _resource_w_size("resource0", 10, parts={"key": "too small"}),
+                _resource_w_size("resource1", 10),
+            ],
+            False,
+            {"key": "too small"},
+        ),
         (
             [
                 _resource_w_size("resource0", 10),
@@ -357,6 +383,7 @@ def test_check_missing_files(datapackage, baseline_resources, new_resources, suc
                 _resource_w_size("resource1", 10),
             ],
             False,
+            None,
         ),
         (
             [
@@ -368,6 +395,7 @@ def test_check_missing_files(datapackage, baseline_resources, new_resources, suc
                 _resource_w_size("resource1", 9),
             ],
             True,
+            None,
         ),
         (
             [
@@ -378,6 +406,7 @@ def test_check_missing_files(datapackage, baseline_resources, new_resources, suc
                 _resource_w_size("resource0", 10),
             ],
             True,
+            None,
         ),
         (
             [
@@ -388,6 +417,7 @@ def test_check_missing_files(datapackage, baseline_resources, new_resources, suc
                 _resource_w_size("resource1", 10),
             ],
             True,
+            None,
         ),
         (
             None,
@@ -396,9 +426,12 @@ def test_check_missing_files(datapackage, baseline_resources, new_resources, suc
                 _resource_w_size("resource1", 10),
             ],
             True,
+            None,
         ),
     ],
     ids=[
+        "ignore_increase",
+        "ignore_decrease_fail",
         "file_too_big",
         "file_change_acceptable",
         "file_deleted",
@@ -406,7 +439,9 @@ def test_check_missing_files(datapackage, baseline_resources, new_resources, suc
         "no_base_datapackage",
     ],
 )
-def test_check_file_size(datapackage, baseline_resources, new_resources, success):
+def test_check_file_size(
+    datapackage, baseline_resources, new_resources, success, ignore_parts
+):
     """Test the ``_check_file_size`` validation test."""
     archiver = MockArchiver(None)
 
@@ -419,6 +454,7 @@ def test_check_file_size(datapackage, baseline_resources, new_resources, success
     new_datapackage = copy.deepcopy(datapackage)
     new_datapackage.resources = new_resources
 
+    archiver.ignore_file_size_increase_partitions = [ignore_parts]
     validation_result = archiver._check_file_size(baseline_datapackage, new_datapackage)
     assert validation_result.success == success
 
