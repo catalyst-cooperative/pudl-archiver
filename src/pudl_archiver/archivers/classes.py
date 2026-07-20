@@ -812,6 +812,10 @@ class AbstractDatasetArchiver(ABC):
         coordinates downloading all resources concurrently.
         """
         resources = await self._filter_resources(skip_partitions)
+        # When running the publish-run command we should end up with no resources to download
+        if len(resources) == 0:
+            logger.info("Found no resources to download, returning immediately.")
+            return
 
         # Split resources into chunks to limit concurrency
         chunksize = self.concurrency_limit if self.concurrency_limit else len(resources)
