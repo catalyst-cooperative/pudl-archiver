@@ -27,6 +27,45 @@ FERC_FORM_CLASS_LOOKUP = {
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "ferc_number,valid_years,called_with_years",
+    [
+        ("1", [1848, 2349], []),
+        ("1", [2021, 2022, 2023], [2021]),
+        ("1", [2003, 2004, 2005, 2021], [2003, 2004, 2005, 2021]),
+        ("2", [1848, 2349], []),
+        ("2", [2021, 2022, 2023], [2021]),
+        ("2", [2003, 2004, 2005, 2021], [2003, 2004, 2005, 2021]),
+        ("6", [1848, 2349], []),
+        ("6", [2021, 2022, 2023], [2021]),
+        ("6", [2003, 2004, 2005, 2021], [2003, 2004, 2005, 2021]),
+        ("60", [1848, 2349], []),
+        ("60", [2021, 2022, 2023], []),
+        ("60", [2004, 2005, 2006, 2007, 2021], [2006, 2007]),
+    ],
+)
+async def test_valid_years(
+    mocker, ferc_number: str, valid_years: list[int], called_with_years: list[int]
+):
+    form_name, form_class = FERC_FORM_CLASS_LOOKUP[f"ferc{ferc_number}"]
+    dbf_mock = mocker.patch(
+        f"pudl_archiver.archivers.ferc.ferc{ferc_number}.ferc_online_helpers.get_resources_for_form"
+    )
+    mocker.patch(
+        f"pudl_archiver.archivers.ferc.ferc{ferc_number}.xbrl.archive_xbrl_for_form"
+    )
+    mock_session = mocker.AsyncMock()
+    archiver = form_class(mock_session, only_years=valid_years)
+    [r async for r in archiver.get_resources()]
+    dbf_mock.assert_called_once_with(
+        ferc_form=ferc_number,
+        years=called_with_years,
+        partitions_base={"data_format": "DBF"},
+        download_directory=archiver.download_directory,
+    )
+
+
+@pytest.mark.asyncio
 async def test_archive_year_metadata(tmpdir):
     """Test format of XBRL archiver metadata."""
     filings = sorted(
