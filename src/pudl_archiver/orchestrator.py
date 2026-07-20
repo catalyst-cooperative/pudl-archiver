@@ -35,7 +35,7 @@ async def orchestrate_run(
             draft = await draft.add_resource(name, resource)
     except Exception as e:
         run_exception = e
-        logger.error(f"download_all_resources failed!\n{e}")
+        logger.exception(e)
 
     # Delete files in draft that weren't downloaded by downloader
     for filename in await draft.list_files():
