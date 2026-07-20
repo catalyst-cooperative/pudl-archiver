@@ -14,7 +14,11 @@ on:
         required: true
         type: string
       command:
-        description: Switch between the retry-run and publish-run command
+        description: |
+          Switch between the retry-run and publish-run command. A retry requires the
+          previous run failed and it will try any partitions that failed or weren't
+          executed in that run. A retry will not attempt to publish the results and
+          should be followed by a publish run.
         required: true
         type: choice
         default: "publish-run"
