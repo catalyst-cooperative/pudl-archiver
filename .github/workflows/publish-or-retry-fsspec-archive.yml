@@ -64,7 +64,7 @@ jobs:
       - name: Download run summary
         uses: actions/download-artifact@v8
         with:
-          run-id: "$RUN_ID"
+          run-id: ${{ env.RUN_ID }}
           pattern: run-summaries-*
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
