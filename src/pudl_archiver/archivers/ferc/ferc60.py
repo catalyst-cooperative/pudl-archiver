@@ -17,7 +17,7 @@ class Ferc60Archiver(AbstractDatasetArchiver):
         """Download FERC 60 resources."""
         dbf_years = [year for year in range(2006, 2021) if self.valid_year(year)]
         yield ferc_online_helpers.get_resources_for_form(
-            ferc_form="1",
+            ferc_form="60",
             years=dbf_years,
             partitions_base={"data_format": "DBF"},
             download_directory=self.download_directory,
