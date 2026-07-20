@@ -52,7 +52,7 @@ class EiaNEMSArchiver(AbstractDatasetArchiver):
             shell=False,
         )
         os.chdir(self.download_directory / "NEMS")
-        subprocess.run(["/usr/bin/git", "lfs", "fetch", "--all"], shell=False)  # noqa:S603
+        subprocess.run(["/usr/bin/git", "lfs", "fetch", "--all"], shell=False)
 
         for tag in release_tags:
             yield self.get_release_resource(tag=tag)
@@ -70,7 +70,7 @@ class EiaNEMSArchiver(AbstractDatasetArchiver):
 
         subprocess.run(["/usr/bin/git", "checkout", tag], shell=False)  # noqa:S603
         # We sanitize tag above using the assertion, so this should be ok.
-        subprocess.run(["/usr/bin/git", "lfs", "pull"], shell=False)  # noqa:S603
+        subprocess.run(["/usr/bin/git", "lfs", "pull"], shell=False)
 
         directory = (self.download_directory / "NEMS").resolve()
 
