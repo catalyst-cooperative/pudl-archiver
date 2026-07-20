@@ -1,0 +1,12 @@
+---
+name: publish-or-retry-fsspec-archive
+
+on:
+  workflow_dispatch:
+
+jobs:
+  no-op-stub:
+    runs-on: ubuntu-latest
+    steps:
+      - name: no-op
+        run: echo "not doing anything"
