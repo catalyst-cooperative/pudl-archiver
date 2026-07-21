@@ -75,7 +75,7 @@ jobs:
       - name: Get dataset from run summary filename
         id: dataset_name
         run: |
-          file=$(find summaries -name '*_run_summary.json')
+          file=$(find . -name '*_run_summary.json')
           echo "dataset=$(basename "$file" _run_summary.json)" >> "$GITHUB_OUTPUT"
 
       - name: Attempt to publish deposition for ${{ steps.dataset_name.outputs.dataset }}
