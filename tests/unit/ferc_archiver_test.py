@@ -60,7 +60,7 @@ async def test_valid_years(
     dbf_mock.assert_called_once_with(
         ferc_form=ferc_number,
         years=called_with_years,
-        partitions_base={"data_format": "DBF"},
+        partitions_base={"data_format": "dbf"},
         download_directory=archiver.download_directory,
     )
 
