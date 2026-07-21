@@ -24,15 +24,16 @@ class EiaNEMSArchiver(AbstractDatasetArchiver):
     """EIA NEMS archiver."""
 
     name = "eianems"
-    concurrency_limit = 1  # All the files originate from the same repository, so we can only archive one at a time.
+    # We are archiving multiple versioned releases from the same Git repository, so we can only archive one at a time
+    # to avoid trying to access different release versions of the same file at the same time.
+    concurrency_limit = 1
+
+    # NEMS files include multiple CSVs with multi-line headers and "placeholder" XML files that
+    # trip up our file validations, so we make this a non-blocking test failure.
+    fail_on_empty_invalid_files = False
 
     async def get_resources(self) -> ArchiveAwaitable:
-        """Download EPA CAMD to EIA crosswalk resources."""
-        # TODO: Once #538 merges consider grabbing these hyperlinks from the releases page
-        # ("https://github.com/EIAgov/NEMS/releases") dynamically. They can't be grabbed by
-        # get_hyperlinks() currently. They will still need to be manually mapped to the year
-        # of AEO data that they correspond to, but this would let us check for new releases.
-
+        """Download EIA NEMS resources."""
         release_json = await self.get_json(
             "https://api.github.com/repos/EIAgov/NEMS/releases"
         )
