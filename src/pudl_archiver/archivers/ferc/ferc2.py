@@ -14,7 +14,7 @@ class Ferc2Archiver(AbstractDatasetArchiver):
 
     async def get_resources(self) -> ArchiveAwaitable:
         """Download FERC 2 resources."""
-        dbf_years = [year for year in range(1994, 2022) if self.valid_year(year)]
+        dbf_years = [year for year in range(1996, 2022) if self.valid_year(year)]
         yield ferc_online_helpers.get_resources_for_form(
             ferc_form="2",
             years=dbf_years,

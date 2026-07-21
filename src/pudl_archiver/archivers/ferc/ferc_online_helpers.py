@@ -12,7 +12,7 @@ logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 
 async def get_resources_for_form(
-    ferc_form: Literal["1", "2", "6", "60", "EQR"],
+    ferc_form: Literal["1", "2", "6", "60"],
     years: list[int],
     partitions_base: dict[str, Any],
     download_directory: Path,
