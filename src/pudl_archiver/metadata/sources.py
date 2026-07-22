@@ -78,6 +78,26 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         "license_pudl": LICENSES["cc-by-4.0"],
         "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
     },
+    "eiabluesky": {
+        "title": "EIA Project BlueSky",
+        "path": "https://github.com/EIAgov/BlueSky",
+        "description": (
+            """
+            Project BlueSky is a new EIA initiative to develop a next generation energy systems model, which will
+            eventually be used to produce the Annual Energy Outlook (AEO) and International Energy Outlook (IEO).
+            The new model will be designed to address the complexity and interconnectivity of the modern world and
+            the uncertainty associated with markets, technologies, and international trade.\n\n
+            In April 2025, EIA released version 1.1 of the Project BlueSky prototype model on Github and paused
+            future model development activity.
+            """
+        ),
+        "working_partitions": {"years": [2023]},
+        "keywords": sorted({"eia", "nems", "aeo"}),
+        "license_raw": LICENSES["us-govt"],
+        "license_pudl": LICENSES["cc-by-4.0"],
+        "email": "EIA-NEMS-GITHUB@eia.gov",
+        "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
+    },
     "eianems": {
         "title": "EIA NEMS -- National Energy Modeling System",
         "path": "https://github.com/EIAgov/NEMS",
