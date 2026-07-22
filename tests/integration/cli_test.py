@@ -98,3 +98,57 @@ async def test_cli(
     assert type(kwargs["downloader"]) is downloader
     assert isinstance(kwargs["session"], aiohttp.ClientSession)
     assert isinstance(kwargs["run_settings"], RunSettings)
+
+
+@pytest.mark.parametrize(
+    "failed_partitions,validation_success",
+    [
+        ({"eia860-2020.zip": {"year": 2020}}, True),
+        ({}, False),
+    ],
+    ids=["failed_partitions", "failed_validation"],
+)
+def test_publish_run_rejects_unsuccessful_run(
+    failed_partitions, validation_success, tmp_path, mocker
+):
+    """``publish-run`` should refuse to run against a summary with failures.
+
+    ``publish-run`` is only meant to publish the results of a run that fully
+    succeeded but wasn't auto-published. If the previous run has any failed
+    partitions, or otherwise didn't pass validation, it should raise rather than
+    silently publish an incomplete archive -- the user is expected to use
+    ``retry-run`` instead.
+    """
+    summary = RunSummary(
+        dataset_name="test_dataset",
+        validation_tests=[
+            ValidationTestResult(
+                name="test_test",
+                description="test of the tests",
+                success=validation_success,
+            )
+        ],
+        file_changes=[],
+        date="right_now",
+        previous_version_date="before_right_now",
+        record_url="https://test.com",
+        datapackage_changed=True,
+        failed_partitions=failed_partitions,
+        successful_partitions={},
+        run_settings=RunSettings(),
+    )
+    summary_file = tmp_path / "run_summary.json"
+    summary_file.write_text(summary.model_dump_json())
+
+    archive_dataset_mock = unittest.mock.AsyncMock()
+    mocker.patch("pudl_archiver.cli.archive_dataset", new=archive_dataset_mock)
+
+    runner = CliRunner()
+    with pytest.raises(RuntimeError, match="publish-run should not be called"):
+        runner.invoke(
+            pudl_archiver,
+            ["publish-run", str(summary_file)],
+            catch_exceptions=False,
+        )
+
+    archive_dataset_mock.assert_not_awaited()
