@@ -204,6 +204,10 @@ s3fs = ">=2026.6.0,<2027"
 semantic_version = ">=2.10.0,<3"
 tqdm = ">=4.69.0,<5"
 universal-pathlib = ">=0.3.10,<0.4"
+git-lfs = ">=3.6.1,<4"
 
 [tool.pixi.activation]
-scripts = ["scripts/check_playwright_installation.sh"]
+scripts = [
+  "scripts/check_playwright_installation.sh",
+  "scripts/install_github_lfs.sh",
+]
