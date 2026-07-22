@@ -305,13 +305,20 @@ async def test_zenodo_workflow(
         downloader.fail_on_file_size_change = False
         downloader.fail_on_dataset_size_change = False
         downloader.fail_on_missing_files = False
-        with pytest.raises(RuntimeError, match=".*could not get checksums to match.*"):
-            vc_summary, vc_refreshed = await orchestrate_run(
-                dataset="pudl_test",
-                downloader=downloader,
-                run_settings=settings,
-                session=session,
-            )
+        vc_summary, vc_refreshed = await orchestrate_run(
+            dataset="pudl_test",
+            downloader=downloader,
+            run_settings=settings,
+            session=session,
+        )
+        assert not vc_summary.success
+        [exception_test] = [
+            test
+            for test in vc_summary.validation_tests
+            if test.name == "Run exception validation test"
+        ]
+        assert not exception_test.success
+        assert "could not get checksums to match" in exception_test.notes[0]
 
     # Wait for deleted deposition to propogate through
     time.sleep(1)
