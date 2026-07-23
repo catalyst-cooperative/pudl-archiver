@@ -781,42 +781,41 @@ class AbstractDatasetArchiver(ABC):
 
     async def _filter_resources(
         self,
-        retry_parts: list[Partitions] | None = None,
+        skip_partitions: list[Partitions],
     ) -> list[Partitions]:
         """Filter to only partitions that failed in previous run if retrying."""
         # Get all awaitables from get_resources
         resources, partitions = await self._unpack_resources()
 
-        if retry_parts is not None:
+        if len(skip_partitions) > 0:
             if len(partitions) == 0:
                 raise RuntimeError(
                     "Archiver must return partions from `get_resources` to be able "
                     "to retry a set of partitions from a failed run. See ferceqr "
                     "archiver for an example of how to implement this."
                 )
-            logger.info(f"Only downloading the following partitions: {retry_parts}")
+            logger.info(f"Skipping the following partitions: {skip_partitions}")
             resources = [
                 resource
                 for resource, parts in zip(resources, partitions)
-                if parts in retry_parts
+                if parts not in skip_partitions
             ]
         return resources
 
     async def download_all_resources(
         self,
-        retry_parts: list[Partitions] | None = None,
+        skip_partitions: list[Partitions] = [],
     ) -> typing.Generator[tuple[str, ResourceInfo]]:
         """Download all resources.
 
         This method uses the awaitables returned by `get_resources`. It
         coordinates downloading all resources concurrently.
         """
-        # If retrying a run with no failed partitions, return immediately
-        if (retry_parts is not None) and (len(retry_parts) == 0):
-            await self.after_download()
+        resources = await self._filter_resources(skip_partitions)
+        # When running the publish-run command we should end up with no resources to download
+        if len(resources) == 0:
+            logger.info("Found no resources to download, returning immediately.")
             return
-
-        resources = await self._filter_resources(retry_parts)
 
         # Split resources into chunks to limit concurrency
         chunksize = self.concurrency_limit if self.concurrency_limit else len(resources)
