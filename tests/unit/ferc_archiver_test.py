@@ -14,7 +14,6 @@ from pudl_archiver.archivers.ferc.xbrl import (
     TAXONOMY_URL_PATTERN,
     FeedEntry,
     FercForm,
-    IndexedFilings,
     archive_year,
 )
 
@@ -27,83 +26,43 @@ FERC_FORM_CLASS_LOOKUP = {
 }
 
 
-def make_testdata(module_test_spec_dict):
-    testdata = [
-        (name, spec) for name, specs in module_test_spec_dict.items() for spec in specs
-    ]
-    return testdata
-
-
-valid_years_test_spec_dict = {
-    "ferc1": [
-        {"years": [1848, 2349], "num_dbf": 0},
-        {"years": [2021, 2022, 2023], "num_dbf": 1},
-        {
-            "years": [2003, 2004, 2005, 2021],
-            "num_dbf": 4,
-        },
-    ],
-    "ferc2": [
-        {"years": [1848, 2349], "num_dbf": 0},
-        {"years": [2021, 2022, 2023], "num_dbf": 1},
-        {
-            "years": [2003, 2004, 2005, 2021],
-            "num_dbf": 4,
-        },
-    ],
-    "ferc6": [
-        {"years": [1848, 2349], "num_dbf": 0},
-        {"years": [2021, 2022, 2023], "num_dbf": 1},
-        {
-            "years": [2003, 2004, 2005, 2021],
-            "num_dbf": 4,
-        },
-    ],
-    "ferc60": [
-        {"years": [1848, 2349], "num_dbf": 0},
-        {"years": [2021, 2022, 2023], "num_dbf": 0},
-        {
-            "years": [2004, 2005, 2006, 2007, 2021],
-            "num_dbf": 2,
-        },
-    ],
-    "ferc714": [
-        {"years": [1848, 2349], "num_dbf": 0},
-        {"years": [2021, 2022, 2023], "num_dbf": 0},
-        {
-            "years": [2004, 2005, 2006, 2007, 2021],
-            "num_dbf": 0,
-        },
-    ],
-}
-
-
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "module_name,test_spec", make_testdata(valid_years_test_spec_dict)
+    "ferc_number,valid_years,called_with_years",
+    [
+        ("1", [1848, 2349], []),
+        ("1", [2021, 2022, 2023], [2021]),
+        ("1", [2003, 2004, 2005, 2021], [2003, 2004, 2005, 2021]),
+        ("2", [1848, 2349], []),
+        ("2", [2021, 2022, 2023], [2021]),
+        ("2", [2003, 2004, 2005, 2021], [2003, 2004, 2005, 2021]),
+        ("6", [1848, 2349], []),
+        ("6", [2021, 2022, 2023], [2021]),
+        ("6", [2003, 2004, 2005, 2021], [2003, 2004, 2005, 2021]),
+        ("60", [1848, 2349], []),
+        ("60", [2021, 2022, 2023], []),
+        ("60", [2004, 2005, 2006, 2007, 2021], [2006, 2007]),
+    ],
 )
-async def test_valid_years(module_name, test_spec, mocker):
-    form_name, form_class = FERC_FORM_CLASS_LOOKUP[module_name]
-    only_years = test_spec["years"]
-    num_dbf = test_spec["num_dbf"]
-
+async def test_valid_years(
+    mocker, ferc_number: str, valid_years: list[int], called_with_years: list[int]
+):
+    form_name, form_class = FERC_FORM_CLASS_LOOKUP[f"ferc{ferc_number}"]
+    dbf_mock = mocker.patch(
+        f"pudl_archiver.archivers.ferc.ferc{ferc_number}.ferc_online_helpers.get_resources_for_form"
+    )
     mocker.patch(
-        f"pudl_archiver.archivers.ferc.{module_name}.xbrl.IndexedFilings.index_available_entries",
-        lambda: IndexedFilings(
-            filings_per_year={
-                form_name: {2004: mocker.MagicMock(), 2021: mocker.MagicMock()}
-            }
-        ),
+        f"pudl_archiver.archivers.ferc.ferc{ferc_number}.xbrl.archive_xbrl_for_form"
     )
     mock_session = mocker.AsyncMock()
-    archiver = form_class(mock_session, only_years=only_years)
-    resources = [res async for res in archiver.get_resources()]
-    # don't await these, just check to make sure they have right intention
-    dbfs = [r for r in resources if r.__name__ == "get_year_dbf"]
-    xbrls = [r for r in resources if r.__name__ == "archive_xbrl_for_form"]
-    assert len(dbfs) == num_dbf
-    # Always just one method that archives all xbrl resources
-    assert len(xbrls) == 1
+    archiver = form_class(mock_session, only_years=valid_years)
+    [r async for r in archiver.get_resources()]
+    dbf_mock.assert_called_once_with(
+        ferc_form=ferc_number,
+        years=called_with_years,
+        partitions_base={"data_format": "dbf"},
+        download_directory=archiver.download_directory,
+    )
 
 
 @pytest.mark.asyncio

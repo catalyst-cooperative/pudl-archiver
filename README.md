@@ -88,6 +88,13 @@ For datasets that use PUDL source metadata, `pudl-archiver` loads a PUDL
 To develop or test against a local descriptor, set `PUDL_DATAPACKAGE_PATH` to be the
 absolute path to your local `datapackage.json` file.
 
+### Using Docker
+`playwright` doesn't always play right with every environment, so we've provided a
+`docker` based workflow to help working around this. To install the docker environment,
+run `docker compose build`. Then, you will need to set the environment variable
+`PUDL_ARCHIVER_USE_DOCKER=true`. This will tell the pre-commit unit test hook to run
+unit tests through docker.
+
 ## Usage
 
 A CLI is provided for creating and updating archives. This CLI provides several
@@ -96,6 +103,14 @@ of these commands, run:
 
 ```bash
 pudl_archiver --help
+```
+
+### Using Docker
+When using docker to run the archiver, prefix each command with `docker compose
+run --rm`. For example, the above command would become:
+
+```bash
+docker compose run --rm pudl_archiver --help
 ```
 
 ### Datasets
