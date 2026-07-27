@@ -24,7 +24,7 @@ class EIABlueSkyArchiver(AbstractDatasetArchiver):
     concurrency_limit = 1
 
     async def get_resources(self) -> ArchiveAwaitable:
-        """Download EIA NEMS resources."""
+        """Download EIA BlueSky resources."""
         release_json = await self.get_json(
             "https://api.github.com/repos/EIAgov/BlueSky/releases"
         )
@@ -43,7 +43,7 @@ class EIABlueSkyArchiver(AbstractDatasetArchiver):
             [
                 "/usr/bin/git",
                 "clone",
-                "https://api.github.com/repos/EIAgov/BlueSky.git",
+                "https://github.com/EIAgov/BlueSky.git",
             ],
             shell=False,
         )
