@@ -91,7 +91,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
             future model development activity.
             """
         ),
-        "working_partitions": {"years": [2023]},
+        "working_partitions": {"releases": ["v1.0", "v1.1"]},
         "keywords": sorted({"eia", "nems", "aeo"}),
         "license_raw": LICENSES["us-govt"],
         "license_pudl": LICENSES["cc-by-4.0"],
