@@ -174,7 +174,7 @@ def publish_run(summary_file: str):
     failed_partitions = previous_run_summary.failed_partitions
     successful_partitions = previous_run_summary.successful_partitions
 
-    if failed_partitions != {}:
+    if (failed_partitions != {}) or (not previous_run_summary.success):
         raise RuntimeError(
             "publish-run should not be called on a run with failed partitions."
             "Instead, use the retry-run command."
@@ -188,8 +188,7 @@ def publish_run(summary_file: str):
         archive_dataset(
             dataset=previous_run_summary.dataset_name,
             run_settings=previous_run_summary.run_settings,
-            failed_partitions=failed_partitions,
-            successful_partitions=successful_partitions,
+            skip_partitions=successful_partitions,
         )
     )
 
@@ -214,13 +213,12 @@ def retry_run(summary_file: str, auto_publish: bool):
     )
 
     # Find which partitions failed/succeeded in previous run
-    failed_partitions = failed_run_summary.failed_partitions
     successful_partitions = failed_run_summary.successful_partitions
 
-    if failed_partitions == {}:
+    if failed_run_summary.success:
         raise RuntimeError(
-            "retry-run should not be called on a run with no failed partitions."
-            "Instead, use the publish-run command."
+            "retry-run should not be called on a run with no failed partitions"
+            " or validation errors. Instead, use the publish-run command."
         )
 
     # Run the archiver with settings from previous run
@@ -229,8 +227,7 @@ def retry_run(summary_file: str, auto_publish: bool):
         archive_dataset(
             dataset=failed_run_summary.dataset_name,
             run_settings=failed_run_summary.run_settings,
-            failed_partitions=failed_partitions,
-            successful_partitions=successful_partitions,
+            skip_partitions=successful_partitions,
         )
     )
 

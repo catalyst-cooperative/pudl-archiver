@@ -79,7 +79,7 @@ def datasource(mocker):
 
 
 @pytest.mark.asyncio
-async def test_retry_run(
+async def test_retry_run_bad_zip(
     good_zipfile,
     bad_zipfile,
     fixed_bad_zipfile,
@@ -89,7 +89,7 @@ async def test_retry_run(
 ):
     """Test a an archiver retry run using fsspec depositor.
 
-    This test will creates a mock archiver that will 'download'
+    This test creates a mock archiver that will 'download'
     two zipfiles. One will be well formatted, while the other won't.
     This will lead to a failed run that we will retry. On the second
     run, it will retry the failed partition, and we return a fixed
@@ -155,13 +155,252 @@ async def test_retry_run(
         downloader=v2_downloader,
         run_settings=settings,
         session="session",
-        failed_partitions=v1_summary.failed_partitions,
-        successful_partitions=v1_summary.successful_partitions,
+        skip_partitions=v1_summary.successful_partitions,
     )
     assert not v2_downloader.good_downloaded
     assert v2_summary.success
     assert (deposition_path / "published" / "bad.zip").exists()
     assert (deposition_path / "published" / "good.zip").exists()
+
+
+@pytest.mark.asyncio
+async def test_retry_run_exception(
+    good_zipfile,
+    fixed_bad_zipfile,
+    tmp_path,
+    datasource: dict,
+    mocker,
+):
+    """Test a an archiver retry run using fsspec depositor.
+
+    This test creates a mock archiver that will 'download'
+    two zipfiles. On the first run, it will raise an exception
+    before downloading the second zipfile.
+    """
+    deposition_path = tmp_path / "deposition"
+    deposition_path.mkdir()
+
+    settings = RunSettings(
+        clobber_unchanged=True,
+        auto_publish=True,
+        refresh_metadata=False,
+        initialize=True,
+        depositor="fsspec",
+        depositor_args={"deposition_path": str(deposition_path)},
+    )
+    retry_part = {"part": "retry_part"}
+    ok_part = {"part": "ok_part"}
+
+    class TestDownloader(AbstractDatasetArchiver):
+        name = "Test Downloader"
+
+        def __init__(self, fail_part: bool, **kwargs):
+            super().__init__(**kwargs)
+            self.fail_part = fail_part
+            self.good_downloaded = False
+
+        async def get_resources(self):
+            yield self.get_zipfile(good_zipfile, parts=ok_part), ok_part
+            yield self.get_zipfile(fixed_bad_zipfile, parts=retry_part), retry_part
+
+        async def get_zipfile(self, zip_path, parts):
+            # Check if we're downloading 'good.zip'. This shouldn't happen in the retry run
+            if zip_path.name == "good.zip":
+                self.good_downloaded = True
+            elif zip_path.name == "bad.zip" and self.fail_part:
+                raise RuntimeError("Test exception")
+            return ResourceInfo(local_path=zip_path, partitions=parts)
+
+    v1_summary, _ = await orchestrate_run(
+        dataset="pudl_test",
+        downloader=TestDownloader(fail_part=True, session="session"),
+        run_settings=settings,
+        session="session",
+    )
+    with (tmp_path / "run_summary.json").open("w") as f:
+        f.write(json.dumps([v1_summary.model_dump()], indent=2))
+
+    assert not (deposition_path / "published" / "bad.zip").exists()
+    assert not (deposition_path / "published" / "good.zip").exists()
+    assert not (deposition_path / "workspace" / "bad.zip").exists()
+    assert not v1_summary.success
+    assert not [
+        test
+        for test in v1_summary.validation_tests
+        if test.name == "Run exception validation test"
+    ][0].success
+
+    settings.retry_run = str(tmp_path / "run_summary.json")
+    v2_downloader = TestDownloader(fail_part=False, session="session")
+    v2_summary, _ = await orchestrate_run(
+        dataset="pudl_test",
+        downloader=v2_downloader,
+        run_settings=settings,
+        session="session",
+        skip_partitions=v1_summary.successful_partitions,
+    )
+    assert v2_summary.success
+    assert (deposition_path / "published" / "bad.zip").exists()
+    assert (deposition_path / "published" / "good.zip").exists()
+
+
+@pytest.mark.asyncio
+async def test_retry_run_unpartitioned(
+    good_zipfile,
+    fixed_bad_zipfile,
+    tmp_path,
+    datasource: dict,
+    mocker,
+):
+    """Test a an archiver retry run using fsspec depositor.
+
+    This test is very similar to ``test_retry_run_exception`` but creates a mock
+    archiver that only downloads one unpartitioned resource.
+    """
+    deposition_path = tmp_path / "deposition"
+    deposition_path.mkdir()
+
+    settings = RunSettings(
+        clobber_unchanged=True,
+        auto_publish=True,
+        refresh_metadata=False,
+        initialize=True,
+        depositor="fsspec",
+        depositor_args={"deposition_path": str(deposition_path)},
+    )
+
+    class TestDownloader(AbstractDatasetArchiver):
+        name = "Test Downloader"
+
+        def __init__(self, fail_part: bool, **kwargs):
+            super().__init__(**kwargs)
+            self.fail_part = fail_part
+            self.good_downloaded = False
+
+        async def get_resources(self):
+            yield self.get_zipfile(good_zipfile, parts={}), {}
+
+        async def get_zipfile(self, zip_path, parts):
+            if self.fail_part:
+                raise RuntimeError("Test exception")
+            return ResourceInfo(local_path=zip_path, partitions=parts)
+
+    v1_summary, _ = await orchestrate_run(
+        dataset="pudl_test",
+        downloader=TestDownloader(fail_part=True, session="session"),
+        run_settings=settings,
+        session="session",
+    )
+    with (tmp_path / "run_summary.json").open("w") as f:
+        f.write(json.dumps([v1_summary.model_dump()], indent=2))
+
+    assert not (deposition_path / "published" / "good.zip").exists()
+    assert not v1_summary.success
+    assert not [
+        test
+        for test in v1_summary.validation_tests
+        if test.name == "Run exception validation test"
+    ][0].success
+
+    settings.retry_run = str(tmp_path / "run_summary.json")
+    v2_downloader = TestDownloader(fail_part=False, session="session")
+    v2_summary, _ = await orchestrate_run(
+        dataset="pudl_test",
+        downloader=v2_downloader,
+        run_settings=settings,
+        session="session",
+        skip_partitions=v1_summary.successful_partitions,
+    )
+    assert v2_summary.success
+    assert (deposition_path / "published" / "good.zip").exists()
+
+
+@pytest.mark.asyncio
+async def test_publish_run(
+    good_zipfile,
+    fixed_bad_zipfile,
+    tmp_path,
+    datasource: dict,
+    mocker,
+):
+    """Test the ``publish-run`` path for a fully successful, unpublished run.
+
+    This mimics the ``pudl_archiver publish-run`` CLI command: a first run downloads
+    every partition successfully with ``auto_publish=False``, so the new files land in
+    the workspace directory but are never published. A second run with
+    ``skip_partitions`` set to *all* of the first run's ``successful_partitions``,
+    like ``publish-run`` does when it calls the archiver again using the previous
+    run summary. Since every partition gets skipped, ``download_all_resources`` should
+    filter down to zero resources and take its early-return path and the already-downloaded
+    workspace files should get published.
+    """
+    deposition_path = tmp_path / "deposition"
+    deposition_path.mkdir()
+
+    settings = RunSettings(
+        clobber_unchanged=True,
+        auto_publish=False,
+        refresh_metadata=False,
+        initialize=True,
+        depositor="fsspec",
+        depositor_args={"deposition_path": str(deposition_path)},
+    )
+    good_part = {"part": "good_part"}
+    other_part = {"part": "other_part"}
+
+    class TestDownloader(AbstractDatasetArchiver):
+        name = "Test Downloader"
+
+        def __init__(self, should_download: bool, **kwargs):
+            super().__init__(**kwargs)
+            self.should_download = should_download
+
+        async def get_resources(self):
+            yield self.get_zipfile(good_zipfile, parts=good_part), good_part
+            yield self.get_zipfile(fixed_bad_zipfile, parts=other_part), other_part
+
+        async def get_zipfile(self, zip_path, parts):
+            if not self.should_download:
+                # publish-run should never actually download a partition that was
+                # already downloaded and left in the workspace by a previous run.
+                raise RuntimeError(
+                    f"Unexpectedly tried to (re)download {zip_path.name} during a "
+                    "publish-run."
+                )
+            return ResourceInfo(local_path=zip_path, partitions=parts)
+
+    v1_summary, _ = await orchestrate_run(
+        dataset="pudl_test",
+        downloader=TestDownloader(should_download=True, session="session"),
+        run_settings=settings,
+        session="session",
+    )
+    with (tmp_path / "run_summary.json").open("w") as f:
+        f.write(json.dumps([v1_summary.model_dump()], indent=2))
+
+    assert v1_summary.success
+    assert v1_summary.failed_partitions == {}
+    assert good_part == v1_summary.successful_partitions["good.zip"]
+    assert other_part == v1_summary.successful_partitions["bad.zip"]
+    assert not (deposition_path / "published" / "good.zip").exists()
+    assert not (deposition_path / "published" / "bad.zip").exists()
+    assert (deposition_path / "workspace" / "good.zip").exists()
+    assert (deposition_path / "workspace" / "bad.zip").exists()
+
+    # Mimic `publish-run`: rerun with auto_publish forced on and every partition from
+    # the previous successful run passed in as `skip_partitions`.
+    settings = settings.model_copy(update={"auto_publish": True})
+    v2_downloader = TestDownloader(should_download=False, session="session")
+    v2_summary, _ = await orchestrate_run(
+        dataset="pudl_test",
+        downloader=v2_downloader,
+        run_settings=settings,
+        session="session",
+        skip_partitions=v1_summary.successful_partitions,
+    )
+    assert v2_summary.success
+    assert (deposition_path / "published" / "good.zip").exists()
+    assert (deposition_path / "published" / "bad.zip").exists()
 
 
 @pytest.mark.asyncio
