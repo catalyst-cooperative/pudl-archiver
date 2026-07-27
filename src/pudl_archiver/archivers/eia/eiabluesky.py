@@ -23,6 +23,10 @@ class EIABlueSkyArchiver(AbstractDatasetArchiver):
     # to avoid trying to access different release versions of the same file at the same time.
     concurrency_limit = 1
 
+    # EIA BlueSky hydrogen model input files include multiple CSVs with only column headers
+    # that trip up our file validations, so we make this a non-blocking test failure.
+    fail_on_empty_invalid_files = False
+
     async def get_resources(self) -> ArchiveAwaitable:
         """Download EIA BlueSky resources."""
         release_json = await self.get_json(
