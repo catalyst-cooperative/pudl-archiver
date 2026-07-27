@@ -2,11 +2,102 @@
 name: publish-or-retry-fsspec-archive
 
 on:
+  # Retry failed runs of fsspec archiver
+  workflow_run:
+    workflows: ["run-fsspec-archiver"]
+    types:
+      - completed
   workflow_dispatch:
+    inputs:
+      run_id:
+        description: Github action run ID, which is the number at the end of the URL when looking at a run
+        required: true
+        type: string
+      command:
+        description: |
+          Switch between the retry-run and publish-run command. A retry requires the
+          previous run failed and it will try any partitions that failed or weren't
+          executed in that run. A retry will not attempt to publish the results and
+          should be followed by a publish run.
+        required: true
+        type: choice
+        default: "publish-run"
+        options:
+          - publish-run
+          - retry-run
 
 jobs:
-  no-op-stub:
+  publish-run:
+    # Only run when manually triggered or fsspec archiver failed
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'failure'
     runs-on: ubuntu-latest
+    env:
+      RUN_ID: ${{ github.event_name == 'workflow_dispatch' && inputs.run_id || github.event.workflow_run.id }}
+      COMMAND: ${{ github.event_name == 'workflow_dispatch' && inputs.command || 'retry-run' }}
+    permissions:
+      contents: "read"
+      id-token: "write"
     steps:
-      - name: no-op
-        run: echo "not doing anything"
+      - uses: actions/checkout@v7
+
+      - name: Set default GCP credentials
+        id: gcloud-auth
+        continue-on-error: true
+        uses: "google-github-actions/auth@v3"
+        with:
+          workload_identity_provider: "projects/345950277072/locations/global/workloadIdentityPools/gh-actions-pool/providers/gh-actions-provider"
+          service_account: "pudl-archiver-gha@catalyst-cooperative-pudl.iam.gserviceaccount.com"
+
+      - name: Set up pixi
+        uses: prefix-dev/setup-pixi@v0.10.0
+        with:
+          cache: true
+
+      - name: Log the pixi environment
+        run: |
+          pixi info
+          pixi list
+
+      - name: Additional Playwright setup
+        run: |
+          pixi run playwright install --with-deps webkit
+          pixi run playwright install --with-deps chromium
+
+      - name: Download run summary
+        uses: actions/download-artifact@v8
+        with:
+          run-id: ${{ env.RUN_ID }}
+          pattern: run-summaries-*
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get dataset from run summary filename
+        id: dataset_name
+        run: |
+          file=$(find . -name '*_run_summary.json')
+          echo "dataset=$(basename "$file" _run_summary.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Attempt to publish deposition for ${{ steps.dataset_name.outputs.dataset }}
+        # set -o pipefail passes on any failure codes to the next step,
+        # enabling us to see whether or not the pudl_archiver run failed.
+        run: |
+          set -o pipefail
+          pixi run pudl_archiver \
+            "$COMMAND" \
+            ${{ steps.dataset_name.outputs.dataset }}_run_summary.json 2>&1 | tee ${{ steps.dataset_name.outputs.dataset }}_log.txt
+
+      - name: Upload run summaries
+        if: always()
+        id: upload_summaries
+        uses: actions/upload-artifact@v7
+        with:
+          name: run-summaries-${{ steps.dataset_name.outputs.dataset }}
+          path: ${{ steps.dataset_name.outputs.dataset }}_run_summary.json
+
+      - name: Save failed runs
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: error-log-${{ steps.dataset_name.outputs.dataset }}
+          path: ${{ steps.dataset_name.outputs.dataset }}_log.txt
