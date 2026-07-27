@@ -38,7 +38,7 @@ class EIABlueSkyArchiver(AbstractDatasetArchiver):
         # so we can update the archiver manually.
         if any(tag not in EXPECTED_TAGS for tag in release_tags):
             raise ValueError(
-                f"Unexpected release! Releases: {release_tags}. Investigate and update release_to_year_map to archive."
+                f"Unexpected release! Releases: {release_tags}. Investigate and update EXPECTED_TAGS to archive."
             )
 
         # Clone the entire project
