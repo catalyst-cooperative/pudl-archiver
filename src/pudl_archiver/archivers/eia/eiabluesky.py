@@ -67,7 +67,7 @@ class EIABlueSkyArchiver(AbstractDatasetArchiver):
         # We sanitize tag above using the assertion, so this should be ok.
         subprocess.run(["/usr/bin/git", "lfs", "pull"], shell=False)
 
-        directory = (self.download_directory / "NEMS").resolve()
+        directory = (self.download_directory / "BlueSky").resolve()
 
         for entry in directory.rglob("*"):
             if entry.is_file():
