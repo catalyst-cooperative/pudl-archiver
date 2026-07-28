@@ -53,14 +53,11 @@ line-ending = "auto"
 
 [tool.ruff.lint]
 select = [
-  "A", # flake8-builtins
-  # "ARG", # unused arguments
-  # "B",  # flake8-bugbear
+  "A",   # flake8-builtins
   "C",   # Limit cyclomatic complexity using mccabe
   "D",   # pydocstyle errors
   "E",   # pycodestyle errors
   "EXE", # executable file issues
-  # "ERA", # eradicate: find commented out code
   "F",   # pyflakes
   "I",   # isort
   "ISC", # implicit string concatenation
@@ -68,22 +65,19 @@ select = [
   "NPY", # NumPy specific checks
   "PD",  # pandas checks
   "PGH", # pygrep-hooks
-  # "PL",  # pylint
-  # "PT",  # pytest style
   "PTH", # use pathlib
   "Q",   # flake8-quotes
   "RET", # check return values
   "RSE", # unnecessary parenthises on raised exceptions
   "S",   # flake8-bandit
   "SIM", # flake8-simplify
-  # "T",   # print statements found
-  "UP", # pyupgrade (use modern python syntax)
-  "W",  # pycodestyle warnings
+  "UP",  # pyupgrade (use modern python syntax)
+  "W",   # pycodestyle warnings
 ]
 
 ignore = [
   "D401",   # Require imperative mood in docstrings.
-  "D417",
+  "D417",   # Undocumented parameters.
   "E501",   # Overlong lines.
   "E203",   # Space before ':' (black recommends to ignore)
   "PD003",  # Use of isna rather than isnull
@@ -148,7 +142,7 @@ prek run --all-files --show-diff-on-failure debug-statements; \
 prek run --all-files --show-diff-on-failure name-tests-test; \
 prek run --all-files taplo-format
 """, description = "Run selected pre-commit hooks" }
-prek-autoupdate = { cmd = "prek autoupdate", description = "Update pre-commit hook versions" }
+prek-update = { cmd = "prek update", description = "Update pre-commit hook versions" }
 ruff = { cmd = "ruff check ./", description = "Run ruff linter" }
 unit = { cmd = """
 pytest \
@@ -160,12 +154,14 @@ pytest \
 """, description = "Run unit tests with coverage" }
 integration = { cmd = """
 pytest \
+    -n auto \
+    --durations 10 \
     --cov-append \
     --cov=src/pudl_archiver \
     --cov-report=xml \
     --doctest-modules \
     tests/integration
-""", description = "Run integration tests with coverage" }
+""", description = "Run integration tests with coverage, in parallel" }
 coverage = { cmd = "coverage report --sort=cover", description = "Report test coverage" }
 lint = { depends-on = ["ruff", "prek-run"], description = "Run all linters" }
 ci = { depends-on = [
@@ -201,6 +197,7 @@ pytest-asyncio = ">=1.4.0,<2"
 pytest-console-scripts = ">=1.4.1,<2"
 pytest-cov = ">=7.1.0,<8"
 pytest-mock = ">=3.15.1,<4"
+pytest-xdist = ">=3.6.1,<4"
 python-dateutil = ">=2.9.0.post0,<3"
 python-dotenv = ">=1.2.2,<2"
 pyyaml = ">=6.0.3,<7"
