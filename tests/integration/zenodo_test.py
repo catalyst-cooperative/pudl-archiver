@@ -262,7 +262,12 @@ async def test_zenodo_workflow(
         for file_data in test_files["updated"]
     }
 
-    # Should fail due to deleted file
+    # Should fail due to deleted file. This is expected to fail archive
+    # validation, which logs at ERROR level in production code. Silence that
+    # specific log call for the rest of the test so the expected failures
+    # below don't look like real errors in test output.
+    mocker.patch("pudl_archiver.depositors.depositor.logger.error")
+
     downloader = TestDownloader(v2_resources, session=session)
     downloader.fail_on_file_size_change = False
     downloader.fail_on_dataset_size_change = False
@@ -296,7 +301,10 @@ async def test_zenodo_workflow(
         for file_data in test_files["checksums"]
     }
 
-    # Force a mismatched checksum for all files
+    # Force a mismatched checksum for all files. This is expected to
+    # persistently fail and raise, which logs an ERROR-level traceback in
+    # production code; silence that specific log call too.
+    mocker.patch("pudl_archiver.orchestrator.logger.exception")
     with unittest.mock.patch(
         "pudl_archiver.depositors.zenodo.depositor.ZenodoDraftDeposition.get_checksum",
         lambda *_args: "nonsense_checksum",

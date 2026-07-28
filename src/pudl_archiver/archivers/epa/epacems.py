@@ -5,9 +5,9 @@ import json
 import os
 from collections.abc import Iterable
 from itertools import groupby
+from typing import ClassVar
 
-import requests
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, ConfigDict, ValidationError
 from pydantic.alias_generators import to_camel
 
 from pudl_archiver.archivers.classes import (
@@ -33,21 +33,17 @@ class BulkFile(BaseModel):
         data_type: str
         data_sub_type: str
 
-        class Config:  # noqa: D106
-            alias_generator = to_camel
-            populate_by_name = True
+        model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
     filename: str
     s3_path: str
-    bytes: int  # noqa: A003
+    bytes: int
     mega_bytes: float
     giga_bytes: float
     last_updated: datetime.datetime
     metadata: Metadata
 
-    class Config:  # noqa: D106
-        alias_generator = to_camel
-        populate_by_name = True
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
 
 class EpaCemsArchiver(AbstractDatasetArchiver):
@@ -58,7 +54,9 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
     allowed_file_rel_diff = 0.35  # Set higher tolerance than standard
 
     base_url = "https://api.epa.gov/easey/bulk-files/"
-    parameters = {"api_key": os.environ.get("EPACEMS_API_KEY")}  # Set to API key
+    parameters: ClassVar[dict[str, str | None]] = {
+        "api_key": os.environ.get("EPACEMS_API_KEY")
+    }  # Set to API key
 
     def __filter_for_complete_metadata(
         self, files_responses: list[dict]

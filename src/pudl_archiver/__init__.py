@@ -53,7 +53,7 @@ ARCHIVERS = {archiver.name: archiver for archiver in all_archivers()}
 async def archive_dataset(
     dataset: str,
     run_settings: RunSettings,
-    skip_partitions: dict[str, Partitions] = {},
+    skip_partitions: dict[str, Partitions] | None = None,
 ):
     """A CLI for the PUDL Zenodo Storage system."""
 
@@ -87,7 +87,7 @@ async def archive_dataset(
             session,
             run_settings.only_years,
         )
-        summary, published = await orchestrate_run(
+        summary, _published = await orchestrate_run(
             dataset=dataset,
             downloader=downloader,
             run_settings=run_settings,

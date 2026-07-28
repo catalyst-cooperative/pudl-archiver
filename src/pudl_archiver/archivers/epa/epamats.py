@@ -4,6 +4,7 @@ import json
 import os
 from collections.abc import Iterable
 from itertools import groupby
+from typing import ClassVar
 
 import requests
 from pydantic import ValidationError
@@ -25,7 +26,9 @@ class EpaMatsArchiver(AbstractDatasetArchiver):
 
     base_url = "https://api.epa.gov/easey/bulk-files/"
     # Set API key to CEMS key - CEMS and MATS come from the same API
-    parameters = {"api_key": os.environ.get("EPACEMS_API_KEY")}
+    parameters: ClassVar[dict[str, str | None]] = {
+        "api_key": os.environ.get("EPACEMS_API_KEY")
+    }
 
     def __filter_for_complete_metadata(
         self, files_responses: list[dict]
