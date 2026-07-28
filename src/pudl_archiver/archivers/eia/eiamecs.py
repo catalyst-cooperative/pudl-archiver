@@ -150,7 +150,6 @@ class EiaMECSArchiver(AbstractDatasetArchiver):
                     self.logger.warning(
                         f"Skipping {table_link} because it appears to be a redirect/html page."
                     )
-                    pass
                 else:
                     self.add_to_archive(
                         zip_path=zip_path,

@@ -35,7 +35,7 @@ from enum import Enum
 from typing import BinaryIO
 
 import aiohttp
-from pydantic import ConfigDict
+from pydantic import ConfigDict, Field
 from upath import UPath
 
 from pudl_archiver.depositors.depositor import (
@@ -252,8 +252,8 @@ class FsspecDraftDeposition(DraftDeposition):
     deposition: Deposition
     api_client: FsspecAPIClient
     dataset_id: str
-    resources_in_draft: dict[str, UPath] = {}
-    files_to_delete: dict[str, UPath] = {}
+    resources_in_draft: dict[str, UPath] = Field(default_factory=dict)
+    files_to_delete: dict[str, UPath] = Field(default_factory=dict)
 
     def model_post_init(self, _context):
         """Find existing files in deposition after initialization."""

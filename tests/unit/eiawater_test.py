@@ -18,3 +18,7 @@ async def test_eiawater_filter_years(mocker):
     archiver = EiaWaterArchiver(mock_session, only_years=[2019, 2022])
     resources = [res async for res in archiver.get_resources()]
     assert len(resources) == 2
+    # Close without awaiting: download_file/download_zipfile aren't mocked
+    # here, so actually running these would attempt real downloads.
+    for resource in resources:
+        resource.close()

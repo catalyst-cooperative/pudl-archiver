@@ -133,7 +133,7 @@ class Eia176Archiver(EiaNGQVArchiver):
             except Exception as ex:
                 raise AssertionError(
                     f"{ex}: Error processing dataframe for {year} - see {download_url}."
-                )
+                ) from ex
             await asyncio.sleep(5)  # Add sleep to prevent user-agent blocks
 
         self.logger.info(f"Compiling data for {year}")
@@ -211,7 +211,9 @@ class Eia176Archiver(EiaNGQVArchiver):
                     # The company list is expected to not have data in a known number of years.
                     # Skip uploading an empty file for these known years.
                     assert year in ["2000", "2001", "2019"]
-                    self.logger.warn(f"No data found for {year} {report.report_code}")
+                    self.logger.warning(
+                        f"No data found for {year} {report.report_code}"
+                    )
                     continue
 
                 # Rename columns from weirdly-formatted JSON response

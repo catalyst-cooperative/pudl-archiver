@@ -13,7 +13,7 @@ from contextlib import nullcontext
 from html.parser import HTMLParser
 from pathlib import Path
 from secrets import randbelow
-from typing import Any
+from typing import Any, ClassVar
 
 import aiohttp
 import bs4
@@ -130,7 +130,7 @@ class AbstractDatasetArchiver(ABC):
     # Allow specific partitions to be ignored by the relative file size diff test
     # if the size has increased. This is useful for new data that will grow as more
     # becomes available
-    ignore_file_size_increase_partitions: [dict[str, Any]] = []
+    ignore_file_size_increase_partitions: ClassVar[list[dict[str, Any]]] = []
 
     def __init__(
         self,
@@ -229,7 +229,7 @@ class AbstractDatasetArchiver(ABC):
             retries: Number of times to attempt to download a zipfile.
             kwargs: Key word args to pass to request.
         """
-        for _ in range(0, retries):
+        for _ in range(retries):
             await self.download_file(url, zip_path, **kwargs)
 
             if zipfile.is_zipfile(zip_path):
@@ -266,7 +266,7 @@ class AbstractDatasetArchiver(ABC):
             except PlaywrightError as e:
                 # ...but we're going to check our assumptions just in case:
                 if not e.message.startswith("Page.goto: Download is starting"):
-                    raise e
+                    raise
         download = await download_info.value
         # [2025 km] NB: playwright.download.save_as can't save to a BytesIO
         await download.save_as(file_path)
@@ -557,18 +557,18 @@ class AbstractDatasetArchiver(ABC):
 
             # Check to see that file size hasn't changed by more than |>allowed_file_rel_diff|
             # for each dataset in the baseline datapackage
-            for resource_name in baseline_resources:
+            for resource_name, baseline_resource in baseline_resources.items():
                 if resource_name in new_resources:
                     try:
                         file_size_change = (
                             new_resources[resource_name].bytes_
-                            - baseline_resources[resource_name].bytes_
-                        ) / baseline_resources[resource_name].bytes_
+                            - baseline_resource.bytes_
+                        ) / baseline_resource.bytes_
 
                         # Check if resource is included in set that should be ignored
                         # on size increase
                         if any(
-                            baseline_resources[resource_name].parts == parts
+                            baseline_resource.parts == parts
                             for parts in self.ignore_file_size_increase_partitions
                         ) and (file_size_change > 0):
                             continue
@@ -669,7 +669,18 @@ class AbstractDatasetArchiver(ABC):
                 expected_date_range = pd.date_range(
                     min(dataset_partitions), max(dataset_partitions), freq=interval
                 )
-                observed_date_range = pd.to_datetime(dataset_partitions)
+                if partition_to_test[0] == "year_quarter":
+                    # "1995q1"-style strings have no fast vectorized parser in
+                    # pandas, so use PeriodIndex instead of to_datetime to
+                    # avoid falling back to a slow, warning-generating
+                    # per-element dateutil parse.
+                    observed_date_range = pd.PeriodIndex(
+                        dataset_partitions, freq="Q"
+                    ).to_timestamp()
+                else:
+                    observed_date_range = pd.to_datetime(
+                        dataset_partitions, format="%Y-%m"
+                    )
                 diff = expected_date_range.difference(observed_date_range)
 
                 if observed_date_range.has_duplicates:
@@ -795,23 +806,28 @@ class AbstractDatasetArchiver(ABC):
                     "archiver for an example of how to implement this."
                 )
             logger.info(f"Skipping the following partitions: {skip_partitions}")
-            resources = [
-                resource
-                for resource, parts in zip(resources, partitions)
-                if parts not in skip_partitions
-            ]
+            kept_resources = []
+            for resource, parts in zip(resources, partitions):
+                if parts in skip_partitions:
+                    # Close skipped coroutines instead of just dropping the
+                    # reference, so Python doesn't warn that they were never
+                    # awaited.
+                    resource.close()
+                else:
+                    kept_resources.append(resource)
+            resources = kept_resources
         return resources
 
     async def download_all_resources(
         self,
-        skip_partitions: list[Partitions] = [],
+        skip_partitions: list[Partitions] | None = None,
     ) -> typing.Generator[tuple[str, ResourceInfo]]:
         """Download all resources.
 
         This method uses the awaitables returned by `get_resources`. It
         coordinates downloading all resources concurrently.
         """
-        resources = await self._filter_resources(skip_partitions)
+        resources = await self._filter_resources(skip_partitions or [])
         # When running the publish-run command we should end up with no resources to download
         if len(resources) == 0:
             logger.info("Found no resources to download, returning immediately.")
@@ -887,4 +903,3 @@ class AbstractDatasetArchiver(ABC):
 
     async def after_download(self) -> None:
         """Optional cleanup after download_all_resources for override by subclass as needed."""
-        pass

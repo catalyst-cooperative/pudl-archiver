@@ -4,7 +4,7 @@ import asyncio
 import re
 from io import BytesIO
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
 
 from pudl_archiver.archivers.classes import (
@@ -31,9 +31,7 @@ class NrelAPIData(BaseModel):
         # e.g., update date formatted in unix timestamps. We could
         # revisit this in the future.
 
-        class Config:  # noqa: D106
-            alias_generator = to_camel
-            populate_by_name = True
+        model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
     result: bool
     num_submissions: int
@@ -43,9 +41,7 @@ class NrelAPIData(BaseModel):
     stati: dict[str, int]
     submissions: list[Submission]
 
-    class Config:  # noqa: D106
-        alias_generator = to_camel
-        populate_by_name = True
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
 
 class NrelSitingArchiver(AbstractDatasetArchiver):
@@ -80,7 +76,7 @@ class NrelSitingArchiver(AbstractDatasetArchiver):
             if dataset.size < 1e10:  # If dataset < 10GB in size
                 yield self.get_siting_resources(dataset=dataset)
             else:
-                self.logger.warn(
+                self.logger.warning(
                     f"Skipping dataset {dataset.submission_name}: total size is {dataset.size * 1e-9} GB"
                 )
 

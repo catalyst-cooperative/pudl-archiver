@@ -74,7 +74,7 @@ class VCERAREArchiver(AbstractDatasetArchiver):
             )
 
         # Handle documentation and README
-        if file_name.endswith(".pdf") or file_name.endswith(".md"):
+        if file_name.endswith((".pdf", ".md")):
             return ResourceInfo(local_path=path_to_file, partitions={})
 
         raise AssertionError(

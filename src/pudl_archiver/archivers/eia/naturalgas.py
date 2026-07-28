@@ -10,7 +10,7 @@ import zipfile
 from collections.abc import Iterable
 
 import pandas as pd
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
 from pudl_archiver.archivers.classes import (
@@ -30,9 +30,7 @@ class EIANaturalGasData(BaseModel):
 
         ayear: int
 
-        class Config:  # noqa: D106
-            alias_generator = to_camel
-            populate_by_name = True
+        model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
     report_code: str = Field(
         alias="code"
@@ -47,9 +45,7 @@ class EIANaturalGasData(BaseModel):
     default_start_year: int
     default_end_year: int
 
-    class Config:  # noqa: D106
-        alias_generator = to_camel
-        populate_by_name = True
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
 
 class EiaNGQVArchiver(AbstractDatasetArchiver):

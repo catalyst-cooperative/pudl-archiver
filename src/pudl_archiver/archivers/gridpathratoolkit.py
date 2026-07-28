@@ -6,6 +6,7 @@ It is archived from files stored in the private sources.catalyst.coop bucket.
 
 import zipfile
 from pathlib import Path
+from typing import ClassVar
 
 from google.cloud import storage
 
@@ -24,7 +25,7 @@ class GridPathRAToolkitArchiver(AbstractDatasetArchiver):
     name = "gridpathratoolkit"
     bucket_name = "sources.catalyst.coop"
 
-    rename_dict = {
+    rename_dict: ClassVar[dict[str, str]] = {
         "TemporalData/HourlySolar_byProject.zip": "original_solar_capacity.zip",
         "TemporalData/HourlyWind_byProject.zip": "original_wind_capacity.zip",
         "MonteCarlo_Inputs/temporal_data/wind/": "aggregated_wind_capacity.zip",

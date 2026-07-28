@@ -31,7 +31,7 @@ async def get_resources_for_form(
         # Loop through all years and download
         resources = []
         for year in years:
-            logging.info(f"Attempting to download ferc{ferc_form} {year}")
+            logger.info(f"Attempting to download ferc{ferc_form} {year}")
             async with page.expect_download() as download_info:
                 await page.get_by_role("link", name=str(year)).click()
 

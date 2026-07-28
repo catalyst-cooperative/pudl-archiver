@@ -249,7 +249,7 @@ class ZenodoAPIClient(DepositorAPIClient):
             )
         except ZenodoClientError as e:
             if e.status != 404:
-                raise e
+                raise
             logger.info(
                 f"404 Not Found when deleting {deposition.links.self}, assume "
                 "earlier delete succeeded."
@@ -280,7 +280,7 @@ class ZenodoAPIClient(DepositorAPIClient):
         } | self.auth_write
 
         payload = {
-            "metadata": metadata.dict(
+            "metadata": metadata.model_dump(
                 by_alias=True,
                 exclude={"publication_date", "doi", "prereserve_doi"},
             )
@@ -315,7 +315,8 @@ class ZenodoAPIClient(DepositorAPIClient):
         # Update doi settings YAML
         with Path.open(self._dataset_settings_path, "w") as f:
             raw_settings = {
-                name: settings.dict() for name, settings in dataset_settings.items()
+                name: settings.model_dump()
+                for name, settings in dataset_settings.items()
             }
             yaml.dump(raw_settings, f)
 
@@ -369,7 +370,7 @@ class ZenodoAPIClient(DepositorAPIClient):
 
         if refresh_metadata:
             logger.info("Re-creating deposition metadata from PUDL source data.")
-            draft_metadata = DepositionMetadata.from_data_source(dataset_id).dict(
+            draft_metadata = DepositionMetadata.from_data_source(dataset_id).model_dump(
                 by_alias=True
             )
         else:
@@ -383,7 +384,7 @@ class ZenodoAPIClient(DepositorAPIClient):
         base_version = semantic_version.Version(base_metadata["version"])
         new_version = base_version.next_major()
         metadata["version"] = str(new_version)
-        logging.info(f"{base_metadata=}\n{draft_metadata=}\n{metadata=}")
+        logger.info(f"{base_metadata=}\n{draft_metadata=}\n{metadata=}")
         data = json.dumps({"metadata": metadata})
         # Get url to newest deposition
         new_deposition_url = new_draft_deposition.links.latest_draft
@@ -489,7 +490,7 @@ class ZenodoAPIClient(DepositorAPIClient):
             # endpoint that redirects to the latest version in a repository, so we can
             # hack our way to the latest version through this alternative path.
             if e.message == "The record has been deleted." and e.status == 410:
-                logger.warn(
+                logger.warning(
                     f"Got Zenodo concept record deletion error: {e.message}. Attempting alternate method to get latest record."
                 )
                 first_version_id = str(
@@ -504,7 +505,7 @@ class ZenodoAPIClient(DepositorAPIClient):
                     )
                 )
             else:
-                raise e
+                raise
 
         return await self.get_deposition_by_id(record.id_)
 

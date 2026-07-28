@@ -52,7 +52,7 @@ skip-magic-trailing-comma = false
 line-ending = "auto"
 
 [tool.ruff.lint]
-select = [
+extend-select = [
   "A",   # flake8-builtins
   "C",   # Limit cyclomatic complexity using mccabe
   "D",   # pydocstyle errors

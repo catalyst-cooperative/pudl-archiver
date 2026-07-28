@@ -259,7 +259,7 @@ def test_zip_layout_validation(
         )
 
     for invalid_file in invalid_files:
-        assert f"The file, {str(invalid_file)}, in {zip_path.name} is invalid." in notes
+        assert f"The file, {invalid_file!s}, in {zip_path.name} is invalid." in notes
 
     assert success == (
         (len(extra_files) == 0)
@@ -335,7 +335,7 @@ def test_run_summary_success(specs, expected_success):
     [
         (
             BytesIO(
-                b'"PK\00\00\00\00\00!\00\\A1\\B7\\FCFr\00\00R\00\00\00[Content_Types].xml'
+                b'"PK\00\00\b\00\00\00!\00\\A1\\B7\\FCFr\00\00R\00\00\00\b[Content_Types].xml'
             ),
             False,
         ),

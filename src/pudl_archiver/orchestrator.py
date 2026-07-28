@@ -18,9 +18,10 @@ async def orchestrate_run(
     downloader: AbstractDatasetArchiver,
     run_settings: RunSettings,
     session: aiohttp.ClientSession,
-    skip_partitions: dict[str, Partitions] = {},
+    skip_partitions: dict[str, Partitions] | None = None,
 ) -> tuple[RunSummary, PublishedDeposition | None]:
     """Use downloader and depositor to archive a dataset."""
+    skip_partitions = skip_partitions or {}
     resources = {}
     # Get datapackage from previous version if there is one
     draft, original_datapackage = await get_deposition(dataset, session, run_settings)
@@ -35,7 +36,7 @@ async def orchestrate_run(
             draft = await draft.add_resource(name, resource)
     except Exception as e:
         run_exception = e
-        logger.exception(e)
+        logger.exception("Error downloading resources")
 
     # Delete files in draft that weren't downloaded by downloader
     for filename in await draft.list_files():
