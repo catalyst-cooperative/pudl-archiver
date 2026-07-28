@@ -1,7 +1,7 @@
 ---
 name: Monthly archive update
 about: Template for publishing monthly archives.
-title: Publish {{ date | date('MMMM Do YYYY') }} archives
+title: Publish {% if RUN_TYPE == 'pudl' %}PUDL {% elsif RUN_TYPE == 'non_pudl' %}non-PUDL {% elsif RUN_TYPE == 'early_final_release' %}EIA early/final release {% endif %}{{ date | date('MMMM Do YYYY') }} archives
 labels: archive-update, zenodo
 assignees: e-belfer
 
