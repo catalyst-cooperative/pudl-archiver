@@ -43,7 +43,7 @@ class EIABlueSkyArchiver(AbstractDatasetArchiver):
 
         # Clone the entire project
         os.chdir(self.download_directory)
-        subprocess.run(  # noqa:S603
+        subprocess.run(
             [
                 "/usr/bin/git",
                 "clone",
