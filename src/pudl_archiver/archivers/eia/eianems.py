@@ -1,5 +1,6 @@
 """Download EIA NEMS Github respository."""
 
+import asyncio
 import os
 import subprocess
 from pathlib import Path
@@ -48,12 +49,19 @@ class EiaNEMSArchiver(AbstractDatasetArchiver):
 
         # Clone the entire project
         os.chdir(self.download_directory)
-        subprocess.run(  # noqa:S603
+        await asyncio.to_thread(
+            subprocess.run,
             ["/usr/bin/git", "clone", "https://github.com/EIAgov/NEMS.git"],
             shell=False,
+            check=True,
         )
         os.chdir(self.download_directory / "NEMS")
-        subprocess.run(["/usr/bin/git", "lfs", "fetch", "--all"], shell=False)
+        await asyncio.to_thread(
+            subprocess.run,
+            ["/usr/bin/git", "lfs", "fetch", "--all"],
+            shell=False,
+            check=True,
+        )
 
         for tag in release_tags:
             yield self.get_release_resource(tag=tag)
@@ -69,9 +77,19 @@ class EiaNEMSArchiver(AbstractDatasetArchiver):
         zip_path = self.download_directory / f"eianems-{year}.zip"
         data_paths_in_archive = set()
 
-        subprocess.run(["/usr/bin/git", "checkout", tag], shell=False)  # noqa:S603
         # We sanitize tag above using the assertion, so this should be ok.
-        subprocess.run(["/usr/bin/git", "lfs", "pull"], shell=False)
+        await asyncio.to_thread(
+            subprocess.run,
+            ["/usr/bin/git", "checkout", tag],
+            shell=False,
+            check=True,
+        )
+        await asyncio.to_thread(
+            subprocess.run,
+            ["/usr/bin/git", "lfs", "pull"],
+            shell=False,
+            check=True,
+        )
 
         directory = (self.download_directory / "NEMS").resolve()
 

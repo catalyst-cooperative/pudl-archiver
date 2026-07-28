@@ -1,8 +1,8 @@
 """Test zenodo client api."""
 
+import asyncio
 import os
 import tempfile
-import time
 import unittest
 from pathlib import Path
 
@@ -280,7 +280,7 @@ async def test_zenodo_workflow(
     assert not v2_summary.success
 
     # Wait for deleted deposition to propogate through
-    time.sleep(1)
+    await asyncio.sleep(1)
 
     # Disable test and re-run
     downloader.fail_on_missing_files = False
@@ -329,7 +329,7 @@ async def test_zenodo_workflow(
         assert "could not get checksums to match" in exception_test.notes[0]
 
     # Wait for deleted deposition to propogate through
-    time.sleep(1)
+    await asyncio.sleep(1)
 
     # re-run with normal checksums
     vc_summary, vc_refreshed = await orchestrate_run(
@@ -368,10 +368,11 @@ async def test_zenodo_workflow(
 
     # legacy Zenodo API "get latest for concept DOI" endpoint is very slow to update,
     # but requesting the DOI directly updates quickly.
-    res = requests.get(
+    async with session.get(
         f"https://sandbox.zenodo.org/doi/{v3_refreshed.deposition.conceptdoi}",
-        timeout=10.0,
-    )
-    assert str(v3_refreshed.deposition.id_) in res.text
+        timeout=aiohttp.ClientTimeout(total=10.0),
+    ) as res:
+        res_text = await res.text()
+    assert str(v3_refreshed.deposition.id_) in res_text
     # Assert last draft actually deleted, getting DOI from end of record URL
-    assert str(v4_summary.record_url).split("/")[-1] not in res.text
+    assert str(v4_summary.record_url).split("/")[-1] not in res_text

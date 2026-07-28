@@ -1,7 +1,6 @@
 """Download EPACEMS data."""
 
 import datetime
-import json
 import os
 from collections.abc import Iterable
 from itertools import groupby
@@ -70,18 +69,13 @@ class EpaCemsArchiver(AbstractDatasetArchiver):
 
     async def get_resources(self) -> ArchiveAwaitable:
         """Download EPA CEMS resources."""
-        file_list = requests.get(
+        response = await self.get_json(
             "https://api.epa.gov/easey/camd-services/bulk-files",
             params=self.parameters,
-            timeout=300,
         )
-        if file_list.status_code != 200:
-            raise AssertionError(
-                f"EPACEMS API request did not succeed: {file_list.status_code}"
-            )
-        resjson = file_list.content.decode("utf8").replace("'", '"')
-        file_list.close()  # Close connection.
-        bulk_files = self.__filter_for_complete_metadata(json.loads(resjson)["items"])
+        if "items" not in response:
+            raise AssertionError(f"EPACEMS API request did not succeed: {response}")
+        bulk_files = self.__filter_for_complete_metadata(response["items"])
         quarterly_emissions_files = [
             file
             for file in bulk_files
