@@ -57,12 +57,12 @@ jobs:
 
           if [ "$DOW" -eq 7 ] || [ "$DOM" -eq 01 ]; then
           ## On sundays and the 1st of the month, run all PUDL data sources
-            echo 'datasets=["censuspep","eia176","eia191","eia757a","eia860","eia860m","eia861","eia923","eia930","eiaaeo","eiaapi","eiabluesky","eianems","epacamd_eia","epacems","epamats","ferc1","ferc2","ferc6","ferc60","ferc714","ferccid","gridpathratoolkit","mshamines","nrelatb","phmsagas","vcerare"]' >> "$GITHUB_OUTPUT"
+            echo 'datasets=["censuspep","eia176","eia191","eia757a","eia860","eia860m","eia861","eia923","eia930","eiaaeo","eiaapi","epacamd_eia","epacems","epamats","ferc1","ferc2","ferc6","ferc60","ferc714","ferccid","gridpathratoolkit","nrelatb","phmsagas","vcerare"]' >> "$GITHUB_OUTPUT"
             echo "run_type=pudl" >> "$GITHUB_OUTPUT"
           elif [ "$DOM" -eq 02 ] && [ "$HOUR" -eq 4 ]; then
           ## On the second of the month where the hour is 4AM UTC,
           ## run all non-PUDL data sources.
-            echo 'datasets=["doeiraec","doelead","eiacbecs","eiamecs","eiarecs","eiasteo","eiawater","epaegrid","epapcap","nrelss","nrelsts","usgsuspvdb","usgsuswtdb"]' >> "$GITHUB_OUTPUT"
+            echo 'datasets=["doeiraec","doelead","eiabluesky","eiacbecs","eiamecs","eianems","eiarecs","eiasteo","eiawater","epaegrid","epapcap","mshamines","nrelss","nrelsts","usgsuspvdb","usgsuswtdb"]' >> "$GITHUB_OUTPUT"
             echo "run_type=non_pudl" >> "$GITHUB_OUTPUT"
           else
             # Otherwise, look for the early and final release outputs for EIA datasets
