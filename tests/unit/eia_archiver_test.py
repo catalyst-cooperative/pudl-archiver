@@ -21,6 +21,10 @@ async def test_eia860(mocker):
     archiver = Eia860Archiver(mock_session, only_years=[2019, 2022])
     resources = [res async for res in archiver.get_resources()]
     assert len(resources) == 2
+    # Close without awaiting: download_zipfile isn't mocked here, so actually
+    # running these would attempt real downloads.
+    for resource in resources:
+        resource.close()
 
 
 @pytest.mark.asyncio
@@ -81,6 +85,10 @@ async def test_eia861(mocker):
     archiver = Eia861Archiver(mock_session, only_years=[2019, 2022])
     resources = [res async for res in archiver.get_resources()]
     assert len(resources) == 2
+    # Close without awaiting: download_zipfile isn't mocked here, so actually
+    # running these would attempt real downloads.
+    for resource in resources:
+        resource.close()
 
 
 @pytest.mark.asyncio
@@ -98,3 +106,7 @@ async def test_eia923(mocker):
     archiver = Eia923Archiver(mock_session, only_years=[2019, 2022])
     resources = [res async for res in archiver.get_resources()]
     assert len(resources) == 2
+    # Close without awaiting: download_zipfile isn't mocked here, so actually
+    # running these would attempt real downloads.
+    for resource in resources:
+        resource.close()

@@ -3,6 +3,7 @@
 import calendar
 import re
 from collections import defaultdict
+from typing import ClassVar
 
 from pudl_archiver.archivers.classes import (
     AbstractDatasetArchiver,
@@ -18,7 +19,7 @@ class Eia860MArchiver(AbstractDatasetArchiver):
     """EIA-860M archiver."""
 
     name = "eia860m"
-    month_map = {
+    month_map: ClassVar[dict[str, int]] = {
         name.lower(): number for number, name in enumerate(calendar.month_name)
     }
 

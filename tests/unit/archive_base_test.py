@@ -23,13 +23,13 @@ def file_data():
     return b"Junk test file data"
 
 
-def _resource_w_size(name: str, size: int, parts: dict = {}):
+def _resource_w_size(name: str, size: int, parts: dict | None = None):
     """Create resource with variable size for use in tests."""
     return Resource(
         name=name,
         path=f"https://www.example.com/{name}",
         title="",
-        parts=parts,
+        parts=parts or {},
         mediatype="",
         format="",
         bytes=size,
@@ -63,7 +63,6 @@ class MockArchiver(AbstractDatasetArchiver):
 
     async def get_resources(self) -> ArchiveAwaitable:
         """Create fake resources."""
-        pass
 
     def dataset_validate_archive(
         self, baseline_datapackage, new_datapackage, resources
@@ -487,7 +486,7 @@ def test_check_zero_file_size(
     new_datapackage = copy.deepcopy(datapackage)
     new_datapackage.resources = new_resources
 
-    with caplog.at_level(logging.WARN):
+    with caplog.at_level(logging.WARNING):
         validation_result = archiver._check_file_size(
             baseline_datapackage, new_datapackage
         )

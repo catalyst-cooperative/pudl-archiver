@@ -28,7 +28,7 @@ from pudl_archiver.utils import add_to_archive_stable_hash, retry_async
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
-XBRL_LINK_PATTERN = re.compile(r'href="(.+\.(xml|xbrl))">(.+(xml|xbrl))<')  # noqa: W605
+XBRL_LINK_PATTERN = re.compile(r'href="(.+\.(xml|xbrl))">(.+(xml|xbrl))<')
 """Regex pattern to extrac link to XBRL filing from inline html contained in RSS feed."""
 
 TAXONOMY_URL_PATTERN = re.compile(
@@ -43,19 +43,19 @@ be found in month specific feeds that can be retrieved by appending a query stri
 to this URL to specify the month and year desired.
 """
 
-Year = Annotated[int, Field(ge=1994, le=datetime.datetime.today().year)]
+Year = Annotated[int, Field(ge=1994, le=datetime.datetime.now(tz=datetime.UTC).year)]
 """Constrained pydantic integer type with all years containing XBRL data."""
 
 
 def _get_rss_feeds() -> list[str]:
     """Return all FERC RSS feeds."""
     # The first month with available filings is October, 2021
-    feed_start_date = datetime.datetime(2021, 10, 1)
+    feed_start_date = datetime.datetime(2021, 10, 1, tzinfo=datetime.UTC)
 
     # Get the last day of the previous month at the time of running
-    feed_end_date = datetime.datetime.today().replace(day=1) - datetime.timedelta(
-        days=1
-    )
+    feed_end_date = datetime.datetime.now(tz=datetime.UTC).replace(
+        day=1
+    ) - datetime.timedelta(days=1)
 
     # Get a list of all available month specific feeds
     rss_feeds = [
@@ -117,7 +117,7 @@ class FeedEntry(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def extract_url_timestamp(cls, entry: dict):  # noqa: N805
+    def extract_url_timestamp(cls, entry: dict):
         """Get download URL from inline html in feed entry and parse timestamp."""
         # Get download URL
         link = XBRL_LINK_PATTERN.search(entry["summary_detail"]["value"])

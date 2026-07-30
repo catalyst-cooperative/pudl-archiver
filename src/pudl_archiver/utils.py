@@ -50,7 +50,7 @@ async def retry_async(
     # ten minutes (the timeout threshold) plus our max retry delay
     max_delay_s = (10 * 60) + retry_base_s * 2**retry_count
     try_count = 0
-    while try_count < retry_count:  # noqa: RET503
+    while try_count < retry_count:
         try_count += 1
         # try count is 1 indexed for logging clarity
         coro = async_func(*args, **kwargs)
@@ -58,7 +58,7 @@ async def retry_async(
             return await coro
         except retry_on as e:
             if try_count == retry_count:
-                raise e
+                raise
             current_failure_s = time()
             if (current_failure_s - last_failure_s) > max_delay_s:
                 try_count = 1

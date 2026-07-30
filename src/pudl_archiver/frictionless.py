@@ -53,7 +53,7 @@ class ZipLayout(BaseModel):
 
             # Check that all files in zipfile are valid based on their extension
             invalid_files = [
-                f"The file, {str(filename)}, in {file_path.name} is invalid."
+                f"The file, {filename!s}, in {file_path.name} is invalid."
                 for filename in files
                 if not _validate_file_type(
                     filename, BytesIO(resource.read(str(filename)))

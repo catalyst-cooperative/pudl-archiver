@@ -44,7 +44,7 @@ class CensusPepArchiver(AbstractDatasetArchiver):
                 raise AssertionError(
                     f"We expected exactly one link for {year}, but we found: {file_names}"
                 )
-            file_name = list(file_names)[0]
+            file_name = next(iter(file_names))
         elif year == 2000:
             link_url = f"{BASE_URL}/1990-2000"
             file_name = "90s-fips.txt"

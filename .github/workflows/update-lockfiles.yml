@@ -24,7 +24,7 @@ jobs:
           set -o pipefail
           pixi upgrade --json | pixi exec pixi-diff-to-markdown >> diff.md
           pixi reinstall --all
-          pixi run --frozen prek-autoupdate
+          pixi run --frozen prek-update
       - name: Generate GH token
         uses: actions/create-github-app-token@v3
         id: generate-token

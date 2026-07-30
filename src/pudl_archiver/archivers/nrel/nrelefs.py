@@ -120,7 +120,7 @@ class NrelEFSArchiver(AbstractDatasetArchiver):
             for link in pdf_links
             if link not in version_dict
         ]
-        self.logger.warn(
+        self.logger.warning(
             f"Not downloading the following additional PDFs linked from the mainpage: {links_not_downloaded}"
         )
 
