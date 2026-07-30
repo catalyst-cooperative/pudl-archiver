@@ -28,9 +28,10 @@ on:
         required: false
         type: boolean
   schedule:
-    - cron: "21 10 1 * *" # 10:21 AM UTC, first of every month
-    - cron: "21 10 * * 0" # 10:21 AM UTC, every Sunday
-    - cron: "21 14 * 6-7,9-10 1-6" # 2:21 PM UTC, every day June-July and Sept-Oct except for Sundays
+    - cron: "21 10 1 * *" # 10:21 AM UTC, first of every month - run all PUDL archivers
+    - cron: "21 10 * * 0" # 10:21 AM UTC, every Sunday - run all PUDL archivers
+    - cron: "21 4 2 * *" # 4:21 AM UTC, every second of the month - run all non-PUDL archivers
+    - cron: "21 14 * 6-7,9-10 1-6" # 2:21 PM UTC, every day June-July and Sept-Oct except for Sundays - look for early and final release of EIA data
 
 jobs:
   determine-datasets:
@@ -38,6 +39,7 @@ jobs:
 
     outputs:
       datasets: ${{ steps.datasets.outputs.datasets }}
+      run_type: ${{ steps.datasets.outputs.run_type }}
 
     steps:
       - id: datasets
@@ -51,13 +53,21 @@ jobs:
 
           DOW=$(date -u +%u) # Get day of week
           DOM=$(date -u +%d) # Get day of month
+          HOUR=$(date -u +%H) # Get hour of month
 
           if [ "$DOW" -eq 7 ] || [ "$DOM" -eq 01 ]; then
-          ## On sundays and the 1st of the month, run the full matrix
-            echo 'datasets=["censuspep","doeiraec","doelead","eia176","eia191","eia757a","eia860","eia860m","eia861","eia923","eia930","eiaaeo","eiaapi","eiabluesky","eiacbecs","eiamecs","eianems","eiarecs","eiasteo","eiawater","epacamd_eia","epacems","epaegrid","epamats","epapcap","ferc1","ferc2","ferc6","ferc60","ferc714","ferccid","gridpathratoolkit","mshamines","nrelatb","nrelss","nrelsts","phmsagas","usgsuspvdb","usgsuswtdb","vcerare"]' >> "$GITHUB_OUTPUT"
+          ## On sundays and the 1st of the month, run all PUDL data sources
+            echo 'datasets=["censuspep","eia176","eia191","eia757a","eia860","eia860m","eia861","eia923","eia930","eiaaeo","eiaapi","epacamd_eia","epacems","epamats","ferc1","ferc2","ferc6","ferc60","ferc714","ferccid","gridpathratoolkit","nrelatb","phmsagas","vcerare"]' >> "$GITHUB_OUTPUT"
+            echo "run_type=pudl" >> "$GITHUB_OUTPUT"
+          elif [ "$DOM" -eq 02 ] && [ "$HOUR" -eq 4 ]; then
+          ## On the second of the month where the hour is 4AM UTC,
+          ## run all non-PUDL data sources.
+            echo 'datasets=["doeiraec","doelead","eiabluesky","eiacbecs","eiamecs","eianems","eiarecs","eiasteo","eiawater","epaegrid","epapcap","mshamines","nrelss","nrelsts","usgsuspvdb","usgsuswtdb"]' >> "$GITHUB_OUTPUT"
+            echo "run_type=non_pudl" >> "$GITHUB_OUTPUT"
           else
-            # Look for the early and final release outputs for EIA datasets
+            # Otherwise, look for the early and final release outputs for EIA datasets
             echo 'datasets=["eia860","eia861","eia923"]' >> "$GITHUB_OUTPUT"
+            echo "run_type=early_final_release" >> "$GITHUB_OUTPUT"
           fi
 
   notify-start:
@@ -262,6 +272,7 @@ jobs:
     needs:
       - archive-run
       - archive-notify
+      - determine-datasets
     steps:
       - uses: actions/checkout@v7
       - name: Create an issue
@@ -275,6 +286,7 @@ jobs:
           CHANGES: ${{ needs.archive-notify.outputs.changes }}
           TIMEDOUT: ${{ needs.archive-notify.outputs.timedout }}
           UNCHANGED: ${{ needs.archive-notify.outputs.unchanged }}
+          RUN_TYPE: ${{ needs.determine-datasets.outputs.run_type }}
         with:
           filename: .github/ISSUE_TEMPLATE/monthly-archive-update.md
       - run: echo "URL=${{ steps.create-issue.outputs.url }}" >> "$GITHUB_ENV"
