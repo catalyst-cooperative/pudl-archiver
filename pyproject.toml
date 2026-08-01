@@ -53,37 +53,37 @@ line-ending = "auto"
 
 [tool.ruff.lint]
 extend-select = [
-  "A",   # flake8-builtins
-  "C",   # Limit cyclomatic complexity using mccabe
-  "D",   # pydocstyle errors
-  "E",   # pycodestyle errors
+  "A", # flake8-builtins
+  "C", # Limit cyclomatic complexity using mccabe
+  "D", # pydocstyle errors
+  "E", # pycodestyle errors
   "EXE", # executable file issues
-  "F",   # pyflakes
-  "I",   # isort
+  "F", # pyflakes
+  "I", # isort
   "ISC", # implicit string concatenation
-  "N",   # pep8-naming
+  "N", # pep8-naming
   "NPY", # NumPy specific checks
-  "PD",  # pandas checks
+  "PD", # pandas checks
   "PGH", # pygrep-hooks
   "PTH", # use pathlib
-  "Q",   # flake8-quotes
+  "Q", # flake8-quotes
   "RET", # check return values
   "RSE", # unnecessary parenthises on raised exceptions
-  "S",   # flake8-bandit
+  "S", # flake8-bandit
   "SIM", # flake8-simplify
-  "UP",  # pyupgrade (use modern python syntax)
-  "W",   # pycodestyle warnings
+  "UP", # pyupgrade (use modern python syntax)
+  "W", # pycodestyle warnings
 ]
 
 ignore = [
-  "D401",   # Require imperative mood in docstrings.
-  "D417",   # Undocumented parameters.
-  "E501",   # Overlong lines.
-  "PD010",  # Use of df.unstack()
-  "PD013",  # Use of df.stack()
-  "PD015",  # Use of pd.merge() rather than df.merge()
+  "D401", # Require imperative mood in docstrings.
+  "D417", # Undocumented parameters.
+  "E501", # Overlong lines.
+  "PD010", # Use of df.unstack()
+  "PD013", # Use of df.stack()
+  "PD015", # Use of pd.merge() rather than df.merge()
   "RET504", # Ignore unnecessary assignment before return
-  "S101",   # Use of assert
+  "S101", # Use of assert
 ]
 
 # Don't automatically concatenate strings -- sometimes we forget a comma!
