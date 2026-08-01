@@ -24,6 +24,8 @@ on:
 jobs:
   notify-start:
     runs-on: ubuntu-latest
+    outputs:
+      dataset: ${{ steps.launch_message.outputs.DATASET }}
     steps:
       - name: Build launch notification
         id: launch_message
@@ -37,6 +39,7 @@ jobs:
             echo "# :rocket: Launching \`$WORKFLOW_NAME\` workflow ([view run]($RUN_URL))"
             echo
             echo "Dataset: $DATASET"
+            echo "DATASET=$DATASET"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
       - name: Notify Zulip of workflow launch
@@ -57,7 +60,7 @@ jobs:
         shell: bash -l {0}
     runs-on: ubuntu-latest
     env:
-      DATASET: ${{ inputs.dataset || 'ferceqr' }}
+      DATASET: ${{ needs.notify-start.outputs.dataset }}
       DEPOSITION_PATH: ${{ inputs.deposition_path || 'gs://archives.catalyst.coop' }}
     permissions:
       contents: "read"
