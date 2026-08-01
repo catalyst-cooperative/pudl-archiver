@@ -28,7 +28,7 @@ jobs:
       - name: Build launch notification
         id: launch_message
         env:
-          DATASET: ${{ inputs.dataset }}
+          DATASET: ${{ inputs.dataset || 'ferceqr' }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           WORKFLOW_NAME: ${{ github.workflow }}
         run: |
@@ -57,6 +57,7 @@ jobs:
         shell: bash -l {0}
     runs-on: ubuntu-latest
     env:
+      DATASET: ${{ inputs.dataset || 'ferceqr' }}
       DEPOSITION_PATH: ${{ inputs.deposition_path || 'gs://archives.catalyst.coop' }}
     permissions:
       contents: "read"
@@ -87,7 +88,7 @@ jobs:
           pixi run playwright install --with-deps webkit
           pixi run playwright install --with-deps chromium
 
-      - name: Run production archiver for ${{ inputs.dataset }}
+      - name: Run production archiver for ${{ env.DATASET }}
         # set -o pipefail passes on any failure codes to the next step,
         # enabling us to see whether or not the pudl_archiver run failed.
         run: |
@@ -95,24 +96,24 @@ jobs:
           pixi run pudl_archiver \
             archive \
             fsspec \
-            ${{ inputs.dataset }} \
-            "$DEPOSITION_PATH"/${{ inputs.dataset }} \
-            --clobber-unchanged 2>&1 | tee ${{ inputs.dataset }}_log.txt
+            "$DATASET" \
+            "$DEPOSITION_PATH"/"$DATASET" \
+            --clobber-unchanged 2>&1 | tee "${DATASET}_log.txt"
 
       - name: Save failed runs
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: error-log-${{ inputs.dataset }}
-          path: ${{ inputs.dataset }}_log.txt
+          name: error-log-${{ env.DATASET }}
+          path: ${{ env.DATASET }}_log.txt
 
       - name: Upload run summaries
         if: always()
         id: upload_summaries
         uses: actions/upload-artifact@v7
         with:
-          name: run-summaries-${{ inputs.dataset }}
-          path: ${{ inputs.dataset }}_run_summary.json
+          name: run-summaries-${{ env.DATASET }}
+          path: ${{ env.DATASET }}_run_summary.json
 
   archive-notify:
     runs-on: ubuntu-latest
