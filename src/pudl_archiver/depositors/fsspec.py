@@ -395,9 +395,12 @@ class FsspecDraftDeposition(DraftDeposition):
                 )
                 action = DepositionAction.UPDATE
             else:
+                logger.info(
+                    f"No update for {filename}: local {local_md5} and remote {remote_md5} hashes are identical."
+                )
                 action = DepositionAction.NO_OP
         else:
-            logger.info(f"Adding {filename} to deposition.")
+            logger.info(f"Adding new file {filename} to deposition.")
 
             action = DepositionAction.CREATE
 
