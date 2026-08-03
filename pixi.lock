@@ -54,7 +54,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/bzip2-1.0.8-hda65f42_9.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/c-ares-1.34.8-hb03c661_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/cffi-2.1.0-py314h4a8dc5f_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/coverage-7.15.2-py314h67df5f8_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/coverage-7.15.3-py314h67df5f8_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/cryptography-49.0.0-py314h7fe84b3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/deltalake-1.5.0-py310h1c74b4c_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/gflags-2.3.1-h54a6638_0.conda
@@ -321,7 +321,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/bzip2-1.0.8-h4777abc_9.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/c-ares-1.34.8-he30d5cf_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/cffi-2.1.0-py314h0bd77cf_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/coverage-7.15.2-py314hb76de3f_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/coverage-7.15.3-py314hb76de3f_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/cryptography-49.0.0-py314hbfac26c_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/deltalake-1.5.0-py310hb21fdcd_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/gflags-2.3.1-h7ac5ae9_0.conda
@@ -717,7 +717,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/bzip2-1.0.8-h500dc9f_9.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/c-ares-1.34.8-ha1e9b39_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/cffi-2.1.0-py314hb60be56_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-64/coverage-7.15.2-py314h77fa6c7_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-64/coverage-7.15.3-py314h77fa6c7_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/cryptography-49.0.0-py314hd00f597_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/deltalake-1.5.0-py310h0611484_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/gflags-2.3.1-h2fb4741_0.conda
@@ -977,7 +977,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/bzip2-1.0.8-hd037594_9.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/c-ares-1.34.8-h84a0fba_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/cffi-2.1.0-py314h7bede21_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/coverage-7.15.2-py314h6e9b3f0_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/coverage-7.15.3-py314h6e9b3f0_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/cryptography-49.0.0-py314h0d331bb_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/deltalake-1.5.0-py310h43707f9_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/gflags-2.3.1-h784d473_0.conda
@@ -1114,7 +1114,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/bzip2-1.0.8-hda65f42_9.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/c-ares-1.34.8-hb03c661_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/cffi-2.1.0-py314h4a8dc5f_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/coverage-7.15.2-py314h67df5f8_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/coverage-7.15.3-py314h67df5f8_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/cryptography-49.0.0-py314h7fe84b3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/deltalake-1.5.0-py310h1c74b4c_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/gflags-2.3.1-h54a6638_0.conda
@@ -1380,7 +1380,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/bzip2-1.0.8-h4777abc_9.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/c-ares-1.34.8-he30d5cf_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/cffi-2.1.0-py314h0bd77cf_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/coverage-7.15.2-py314hb76de3f_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/coverage-7.15.3-py314hb76de3f_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/cryptography-49.0.0-py314hbfac26c_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/deltalake-1.5.0-py310hb21fdcd_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/gflags-2.3.1-h7ac5ae9_0.conda
@@ -1775,7 +1775,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/bzip2-1.0.8-h500dc9f_9.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/c-ares-1.34.8-ha1e9b39_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/cffi-2.1.0-py314hb60be56_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-64/coverage-7.15.2-py314h77fa6c7_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-64/coverage-7.15.3-py314h77fa6c7_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/cryptography-49.0.0-py314hd00f597_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/deltalake-1.5.0-py310h0611484_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/gflags-2.3.1-h2fb4741_0.conda
@@ -2034,7 +2034,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/bzip2-1.0.8-hd037594_9.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/c-ares-1.34.8-h84a0fba_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/cffi-2.1.0-py314h7bede21_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/coverage-7.15.2-py314h6e9b3f0_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/coverage-7.15.3-py314h6e9b3f0_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/cryptography-49.0.0-py314h0d331bb_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/deltalake-1.5.0-py310h43707f9_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/gflags-2.3.1-h784d473_0.conda
@@ -2554,9 +2554,9 @@ packages:
   run_exports: {}
   size: 306297
   timestamp: 1783424159025
-- conda: https://conda.anaconda.org/conda-forge/linux-64/coverage-7.15.2-py314h67df5f8_0.conda
-  sha256: a0238837cd192661dde05ff18d6c6a8e1d33036d6020e2d158e7963bf3f013f8
-  md5: bfdf708270d764fd920b6f4d163a1bf4
+- conda: https://conda.anaconda.org/conda-forge/linux-64/coverage-7.15.3-py314h67df5f8_0.conda
+  sha256: 15483c3c369c6a8d668c08045b5c89299f5537d8828e2c526ffbd0a7920736e9
+  md5: 6f3c65dd2b79db1757037d87827003f4
   depends:
   - __glibc >=2.17,<3.0.a0
   - libgcc >=14
@@ -2564,12 +2564,11 @@ packages:
   - python_abi 3.14.* *_cp314
   - tomli
   license: Apache-2.0
-  license_family: APACHE
   purls:
-  - pkg:pypi/coverage?source=hash-mapping
+  - pkg:pypi/coverage?source=compressed-mapping
   run_exports: {}
-  size: 419373
-  timestamp: 1784150083908
+  size: 421143
+  timestamp: 1785711717025
 - conda: https://conda.anaconda.org/conda-forge/linux-64/cryptography-49.0.0-py314h7fe84b3_0.conda
   sha256: 1c8128f2ba8fccf627729968de7fe7504dbb775c829e533439c9ee52134800fd
   md5: b1dd101231d277ad724c40c788f6fdd8
@@ -4780,21 +4779,20 @@ packages:
   run_exports: {}
   size: 329473
   timestamp: 1783425307959
-- conda: https://conda.anaconda.org/conda-forge/linux-aarch64/coverage-7.15.2-py314hb76de3f_0.conda
-  sha256: ad1506ade1279e2cf9b403bdc178ab4317a08fc8b8f2429554ccb979b7eb86f3
-  md5: ac51301142d0ae30d6c23e56d187be14
+- conda: https://conda.anaconda.org/conda-forge/linux-aarch64/coverage-7.15.3-py314hb76de3f_0.conda
+  sha256: 258765843f8afb0e51bb852e4f6d3e07d67818e60b5320e4f97764209a306b97
+  md5: 54ceb000226a1a9d63b3e684f5d51ebe
   depends:
   - libgcc >=14
   - python >=3.14,<3.15.0a0
   - python_abi 3.14.* *_cp314
   - tomli
   license: Apache-2.0
-  license_family: APACHE
   purls:
-  - pkg:pypi/coverage?source=hash-mapping
+  - pkg:pypi/coverage?source=compressed-mapping
   run_exports: {}
-  size: 421142
-  timestamp: 1784151157144
+  size: 422717
+  timestamp: 1785713374989
 - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/cryptography-49.0.0-py314hbfac26c_0.conda
   sha256: 89c9b8dd3dc79748429242d0e8252ce86605d490f7fdbd3102f8d5e4619e5b81
   md5: 4e27c8e478397b2e9d664d1678e45ee8
@@ -7057,7 +7055,7 @@ packages:
   license: Apache-2.0
   license_family: APACHE
   purls:
-  - pkg:pypi/google-api-core?source=compressed-mapping
+  - pkg:pypi/google-api-core?source=hash-mapping
   run_exports: {}
   size: 107035
   timestamp: 1784840938854
@@ -8238,7 +8236,7 @@ packages:
   license: PSF-2.0
   license_family: PSF
   purls:
-  - pkg:pypi/typing-extensions?source=compressed-mapping
+  - pkg:pypi/typing-extensions?source=hash-mapping
   run_exports: {}
   size: 52631
   timestamp: 1783002732887
@@ -8719,21 +8717,20 @@ packages:
   run_exports: {}
   size: 299556
   timestamp: 1783424489011
-- conda: https://conda.anaconda.org/conda-forge/osx-64/coverage-7.15.2-py314h77fa6c7_0.conda
-  sha256: 6b29ea828e748dada662d904360a431703a59337d970ab8bb4611821387f6a31
-  md5: f6ddd578d6d7685c033ec394cea246b3
+- conda: https://conda.anaconda.org/conda-forge/osx-64/coverage-7.15.3-py314h77fa6c7_0.conda
+  sha256: be641fa76038fa294ab63d3df858e9997f04bb1f36c937bebb78e46a532e11d6
+  md5: 15a451f8afc9ea5bfb8db893ba29328a
   depends:
   - __osx >=11.0
   - python >=3.14,<3.15.0a0
   - python_abi 3.14.* *_cp314
   - tomli
   license: Apache-2.0
-  license_family: APACHE
   purls:
   - pkg:pypi/coverage?source=hash-mapping
   run_exports: {}
-  size: 419784
-  timestamp: 1784150753947
+  size: 419818
+  timestamp: 1785712013544
 - conda: https://conda.anaconda.org/conda-forge/osx-64/cryptography-49.0.0-py314hd00f597_0.conda
   sha256: 2eb1805843e65f6057c312edfbef0dab474ff9a12ff93c57f9f9d080b8343f49
   md5: ed0cd98452f63f438194881426a39028
@@ -10764,13 +10761,13 @@ packages:
   license: MIT
   license_family: MIT
   purls:
-  - pkg:pypi/cffi?source=compressed-mapping
+  - pkg:pypi/cffi?source=hash-mapping
   run_exports: {}
   size: 297959
   timestamp: 1783425112331
-- conda: https://conda.anaconda.org/conda-forge/osx-arm64/coverage-7.15.2-py314h6e9b3f0_0.conda
-  sha256: 43f223399ede9b9019ce15f21397642c0981b5d4cfaf9e39b1b44b9c2151ecce
-  md5: 37d13b690db9db6489f2b630c343ef2b
+- conda: https://conda.anaconda.org/conda-forge/osx-arm64/coverage-7.15.3-py314h6e9b3f0_0.conda
+  sha256: 114b67a6e2c7a9d9142e077cfec024823efce3432726a6448a7e261a36c00399
+  md5: 0c4b7aa6e101ac586abd97cd8fdae7c9
   depends:
   - __osx >=11.0
   - python >=3.14,<3.15.0a0
@@ -10778,12 +10775,11 @@ packages:
   - python_abi 3.14.* *_cp314
   - tomli
   license: Apache-2.0
-  license_family: APACHE
   purls:
   - pkg:pypi/coverage?source=compressed-mapping
   run_exports: {}
-  size: 419637
-  timestamp: 1784150487847
+  size: 418865
+  timestamp: 1785712268447
 - conda: https://conda.anaconda.org/conda-forge/osx-arm64/cryptography-49.0.0-py314h0d331bb_0.conda
   sha256: 095f69075f4b54bf4d3674f7a529926a4e9bc9c1452093135d3fdbef233a4783
   md5: 8eb2d079cb2d42f28bc85c73977d05de
