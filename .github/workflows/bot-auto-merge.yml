@@ -20,7 +20,8 @@ jobs:
     # a human-authored PR), which must not by itself trigger auto-merge.
     if: >-
       github.event.pull_request.user.login == 'dependabot[bot]' ||
-      github.event.pull_request.user.login == 'pre-commit-ci[bot]'
+      github.event.pull_request.user.login == 'pre-commit-ci[bot]' ||
+      github.event.pull_request.user.login == 'catalyst-workflow-triggerer[bot]'
     steps:
       - name: Impersonate auto merge PR bot
         uses: actions/create-github-app-token@v3
