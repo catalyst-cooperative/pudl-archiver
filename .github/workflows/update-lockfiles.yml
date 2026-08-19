@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Set up pixi
-        uses: prefix-dev/setup-pixi@v0.10.0
+        uses: prefix-dev/setup-pixi@v0.10.1
         with:
           run-install: false
       - name: Update lockfiles and install
@@ -24,7 +24,7 @@ jobs:
           set -o pipefail
           pixi upgrade --json | pixi exec pixi-diff-to-markdown >> diff.md
           pixi reinstall --all
-          pixi run --frozen prek-autoupdate
+          pixi run --frozen prek-update
       - name: Generate GH token
         uses: actions/create-github-app-token@v3
         id: generate-token

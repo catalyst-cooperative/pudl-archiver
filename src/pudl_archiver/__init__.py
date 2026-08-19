@@ -1,5 +1,6 @@
 """Tool to download data resources and create archives on Zenodo for use in PUDL."""
 
+import asyncio
 import json
 import logging
 from pathlib import Path
@@ -53,7 +54,7 @@ ARCHIVERS = {archiver.name: archiver for archiver in all_archivers()}
 async def archive_dataset(
     dataset: str,
     run_settings: RunSettings,
-    skip_partitions: dict[str, Partitions] = {},
+    skip_partitions: dict[str, Partitions] | None = None,
 ):
     """A CLI for the PUDL Zenodo Storage system."""
 
@@ -87,7 +88,7 @@ async def archive_dataset(
             session,
             run_settings.only_years,
         )
-        summary, published = await orchestrate_run(
+        summary, _published = await orchestrate_run(
             dataset=dataset,
             downloader=downloader,
             run_settings=run_settings,
@@ -96,8 +97,10 @@ async def archive_dataset(
         )
 
     if run_settings.summary_file is not None:
-        with Path(run_settings.summary_file).open("w") as f:
-            f.write(json.dumps(summary.model_dump(), indent=2))
+        await asyncio.to_thread(
+            Path(run_settings.summary_file).write_text,
+            json.dumps(summary.model_dump(), indent=2),
+        )
 
     # Check validation results of all runs that aren't unchanged
     if not summary.success:

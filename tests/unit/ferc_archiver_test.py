@@ -47,7 +47,7 @@ FERC_FORM_CLASS_LOOKUP = {
 async def test_valid_years(
     mocker, ferc_number: str, valid_years: list[int], called_with_years: list[int]
 ):
-    form_name, form_class = FERC_FORM_CLASS_LOOKUP[f"ferc{ferc_number}"]
+    _form_name, form_class = FERC_FORM_CLASS_LOOKUP[f"ferc{ferc_number}"]
     dbf_mock = mocker.patch(
         f"pudl_archiver.archivers.ferc.ferc{ferc_number}.ferc_online_helpers.get_resources_for_form"
     )
@@ -56,7 +56,10 @@ async def test_valid_years(
     )
     mock_session = mocker.AsyncMock()
     archiver = form_class(mock_session, only_years=valid_years)
-    [r async for r in archiver.get_resources()]
+    resources = [r async for r in archiver.get_resources()]
+    # Await the mocked coroutines so nothing is left unawaited.
+    for resource in resources:
+        await resource
     dbf_mock.assert_called_once_with(
         ferc_form=ferc_number,
         years=called_with_years,
@@ -71,57 +74,49 @@ async def test_archive_year_metadata(tmpdir):
     filings = sorted(
         {
             FeedEntry(
-                **{
-                    "id": "id1",
-                    "title": "Filer 1",
-                    "summary_detail": {
-                        "value": 'href="https://ecollection.ferc.gov/download/filer1.xbrl">www.filer1.xbrl<'
-                    },
-                    "ferc_formname": FercForm.FORM_1,
-                    "published": "Fri, 29 Oct 2021 16:14:44 -0400",
-                    "ferc_year": 2021,
-                    "ferc_period": "Q4",
-                }
+                id="id1",
+                title="Filer 1",
+                summary_detail={
+                    "value": 'href="https://ecollection.ferc.gov/download/filer1.xbrl">www.filer1.xbrl<'
+                },
+                ferc_formname=FercForm.FORM_1,
+                published="Fri, 29 Oct 2021 16:14:44 -0400",
+                ferc_year=2021,
+                ferc_period="Q4",
             ),
             FeedEntry(
-                **{
-                    "id": "id2",
-                    "title": "Filer 2",
-                    "summary_detail": {
-                        "value": 'href="https://ecollection.ferc.gov/download/filer2.xbrl">www.filer2.xbrl<'
-                    },
-                    "published": "Fri, 29 Oct 2021 16:14:44 -0400",
-                    "ferc_formname": FercForm.FORM_1,
-                    "ferc_year": 2021,
-                    "ferc_period": "Q4",
-                }
+                id="id2",
+                title="Filer 2",
+                summary_detail={
+                    "value": 'href="https://ecollection.ferc.gov/download/filer2.xbrl">www.filer2.xbrl<'
+                },
+                published="Fri, 29 Oct 2021 16:14:44 -0400",
+                ferc_formname=FercForm.FORM_1,
+                ferc_year=2021,
+                ferc_period="Q4",
             ),
             FeedEntry(
-                **{
-                    "id": "id3",
-                    "title": "Filer 1",
-                    "summary_detail": {
-                        "value": 'href="https://ecollection.ferc.gov/download/filer1_v2.xbrl">www.filer1_v2.xbrl<'
-                    },
-                    "published": "Fri, 29 Oct 2021 18:14:44 -0400",
-                    "ferc_formname": FercForm.FORM_1,
-                    "ferc_year": 2021,
-                    "ferc_period": "Q4",
-                }
+                id="id3",
+                title="Filer 1",
+                summary_detail={
+                    "value": 'href="https://ecollection.ferc.gov/download/filer1_v2.xbrl">www.filer1_v2.xbrl<'
+                },
+                published="Fri, 29 Oct 2021 18:14:44 -0400",
+                ferc_formname=FercForm.FORM_1,
+                ferc_year=2021,
+                ferc_period="Q4",
             ),
             # Duplicated should be removed by set
             FeedEntry(
-                **{
-                    "id": "id3",
-                    "title": "Filer 1",
-                    "summary_detail": {
-                        "value": 'href="https://ecollection.ferc.gov/download/filer1_v2.xbrl">www.filer1_v2.xbrl<'
-                    },
-                    "published": "Fri, 29 Oct 2021 16:14:44 -0400",
-                    "ferc_formname": FercForm.FORM_1,
-                    "ferc_year": 2021,
-                    "ferc_period": "Q4",
-                }
+                id="id3",
+                title="Filer 1",
+                summary_detail={
+                    "value": 'href="https://ecollection.ferc.gov/download/filer1_v2.xbrl">www.filer1_v2.xbrl<'
+                },
+                published="Fri, 29 Oct 2021 16:14:44 -0400",
+                ferc_formname=FercForm.FORM_1,
+                ferc_year=2021,
+                ferc_period="Q4",
             ),
         },
         key=lambda e: e.download_url,

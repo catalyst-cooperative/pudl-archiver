@@ -131,6 +131,12 @@ async def test_retry_run_bad_zip(
                 self.good_downloaded = True
             return ResourceInfo(local_path=zip_path, partitions=parts)
 
+    # This run is expected to fail file validation on the bad zip, which logs
+    # at ERROR level in production code. Silence those specific log calls so
+    # the expected failure doesn't look like a real error in test output.
+    mocker.patch("pudl_archiver.archivers.classes.logger.error")
+    mocker.patch("pudl_archiver.depositors.depositor.logger.error")
+
     v1_summary, _ = await orchestrate_run(
         dataset="pudl_test",
         downloader=TestDownloader(fail_part=True, session="session"),
@@ -211,6 +217,13 @@ async def test_retry_run_exception(
                 raise RuntimeError("Test exception")
             return ResourceInfo(local_path=zip_path, partitions=parts)
 
+    # This run is expected to raise, which logs an ERROR-level traceback and
+    # then a failed-validation ERROR in production code. Silence those
+    # specific log calls so the expected failure doesn't look like a real
+    # error in test output.
+    mocker.patch("pudl_archiver.orchestrator.logger.exception")
+    mocker.patch("pudl_archiver.depositors.depositor.logger.error")
+
     v1_summary, _ = await orchestrate_run(
         dataset="pudl_test",
         downloader=TestDownloader(fail_part=True, session="session"),
@@ -224,11 +237,11 @@ async def test_retry_run_exception(
     assert not (deposition_path / "published" / "good.zip").exists()
     assert not (deposition_path / "workspace" / "bad.zip").exists()
     assert not v1_summary.success
-    assert not [
+    assert not next(
         test
         for test in v1_summary.validation_tests
         if test.name == "Run exception validation test"
-    ][0].success
+    ).success
 
     settings.retry_run = str(tmp_path / "run_summary.json")
     v2_downloader = TestDownloader(fail_part=False, session="session")
@@ -285,6 +298,13 @@ async def test_retry_run_unpartitioned(
                 raise RuntimeError("Test exception")
             return ResourceInfo(local_path=zip_path, partitions=parts)
 
+    # This run is expected to raise, which logs an ERROR-level traceback and
+    # then a failed-validation ERROR in production code. Silence those
+    # specific log calls so the expected failure doesn't look like a real
+    # error in test output.
+    mocker.patch("pudl_archiver.orchestrator.logger.exception")
+    mocker.patch("pudl_archiver.depositors.depositor.logger.error")
+
     v1_summary, _ = await orchestrate_run(
         dataset="pudl_test",
         downloader=TestDownloader(fail_part=True, session="session"),
@@ -296,11 +316,11 @@ async def test_retry_run_unpartitioned(
 
     assert not (deposition_path / "published" / "good.zip").exists()
     assert not v1_summary.success
-    assert not [
+    assert not next(
         test
         for test in v1_summary.validation_tests
         if test.name == "Run exception validation test"
-    ][0].success
+    ).success
 
     settings.retry_run = str(tmp_path / "run_summary.json")
     v2_downloader = TestDownloader(fail_part=False, session="session")
@@ -450,7 +470,7 @@ async def test_fsspec_depositor(
 
     # Turn auto publish on for rest of run
     settings = settings.model_copy(update={"auto_publish": True})
-    v1_summary, v1_refreshed = await orchestrate_run(
+    v1_summary, _v1_refreshed = await orchestrate_run(
         dataset="pudl_test",
         downloader=TestDownloader(v1_resources, session="session"),
         run_settings=settings,

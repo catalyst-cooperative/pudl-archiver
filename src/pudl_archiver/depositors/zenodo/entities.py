@@ -105,7 +105,7 @@ class DepositionMetadata(BaseModel):
 
     @field_validator("doi", mode="before")
     @classmethod
-    def check_empty_string(cls, doi: str):  # noqa: N805
+    def check_empty_string(cls, doi: str):
         """Sometimes zenodo returns an empty string for the `doi`. Convert to None."""
         if doi == "":
             return
@@ -246,7 +246,7 @@ class Deposition(DepositionState):
     conceptdoi: Doi | SandboxDoi | None = None
     conceptrecid: str
     created: datetime.datetime
-    files: list[DepositionFile] = []
+    files: list[DepositionFile] = Field(default_factory=list)
     id_: int = Field(alias="id")
     metadata: DepositionMetadata
     modified: datetime.datetime

@@ -1,7 +1,7 @@
 """Pytest configuration module."""
 
 import zipfile
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -21,7 +21,7 @@ def datapackage():
         sources=[],
         licenses=[],
         resources=[],
-        created=str(datetime.now()),
+        created=str(datetime.now(tz=UTC)),
         version="1.0.0",
     )
 

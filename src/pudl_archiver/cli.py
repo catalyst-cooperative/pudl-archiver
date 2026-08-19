@@ -33,7 +33,6 @@ def list_datasets():
 @pudl_archiver.group
 def archive():
     """Group for archive commands."""
-    pass
 
 
 # Define a set of shared options for the archive group of commands

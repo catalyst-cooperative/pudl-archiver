@@ -377,7 +377,7 @@ def _validate_file_type(path: Path, buffer: BytesIO) -> bool:  # noqa:C901
                 zip_test = zipfile.ZipFile(buffer).testzip()
                 return zip_test is None  # None if no error
             except NotImplementedError:
-                logger.warn(
+                logger.warning(
                     f"File {path} has a type of zip compression that isn't supported for validation."
                 )
                 return True

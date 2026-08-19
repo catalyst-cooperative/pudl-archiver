@@ -36,7 +36,6 @@ class FileWrapper(io.BytesIO):
 
     def close(self):
         """Don't close file, so aiohttp can't unexpectedly close files."""
-        pass
 
     def actually_close(self):
         """Actually close the file for internal use."""
