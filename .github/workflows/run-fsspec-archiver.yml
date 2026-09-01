@@ -39,8 +39,8 @@ jobs:
             echo "# :rocket: Launching \`$WORKFLOW_NAME\` workflow ([view run]($RUN_URL))"
             echo
             echo "Dataset: $DATASET"
-            echo "DATASET=$DATASET"
             echo "EOF"
+            echo "DATASET=$DATASET"
           } >> "$GITHUB_OUTPUT"
       - name: Notify Zulip of workflow launch
         uses: zulip/github-actions-zulip/send-message@v2
