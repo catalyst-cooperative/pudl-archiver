@@ -57,13 +57,20 @@ async def test_valid_years(
     mock_session = mocker.AsyncMock()
     archiver = form_class(mock_session, only_years=valid_years)
     resources = [r async for r in archiver.get_resources()]
+
+    # Handle special FERC Form 2 partition format
+    partitions = (
+        {"data_format": "dbf"}
+        if ferc_number != "2"
+        else {"data_format": "dbf", "part": "all"}
+    )
     # Await the mocked coroutines so nothing is left unawaited.
     for resource in resources:
         await resource
     dbf_mock.assert_called_once_with(
         ferc_form=ferc_number,
         years=called_with_years,
-        partitions_base={"data_format": "dbf"},
+        partitions_base=partitions,
         download_directory=archiver.download_directory,
     )
 
