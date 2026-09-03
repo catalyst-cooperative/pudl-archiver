@@ -41,7 +41,7 @@ class Ferc2Archiver(AbstractDatasetArchiver):
         yield ferc_online_helpers.get_resources_for_form(
             ferc_form="2",
             years=ferc_online_dbf_years,
-            partitions_base={"data_format": "dbf"},
+            partitions_base={"data_format": "dbf", "part": "all"},
             download_directory=self.download_directory,
         )
 
