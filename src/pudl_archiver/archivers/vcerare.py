@@ -22,7 +22,7 @@ class VCERAREArchiver(AbstractDatasetArchiver):
 
     name = "vcerare"
     bucket_name = "sources.catalyst.coop"
-    version = "v2"  # Version of the files to archive
+    version = "v3"  # Version of the files to archive
 
     async def get_resources(self) -> ArchiveAwaitable:
         """Download VCE RARE resources."""
