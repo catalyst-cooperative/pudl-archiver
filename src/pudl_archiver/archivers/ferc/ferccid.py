@@ -54,7 +54,7 @@ class FercCIDArchiver(AbstractDatasetArchiver):
 
             await page.goto(page_url, timeout=1000)
             await expect(
-                page.get_by_text(re.compile(r"\d:\d{2} (AM|PM)"))
+                page.get_by_text(re.compile(r"\d\/\d\/\d{4} \d:\d{2} (AM|PM)"))
             ).to_be_visible()
             last_update = await page.get_by_text(
                 re.compile(r"\d\/\d\/\d{4} \d:\d{2} (AM|PM)")
