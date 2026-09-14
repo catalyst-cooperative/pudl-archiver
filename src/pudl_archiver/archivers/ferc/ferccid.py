@@ -1,12 +1,12 @@
 """Archive FERC Central Identifier (CID) data."""
 
+import re
 from datetime import datetime
 from pathlib import Path
 
-from bs4 import Tag
 from dateutil import parser as date_parser
 from playwright.async_api import TimeoutError as PlaywrightTimeoutError
-from playwright.async_api import async_playwright
+from playwright.async_api import async_playwright, expect
 
 from pudl_archiver.archivers.classes import (
     AbstractDatasetArchiver,
@@ -48,26 +48,20 @@ class FercCIDArchiver(AbstractDatasetArchiver):
 
     async def get_last_updated_date(self, page_url: str) -> datetime:
         """Get the Data Last Updated date from the FERC data viewer page."""
-        soup = await self.get_soup(page_url)
-        label_div = soup.find(
-            lambda t: (
-                isinstance(t, Tag)
-                and t.name == "div"
-                and t.get_text(strip=True) == "Data Last Updated"
-            )
-        )
-        if not label_div:
-            raise RuntimeError("Couldn't find 'Data Last Updated' label div")
+        async with async_playwright() as pw:
+            browser = await pw.chromium.launch(headless=True)
+            page = await browser.new_page()
 
-        row = label_div.find_parent("div", class_="row")
-        if not row:
-            raise RuntimeError("Couldn't find parent row for 'Data Last Updated'")
-
-        row_text = (
-            row.get_text(" ", strip=True).replace("Data Last Updated", "").strip()
-        )
-
-        return date_parser.parse(row_text)
+            await page.goto(page_url, wait_until="networkidle", timeout=3000)
+            await expect(
+                page.get_by_text(
+                    re.compile(r"\d{1,2}\/\d{1,2}\/\d{4} \d{1,2}:\d{2} (AM|PM)")
+                )
+            ).to_be_visible()
+            last_update = await page.get_by_text(
+                re.compile(r"\d{1,2}\/\d{1,2}\/\d{4} \d{1,2}:\d{2} (AM|PM)")
+            ).inner_text()  # Search for date
+            return date_parser.parse(last_update)
 
     async def download_dataset(
         self,
