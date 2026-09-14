@@ -52,12 +52,14 @@ class FercCIDArchiver(AbstractDatasetArchiver):
             browser = await pw.chromium.launch(headless=True)
             page = await browser.new_page()
 
-            await page.goto(page_url, timeout=1000)
+            await page.goto(page_url, wait_until="networkidle", timeout=3000)
             await expect(
-                page.get_by_text(re.compile(r"\d\/\d\/\d{4} \d{1,2}:\d{2} (AM|PM)"))
+                page.get_by_text(
+                    re.compile(r"\d{1,2}\/\d{1,2}\/\d{4} \d{1,2}:\d{2} (AM|PM)")
+                )
             ).to_be_visible()
             last_update = await page.get_by_text(
-                re.compile(r"\d\/\d\/\d{4} \d{1,2}:\d{2} (AM|PM)")
+                re.compile(r"\d{1,2}\/\d{1,2}\/\d{4} \d{1,2}:\d{2} (AM|PM)")
             ).inner_text()  # Search for date
             return date_parser.parse(last_update)
 
