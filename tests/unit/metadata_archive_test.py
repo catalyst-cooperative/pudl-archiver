@@ -7,6 +7,7 @@ from types import SimpleNamespace
 import pytest
 from upath import UPath
 
+import pudl_archiver
 from pudl_archiver import orchestrator
 from pudl_archiver.archivers.validate import _datapackage_changed
 from pudl_archiver.depositors.fsspec import (
@@ -192,3 +193,42 @@ def test_fsspec_new_datapackage_has_no_stamp(tmp_path):
 
     assert regenerated.version == "0.1"
     assert regenerated.id_ is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "source_path,requested_sandbox,expected_sandbox",
+    [
+        ("gs://archives.catalyst.coop/ferceqr", False, False),
+        ("gs://archives.catalyst.coop/ferceqr", True, True),
+        ("gs://test.catalyst.coop/pudl-archiver-test/ferceqr", False, True),
+        ("gs://test.catalyst.coop/pudl-archiver-test/ferceqr", True, True),
+        ("file:///home/user/ferceqr-test", False, True),
+    ],
+)
+async def test_archive_fsspec_metadata_forces_sandbox_off_production(
+    monkeypatch, source_path, requested_sandbox, expected_sandbox
+):
+    """A non-production deposition path can never publish to production Zenodo."""
+    seen_run_settings = {}
+
+    async def fake_orchestrate_metadata_archive(
+        dataset, source_path, run_settings, session
+    ):
+        seen_run_settings["run_settings"] = run_settings
+
+    monkeypatch.setattr(
+        pudl_archiver, "orchestrate_metadata_archive", fake_orchestrate_metadata_archive
+    )
+
+    await pudl_archiver.archive_fsspec_metadata(
+        dataset="ferceqr",
+        source_path=source_path,
+        run_settings=RunSettings(
+            depositor="zenodo", depositor_args={"sandbox": requested_sandbox}
+        ),
+    )
+
+    assert (
+        seen_run_settings["run_settings"].depositor_args["sandbox"] == expected_sandbox
+    )

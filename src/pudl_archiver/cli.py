@@ -157,7 +157,12 @@ def fsspec(
     "deposition-path",
     type=str,
 )
-@click.option("--sandbox", is_flag=True, help="Use Zenodo sandbox server")
+@click.option(
+    "--sandbox",
+    is_flag=True,
+    help="Use Zenodo sandbox server. Sandbox is always used, regardless of this "
+    "flag, when DEPOSITION_PATH isn't under gs://archives.catalyst.coop.",
+)
 def fsspec_metadata(
     sandbox: bool,
     initialize: bool,
@@ -172,6 +177,10 @@ def fsspec_metadata(
     draft, uploads it there, and saves the stamped copy back to the workspace. The
     Zenodo draft is never published automatically, and must be reviewed and
     published manually.
+
+    gs://archives.catalyst.coop is the only legitimate production destination for
+    fsspec data archives, so if DEPOSITION_PATH isn't under it, the metadata is
+    always archived to Zenodo sandbox instead of production.
     """
     asyncio.run(
         archive_fsspec_metadata(

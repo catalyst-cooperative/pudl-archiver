@@ -10,7 +10,11 @@ import aiohttp
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver
 from pudl_archiver.frictionless import Partitions
 from pudl_archiver.orchestrator import orchestrate_metadata_archive, orchestrate_run
-from pudl_archiver.utils import RunSettings
+from pudl_archiver.utils import (
+    PRODUCTION_DEPOSITION_ROOT,
+    RunSettings,
+    is_production_deposition_path,
+)
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
@@ -130,7 +134,25 @@ async def archive_fsspec_metadata(
 
     Meant for datasets too large for Zenodo, whose data is archived with the fsspec
     depositor. See :func:`pudl_archiver.orchestrator.orchestrate_metadata_archive`.
+
+    ``gs://archives.catalyst.coop`` is the only legitimate production destination
+    for fsspec data archives. If ``source_path`` isn't under that root, the metadata
+    is archived to Zenodo sandbox instead of production, regardless of the
+    ``sandbox`` depositor arg, so that a test or scratch deposition can never
+    accidentally publish a draft to production Zenodo.
     """
+    requested_sandbox = run_settings.depositor_args.get("sandbox", False)
+    sandbox = requested_sandbox or not is_production_deposition_path(source_path)
+    if sandbox and not requested_sandbox:
+        logger.warning(
+            f"{source_path} is not the production deposition path "
+            f"({PRODUCTION_DEPOSITION_ROOT}), so archiving metadata to Zenodo "
+            "sandbox instead of production."
+        )
+    run_settings = run_settings.model_copy(
+        update={"depositor_args": run_settings.depositor_args | {"sandbox": sandbox}}
+    )
+
     async with _make_session() as session:
         summary = await orchestrate_metadata_archive(
             dataset=dataset,

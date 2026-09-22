@@ -5,7 +5,26 @@ from asyncio import to_thread
 
 import pytest
 
-from pudl_archiver.utils import add_to_archive_stable_hash, retry_async
+from pudl_archiver.utils import (
+    add_to_archive_stable_hash,
+    is_production_deposition_path,
+    retry_async,
+)
+
+
+@pytest.mark.parametrize(
+    "source_path,expected",
+    [
+        ("gs://archives.catalyst.coop", True),
+        ("gs://archives.catalyst.coop/ferceqr", True),
+        ("gs://archives.catalyst.coop-evil", False),
+        ("gs://test.catalyst.coop/ferceqr", False),
+        ("gs://archives.catalyst.coop.evil.com/ferceqr", False),
+        ("file:///tmp/ferceqr-test", False),
+    ],
+)
+def test_is_production_deposition_path(source_path, expected):
+    assert is_production_deposition_path(source_path) is expected
 
 
 @pytest.mark.asyncio
