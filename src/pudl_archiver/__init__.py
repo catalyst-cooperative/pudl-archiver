@@ -9,7 +9,7 @@ import aiohttp
 
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver
 from pudl_archiver.frictionless import Partitions
-from pudl_archiver.orchestrator import orchestrate_run
+from pudl_archiver.orchestrator import orchestrate_metadata_archive, orchestrate_run
 from pudl_archiver.utils import RunSettings
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
@@ -51,12 +51,8 @@ def all_archivers():
 ARCHIVERS = {archiver.name: archiver for archiver in all_archivers()}
 
 
-async def archive_dataset(
-    dataset: str,
-    run_settings: RunSettings,
-    skip_partitions: dict[str, Partitions] | None = None,
-):
-    """A CLI for the PUDL Zenodo Storage system."""
+def _make_session() -> aiohttp.ClientSession:
+    """Create the HTTP session shared by archive runs."""
 
     async def on_request_start(session, trace_config_ctx, params):
         logger.debug(f"Starting request {params.url}: headers {params.headers}")
@@ -74,12 +70,21 @@ async def archive_dataset(
     trace_config.on_request_end.append(on_request_end)
 
     connector = aiohttp.TCPConnector(limit_per_host=20, force_close=True)
-    async with aiohttp.ClientSession(
+    return aiohttp.ClientSession(
         trace_configs=[trace_config],
         connector=connector,
         raise_for_status=False,
         timeout=aiohttp.ClientTimeout(total=10 * 60),
-    ) as session:
+    )
+
+
+async def archive_dataset(
+    dataset: str,
+    run_settings: RunSettings,
+    skip_partitions: dict[str, Partitions] | None = None,
+):
+    """A CLI for the PUDL Zenodo Storage system."""
+    async with _make_session() as session:
         # List to gather all archivers to run asyncronously
         cls = ARCHIVERS.get(dataset)
         if not cls:
@@ -114,3 +119,28 @@ async def archive_dataset(
                 lines.append(f"    Notes: {'; '.join(test.notes)}")
             lines.append("")
         raise RuntimeError("\n".join(lines))
+
+
+async def archive_fsspec_metadata(
+    dataset: str,
+    source_path: str,
+    run_settings: RunSettings,
+):
+    """Archive the datapackage.json of an fsspec archive as a Zenodo draft.
+
+    Meant for datasets too large for Zenodo, whose data is archived with the fsspec
+    depositor. See :func:`pudl_archiver.orchestrator.orchestrate_metadata_archive`.
+    """
+    async with _make_session() as session:
+        summary = await orchestrate_metadata_archive(
+            dataset=dataset,
+            source_path=source_path,
+            run_settings=run_settings,
+            session=session,
+        )
+
+    if run_settings.summary_file is not None and summary is not None:
+        await asyncio.to_thread(
+            Path(run_settings.summary_file).write_text,
+            json.dumps(summary.model_dump(), indent=2),
+        )
