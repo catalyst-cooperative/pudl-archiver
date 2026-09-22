@@ -7,7 +7,7 @@ from io import BytesIO
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_serializer
 
 from pudl_archiver.metadata.pudl import get_pudl_sources
 from pudl_archiver.metadata.sources import NON_PUDL_SOURCES
@@ -101,6 +101,7 @@ class DataPackage(BaseModel):
     See https://specs.frictionlessdata.io/data-package.
     """
 
+    id_: str | None = Field(default=None, alias="id")
     name: str
     title: str
     description: str
@@ -113,6 +114,15 @@ class DataPackage(BaseModel):
     resources: list[Resource]
     created: str
     version: str | None = None
+
+    @model_serializer(mode="wrap")
+    def _drop_empty_id(self, handler):
+        """Only emit the ``id`` field when it has been set."""
+        data = handler(self)
+        if self.id_ is None:
+            data.pop("id", None)
+            data.pop("id_", None)
+        return data
 
     @classmethod
     def new_datapackage(

@@ -251,7 +251,7 @@ def _datapackage_changed(
     new_datapackage_copy = new_datapackage.model_copy(deep=True)
     old_datapackage_copy = baseline_datapackage.model_copy(deep=True)
     for field in new_datapackage_copy.model_dump():
-        if field in {"created", "version"}:
+        if field in {"created", "version", "id_"}:
             continue
         if field == "resources":
             for r in old_datapackage_copy.resources + new_datapackage_copy.resources:
