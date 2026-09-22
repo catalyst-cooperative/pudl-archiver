@@ -432,6 +432,25 @@ class FsspecDraftDeposition(DraftDeposition):
             self.deposition.version,
         )
 
+        # An unpublished datapackage may already have been stamped with the version
+        # and DOI of a matching Zenodo metadata draft (see
+        # ``orchestrate_metadata_archive``). Regenerating it, for example when
+        # publishing a run, must not discard those.
+        workspace_datapackage = (
+            self.deposition.get_deposition_path(DepositionDirectory.WORKSPACE)
+            / "datapackage.json"
+        )
+        if workspace_datapackage.exists():
+            existing = DataPackage.model_validate_json(
+                workspace_datapackage.read_bytes()
+            )
+            datapackage = datapackage.model_copy(
+                update={
+                    "version": existing.version or datapackage.version,
+                    "id_": existing.id_,
+                }
+            )
+
         return datapackage
 
 
