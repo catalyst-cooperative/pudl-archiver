@@ -87,7 +87,6 @@ def _resource_from_file(file: DepositionFile, parts: dict[str, str]) -> Resource
     return Resource(
         name=file.filename,
         path=file.links.canonical,
-        remote_url=file.links.canonical,
         title=filename.name,
         mediatype=mt,
         parts=parts,

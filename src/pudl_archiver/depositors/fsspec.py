@@ -72,7 +72,6 @@ def _resource_from_upath(path: UPath, parts: Partitions, md5_hash: str) -> Resou
     return Resource(
         name=path.name,
         path=path.as_uri().replace("workspace", "published"),
-        remote_url=path.as_uri().replace("workspace", "published"),
         title=path.name,
         mediatype=mt,
         parts=parts,
