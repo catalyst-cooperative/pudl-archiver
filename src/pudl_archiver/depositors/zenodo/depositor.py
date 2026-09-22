@@ -632,6 +632,20 @@ class ZenodoDraftDeposition(DraftDeposition):
     dataset_id: str
     api_client: ZenodoAPIClient
 
+    @property
+    def reserved_doi(self) -> str:
+        """DOI that will be minted for this draft when it is published.
+
+        Zenodo version DOIs are ``<prefix>/zenodo.<record id>``, so we can derive the
+        DOI from the draft's record ID and the server we're talking to. We can't use
+        the ``prereserve_doi`` field Zenodo returns in the deposition metadata: on the
+        sandbox server that field reports a ``10.5281`` (production) DOI even though
+        the sandbox record's actual DOI, and every other link on the record, use the
+        ``10.5072`` (sandbox) prefix.
+        """
+        prefix = "10.5072" if self.api_client.sandbox else "10.5281"
+        return f"{prefix}/zenodo.{self.deposition.id_}"
+
     async def publish(self) -> ZenodoPublishedDeposition:
         """Publish draft deposition and return new depositor with updated deposition."""
         published = await self.api_client.publish(self.deposition)
