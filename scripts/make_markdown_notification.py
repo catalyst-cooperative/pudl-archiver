@@ -13,6 +13,7 @@ issues. Zulip outputs omit those actions and serve as notifications only.
 """
 
 import argparse
+import itertools
 import json
 import logging
 import re
@@ -144,6 +145,24 @@ def _format_summary(
     )
 
 
+def _format_metadata_summary(
+    summary: dict,
+    include_action: bool = True,
+) -> str:
+    """Describe a Zenodo draft holding only the metadata of a dataset."""
+    content = (
+        f"New Zenodo metadata draft, version {summary['version']}, "
+        f"which will have the DOI {summary['doi']}."
+    )
+    action = "Reviewed and published Zenodo metadata draft" if include_action else None
+    return _format_message(
+        url=summary["record_url"],
+        name=f"{summary['dataset_name']} (Zenodo metadata)",
+        content=content,
+        action=action,
+    )
+
+
 def _format_errors(
     log: str,
     include_action: bool = True,
@@ -259,7 +278,10 @@ def main(
     run_url: str | None = None,
 ) -> None:
     """Format summary files for GitHub issue text or Zulip Markdown."""
-    summaries = _load_summaries(summary_files)
+    all_summaries = _load_summaries(summary_files)
+    # Metadata-only summaries describe a Zenodo draft, not a data archive run.
+    metadata_summaries = [s for s in all_summaries if s.get("metadata_only")]
+    summaries = [s for s in all_summaries if not s.get("metadata_only")]
     errors = _load_errors(error_files)
     include_action = summary_type != "zulip"
 
@@ -291,10 +313,16 @@ def main(
     changed_blocks = "\n\n".join(
         filter(
             None,
-            (
-                _format_summary(s, include_action)
-                for s in summaries
-                if s["file_changes"]
+            itertools.chain(
+                (
+                    _format_summary(s, include_action)
+                    for s in summaries
+                    if s["file_changes"]
+                ),
+                (
+                    _format_metadata_summary(s, include_action)
+                    for s in metadata_summaries
+                ),
             ),
         )
     )

@@ -118,10 +118,75 @@ jobs:
           name: run-summaries-${{ env.DATASET }}
           path: ${{ env.DATASET }}_run_summary.json
 
+  archive-metadata:
+    # Datasets in the fsspec archiver are too big for Zenodo, but we still archive
+    # their datapackage.json there as a citable record. This creates a Zenodo draft
+    # that must be reviewed and published manually, along with the fsspec archive.
+    needs:
+      - notify-start
+      - archive-run
+    if: ${{ needs.notify-start.outputs.dataset == 'ferceqr' }}
+    # A failure here should not trigger publish-or-retry-fsspec-archive, which
+    # is only meant to retry a failed archive-run. Failures are still reported
+    # through the error log artifact.
+    continue-on-error: true
+    defaults:
+      run:
+        shell: bash -l {0}
+    runs-on: ubuntu-latest
+    env:
+      DATASET: ${{ needs.notify-start.outputs.dataset }}
+      DEPOSITION_PATH: ${{ inputs.deposition_path || 'gs://archives.catalyst.coop' }}
+    permissions:
+      contents: "read"
+      id-token: "write"
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set default GCP credentials
+        id: gcloud-auth
+        continue-on-error: true
+        uses: "google-github-actions/auth@v3"
+        with:
+          workload_identity_provider: "projects/345950277072/locations/global/workloadIdentityPools/gh-actions-pool/providers/gh-actions-provider"
+          service_account: "pudl-archiver-gha@catalyst-cooperative-pudl.iam.gserviceaccount.com"
+
+      - name: Set up pixi
+        uses: prefix-dev/setup-pixi@v0.10.2
+        with:
+          cache: true
+
+      - name: Create Zenodo metadata draft for ${{ env.DATASET }}
+        env:
+          ZENODO_TOKEN_UPLOAD: ${{ secrets.ZENODO_TOKEN_UPLOAD }}
+          ZENODO_TOKEN_PUBLISH: ${{ secrets.ZENODO_TOKEN_PUBLISH }}
+        run: |
+          set -o pipefail
+          pixi run pudl_archiver \
+            archive \
+            fsspec-metadata \
+            "$DATASET" \
+            "$DEPOSITION_PATH"/"$DATASET" 2>&1 | tee "${DATASET}_metadata_log.txt"
+
+      - name: Save failed runs
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: error-log-${{ env.DATASET }}-metadata
+          path: ${{ env.DATASET }}_metadata_log.txt
+
+      - name: Upload metadata summary
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: run-summaries-${{ env.DATASET }}-metadata
+          path: ${{ env.DATASET }}_metadata_summary.json
+
   archive-notify:
     runs-on: ubuntu-latest
     needs:
       - archive-run
+      - archive-metadata
     if: ${{ always() }}
     steps:
       - uses: actions/checkout@v7
@@ -149,16 +214,16 @@ jobs:
         run: |
           {
             echo 'ERRORS<<DELIM1'
-            pixi run ./scripts/make_markdown_notification.py --summary-files ./*_run_summary.json --error-files ./*_log.txt --summary-type error
+            pixi run ./scripts/make_markdown_notification.py --summary-files ./*_summary.json --error-files ./*_log.txt --summary-type error
             echo 'DELIM1'
             echo 'FAILURES<<DELIM2'
-            pixi run ./scripts/make_markdown_notification.py --summary-files ./*_run_summary.json --error-files ./*_log.txt --summary-type failure
+            pixi run ./scripts/make_markdown_notification.py --summary-files ./*_summary.json --error-files ./*_log.txt --summary-type failure
             echo 'DELIM2'
             echo 'CHANGES<<DELIM3'
-            pixi run ./scripts/make_markdown_notification.py --summary-files ./*_run_summary.json --error-files ./*_log.txt --summary-type change
+            pixi run ./scripts/make_markdown_notification.py --summary-files ./*_summary.json --error-files ./*_log.txt --summary-type change
             echo 'DELIM3'
             echo 'UNCHANGED<<DELIM4'
-            pixi run ./scripts/make_markdown_notification.py --summary-files ./*_run_summary.json --error-files ./*_log.txt --summary-type unchanged
+            pixi run ./scripts/make_markdown_notification.py --summary-files ./*_summary.json --error-files ./*_log.txt --summary-type unchanged
             echo 'DELIM4'
           } | tee -a "$GITHUB_OUTPUT"
       # These steps only run if no Github issue is requested to be created.
@@ -174,7 +239,7 @@ jobs:
         run: |
           {
             echo "ZULIP_CONTENT<<EOF"
-            pixi run ./scripts/make_markdown_notification.py --summary-files ./*_run_summary.json --error-files ./*_log.txt --summary-type zulip --run-url "$RUN_URL"
+            pixi run ./scripts/make_markdown_notification.py --summary-files ./*_summary.json --error-files ./*_log.txt --summary-type zulip --run-url "$RUN_URL"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
       - name: Notify Zulip of archive run completion
@@ -211,6 +276,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          RUN_TYPE: fsspec
           ERRORS: ${{ needs.archive-notify.outputs.errors }}
           FAILURES: ${{ needs.archive-notify.outputs.failures }}
           CHANGES: ${{ needs.archive-notify.outputs.changes }}
