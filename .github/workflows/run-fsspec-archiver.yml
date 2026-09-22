@@ -18,15 +18,6 @@ on:
         default: false
         required: true
         type: boolean
-      metadata_only:
-        description: >-
-          Skip archive-run and only run archive-metadata. Handy for testing
-          archive-metadata against a scratch deposition_path, which
-          automatically uses Zenodo sandbox since it isn't
-          gs://archives.catalyst.coop.
-        default: false
-        required: true
-        type: boolean
   schedule:
     - cron: "21 8 1 * *" # 8:21 AM UTC, first of every month
 
@@ -64,7 +55,6 @@ jobs:
 
   archive-run:
     needs: notify-start
-    if: ${{ !inputs.metadata_only }}
     defaults:
       run:
         shell: bash -l {0}
@@ -132,17 +122,10 @@ jobs:
     # Datasets in the fsspec archiver are too big for Zenodo, but we still archive
     # their datapackage.json there as a citable record. This creates a Zenodo draft
     # that must be reviewed and published manually, along with the fsspec archive.
-    #
-    # Runs after archive-run, unless metadata_only skipped it, in which case
-    # archive-run's status is 'skipped' rather than 'success'. The always() is
-    # needed so that skipped status doesn't itself cause this job to be skipped.
     needs:
       - notify-start
       - archive-run
-    if: |
-      always() &&
-      needs.notify-start.outputs.dataset == 'ferceqr' &&
-      (needs.archive-run.result == 'success' || needs.archive-run.result == 'skipped')
+    if: ${{ needs.notify-start.outputs.dataset == 'ferceqr' }}
     # A failure here should not trigger publish-or-retry-fsspec-archive, which
     # is only meant to retry a failed archive-run. Failures are still reported
     # through the error log artifact.
