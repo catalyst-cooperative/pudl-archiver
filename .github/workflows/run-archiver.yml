@@ -33,10 +33,6 @@ on:
     - cron: "21 4 2 * *" # 4:21 AM UTC, every second of the month - run all non-PUDL archivers
     - cron: "21 14 * 6-7,9-10 1-6" # 2:21 PM UTC, every day June-July and Sept-Oct except for Sundays - look for early and final release of EIA data
 
-concurrency: # Ensure no two independent archiver runs can be kicked off simultaneously
-  group: pudl-production-archive
-  cancel-in-progress: false
-
 jobs:
   determine-datasets:
     runs-on: ubuntu-latest
@@ -44,55 +40,37 @@ jobs:
     outputs:
       datasets: ${{ steps.datasets.outputs.datasets }}
       run_type: ${{ steps.datasets.outputs.run_type }}
-      should_run: ${{ steps.datasets.outputs.should_run }}
 
     steps:
       - id: datasets
         env:
           INPUT_DATASETS: ${{ inputs.datasets }}
-        # Always execute the manually inputted workflows.
-        # Otherwise, find the schedule of the original workflow run and
-        #
         run: |
-          echo "should_run=true" >> "$GITHUB_OUTPUT"
-
           if [ -n "$INPUT_DATASETS" ]; then
             echo "datasets=[$INPUT_DATASETS]" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          # The Sunday schedule overlaps the monthly schedule on the first.
-          # Let the monthly event own that date.
-          if [ "$SCHEDULE" = "21 10 * * 0" ] && [ "$(date -u +%d)" = "01" ]; then
-            echo "Skipping duplicate Sunday run on the first of the month."
-            echo "should_run=false" >> "$GITHUB_OUTPUT"
-            exit 0
+          DOW=$(date -u +%u) # Get day of week
+          DOM=$(date -u +%d) # Get day of month
+          HOUR=$(date -u +%H) # Get hour of month
+
+          if [ "$DOW" -eq 7 ] || [ "$DOM" -eq 01 ]; then
+          ## On sundays and the 1st of the month, run all PUDL data sources
+            echo 'datasets=["censuspep","eia176","eia191","eia757a","eia860","eia860m","eia861","eia923","eia930","eiaaeo","eiaapi","epacamd_eia","epacems","epamats","ferc1","ferc2","ferc6","ferc60","ferc714","ferccid","gridpathratoolkit","nrelatb","phmsagas","vcerare"]' >> "$GITHUB_OUTPUT"
+            echo "run_type=pudl" >> "$GITHUB_OUTPUT"
+          elif [ "$DOM" -eq 02 ] && [ "$HOUR" -eq 4 ]; then
+          ## On the second of the month where the hour is 4AM UTC,
+          ## run all non-PUDL data sources.
+            echo 'datasets=["doeiraec","doelead","eiabluesky","eiacbecs","eiamecs","eianems","eiarecs","eiasteo","eiawater","epaegrid","epapcap","mshamines","nrelss","nrelsts","usgsuspvdb","usgsuswtdb"]' >> "$GITHUB_OUTPUT"
+            echo "run_type=non_pudl" >> "$GITHUB_OUTPUT"
+          else
+            # Otherwise, look for the early and final release outputs for EIA datasets
+            echo 'datasets=["eia860","eia861","eia923"]' >> "$GITHUB_OUTPUT"
+            echo "run_type=early_final_release" >> "$GITHUB_OUTPUT"
           fi
 
-          case "$SCHEDULE" in
-            "21 10 1 * *"|"21 10 * * 0")
-              echo 'datasets=["censuspep","eia176","eia191","eia757a","eia860","eia860m","eia861","eia923","eia930","eiaaeo","eiaapi","epacamd_eia","epacems","epamats","ferc1","ferc2","ferc6","ferc60","ferc714","ferccid","gridpathratoolkit","nrelatb","phmsagas","vcerare"]' >> "$GITHUB_OUTPUT"
-              echo "run_type=pudl" >> "$GITHUB_OUTPUT"
-              ;;
-
-            "21 4 2 * *")
-              echo 'datasets=["doeiraec","doelead","eiabluesky","eiacbecs","eiamecs","eianems","eiarecs","eiasteo","eiawater","epaegrid","epapcap","mshamines","nrelss","nrelsts","usgsuspvdb","usgsuswtdb"]' >> "$GITHUB_OUTPUT"
-              echo "run_type=non_pudl" >> "$GITHUB_OUTPUT"
-              ;;
-
-            "21 14 * 6-7,9-10 1-6")
-              echo 'datasets=["eia860","eia861","eia923"]' >> "$GITHUB_OUTPUT"
-              echo "run_type=early_final_release" >> "$GITHUB_OUTPUT"
-              ;;
-
-            *)
-              echo "::error::Unknown schedule: $SCHEDULE"
-              exit 1
-              ;;
-          esac
-
   notify-start:
-    if: needs.determine-datasets.outputs.should_run == 'true'
     runs-on: ubuntu-latest
     needs: determine-datasets
     steps:
@@ -124,7 +102,6 @@ jobs:
           content: ${{ steps.launch_message.outputs.LAUNCH_CONTENT }}
 
   archive-run:
-    if: needs.determine-datasets.outputs.should_run == 'true'
     runs-on: ${{ github.event.inputs.use_large_runner == 'true' && 'ubuntu-latest-4core' || 'ubuntu-latest' }}
     needs:
       - determine-datasets
@@ -290,7 +267,7 @@ jobs:
   make-github-issue:
     # If event is a scheduled run or a workflow run where an issue
     # is requested, create an issue.
-    if: ${{ always() && needs.determine-datasets.outputs.should_run == 'true' && (github.event_name == 'schedule' || inputs.create_github_issue == true) }}
+    if: ${{ always() && (github.event_name == 'schedule' || inputs.create_github_issue == true) }}
     runs-on: ubuntu-latest
     needs:
       - archive-run
@@ -319,13 +296,12 @@ jobs:
 
   close-issue-if-no-changes:
     # Close the issue if there are no errors, failures, or changes
-    if: ${{ always() && needs.determine-datasets.outputs.should_run == 'true' && (github.event_name == 'schedule' || inputs.create_github_issue == true) && needs.archive-notify.outputs.errors == '' && needs.archive-notify.outputs.failures == '' && needs.archive-notify.outputs.changes == '' && needs.archive-notify.outputs.timedout == '' && needs.make-github-issue.outputs.issue_number != '' }}
+    if: ${{ always() && (github.event_name == 'schedule' || inputs.create_github_issue == true) && needs.archive-notify.outputs.errors == '' && needs.archive-notify.outputs.failures == '' && needs.archive-notify.outputs.changes == '' && needs.archive-notify.outputs.timedout == '' && needs.make-github-issue.outputs.issue_number != '' }}
     runs-on: ubuntu-latest
     needs:
       - archive-run
       - archive-notify
       - make-github-issue
-      - determine-datasets
     permissions:
       issues: write
     steps:
