@@ -34,7 +34,7 @@ on:
     - cron: "21 14 * 6-7,9-10 1-6" # 2:21 PM UTC, every day June-July and Sept-Oct except for Sundays - look for early and final release of EIA data
 
 concurrency: # Ensure no two independent archiver runs can be kicked off simultaneously
-  group: pudl-production-archive
+  group: pudl-archive-run
   cancel-in-progress: false
 
 jobs:
@@ -50,6 +50,7 @@ jobs:
       - id: datasets
         env:
           INPUT_DATASETS: ${{ inputs.datasets }}
+          SCHEDULE: ${{ github.event.schedule }}
         # Always execute the manually inputted workflows.
         # Otherwise, find the schedule of the original workflow run and
         #
@@ -212,8 +213,9 @@ jobs:
   archive-notify:
     runs-on: ubuntu-latest
     needs:
+      - determine-datasets
       - archive-run
-    if: ${{ always() }}
+    if: ${{ always() && needs.determine-datasets.outputs.should_run == 'true' }}
     steps:
       - uses: actions/checkout@v7
       - name: Download summaries
