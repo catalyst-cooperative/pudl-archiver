@@ -2,6 +2,8 @@
 
 import datetime
 
+import pytest
+
 from pudl_archiver.depositors.zenodo.depositor import (
     ZenodoAPIClient,
     ZenodoDraftDeposition,
@@ -45,17 +47,17 @@ def _draft(*, sandbox: bool, record_id: int) -> ZenodoDraftDeposition:
     )
 
 
-def test_generate_datapackage_stamps_reserved_doi():
-    draft = _draft(sandbox=False, record_id=123)
+@pytest.mark.parametrize(
+    "sandbox,record_id,expected_doi",
+    [
+        (False, 123, "https://doi.org/10.5281/zenodo.123"),
+        (True, 456, "https://doi.org/10.5072/zenodo.456"),
+    ],
+    ids=["production", "sandbox"],
+)
+def test_generate_datapackage_stamps_reserved_doi(sandbox, record_id, expected_doi):
+    draft = _draft(sandbox=sandbox, record_id=record_id)
 
     datapackage = draft.generate_datapackage({})
 
-    assert datapackage.id_ == "https://doi.org/10.5281/zenodo.123"
-
-
-def test_generate_datapackage_stamps_sandbox_doi():
-    draft = _draft(sandbox=True, record_id=456)
-
-    datapackage = draft.generate_datapackage({})
-
-    assert datapackage.id_ == "https://doi.org/10.5072/zenodo.456"
+    assert datapackage.id_ == expected_doi
