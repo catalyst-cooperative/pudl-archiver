@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 
 from pudl_archiver import ARCHIVERS, archive_dataset, archive_fsspec_metadata
 from pudl_archiver.archivers.validate import RunSummary
-from pudl_archiver.utils import RunSettings
+from pudl_archiver.utils import PRODUCTION_FSSPEC_DEPOSITION_ROOT, RunSettings
 
 logger = logging.getLogger("catalystcoop.pudl_archiver")
 
@@ -156,6 +156,7 @@ def fsspec(
 @click.argument(
     "deposition-path",
     type=str,
+    default=None,
 )
 @click.option(
     "--sandbox",
@@ -167,7 +168,7 @@ def fsspec_metadata(
     sandbox: bool,
     initialize: bool,
     dataset: str,
-    deposition_path: str,
+    deposition_path: str | None,
 ):
     """Archive the datapackage.json of an fsspec archive on Zenodo.
 
@@ -178,10 +179,13 @@ def fsspec_metadata(
     Zenodo draft is never published automatically, and must be reviewed and
     published manually.
 
-    gs://archives.catalyst.coop is the only legitimate production destination for
-    fsspec data archives, so if DEPOSITION_PATH isn't under it, the metadata is
-    always archived to Zenodo sandbox instead of production.
+    DEPOSITION_PATH defaults to DATASET under gs://archives.catalyst.coop, the only
+    legitimate production destination for fsspec data archives. If it's overridden
+    to a path that isn't under that root, the metadata is always archived to Zenodo
+    sandbox instead of production.
     """
+    if deposition_path is None:
+        deposition_path = f"{PRODUCTION_FSSPEC_DEPOSITION_ROOT}/{dataset}"
     asyncio.run(
         archive_fsspec_metadata(
             dataset=dataset,

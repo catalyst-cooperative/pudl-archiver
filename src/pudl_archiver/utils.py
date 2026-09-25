@@ -22,7 +22,7 @@ Url = typing.Annotated[AnyUrl, PlainSerializer(lambda url: str(url), return_type
 
 # The only fsspec deposition path that holds real production data archives. Anywhere
 # else (a scratch bucket, a local directory, etc.) is by definition a test location.
-PRODUCTION_DEPOSITION_ROOT = "gs://archives.catalyst.coop"
+PRODUCTION_FSSPEC_DEPOSITION_ROOT = "gs://archives.catalyst.coop"
 
 
 def is_production_deposition_path(source_path: str) -> bool:
@@ -30,10 +30,10 @@ def is_production_deposition_path(source_path: str) -> bool:
 
     Used to make sure test or scratch depositions can never accidentally publish
     metadata to production Zenodo: anywhere other than
-    ``PRODUCTION_DEPOSITION_ROOT`` is treated as a test destination.
+    ``PRODUCTION_FSSPEC_DEPOSITION_ROOT`` is treated as a test destination.
     """
-    return source_path == PRODUCTION_DEPOSITION_ROOT or source_path.startswith(
-        f"{PRODUCTION_DEPOSITION_ROOT}/"
+    return source_path == PRODUCTION_FSSPEC_DEPOSITION_ROOT or source_path.startswith(
+        f"{PRODUCTION_FSSPEC_DEPOSITION_ROOT}/"
     )
 
 

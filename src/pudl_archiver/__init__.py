@@ -11,7 +11,7 @@ from pudl_archiver.archivers.classes import AbstractDatasetArchiver
 from pudl_archiver.frictionless import Partitions
 from pudl_archiver.orchestrator import orchestrate_metadata_archive, orchestrate_run
 from pudl_archiver.utils import (
-    PRODUCTION_DEPOSITION_ROOT,
+    PRODUCTION_FSSPEC_DEPOSITION_ROOT,
     RunSettings,
     is_production_deposition_path,
 )
@@ -146,7 +146,7 @@ async def archive_fsspec_metadata(
     if sandbox and not requested_sandbox:
         logger.warning(
             f"{source_path} is not the production deposition path "
-            f"({PRODUCTION_DEPOSITION_ROOT}), so archiving metadata to Zenodo "
+            f"({PRODUCTION_FSSPEC_DEPOSITION_ROOT}), so archiving metadata to Zenodo "
             "sandbox instead of production."
         )
     run_settings = run_settings.model_copy(

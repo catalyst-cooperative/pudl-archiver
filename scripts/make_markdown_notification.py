@@ -131,7 +131,7 @@ def _format_summary(
         )  # Replace no partition change with empty string
         # Convert to Markdown table
         changes = file_change_table.to_markdown(index=False)
-        action = "Reviewed and published to Zenodo" if include_action else None
+        action = "Review and publish to Zenodo" if include_action else None
     else:
         # If no changes, don't specify an action.
         changes = "No changes."
@@ -154,7 +154,7 @@ def _format_metadata_summary(
         f"New Zenodo metadata draft, version {summary['version']}, "
         f"which will have the DOI {summary['doi']}."
     )
-    action = "Reviewed and published Zenodo metadata draft" if include_action else None
+    action = "Review and publish Zenodo metadata draft" if include_action else None
     return _format_message(
         url=summary["record_url"],
         name=f"{summary['dataset_name']} (Zenodo metadata)",
