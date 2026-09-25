@@ -242,6 +242,24 @@ class RunSummary(BaseModel):
         )
 
 
+class MetadataArchiveSummary(BaseModel):
+    """Summary of archiving a dataset's ``datapackage.json`` alone to Zenodo.
+
+    Shares the ``dataset_name``, ``record_url``, ``validation_tests`` and
+    ``file_changes`` keys with ``RunSummary`` so it can be read by the same
+    notification tooling, which uses ``metadata_only`` to tell them apart.
+    """
+
+    dataset_name: str
+    metadata_only: bool = True
+    record_url: Url
+    version: str
+    doi: Url
+    datapackage_changed: bool
+    validation_tests: list[ValidationTestResult] = []
+    file_changes: list[FileDiff] = []
+
+
 def _datapackage_changed(
     baseline_datapackage: DataPackage,
     new_datapackage: DataPackage,
@@ -251,7 +269,7 @@ def _datapackage_changed(
     new_datapackage_copy = new_datapackage.model_copy(deep=True)
     old_datapackage_copy = baseline_datapackage.model_copy(deep=True)
     for field in new_datapackage_copy.model_dump():
-        if field in {"created", "version"}:
+        if field in {"created", "version", "id_"}:
             continue
         if field == "resources":
             for r in old_datapackage_copy.resources + new_datapackage_copy.resources:

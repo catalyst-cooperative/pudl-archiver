@@ -7,9 +7,9 @@ import click
 import coloredlogs
 from dotenv import load_dotenv
 
-from pudl_archiver import ARCHIVERS, archive_dataset
+from pudl_archiver import ARCHIVERS, archive_dataset, archive_fsspec_metadata
 from pudl_archiver.archivers.validate import RunSummary
-from pudl_archiver.utils import RunSettings
+from pudl_archiver.utils import PRODUCTION_FSSPEC_DEPOSITION_ROOT, RunSettings
 
 logger = logging.getLogger("catalystcoop.pudl_archiver")
 
@@ -145,6 +145,56 @@ def fsspec(
                 only_years=only_years,
                 depositor="fsspec",
                 depositor_args={"deposition_path": deposition_path},
+            ),
+        )
+    )
+
+
+@archive.command
+@initialize_option
+@dataset_argument
+@click.argument(
+    "deposition-path",
+    type=str,
+    default=None,
+)
+@click.option(
+    "--sandbox",
+    is_flag=True,
+    help="Use Zenodo sandbox server. Sandbox is always used, regardless of this "
+    "flag, when DEPOSITION_PATH isn't under gs://archives.catalyst.coop.",
+)
+def fsspec_metadata(
+    sandbox: bool,
+    initialize: bool,
+    dataset: str,
+    deposition_path: str | None,
+):
+    """Archive the datapackage.json of an fsspec archive on Zenodo.
+
+    For datasets too large for Zenodo, whose data is archived with the fsspec
+    depositor. Reads the unpublished datapackage.json from the workspace of the
+    archive at DEPOSITION_PATH, stamps it with the version and DOI of a new Zenodo
+    draft, uploads it there, and saves the stamped copy back to the workspace. The
+    Zenodo draft is never published automatically, and must be reviewed and
+    published manually.
+
+    DEPOSITION_PATH defaults to DATASET under gs://archives.catalyst.coop, the only
+    legitimate production destination for fsspec data archives. If it's overridden
+    to a path that isn't under that root, the metadata is always archived to Zenodo
+    sandbox instead of production.
+    """
+    if deposition_path is None:
+        deposition_path = f"{PRODUCTION_FSSPEC_DEPOSITION_ROOT}/{dataset}"
+    asyncio.run(
+        archive_fsspec_metadata(
+            dataset=dataset,
+            source_path=deposition_path,
+            run_settings=RunSettings(
+                initialize=initialize,
+                summary_file=f"{dataset}_metadata_summary.json",
+                depositor="zenodo",
+                depositor_args={"sandbox": sandbox},
             ),
         )
     )

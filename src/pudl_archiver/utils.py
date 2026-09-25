@@ -20,6 +20,22 @@ logger = logging.getLogger(f"catalystcoop.{__name__}")
 # A custom type that wraps AnyHttpUrl, but nicely serializes the URL as a string
 Url = typing.Annotated[AnyUrl, PlainSerializer(lambda url: str(url), return_type=str)]
 
+# The only fsspec deposition path that holds real production data archives. Anywhere
+# else (a scratch bucket, a local directory, etc.) is by definition a test location.
+PRODUCTION_FSSPEC_DEPOSITION_ROOT = "gs://archives.catalyst.coop"
+
+
+def is_production_deposition_path(source_path: str) -> bool:
+    """Check whether an fsspec deposition path is the real production archive.
+
+    Used to make sure test or scratch depositions can never accidentally publish
+    metadata to production Zenodo: anywhere other than
+    ``PRODUCTION_FSSPEC_DEPOSITION_ROOT`` is treated as a test destination.
+    """
+    return source_path == PRODUCTION_FSSPEC_DEPOSITION_ROOT or source_path.startswith(
+        f"{PRODUCTION_FSSPEC_DEPOSITION_ROOT}/"
+    )
+
 
 async def retry_async(
     async_func: Callable[..., Awaitable[typing.Any]],

@@ -94,6 +94,9 @@ ferc714:
 ferccid:
   production_doi: 10.5281/zenodo.18176680
   sandbox_doi: 10.5072/zenodo.422986
+ferceqr:
+  production_doi: 10.5281/zenodo.18251901
+  sandbox_doi: 10.5072/zenodo.606623
 gridpathratoolkit:
   production_doi: 10.5281/zenodo.10844661
   sandbox_doi: 10.5072/zenodo.120698

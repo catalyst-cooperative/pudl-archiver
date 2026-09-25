@@ -19,3 +19,4 @@ node_modules/*
 *.egg-info
 
 *_run_summary.json
+*_metadata_summary.json
