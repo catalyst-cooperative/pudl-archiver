@@ -778,6 +778,7 @@ class ZenodoDraftDeposition(DraftDeposition):
             self.dataset_id,
             resources,
             self.deposition.metadata.version,
+            doi=f"https://doi.org/{self.reserved_doi}",
         )
 
         return datapackage
