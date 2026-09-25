@@ -130,6 +130,7 @@ class DataPackage(BaseModel):
         name: str,
         resources: Iterable[Resource],
         version: str | None,
+        doi: str | None = None,
     ) -> DataPackage:
         """Create a frictionless datapackage from a list of files and partitions.
 
@@ -139,13 +140,14 @@ class DataPackage(BaseModel):
             resources: A dictionary mapping file names to a ResourceInfo object
                 containing the local path to the resource, and its working partitions.
             version: Version string for current deposition version.
+            doi: DOI identifying this version of the datapackage, if known.
         """
         if name in get_pudl_sources():  # If data source in PUDL source metadata
             return cls.from_pudl_metadata(
-                name=name, resources=resources, version=version
+                name=name, resources=resources, version=version, doi=doi
             )
         return cls.from_non_pudl_metadata(
-            name=name, resources=resources, version=version
+            name=name, resources=resources, version=version, doi=doi
         )
 
     @classmethod
@@ -154,11 +156,13 @@ class DataPackage(BaseModel):
         name: str,
         resources: Iterable[Resource],
         version: str | None,
+        doi: str | None = None,
     ) -> DataPackage:
         """Create a datapackage using PUDL metadata associated with ``name``."""
         data_source = get_pudl_sources()[name]
 
         return DataPackage(
+            id=doi,
             name=f"pudl-raw-{data_source['name']}",
             title=f"PUDL Raw {data_source['title']}",
             sources=[{"title": data_source["title"], "path": data_source["path"]}],
@@ -177,11 +181,13 @@ class DataPackage(BaseModel):
         name: str,
         resources: Iterable[Resource],
         version: str | None,
+        doi: str | None = None,
     ):
         """Create a datapackage for sources that won't end up in PUDL."""
         data_source = NON_PUDL_SOURCES[name]
 
         return DataPackage(
+            id=doi,
             name=name,
             title=data_source["title"],
             sources=[{"title": data_source["title"], "path": data_source["path"]}],
