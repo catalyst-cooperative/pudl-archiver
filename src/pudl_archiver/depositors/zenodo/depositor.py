@@ -735,9 +735,10 @@ class ZenodoDraftDeposition(DraftDeposition):
                 )
                 action = DepositionAction.UPDATE
             else:
-                logger.info(f"Adding {filename} to deposition.")
-
-                action = DepositionAction.CREATE
+                logger.info(
+                    f"No update for {filename}: local {local_md5} and remote "
+                    f"{file_info.checksum} hashes are identical."
+                )
         else:
             logger.info(f"Adding {filename} to deposition.")
 
