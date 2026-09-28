@@ -1,7 +1,7 @@
 ---
 name: Monthly archive update
 about: Template for publishing monthly archives.
-title: ${{ env.ISSUE_TITLE }}
+title: {{ env.ISSUE_TITLE }}
 labels: archive-update, zenodo
 assignees: e-belfer
 ---
