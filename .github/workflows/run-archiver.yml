@@ -300,6 +300,30 @@ jobs:
       - determine-datasets
     steps:
       - uses: actions/checkout@v7
+      - name: Set issue title
+        id: title
+        env:
+          RUN_TYPE: ${{ needs.determine-datasets.outputs.run_type }}
+        run: |
+          case "$RUN_TYPE" in
+            pudl)
+              PREFIX="PUDL"
+              ;;
+            non_pudl)
+              PREFIX="non-PUDL"
+              ;;
+            early_final_release)
+              PREFIX="EIA early/final release"
+              ;;
+            *)
+              PREFIX=""
+              ;;
+          esac
+          YEAR=$(date +%Y)
+          MONTH=$(date +%B)
+          DAY=$(date +%-d)
+          echo "ISSUE_TITLE=Review $MONTH $DAY, $YEAR $PREFIX archive run" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
       - name: Create an issue
         id: create-issue
         uses: JasonEtco/create-an-issue@v2.9.2
@@ -312,6 +336,7 @@ jobs:
           TIMEDOUT: ${{ needs.archive-notify.outputs.timedout }}
           UNCHANGED: ${{ needs.archive-notify.outputs.unchanged }}
           RUN_TYPE: ${{ needs.determine-datasets.outputs.run_type }}
+          ISSUE_TITLE: ${{ steps.title.outputs.ISSUE_TITLE }}
         with:
           filename: .github/ISSUE_TEMPLATE/monthly-archive-update.md
       - run: echo "URL=${{ steps.create-issue.outputs.url }}" >> "$GITHUB_ENV"
