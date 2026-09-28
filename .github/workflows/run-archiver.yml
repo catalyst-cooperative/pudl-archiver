@@ -53,7 +53,7 @@ jobs:
           SCHEDULE: ${{ github.event.schedule }}
         # Always execute the manually inputted workflows.
         # Otherwise, find the schedule of the original workflow run and
-        #
+        # choose the appropriate set of archives to run.
         run: |
           echo "should_run=true" >> "$GITHUB_OUTPUT"
 
