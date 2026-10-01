@@ -21,14 +21,19 @@
 # so we stay laser-focused on just the "Install location" label and the whitespace
 # around it.
 
-install_path=`playwright install webkit --dry-run |grep "Install location" |sed 's/^[ ]*Install location:[ ]*//'`
+# Our archivers use both webkit and chromium, so make sure each is installed.
+# A browser may have several install locations (e.g. chromium also needs ffmpeg and
+# a headless shell), and each is a directory, so install if any of them is missing.
+for browser in webkit chromium; do
+    install_paths=`playwright install $browser --dry-run |grep "Install location" |sed 's/^[ ]*Install location:[ ]*//'`
 
-# Check if the install path is a regular file. If so, we're done.
-if [ -f "$install_path" ]; then exit 0; fi
+    missing=0
+    while IFS= read -r install_path; do
+        if [ ! -d "$install_path" ]; then missing=1; fi
+    done <<< "$install_paths"
 
-# If not, install.
-
-playwright install webkit
+    if [ "$missing" -eq 1 ]; then playwright install $browser; fi
+done
 
 # If playwright archivers (e.g. ferc2, ferc714) still won't run on your machine, try
-# playwright install --with-deps webkit
+# playwright install --with-deps webkit chromium
