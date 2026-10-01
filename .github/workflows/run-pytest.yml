@@ -8,6 +8,12 @@ on:
 jobs:
   ci-test:
     runs-on: ubuntu-latest
+    # Browsers and their system libraries come preinstalled in this image, so
+    # no apt/browser setup is needed. The tag must match the playwright version
+    # in pixi.lock.
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+      options: --ipc=host --init
     strategy:
       fail-fast: false
     defaults:
@@ -32,9 +38,6 @@ jobs:
 
       - name: Set up pixi
         uses: prefix-dev/setup-pixi@v0.10.2
-
-      - name: Set up Playwright
-        uses: ./.github/actions/setup-playwright
 
       - name: Run PyTest
         env:
