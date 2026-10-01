@@ -273,17 +273,41 @@ class DraftDeposition(BaseModel, ABC):
         """
         ...
 
-    @abstractmethod
     def generate_change(
         self, filename: str, resource: ResourceInfo
-    ) -> DepositionChange | None:
+    ) -> DepositionChange:
         """Check whether file should be changed.
+
+        Compares the downloaded file to the file currently in the draft, which
+        starts out as a copy of the last published version. Comparing against the
+        draft, rather than the published version, means that files already uploaded
+        by an earlier, partially completed run are not uploaded again on a retry.
 
         Args:
             filename: Name of file in question.
             resource: Info about downloaded file.
         """
-        ...
+        draft_md5 = self.get_checksum(filename)
+        if draft_md5 is None:
+            logger.info(f"Adding {filename} to deposition.")
+            action = DepositionAction.CREATE
+        elif (local_md5 := compute_md5(resource.local_path)) != draft_md5:
+            logger.info(
+                f"Updating {filename}: local hash {local_md5} vs. draft {draft_md5}"
+            )
+            action = DepositionAction.UPDATE
+        else:
+            logger.info(
+                f"No update for {filename}: local {local_md5} and draft "
+                f"{draft_md5} hashes are identical."
+            )
+            action = DepositionAction.NO_OP
+
+        return DepositionChange(
+            action_type=action,
+            name=filename,
+            resource=resource.local_path,
+        )
 
     @abstractmethod
     async def cleanup_after_error(self, e: Exception):
