@@ -7,7 +7,7 @@ from io import BytesIO
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_serializer
 
 from pudl_archiver.metadata.pudl import get_pudl_sources
 from pudl_archiver.metadata.sources import NON_PUDL_SOURCES
@@ -101,6 +101,7 @@ class DataPackage(BaseModel):
     See https://specs.frictionlessdata.io/data-package.
     """
 
+    id_: str | None = Field(default=None, alias="id")
     name: str
     title: str
     description: str
@@ -114,12 +115,22 @@ class DataPackage(BaseModel):
     created: str
     version: str | None = None
 
+    @model_serializer(mode="wrap")
+    def _drop_empty_id(self, handler):
+        """Only emit the ``id`` field when it has been set."""
+        data = handler(self)
+        if self.id_ is None:
+            data.pop("id", None)
+            data.pop("id_", None)
+        return data
+
     @classmethod
     def new_datapackage(
         cls,
         name: str,
         resources: Iterable[Resource],
         version: str | None,
+        doi: str | None = None,
     ) -> DataPackage:
         """Create a frictionless datapackage from a list of files and partitions.
 
@@ -129,13 +140,14 @@ class DataPackage(BaseModel):
             resources: A dictionary mapping file names to a ResourceInfo object
                 containing the local path to the resource, and its working partitions.
             version: Version string for current deposition version.
+            doi: DOI identifying this version of the datapackage, if known.
         """
         if name in get_pudl_sources():  # If data source in PUDL source metadata
             return cls.from_pudl_metadata(
-                name=name, resources=resources, version=version
+                name=name, resources=resources, version=version, doi=doi
             )
         return cls.from_non_pudl_metadata(
-            name=name, resources=resources, version=version
+            name=name, resources=resources, version=version, doi=doi
         )
 
     @classmethod
@@ -144,11 +156,13 @@ class DataPackage(BaseModel):
         name: str,
         resources: Iterable[Resource],
         version: str | None,
+        doi: str | None = None,
     ) -> DataPackage:
         """Create a datapackage using PUDL metadata associated with ``name``."""
         data_source = get_pudl_sources()[name]
 
         return DataPackage(
+            id=doi,
             name=f"pudl-raw-{data_source['name']}",
             title=f"PUDL Raw {data_source['title']}",
             sources=[{"title": data_source["title"], "path": data_source["path"]}],
@@ -167,11 +181,13 @@ class DataPackage(BaseModel):
         name: str,
         resources: Iterable[Resource],
         version: str | None,
+        doi: str | None = None,
     ):
         """Create a datapackage for sources that won't end up in PUDL."""
         data_source = NON_PUDL_SOURCES[name]
 
         return DataPackage(
+            id=doi,
             name=name,
             title=data_source["title"],
             sources=[{"title": data_source["title"], "path": data_source["path"]}],

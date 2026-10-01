@@ -139,7 +139,7 @@ prek run --all-files --show-diff-on-failure name-tests-test; \
 prek run --all-files taplo-format
 """, description = "Run selected pre-commit hooks" }
 prek-update = { cmd = "prek update", description = "Update pre-commit hook versions" }
-ruff = { cmd = "ruff check ./", description = "Run ruff linter" }
+ruff-check = { cmd = "ruff check ./", description = "Run ruff linter" }
 unit = { cmd = """
 pytest \
     --cov-append \
@@ -159,7 +159,10 @@ pytest \
     tests/integration
 """, description = "Run integration tests with coverage, in parallel" }
 coverage = { cmd = "coverage report --sort=cover", description = "Report test coverage" }
-lint = { depends-on = ["ruff", "prek-run"], description = "Run all linters" }
+lint = { depends-on = [
+  "ruff-check",
+  "prek-run",
+], description = "Run all linters" }
 ci = { depends-on = [
   "lint",
   "unit",
