@@ -1,10 +1,9 @@
 ---
 name: Monthly archive update
 about: Template for publishing monthly archives.
-title: Publish {% if env.RUN_TYPE == 'pudl' %}PUDL {% elsif env.RUN_TYPE == 'non_pudl' %}non-PUDL {% elsif env.RUN_TYPE == 'early_final_release' %}EIA early/final release {% endif %}{{ date | date: '%B %-d, %Y' }} archives
+title: "{{ env.ISSUE_TITLE }}"
 labels: archive-update, zenodo
 assignees: e-belfer
-
 ---
 
 # Summary of results
