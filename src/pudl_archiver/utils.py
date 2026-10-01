@@ -20,20 +20,26 @@ logger = logging.getLogger(f"catalystcoop.{__name__}")
 # A custom type that wraps AnyHttpUrl, but nicely serializes the URL as a string
 Url = typing.Annotated[AnyUrl, PlainSerializer(lambda url: str(url), return_type=str)]
 
-# The only fsspec deposition path that holds real production data archives. Anywhere
-# else (a scratch bucket, a local directory, etc.) is by definition a test location.
-PRODUCTION_FSSPEC_DEPOSITION_ROOT = "gs://archives.catalyst.coop"
+# The official fsspec deposition roots that hold real production data archives.
+# Anywhere else (a scratch bucket, a local directory, etc.) is by definition a test
+# location. The first entry is the default root used by the CLI.
+PRODUCTION_FSSPEC_DEPOSITION_ROOTS = ("gs://archives.catalyst.coop",)
+PRODUCTION_FSSPEC_DEPOSITION_ROOT = PRODUCTION_FSSPEC_DEPOSITION_ROOTS[0]
 
 
 def is_production_deposition_path(source_path: str) -> bool:
-    """Check whether an fsspec deposition path is the real production archive.
+    """Check whether an fsspec deposition path is under a production archive root.
 
     Used to make sure test or scratch depositions can never accidentally publish
-    metadata to production Zenodo: anywhere other than
-    ``PRODUCTION_FSSPEC_DEPOSITION_ROOT`` is treated as a test destination.
+    metadata to production Zenodo: anywhere other than one of the
+    ``PRODUCTION_FSSPEC_DEPOSITION_ROOTS`` is treated as a test destination.
+
+    A trailing slash is added before comparing so that the match respects path
+    boundaries: ``gs://archives.catalyst.coop-evil`` is not under
+    ``gs://archives.catalyst.coop``.
     """
-    return source_path == PRODUCTION_FSSPEC_DEPOSITION_ROOT or source_path.startswith(
-        f"{PRODUCTION_FSSPEC_DEPOSITION_ROOT}/"
+    return f"{source_path.rstrip('/')}/".startswith(
+        tuple(f"{root}/" for root in PRODUCTION_FSSPEC_DEPOSITION_ROOTS)
     )
 
 
