@@ -16,6 +16,7 @@ from pudl_archiver.utils import (
     "source_path,expected",
     [
         ("gs://archives.catalyst.coop", True),
+        ("gs://archives.catalyst.coop/", True),
         ("gs://archives.catalyst.coop/ferceqr", True),
         ("gs://archives.catalyst.coop-evil", False),
         ("gs://test.catalyst.coop/ferceqr", False),
