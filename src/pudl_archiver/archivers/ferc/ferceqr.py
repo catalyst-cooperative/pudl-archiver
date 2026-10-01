@@ -28,7 +28,16 @@ class FercEQRArchiver(AbstractDatasetArchiver):
     following command:
 
     ```
-    pudl_archiver --datasets ferceqr --deposition-path gs://archives.catalyst.coop/ferceqr --depositor fsspec
+    pudl_archiver archive fsspec ferceqr gs://archives.catalyst.coop/ferceqr
+    ```
+
+    Only the ``datapackage.json`` metadata can be archived on Zenodo. After the data
+    archive has been created, the following command creates an unpublished Zenodo
+    draft with a copy of the ``datapackage.json``, stamped with the version and DOI of
+    that draft (the same stamped copy is saved with the data):
+
+    ```
+    pudl_archiver archive fsspec-metadata ferceqr gs://archives.catalyst.coop/ferceqr
     ```
     """
 

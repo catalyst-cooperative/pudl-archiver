@@ -1,13 +1,26 @@
 """Core routines for archiving raw data packages."""
 
 import logging
+import tempfile
+from pathlib import Path
 
 import aiohttp
+from upath import UPath
 
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver
-from pudl_archiver.archivers.validate import RunSummary, exception_validation
-from pudl_archiver.depositors import PublishedDeposition, get_deposition
-from pudl_archiver.frictionless import Partitions
+from pudl_archiver.archivers.validate import (
+    MetadataArchiveSummary,
+    RunSummary,
+    _datapackage_changed,
+    exception_validation,
+)
+from pudl_archiver.depositors import (
+    DepositionAction,
+    DepositionChange,
+    PublishedDeposition,
+    get_deposition,
+)
+from pudl_archiver.frictionless import DataPackage, Partitions
 from pudl_archiver.utils import RunSettings
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
@@ -82,3 +95,82 @@ async def orchestrate_run(
         run_settings.auto_publish,
     )
     return summary, published
+
+
+async def orchestrate_metadata_archive(
+    dataset: str,
+    source_path: str,
+    run_settings: RunSettings,
+    session: aiohttp.ClientSession,
+) -> MetadataArchiveSummary | None:
+    """Archive only the ``datapackage.json`` of an fsspec archive on Zenodo.
+
+    Some datasets are too big for Zenodo, so their data is archived with the fsspec
+    depositor. Zenodo then holds just the metadata, which provides a citable record
+    and a place to fetch the datapackage. This reads the not-yet-published
+    ``datapackage.json`` from the fsspec ``workspace`` directory, stamps it with the
+    version and DOI of a new Zenodo draft, uploads it to that draft, and writes the
+    stamped copy back to the workspace so both locations agree. The draft is never
+    published here; that requires manual review.
+
+    Args:
+        dataset: Name of the dataset.
+        source_path: Path of the fsspec deposition (containing ``workspace``).
+        run_settings: Settings for the Zenodo depositor.
+        session: HTTP session.
+
+    Returns:
+        A summary of the draft, or None if there is no new datapackage to archive.
+    """
+    datapackage_path = UPath(source_path) / "workspace" / "datapackage.json"
+    if not datapackage_path.exists():
+        logger.info(
+            f"No unpublished datapackage.json found at {datapackage_path}, "
+            "so there is no new metadata to archive."
+        )
+        return None
+    datapackage = DataPackage.model_validate_json(datapackage_path.read_bytes())
+
+    draft, original_datapackage = await get_deposition(dataset, session, run_settings)
+
+    # Identify the new Zenodo version, and stamp it on the datapackage.
+    doi = f"https://doi.org/{draft.reserved_doi}"
+    version = draft.deposition.metadata.version
+    datapackage = datapackage.model_copy(update={"version": version, "id_": doi})
+
+    if original_datapackage is not None and not _datapackage_changed(
+        original_datapackage, datapackage
+    ):
+        logger.info("Datapackage is unchanged from Zenodo version, deleting draft.")
+        await draft.delete_deposition()
+        return None
+
+    datapackage_bytes = datapackage.model_dump_json(by_alias=True, indent=4).encode()
+    action = (
+        DepositionAction.UPDATE
+        if "datapackage.json" in await draft.list_files()
+        else DepositionAction.CREATE
+    )
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        local_path = Path(tmp_dir) / "datapackage.json"
+        local_path.write_bytes(datapackage_bytes)
+        draft = await draft._apply_change(
+            DepositionChange(
+                action_type=action, name="datapackage.json", resource=local_path
+            )
+        )
+
+    # Keep the fsspec copy in sync, now that it is on Zenodo.
+    datapackage_path.write_bytes(datapackage_bytes)
+
+    logger.info(
+        f"Created Zenodo draft {draft.get_deposition_link()} for {dataset} "
+        f"version {version} ({doi}). Review and publish it manually."
+    )
+    return MetadataArchiveSummary(
+        dataset_name=dataset,
+        record_url=draft.get_deposition_link(),
+        version=version,
+        doi=doi,
+        datapackage_changed=True,
+    )
