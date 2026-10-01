@@ -82,10 +82,8 @@ jobs:
           pixi info
           pixi list
 
-      - name: Additional Playwright setup
-        run: |
-          pixi run playwright install --with-deps webkit
-          pixi run playwright install --with-deps chromium
+      - name: Set up Playwright
+        uses: ./.github/actions/setup-playwright
 
       - name: Initialize production archive for ${{ matrix.dataset }}
         env:
