@@ -39,8 +39,6 @@ from pydantic import ConfigDict, Field
 from upath import UPath
 
 from pudl_archiver.depositors.depositor import (
-    DepositionAction,
-    DepositionChange,
     DepositionState,
     DepositorAPIClient,
     DraftDeposition,
@@ -52,7 +50,6 @@ from pudl_archiver.frictionless import (
     DataPackage,
     Partitions,
     Resource,
-    ResourceInfo,
 )
 from pudl_archiver.utils import RunSettings, compute_md5
 
@@ -375,39 +372,6 @@ class FsspecDraftDeposition(DraftDeposition):
         """Delete an un-submitted deposition."""
         raise NotImplementedError(
             "Versioning is not yet implemented for fsspec backend, so deleting a draft deposition is not possible."
-        )
-
-    def generate_change(
-        self, filename: str, resource: ResourceInfo
-    ) -> DepositionChange:
-        """Check whether file exists in most recent published version and should be deleted."""
-        remote_path = (
-            self.deposition.get_deposition_path(DepositionDirectory.PUBLISHED)
-            / filename
-        )
-
-        if remote_path.exists():
-            remote_md5 = self.deposition.get_checksum(remote_path)
-            local_md5 = compute_md5(resource.local_path)
-            if remote_md5 != local_md5:
-                logger.info(
-                    f"Updating {filename}: local hash {local_md5} vs. remote {remote_md5}"
-                )
-                action = DepositionAction.UPDATE
-            else:
-                logger.info(
-                    f"No update for {filename}: local {local_md5} and remote {remote_md5} hashes are identical."
-                )
-                action = DepositionAction.NO_OP
-        else:
-            logger.info(f"Adding new file {filename} to deposition.")
-
-            action = DepositionAction.CREATE
-
-        return DepositionChange(
-            action_type=action,
-            name=filename,
-            resource=resource.local_path,
         )
 
     def generate_datapackage(

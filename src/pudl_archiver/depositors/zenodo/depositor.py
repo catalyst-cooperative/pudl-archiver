@@ -15,8 +15,6 @@ import yaml
 from pydantic import BaseModel, PrivateAttr
 
 from pudl_archiver.depositors.depositor import (
-    DepositionAction,
-    DepositionChange,
     DepositorAPIClient,
     DraftDeposition,
     PublishedDeposition,
@@ -27,9 +25,8 @@ from pudl_archiver.frictionless import (
     DataPackage,
     Partitions,
     Resource,
-    ResourceInfo,
 )
-from pudl_archiver.utils import RunSettings, Url, compute_md5, retry_async
+from pudl_archiver.utils import RunSettings, Url, retry_async
 
 from .entities import (
     Deposition,
@@ -716,39 +713,6 @@ class ZenodoDraftDeposition(DraftDeposition):
     async def list_files(self) -> list[str]:
         """Return list of filenames from published version of deposition."""
         return await self.api_client.list_files(self.deposition)
-
-    def generate_change(
-        self, filename: str, resource: ResourceInfo
-    ) -> DepositionChange:
-        """Check whether file should be changed.
-
-        Args:
-            filename: Name of file in question.
-            resource: Info about downloaded file.
-        """
-        action = DepositionAction.NO_OP
-        if file_info := self.deposition.files_map.get(filename):
-            # If file is not exact match for existing file, update with new file
-            if (local_md5 := compute_md5(resource.local_path)) != file_info.checksum:
-                logger.info(
-                    f"Updating {filename}: local hash {local_md5} vs. remote {file_info.checksum}"
-                )
-                action = DepositionAction.UPDATE
-            else:
-                logger.info(
-                    f"No update for {filename}: local {local_md5} and remote "
-                    f"{file_info.checksum} hashes are identical."
-                )
-        else:
-            logger.info(f"Adding {filename} to deposition.")
-
-            action = DepositionAction.CREATE
-
-        return DepositionChange(
-            action_type=action,
-            name=filename,
-            resource=resource.local_path,
-        )
 
     def generate_datapackage(
         self, partitions_in_deposition: dict[str, Partitions]
