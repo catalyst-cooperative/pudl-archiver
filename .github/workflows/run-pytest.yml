@@ -28,6 +28,11 @@ jobs:
         with:
           fetch-depth: 2
 
+      # The workspace is owned by a different user inside the container, so git
+      # refuses to operate on it (and prek/pre-commit fail) without this.
+      - name: Mark workspace as a safe git directory
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
       - name: Set default GCP credentials
         id: gcloud-auth
         continue-on-error: true
