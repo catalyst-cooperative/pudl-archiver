@@ -33,6 +33,12 @@ jobs:
       github.event_name == 'workflow_dispatch' ||
       github.event.workflow_run.conclusion == 'failure'
     runs-on: ubuntu-latest
+    # Browsers and their system libraries come preinstalled in this image, so
+    # no apt/browser setup is needed. The tag must match the playwright version
+    # pinned in pyproject.toml.
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+      options: --ipc=host --init
     env:
       RUN_ID: ${{ github.event_name == 'workflow_dispatch' && inputs.run_id || github.event.workflow_run.id }}
       COMMAND: ${{ github.event_name == 'workflow_dispatch' && inputs.command || 'retry-run' }}
@@ -41,6 +47,11 @@ jobs:
       id-token: "write"
     steps:
       - uses: actions/checkout@v7
+
+      # The workspace is owned by a different user inside the container, so git
+      # refuses to operate on it without this.
+      - name: Mark workspace as a safe git directory
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - name: Set default GCP credentials
         id: gcloud-auth
@@ -59,9 +70,6 @@ jobs:
         run: |
           pixi info
           pixi list
-
-      - name: Set up Playwright
-        uses: ./.github/actions/setup-playwright
 
       - name: Download run summary
         uses: actions/download-artifact@v8
