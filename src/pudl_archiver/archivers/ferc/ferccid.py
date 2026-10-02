@@ -46,18 +46,20 @@ class FercCIDArchiver(AbstractDatasetArchiver):
                 SOURCE_URL, download_path=data_dictionary_path
             )
 
-    async def get_last_updated_date(self, page_url: str) -> datetime:
+    async def get_last_updated_date(
+        self, page_url: str, timeout_ms: int = 15_000
+    ) -> datetime:
         """Get the Data Last Updated date from the FERC data viewer page."""
         async with async_playwright() as pw:
             browser = await pw.chromium.launch(headless=True)
             page = await browser.new_page()
 
-            await page.goto(page_url, wait_until="networkidle", timeout=3000)
+            await page.goto(page_url, wait_until="domcontentloaded", timeout=timeout_ms)
             await expect(
                 page.get_by_text(
                     re.compile(r"\d{1,2}\/\d{1,2}\/\d{4} \d{1,2}:\d{2} (AM|PM)")
                 )
-            ).to_be_visible()
+            ).to_be_visible(timeout=timeout_ms)
             last_update = await page.get_by_text(
                 re.compile(r"\d{1,2}\/\d{1,2}\/\d{4} \d{1,2}:\d{2} (AM|PM)")
             ).inner_text()  # Search for date

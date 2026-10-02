@@ -60,11 +60,22 @@ jobs:
         dataset: ${{ fromJSON(format('[{0}]', inputs.datasets || '' )) }}
       fail-fast: false
     runs-on: ubuntu-latest
+    # Browsers and their system libraries come preinstalled in this image, so
+    # no apt/browser setup is needed. The tag must match the playwright version
+    # pinned in pyproject.toml.
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+      options: --ipc=host --init
     permissions:
       contents: "read"
       id-token: "write"
     steps:
       - uses: actions/checkout@v7
+
+      # The workspace is owned by a different user inside the container, so git
+      # refuses to operate on it without this.
+      - name: Mark workspace as a safe git directory
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - name: Set default GCP credentials
         id: gcloud-auth
@@ -81,11 +92,6 @@ jobs:
         run: |
           pixi info
           pixi list
-
-      - name: Additional Playwright setup
-        run: |
-          pixi run playwright install --with-deps webkit
-          pixi run playwright install --with-deps chromium
 
       - name: Initialize production archive for ${{ matrix.dataset }}
         env:
