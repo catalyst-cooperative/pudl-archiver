@@ -33,6 +33,9 @@ jobs:
       github.event_name == 'workflow_dispatch' ||
       github.event.workflow_run.conclusion == 'failure'
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -l {0}
     # Browsers and their system libraries come preinstalled in this image, so
     # no apt/browser setup is needed. The tag must match the playwright version
     # pinned in pyproject.toml.
