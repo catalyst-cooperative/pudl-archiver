@@ -1,5 +1,6 @@
 """Implements generic interface for depositors."""
 
+import datetime
 import io
 import logging
 import typing
@@ -338,6 +339,13 @@ class DraftDeposition(BaseModel, ABC):
                 the datapackage if the depositor supports it.
         """
         ...
+
+    def get_previous_file_times(self) -> dict[str, datetime.datetime]:
+        """Return when each file in the previous published version was uploaded.
+
+        Depositors that can't tell return an empty dictionary.
+        """
+        return {}
 
     async def add_resource(self, name: str, resource: ResourceInfo) -> DraftDeposition:
         """Apply correct change to deposition based on downloaded resource."""

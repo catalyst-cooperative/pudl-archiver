@@ -1,5 +1,6 @@
 """Defines models used for validating/summarizing an archiver run."""
 
+import datetime
 import json
 import logging
 import re
@@ -129,6 +130,109 @@ class FileDiff(BaseModel):
     partition_changes: list[PartitionDiff] = []
 
 
+class LastModifiedCheck(BaseModel):
+    """Test of whether HTTP metadata predicts that a file has changed.
+
+    Before looking at the downloaded file, we predict whether it changed since we
+    last archived it using only the metadata that the server sent with it: it has
+    changed if any of the values that we can compare differs from what we recorded.
+    Afterwards we compare the prediction with whether the hash of the file actually
+    changed.
+    """
+
+    name: str
+    last_modified: datetime.datetime | None
+    etag: str | None
+    content_length: int | None
+    #: What the server metadata was compared with: ``stored_metadata`` (recorded in
+    #: the previous datapackage), ``previous_upload_time`` (when the previous copy
+    #: was uploaded), ``new_file`` or ``none`` (no way to predict).
+    reference: Literal["stored_metadata", "previous_upload_time", "new_file", "none"]
+    reference_time: datetime.datetime | None = None
+    predicted_changed: bool | None
+    actually_changed: bool
+
+    @property
+    def prediction_correct(self) -> bool | None:
+        """Whether the prediction matched reality, or None if there was none."""
+        if self.predicted_changed is None:
+            return None
+        return self.predicted_changed == self.actually_changed
+
+
+def create_last_modified_checks(
+    observed: dict[str, HttpFileMetadata],
+    baseline_resources: dict[str, Resource],
+    new_resources: dict[str, Resource],
+    previous_upload_times: dict[str, datetime.datetime],
+    etag_is_content_hash: bool = False,
+) -> list[LastModifiedCheck]:
+    """Compare predictions of changes from HTTP metadata with actual changes.
+
+    A file is predicted to have changed if any of the following differs:
+
+    - its size from the size of the archived file, which is exactly what the server
+      sent, so a different size proves that the file has changed,
+    - its ``Last-Modified`` from the one recorded with the archived file, or if none
+      was recorded, from when the archived file was uploaded, and
+    - its ``ETag`` from the recorded one, but only if ``etag_is_content_hash``.
+
+    Args:
+        observed: HTTP metadata of each file downloaded in this run.
+        baseline_resources: Resources in the previous version of the archive.
+        new_resources: Resources in the new version of the archive.
+        previous_upload_times: When each file in the previous version was uploaded.
+            Used for files whose metadata wasn't recorded in the previous version.
+        etag_is_content_hash: Whether to compare ETags, as the server makes them
+            from the contents of the file.
+    """
+    fields = ["last_modified", *(["etag"] if etag_is_content_hash else [])]
+    checks = []
+    for name, metadata in sorted(observed.items()):
+        baseline = baseline_resources.get(name)
+        new = new_resources.get(name)
+        if new is None:
+            continue
+        actually_changed = baseline is None or baseline.hash_ != new.hash_
+
+        reference_time = None
+        if baseline is None:
+            reference, predicted = "new_file", True
+        else:
+            differs = []
+            if metadata.content_length is not None:
+                differs.append(metadata.content_length != baseline.bytes_)
+            if (stored := baseline.source_metadata) is not None:
+                reference, reference_time = "stored_metadata", stored.last_modified
+                differs += [
+                    getattr(stored, field) != getattr(metadata, field)
+                    for field in fields
+                    if getattr(stored, field) is not None
+                    and getattr(metadata, field) is not None
+                ]
+            elif metadata.last_modified is not None and name in previous_upload_times:
+                reference = "previous_upload_time"
+                reference_time = previous_upload_times[name]
+                differs.append(metadata.last_modified > reference_time)
+            else:
+                reference = "none"
+            predicted = any(differs) if differs else None
+
+        checks.append(
+            LastModifiedCheck(
+                name=name,
+                last_modified=metadata.last_modified,
+                etag=metadata.etag,
+                content_length=metadata.content_length,
+                reference=reference,
+                reference_time=reference_time,
+                predicted_changed=predicted,
+                actually_changed=actually_changed,
+            )
+        )
+    return checks
+
+
 class RunSummary(BaseModel):
     """Model summarizing results of an archiver run that can be easily output as JSON."""
 
@@ -147,6 +251,7 @@ class RunSummary(BaseModel):
     #: that a retry, or a publish, can record it too for the files it doesn't download.
     source_metadata: dict[str, HttpFileMetadata] = {}
     run_settings: RunSettings
+    last_modified_checks: list[LastModifiedCheck] = []
 
     def get_failed_tests(self) -> list[ValidationTestResult]:
         """Return any tests that failed."""
@@ -172,6 +277,7 @@ class RunSummary(BaseModel):
         failed_partitions: dict[str, Partitions],
         successful_partitions: dict[str, Partitions],
         run_settings: RunSettings,
+        last_modified_checks: list[LastModifiedCheck] | None = None,
         source_metadata: dict[str, HttpFileMetadata] | None = None,
     ) -> RunSummary:
         """Create a summary of archive changes from two DataPackage descriptors."""
@@ -216,6 +322,7 @@ class RunSummary(BaseModel):
             successful_partitions=successful_partitions,
             source_metadata=source_metadata or {},
             run_settings=run_settings,
+            last_modified_checks=last_modified_checks or [],
         )
 
     @classmethod
