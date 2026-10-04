@@ -1,6 +1,8 @@
 """Test tracking of server metadata to predict which files have changed."""
 
 import datetime
+import importlib.util
+from pathlib import Path
 
 import pytest
 from upath import UPath
@@ -175,3 +177,40 @@ def test_creation_time_local(tmp_path):
     created = _creation_time(UPath(path))
     assert created is not None
     assert abs(created - datetime.datetime.now(tz=UTC)) < datetime.timedelta(minutes=5)
+
+
+def test_markdown_formatter():
+    script = Path(__file__).parents[2] / "scripts" / "make_markdown_notification.py"
+    spec = importlib.util.spec_from_file_location("make_markdown_notification", script)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    def check(name, predicted, last_modified_changed, actual):
+        return {
+            "name": name,
+            "last_modified": "2026-10-03T07:00:00Z",
+            "reference": "previous_upload_time",
+            "reference_time": "2026-10-02T00:00:00Z",
+            "last_modified_changed": last_modified_changed,
+            "size_differs": None,
+            "predicted_changed": predicted,
+            "actually_changed": actual,
+        }
+
+    summary = {
+        "dataset_name": "ferceqr",
+        "record_url": "gs://x",
+        "last_modified_checks": [
+            check("a.zip", True, True, True),
+            check("b.zip", None, None, False),
+            check("c.zip", False, False, True),
+        ],
+    }
+    text = module._format_last_modified(summary)
+    assert "1/2 predictions correct, 1 false negatives" in text
+    assert "1 files could not be predicted" in text
+    assert "**False negatives:** c.zip" in text
+    assert "(before the size check): 1 (c.zip)" in text
+    assert (
+        module._format_last_modified({"dataset_name": "x", "record_url": "u"}) is None
+    )

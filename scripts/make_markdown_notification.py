@@ -43,7 +43,7 @@ def _parse_args():
     parser.add_argument(
         "--summary-type",
         type=str,
-        help="What category of text to get (changes, failures, zulip).",
+        help="What category of text to get (changes, failures, last_modified, zulip).",
         default=None,
     )
     parser.add_argument(
@@ -142,6 +142,72 @@ def _format_summary(
         name=name,
         content=changes,
         action=action,
+    )
+
+
+def _format_last_modified(summary: dict) -> str | None:
+    """Tabulate how well server metadata predicted which files changed."""
+    checks = summary.get("last_modified_checks")
+    if not checks:
+        return None
+
+    def _mark(value: bool | None) -> str:
+        return "?" if value is None else ("yes" if value else "no")
+
+    table = pd.DataFrame.from_records(
+        [
+            {
+                "name": c["name"],
+                "last_modified": c["last_modified"] or "",
+                "compared_with": c["reference"]
+                + (f" ({c['reference_time']})" if c["reference_time"] else ""),
+                "last_modified_changed": _mark(c.get("last_modified_changed")),
+                "size_differs": _mark(c.get("size_differs")),
+                "predicted_changed": _mark(c["predicted_changed"]),
+                "actually_changed": _mark(c["actually_changed"]),
+                "correct": _mark(
+                    None
+                    if c["predicted_changed"] is None
+                    else c["predicted_changed"] == c["actually_changed"]
+                ),
+            }
+            for c in checks
+        ]
+    )
+    predicted = [c for c in checks if c["predicted_changed"] is not None]
+    false_negatives = [
+        c["name"]
+        for c in predicted
+        if c["actually_changed"] and not c["predicted_changed"]
+    ]
+    false_positives = [
+        c["name"]
+        for c in predicted
+        if c["predicted_changed"] and not c["actually_changed"]
+    ]
+    correct = len(predicted) - len(false_negatives) - len(false_positives)
+    tally = (
+        f"{correct}/{len(predicted)} predictions correct, "
+        f"{len(false_negatives)} false negatives (predicted unchanged, but changed), "
+        f"{len(false_positives)} false positives (predicted changed, but unchanged). "
+        f"{len(checks) - len(predicted)} files could not be predicted."
+    )
+    lm_predicted = [c for c in checks if c.get("last_modified_changed") is not None]
+    lm_missed = [
+        c["name"]
+        for c in lm_predicted
+        if c["actually_changed"] and not c["last_modified_changed"]
+    ]
+    tally += (
+        f"\n\nChanged files missed by `Last-Modified` alone (before the size check): "
+        f"{len(lm_missed)}" + (f" ({', '.join(lm_missed)})" if lm_missed else "")
+    )
+    if false_negatives:
+        tally += f"\n\n**False negatives:** {', '.join(false_negatives)}"
+    return _format_message(
+        url=summary["record_url"],
+        name=summary["dataset_name"],
+        content=f"{tally}\n\n{table.to_markdown(index=False)}",
     )
 
 
@@ -327,7 +393,13 @@ def main(
         )
     )
 
-    if summary_type == "change":
+    last_modified_blocks = "\n\n".join(
+        filter(None, (_format_last_modified(s) for s in summaries))
+    )
+
+    if summary_type == "last_modified":
+        print(last_modified_blocks)
+    elif summary_type == "change":
         print(changed_blocks)
     elif summary_type == "error":
         print(error_blocks)
