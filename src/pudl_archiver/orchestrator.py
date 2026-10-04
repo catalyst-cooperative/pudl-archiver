@@ -62,11 +62,23 @@ async def orchestrate_run(
             draft = await draft.delete_file(filename)
 
     # Create new datapackage
+    # Files that weren't downloaded in this run keep the metadata from the last one
+    observed_metadata = {
+        name: resource.source_metadata
+        for name, resource in resources.items()
+        if resource.source_metadata is not None
+    }
+    source_metadata = {
+        resource.name: resource.source_metadata
+        for resource in (original_datapackage.resources if original_datapackage else [])
+        if resource.source_metadata is not None
+    } | observed_metadata
     draft, new_datapackage = await draft.attach_datapackage(
         partitions_in_deposition={
             name: resource.partitions for name, resource in resources.items()
         }
-        | skip_partitions
+        | skip_partitions,
+        source_metadata=source_metadata,
     )
 
     # Validate run
