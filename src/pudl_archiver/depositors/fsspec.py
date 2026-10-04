@@ -29,6 +29,7 @@ overwrite data in the published directory, so the old version will disappear.
 """
 
 import base64
+import datetime
 import logging
 import traceback
 from enum import Enum
@@ -84,6 +85,16 @@ def _resource_from_upath(
         format=path.suffix,
         source_metadata=source_metadata,
     )
+
+
+def _creation_time(path: UPath) -> datetime.datetime | None:
+    """Get the time a file was created on its filesystem, if the filesystem says."""
+    info = path.fs.info(path.as_uri())
+    if created := info.get("timeCreated"):  # gcsfs: ISO 8601 string
+        return datetime.datetime.fromisoformat(created)
+    if (created := info.get("created", info.get("mtime"))) is not None:  # local
+        return datetime.datetime.fromtimestamp(created, tz=datetime.UTC)
+    return None
 
 
 class DepositionDirectory(Enum):
@@ -277,6 +288,19 @@ class FsspecDraftDeposition(DraftDeposition):
             for fname in self.deposition.deposition_files[DepositionDirectory.WORKSPACE]
         }
         self.resources_in_draft = draft_files
+
+    def get_previous_file_times(self) -> dict[str, datetime.datetime]:
+        """Return creation times of the files in the previous published version.
+
+        A file is only uploaded when it has changed, so this is when the currently
+        published copy of each file was archived.
+        """
+        published = self.deposition.get_deposition_path(DepositionDirectory.PUBLISHED)
+        times = {}
+        for fname in self.deposition.deposition_files[DepositionDirectory.PUBLISHED]:
+            if created := _creation_time(published / fname):
+                times[fname] = created
+        return times
 
     async def list_files(self):
         """Return files that are included in the current version of the draft."""
