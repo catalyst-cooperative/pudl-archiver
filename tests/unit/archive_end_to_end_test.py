@@ -36,6 +36,7 @@ def _meta(day: int, contents: bytes) -> SourceMetadata:
     )
 
 
+baselines = []  # What the archivers were given as the previous version
 downloaded = []  # The files that the archivers downloaded
 
 
@@ -57,6 +58,7 @@ def _run_archive(
         fail_on_data_continuity = False
 
         async def get_resources(self):
+            baselines.append(self.baseline_datapackage)
             if fail == "finding":
                 raise RuntimeError("b.txt has gone from the website")
             for filename, (contents, metadata) in files.items():
@@ -99,6 +101,7 @@ async def test_archive_records_and_checks_source_metadata(
     mocker, tmp_path, first_run_has_metadata
 ):
     """Run twice: first creates the archive, second changes some of the files."""
+    baselines.clear()
     (tmp_path / "deposition").mkdir()
     v1 = {
         "same.txt": (b"same contents", _meta(1, b"same contents")),
@@ -133,6 +136,9 @@ async def test_archive_records_and_checks_source_metadata(
     }
     summary_file, settings = _run_archive(mocker, tmp_path, v2, 2)
     await archive_dataset("pudl_test", settings)
+    # The archiver is told what was archived before, so it can check against it
+    assert baselines[0] is None
+    assert {r.name for r in baselines[1].resources} == set(v1)
 
     checks = {c.name: c for c in _load(summary_file).last_modified_checks}
     # (predicted, actually) changed. Touching a file on the server without changing

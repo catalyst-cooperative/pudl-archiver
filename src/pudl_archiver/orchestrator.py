@@ -145,6 +145,7 @@ async def orchestrate_run(
     )
 
     previous_upload_times = draft.get_previous_file_times()
+    downloader.baseline_datapackage = original_datapackage
 
     # Download resources and add to archive
     run_exception = None
