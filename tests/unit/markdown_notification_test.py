@@ -4,11 +4,46 @@ import json
 
 from click.testing import CliRunner
 
-from pudl_archiver.scripts.make_markdown_notification import main
+from pudl_archiver.scripts.make_markdown_notification import (
+    _format_last_modified,
+    main,
+)
 
 
-def test_summary_type_without_error_files(tmp_path):
-    """The workflows ask for some sections without any error files."""
+def test_last_modified_section():
+    def check(name, last_modified_changed, predicted, actual):
+        return {
+            "name": name,
+            "last_modified": "2026-10-03T07:00:00Z",
+            "reference": "previous_upload_time",
+            "reference_time": "2026-10-02T00:00:00Z",
+            "last_modified_changed": last_modified_changed,
+            "size_differs": None,
+            "predicted_changed": predicted,
+            "actually_changed": actual,
+        }
+
+    summary = {
+        "dataset_name": "ferceqr",
+        "record_url": "gs://x",
+        "last_modified_checks": [
+            check("a.zip", True, True, True),
+            check("b.zip", None, None, False),
+            check("c.zip", False, False, True),
+        ],
+    }
+
+    text = _format_last_modified(summary)
+
+    assert "1/2 predictions correct, 1 false negatives" in text
+    assert "1 files could not be predicted" in text
+    assert "**False negatives:** c.zip" in text
+    assert "(before the size check): 1 (c.zip)" in text
+    assert _format_last_modified({"dataset_name": "x", "record_url": "u"}) is None
+
+
+def test_last_modified_section_without_error_files(tmp_path):
+    """The workflow asks for this section without any error files."""
     summary = tmp_path / "ferceqr_run_summary.json"
     summary.write_text(
         json.dumps(
@@ -17,11 +52,12 @@ def test_summary_type_without_error_files(tmp_path):
                 "record_url": "gs://x",
                 "file_changes": [],
                 "validation_tests": [],
+                "last_modified_checks": [],
             }
         )
     )
 
-    result = CliRunner().invoke(main, [str(summary), "--summary-type", "change"])
+    result = CliRunner().invoke(main, [str(summary), "--summary-type", "last_modified"])
 
     assert result.exit_code == 0, result.output
     assert result.output.strip() == ""
