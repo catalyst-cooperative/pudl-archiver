@@ -246,21 +246,23 @@ jobs:
         if: ${{ always() && (github.event_name == 'schedule' || inputs.create_github_issue == true) }}
         id: github_summaries
         run: |
+          error_files=()
+          for log in ./*_log.txt; do error_files+=(--error-file "$log"); done
           {
             echo 'ERRORS<<DELIM1'
-            pixi run ./scripts/make_markdown_notification.py --summary-files ./*_run_summary.json --error-files ./*_log.txt --summary-type error
+            pixi run python -m pudl_archiver.scripts.make_markdown_notification ./*_run_summary.json "${error_files[@]}" --summary-type error
             echo 'DELIM1'
             echo 'FAILURES<<DELIM2'
-            pixi run ./scripts/make_markdown_notification.py --summary-files ./*_run_summary.json --error-files ./*_log.txt --summary-type failure
+            pixi run python -m pudl_archiver.scripts.make_markdown_notification ./*_run_summary.json "${error_files[@]}" --summary-type failure
             echo 'DELIM2'
             echo 'CHANGES<<DELIM3'
-            pixi run ./scripts/make_markdown_notification.py --summary-files ./*_run_summary.json --error-files ./*_log.txt --summary-type change
+            pixi run python -m pudl_archiver.scripts.make_markdown_notification ./*_run_summary.json "${error_files[@]}" --summary-type change
             echo 'DELIM3'
             echo 'TIMEDOUT<<DELIM4'
             GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} GITHUB_REPOSITORY=${{ github.repository }} GITHUB_RUN_ID=${{ github.run_id }} pixi run python ./scripts/detect_timeouts.py
             echo 'DELIM4'
             echo 'UNCHANGED<<DELIM5'
-            pixi run ./scripts/make_markdown_notification.py --summary-files ./*_run_summary.json --error-files ./*_log.txt --summary-type unchanged
+            pixi run python -m pudl_archiver.scripts.make_markdown_notification ./*_run_summary.json "${error_files[@]}" --summary-type unchanged
             echo 'DELIM5'
           } | tee -a "$GITHUB_OUTPUT"
       # These steps only run if no Github issue is requested to be created.
@@ -271,9 +273,11 @@ jobs:
         env:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
+          error_files=()
+          for log in ./*_log.txt; do error_files+=(--error-file "$log"); done
           {
             echo "ZULIP_CONTENT<<EOF"
-            pixi run ./scripts/make_markdown_notification.py --summary-files ./*_run_summary.json --error-files ./*_log.txt --summary-type zulip --run-url "$RUN_URL"
+            pixi run python -m pudl_archiver.scripts.make_markdown_notification ./*_run_summary.json "${error_files[@]}" --summary-type zulip --run-url "$RUN_URL"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
       - name: Notify Zulip of archive run completion
