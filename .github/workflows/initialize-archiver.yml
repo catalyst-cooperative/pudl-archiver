@@ -141,9 +141,11 @@ jobs:
         env:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
+          error_files=()
+          for log in ./*_log.txt; do error_files+=(--error-file "$log"); done
           {
             echo "ZULIP_CONTENT<<EOF"
-            pixi run ./scripts/make_markdown_notification.py --summary-files ./*_run_summary.json --error-files ./*_log.txt --summary-type zulip --run-url "$RUN_URL"
+            pixi run python -m pudl_archiver.scripts.make_markdown_notification ./*_run_summary.json "${error_files[@]}" --summary-type zulip --run-url "$RUN_URL"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
       - name: Notify Zulip of archive initialization
