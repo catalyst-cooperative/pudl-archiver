@@ -1,5 +1,6 @@
 """Defines models used for validating/summarizing an archiver run."""
 
+import datetime
 import json
 import logging
 import re
@@ -18,6 +19,7 @@ from pudl_archiver.frictionless import (
     DataPackage,
     Partitions,
     Resource,
+    SourceMetadata,
     ZipLayout,
 )
 from pudl_archiver.utils import RunSettings, Url, is_html_file
@@ -128,6 +130,111 @@ class FileDiff(BaseModel):
     partition_changes: list[PartitionDiff] = []
 
 
+class LastModifiedCheck(BaseModel):
+    """Test of whether server metadata predicts that a file has changed.
+
+    Before looking at the downloaded file, we predict whether it changed since we
+    last archived it using only metadata from the server. Afterwards we compare the
+    prediction with whether the hash of the file actually changed.
+    """
+
+    name: str
+    last_modified: datetime.datetime | None
+    etag: str | None
+    content_length: int | None
+    #: What the server metadata was compared with: ``stored_metadata`` (recorded in
+    #: the previous datapackage), ``previous_upload_time`` (when the previous copy
+    #: was uploaded), ``new_file`` or ``none`` (no way to predict).
+    reference: Literal["stored_metadata", "previous_upload_time", "new_file", "none"]
+    reference_time: datetime.datetime | None = None
+    #: Prediction from ``Last-Modified`` (and ``ETag``, if stored), ignoring size.
+    last_modified_changed: bool | None
+    #: Whether the size on the server differs from the size of the archived file.
+    #: Our copy is byte-for-byte what the server sent, so a different size proves
+    #: the file has changed, whatever ``Last-Modified`` says.
+    size_differs: bool | None = None
+    #: Combined prediction: changed if the size differs, or else if
+    #: ``last_modified_changed``.
+    predicted_changed: bool | None
+    actually_changed: bool
+
+    @property
+    def prediction_correct(self) -> bool | None:
+        """Whether the prediction matched reality, or None if there was none."""
+        if self.predicted_changed is None:
+            return None
+        return self.predicted_changed == self.actually_changed
+
+
+def create_last_modified_checks(
+    observed: dict[str, SourceMetadata],
+    baseline_resources: dict[str, Resource],
+    new_resources: dict[str, Resource],
+    previous_upload_times: dict[str, datetime.datetime],
+) -> list[LastModifiedCheck]:
+    """Compare predictions of changes from server metadata with actual changes.
+
+    Args:
+        observed: Server metadata of each file downloaded in this run.
+        baseline_resources: Resources in the previous version of the archive.
+        new_resources: Resources in the new version of the archive.
+        previous_upload_times: When each file in the previous version was uploaded.
+            Used for files whose server metadata wasn't recorded in the previous
+            version.
+    """
+    checks = []
+    for name, metadata in sorted(observed.items()):
+        baseline = baseline_resources.get(name)
+        new = new_resources.get(name)
+        if new is None:
+            continue
+        actually_changed = baseline is None or baseline.hash_ != new.hash_
+
+        reference_time = None
+        size_differs = None
+        if baseline is None:
+            reference, last_modified_changed = "new_file", True
+        else:
+            if metadata.content_length is not None:
+                size_differs = metadata.content_length != baseline.bytes_
+            if baseline.source_metadata is not None:
+                stored = baseline.source_metadata
+                reference_time = stored.last_modified
+                reference = "stored_metadata"
+                # Only compare the fields that both versions have
+                compared = [
+                    getattr(stored, field) != getattr(metadata, field)
+                    for field in ("last_modified", "etag")
+                    if getattr(stored, field) is not None
+                    and getattr(metadata, field) is not None
+                ]
+                last_modified_changed = any(compared) if compared else None
+            elif metadata.last_modified is not None and name in previous_upload_times:
+                reference = "previous_upload_time"
+                reference_time = previous_upload_times[name]
+                last_modified_changed = metadata.last_modified > reference_time
+            else:
+                reference, last_modified_changed = "none", None
+
+        predicted = True if size_differs else last_modified_changed
+
+        checks.append(
+            LastModifiedCheck(
+                name=name,
+                last_modified=metadata.last_modified,
+                etag=metadata.etag,
+                content_length=metadata.content_length,
+                reference=reference,
+                reference_time=reference_time,
+                last_modified_changed=last_modified_changed,
+                size_differs=size_differs,
+                predicted_changed=predicted,
+                actually_changed=actually_changed,
+            )
+        )
+    return checks
+
+
 class RunSummary(BaseModel):
     """Model summarizing results of an archiver run that can be easily output as JSON."""
 
@@ -147,6 +254,7 @@ class RunSummary(BaseModel):
     #: still in the draft with this checksum.
     uploaded_checksums: dict[str, str] = {}
     run_settings: RunSettings
+    last_modified_checks: list[LastModifiedCheck] = []
 
     def get_failed_tests(self) -> list[ValidationTestResult]:
         """Return any tests that failed."""
@@ -172,6 +280,7 @@ class RunSummary(BaseModel):
         failed_partitions: dict[str, Partitions],
         successful_partitions: dict[str, Partitions],
         run_settings: RunSettings,
+        last_modified_checks: list[LastModifiedCheck] | None = None,
         uploaded_checksums: dict[str, str] | None = None,
     ) -> RunSummary:
         """Create a summary of archive changes from two DataPackage descriptors."""
@@ -216,6 +325,7 @@ class RunSummary(BaseModel):
             successful_partitions=successful_partitions,
             uploaded_checksums=uploaded_checksums or {},
             run_settings=run_settings,
+            last_modified_checks=last_modified_checks or [],
         )
 
     @classmethod

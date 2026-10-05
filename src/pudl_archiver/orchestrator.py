@@ -12,6 +12,7 @@ from pudl_archiver.archivers.validate import (
     MetadataArchiveSummary,
     RunSummary,
     _datapackage_changed,
+    create_last_modified_checks,
     exception_validation,
 )
 from pudl_archiver.depositors import (
@@ -25,6 +26,7 @@ from pudl_archiver.frictionless import (
     DataPackage,
     Partitions,
     ResourceInfo,
+    SourceMetadata,
 )
 from pudl_archiver.utils import RunSettings
 
@@ -36,7 +38,7 @@ async def _remove_files_and_describe(
     resources: dict[str, ResourceInfo],
     skip_partitions: dict[str, Partitions],
     original_datapackage: DataPackage | None,
-) -> tuple[DraftDeposition, DataPackage]:
+) -> tuple[DraftDeposition, DataPackage, dict[str, SourceMetadata]]:
     """Make the draft hold what was archived, and attach a datapackage describing it.
 
     Files of the previous version that weren't downloaded are left out of the new
@@ -77,7 +79,7 @@ async def _remove_files_and_describe(
         | skip_partitions,
         source_metadata=source_metadata,
     )
-    return draft, new_datapackage
+    return draft, new_datapackage, observed_metadata
 
 
 def _verify_skipped_files(
@@ -142,6 +144,8 @@ async def orchestrate_run(
         draft, skip_partitions or {}, skip_checksums or {}
     )
 
+    previous_upload_times = draft.get_previous_file_times()
+
     # Download resources and add to archive
     run_exception = None
     try:
@@ -176,8 +180,9 @@ async def orchestrate_run(
         draft = await draft.mark_incomplete(
             f"{type(run_exception).__name__}: {run_exception}"
         )
+        observed_metadata = {}
     else:
-        draft, new_datapackage = await _remove_files_and_describe(
+        draft, new_datapackage, observed_metadata = await _remove_files_and_describe(
             draft, resources, skip_partitions, original_datapackage
         )
 
@@ -206,6 +211,14 @@ async def orchestrate_run(
             or (name in resources and name not in downloader.failed_partitions)
         },
         run_settings=run_settings,
+        last_modified_checks=create_last_modified_checks(
+            observed_metadata,
+            {r.name: r for r in original_datapackage.resources}
+            if original_datapackage
+            else {},
+            {r.name: r for r in new_datapackage.resources},
+            previous_upload_times,
+        ),
     )
     published = await draft.publish_if_valid(
         summary,

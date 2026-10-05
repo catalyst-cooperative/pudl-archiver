@@ -119,7 +119,7 @@ async def archive_dataset(
     if run_settings.summary_file is not None:
         await asyncio.to_thread(
             Path(run_settings.summary_file).write_text,
-            json.dumps(summary.model_dump(), indent=2),
+            json.dumps(summary.model_dump(mode="json"), indent=2),
         )
 
     # Check validation results of all runs that aren't unchanged
@@ -175,5 +175,5 @@ async def archive_fsspec_metadata(
     if run_settings.summary_file is not None and summary is not None:
         await asyncio.to_thread(
             Path(run_settings.summary_file).write_text,
-            json.dumps(summary.model_dump(), indent=2),
+            json.dumps(summary.model_dump(mode="json"), indent=2),
         )

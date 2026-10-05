@@ -394,6 +394,13 @@ class DraftDeposition(BaseModel, ABC):
                 "the run, or delete the draft."
             )
 
+    def get_previous_file_times(self) -> dict[str, datetime.datetime]:
+        """Return when each file in the previous published version was uploaded.
+
+        Depositors that can't tell return an empty dictionary.
+        """
+        return {}
+
     async def add_resource(self, name: str, resource: ResourceInfo) -> DraftDeposition:
         """Apply correct change to deposition based on downloaded resource."""
         change = self.generate_change(name, resource)
