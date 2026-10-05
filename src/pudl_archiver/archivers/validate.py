@@ -280,6 +280,8 @@ def _datapackage_changed(
         if field == "resources":
             for r in old_datapackage_copy.resources + new_datapackage_copy.resources:
                 r.path = re.sub(r"/\d+/", "/ID_NUMBER/", str(r.path))
+                # Server metadata is informational, a change alone isn't a change
+                r.source_metadata = None
         if getattr(new_datapackage_copy, field) != getattr(old_datapackage_copy, field):
             return True
     return False

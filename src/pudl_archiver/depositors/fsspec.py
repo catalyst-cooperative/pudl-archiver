@@ -50,19 +50,26 @@ from pudl_archiver.frictionless import (
     DataPackage,
     Partitions,
     Resource,
+    SourceMetadata,
 )
 from pudl_archiver.utils import RunSettings, compute_md5
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 
-def _resource_from_upath(path: UPath, parts: Partitions, md5_hash: str) -> Resource:
+def _resource_from_upath(
+    path: UPath,
+    parts: Partitions,
+    md5_hash: str,
+    source_metadata: SourceMetadata | None = None,
+) -> Resource:
     """Create a resource from a single file with partitions.
 
     Args:
         path: UPath pointing to resource on local or remote filesystem.
         parts: Working partitions of current resource.
         md5_hash: String md5 hash of resource.
+        source_metadata: Metadata of the file on the data provider's server, if known.
     """
     mt = MEDIA_TYPES[path.suffix[1:]]
 
@@ -75,6 +82,7 @@ def _resource_from_upath(path: UPath, parts: Partitions, md5_hash: str) -> Resou
         bytes=path.stat().st_size,
         hash=md5_hash,
         format=path.suffix,
+        source_metadata=source_metadata,
     )
 
 
@@ -399,6 +407,7 @@ class FsspecDraftDeposition(DraftDeposition):
     def generate_datapackage(
         self,
         partitions_in_deposition: dict[str, Partitions],
+        source_metadata: dict[str, SourceMetadata] | None = None,
     ) -> DataPackage:
         """Generate new datapackage, attach to deposition, and return."""
         logger.info(f"Creating new datapackage.json for {self.dataset_id}")
@@ -409,6 +418,7 @@ class FsspecDraftDeposition(DraftDeposition):
                 path,
                 partitions_in_deposition[fname],
                 self.deposition.get_checksum(path),
+                (source_metadata or {}).get(fname),
             )
             for fname, path in self.resources_in_draft.items()
             if fname != "datapackage.json" and fname not in self.files_to_delete

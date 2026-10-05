@@ -21,7 +21,11 @@ from pudl_archiver.depositors import (
     PublishedDeposition,
     get_deposition,
 )
-from pudl_archiver.frictionless import DataPackage, Partitions, ResourceInfo
+from pudl_archiver.frictionless import (
+    DataPackage,
+    Partitions,
+    ResourceInfo,
+)
 from pudl_archiver.utils import RunSettings
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
@@ -31,6 +35,7 @@ async def _remove_files_and_describe(
     draft: DraftDeposition,
     resources: dict[str, ResourceInfo],
     skip_partitions: dict[str, Partitions],
+    original_datapackage: DataPackage | None,
 ) -> tuple[DraftDeposition, DataPackage]:
     """Make the draft hold what was archived, and attach a datapackage describing it.
 
@@ -54,11 +59,23 @@ async def _remove_files_and_describe(
     for filename in removed:
         draft = await draft.delete_file(filename)
 
+    # Files that weren't downloaded in this run keep the metadata from the last one
+    observed_metadata = {
+        name: resource.source_metadata
+        for name, resource in resources.items()
+        if resource.source_metadata is not None
+    }
+    source_metadata = {
+        resource.name: resource.source_metadata
+        for resource in (original_datapackage.resources if original_datapackage else [])
+        if resource.source_metadata is not None
+    } | observed_metadata
     draft, new_datapackage = await draft.attach_datapackage(
         partitions_in_deposition={
             name: resource.partitions for name, resource in resources.items()
         }
-        | skip_partitions
+        | skip_partitions,
+        source_metadata=source_metadata,
     )
     return draft, new_datapackage
 
@@ -161,7 +178,7 @@ async def orchestrate_run(
         )
     else:
         draft, new_datapackage = await _remove_files_and_describe(
-            draft, resources, skip_partitions
+            draft, resources, skip_partitions, original_datapackage
         )
 
     # Validate run

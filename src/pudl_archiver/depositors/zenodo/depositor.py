@@ -25,6 +25,7 @@ from pudl_archiver.frictionless import (
     DataPackage,
     Partitions,
     Resource,
+    SourceMetadata,
 )
 from pudl_archiver.utils import RunSettings, Url, retry_async
 
@@ -729,7 +730,9 @@ class ZenodoDraftDeposition(DraftDeposition):
         return await self.api_client.list_files(self.deposition)
 
     def generate_datapackage(
-        self, partitions_in_deposition: dict[str, Partitions]
+        self,
+        partitions_in_deposition: dict[str, Partitions],
+        source_metadata: dict[str, SourceMetadata] | None = None,
     ) -> DataPackage:
         """Generate new datapackage, attach to deposition, and return."""
         logger.info(f"Creating new datapackage.json for {self.dataset_id}")
