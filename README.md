@@ -184,6 +184,11 @@ pudl_archiver retry-run {run_summary_json_file}
 This command will inherit all settings from the previous run except `--auto-publish` to
 avoid accidental publication.
 
+A run that fails leaves its draft deposition holding the files that it uploaded, so that
+a retry can resume from them. The draft is marked as incomplete: it contains a file called
+`INCOMPLETE_DO_NOT_PUBLISH.txt` that says why the run failed, it has no `datapackage.json`,
+and the archiver refuses to publish it. The marker is removed when a retry completes.
+
 During a retry, the archiver expects all successfully downloaded resources to still
 be in the draft deposition. If the state of the deposition has been changed in any
 way since the failed run, then a retry may produce unexpected results.
