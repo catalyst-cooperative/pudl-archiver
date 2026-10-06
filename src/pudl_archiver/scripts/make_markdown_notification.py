@@ -28,6 +28,7 @@ SUMMARY_TYPES = {
     "failure": "Validation tests that failed in each run summary.",
     "change": "Tables of files that changed, and Zenodo metadata drafts.",
     "unchanged": "Archives that had no changes.",
+    "last_modified": "How well HTTP metadata predicted which files changed (fsspec).",
     "zulip": "A full report of errors, failures, changes and unchanged archives, "
     "for a Zulip notification.",
 }
@@ -120,6 +121,62 @@ def _format_summary(
         name=name,
         content=changes,
         action=action,
+    )
+
+
+def _format_last_modified(summary: dict) -> str | None:
+    """Tabulate how well HTTP metadata predicted which files changed."""
+    checks = summary.get("last_modified_checks")
+    if not checks:
+        return None
+
+    def _mark(value: bool | None) -> str:
+        return "?" if value is None else ("yes" if value else "no")
+
+    table = pd.DataFrame.from_records(
+        [
+            {
+                "name": c["name"],
+                "last_modified": c["last_modified"] or "",
+                "etag": c["etag"] or "",
+                "size": c["content_length"] if c["content_length"] is not None else "",
+                "compared_with": c["reference"]
+                + (f" ({c['reference_time']})" if c["reference_time"] else ""),
+                "predicted_changed": _mark(c["predicted_changed"]),
+                "actually_changed": _mark(c["actually_changed"]),
+                "correct": _mark(
+                    None
+                    if c["predicted_changed"] is None
+                    else c["predicted_changed"] == c["actually_changed"]
+                ),
+            }
+            for c in checks
+        ]
+    )
+    predicted = [c for c in checks if c["predicted_changed"] is not None]
+    false_negatives = [
+        c["name"]
+        for c in predicted
+        if c["actually_changed"] and not c["predicted_changed"]
+    ]
+    false_positives = [
+        c["name"]
+        for c in predicted
+        if c["predicted_changed"] and not c["actually_changed"]
+    ]
+    correct = len(predicted) - len(false_negatives) - len(false_positives)
+    tally = (
+        f"{correct}/{len(predicted)} predictions correct, "
+        f"{len(false_negatives)} false negatives (predicted unchanged, but changed), "
+        f"{len(false_positives)} false positives (predicted changed, but unchanged). "
+        f"{len(checks) - len(predicted)} files could not be predicted."
+    )
+    if false_negatives:
+        tally += f"\n\n**False negatives:** {', '.join(false_negatives)}"
+    return _format_message(
+        url=summary["record_url"],
+        name=summary["dataset_name"],
+        content=f"{tally}\n\n{table.to_markdown(index=False)}",
     )
 
 
@@ -341,7 +398,13 @@ def main(
         )
     )
 
-    if summary_type == "change":
+    last_modified_blocks = "\n\n".join(
+        filter(None, (_format_last_modified(s) for s in summaries))
+    )
+
+    if summary_type == "last_modified":
+        click.echo(last_modified_blocks)
+    elif summary_type == "change":
         click.echo(changed_blocks)
     elif summary_type == "error":
         click.echo(error_blocks)

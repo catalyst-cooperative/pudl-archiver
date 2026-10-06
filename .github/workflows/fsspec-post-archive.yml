@@ -139,6 +139,9 @@ jobs:
             echo 'UNCHANGED<<DELIM4'
             pixi run python -m pudl_archiver.scripts.make_markdown_notification ./*_run_summary.json ./*_metadata_summary.json "${error_files[@]}" --summary-type unchanged
             echo 'DELIM4'
+            echo 'LAST_MODIFIED<<DELIM5'
+            pixi run python -m pudl_archiver.scripts.make_markdown_notification ./*_run_summary.json --summary-type last_modified
+            echo 'DELIM5'
           } | tee -a "$GITHUB_OUTPUT"
       # These steps only run if no Github issue is requested to be created.
       # The summary will show up in Zulip instead.
@@ -175,6 +178,7 @@ jobs:
       failures: ${{ steps.github_summaries.outputs.FAILURES }}
       changes: ${{ steps.github_summaries.outputs.CHANGES }}
       unchanged: ${{ steps.github_summaries.outputs.UNCHANGED }}
+      last_modified: ${{ steps.github_summaries.outputs.LAST_MODIFIED }}
 
   make-github-issue:
     # If an issue is requested, create one to track review and publication. There
@@ -215,12 +219,13 @@ jobs:
           FAILURES: ${{ needs.archive-notify.outputs.failures }}
           CHANGES: ${{ needs.archive-notify.outputs.changes }}
           UNCHANGED: ${{ needs.archive-notify.outputs.unchanged }}
+          LAST_MODIFIED: ${{ needs.archive-notify.outputs.last_modified }}
         run: |
           {
             echo "# Retry of this archive: [job run logs]($RUN_URL)"
             echo
             echo "The earlier run did not finish, so the results below are from a retry. To publish, run the \`publish-or-retry-fsspec-archive\` workflow with \`publish-run\` and the **retry's** run ID, \`$RUN_ID\`, instead of the run ID in the issue description."
-            for section in "Changed archives:CHANGES" \
+            for section in "Changed archives:CHANGES" "Last-modified date test:LAST_MODIFIED" \
               "Validation failures:FAILURES" "Other failures:ERRORS" "Unchanged archives:UNCHANGED"; do
               variable="${section#*:}"
               if [ -n "${!variable}" ]; then
@@ -250,6 +255,7 @@ jobs:
           FAILURES: ${{ needs.archive-notify.outputs.failures }}
           CHANGES: ${{ needs.archive-notify.outputs.changes }}
           UNCHANGED: ${{ needs.archive-notify.outputs.unchanged }}
+          LAST_MODIFIED: ${{ needs.archive-notify.outputs.last_modified }}
         with:
           filename: .github/ISSUE_TEMPLATE/monthly-archive-update.md
     outputs:
