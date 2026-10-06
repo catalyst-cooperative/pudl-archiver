@@ -1,5 +1,6 @@
 """Implements generic interface for depositors."""
 
+import datetime
 import io
 import logging
 import typing
@@ -17,6 +18,13 @@ from pudl_archiver.frictionless import DataPackage, Partitions, ResourceInfo
 from pudl_archiver.utils import RunSettings, Url, compute_md5
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
+
+#: Name of the file that marks a draft as the unfinished product of a failed run.
+INCOMPLETE_MARKER = "INCOMPLETE_DO_NOT_PUBLISH.txt"
+
+
+class IncompleteDepositionError(RuntimeError):
+    """Raised when trying to publish a draft left behind by a failed run."""
 
 
 @dataclass
@@ -210,7 +218,10 @@ class DraftDeposition(BaseModel, ABC):
 
     @abstractmethod
     async def publish(self) -> PublishedDeposition:
-        """Publish draft deposition and return new depositor with updated deposition."""
+        """Publish draft deposition and return new depositor with updated deposition.
+
+        Implementations must call :meth:`raise_if_incomplete` first.
+        """
         ...
 
     @abstractmethod
@@ -325,6 +336,50 @@ class DraftDeposition(BaseModel, ABC):
     ) -> DataPackage:
         """Generate new datapackage and return it."""
         ...
+
+    async def mark_incomplete(self, reason: str) -> DraftDeposition:
+        """Mark the draft as the unfinished product of a failed run.
+
+        The draft keeps the files that were uploaded, for a retry to resume from, but
+        loses its ``datapackage.json``, which doesn't describe them. The marker file
+        says what happened, and :meth:`raise_if_incomplete` stops it being published.
+        :meth:`clear_incomplete_marker` removes it once a run completes.
+
+        Args:
+            reason: Why the run failed, to be written to the marker file.
+        """
+        draft = self
+        files = await draft.list_files()
+        if "datapackage.json" in files:
+            draft = await draft.delete_file("datapackage.json")
+        if INCOMPLETE_MARKER in files:
+            draft = await draft.delete_file(INCOMPLETE_MARKER)
+        now = datetime.datetime.now(tz=datetime.UTC).isoformat(timespec="seconds")
+        message = (
+            f"This draft of {self.dataset_id} is INCOMPLETE and must not be published.\n"
+            f"The archiver run that created it failed at {now}:\n\n{reason}\n\n"
+            "Retry the run, which resumes from this draft, or delete the draft.\n"
+        )
+        logger.error(f"Marking the draft incomplete with {INCOMPLETE_MARKER}.")
+        return await draft.create_file(
+            INCOMPLETE_MARKER, io.BytesIO(message.encode("utf-8"))
+        )
+
+    async def clear_incomplete_marker(self) -> DraftDeposition:
+        """Remove the marker of an incomplete draft, if it has one."""
+        if INCOMPLETE_MARKER in await self.list_files():
+            logger.info(f"Removing {INCOMPLETE_MARKER}: this run completed.")
+            return await self.delete_file(INCOMPLETE_MARKER)
+        return self
+
+    async def raise_if_incomplete(self) -> None:
+        """Raise if the draft is the unfinished product of a failed run."""
+        if INCOMPLETE_MARKER in await self.list_files():
+            raise IncompleteDepositionError(
+                f"Not publishing {self.get_deposition_link()}: it contains "
+                f"{INCOMPLETE_MARKER}, because the run that created it failed. Retry "
+                "the run, or delete the draft."
+            )
 
     async def add_resource(self, name: str, resource: ResourceInfo) -> DraftDeposition:
         """Apply correct change to deposition based on downloaded resource."""
