@@ -14,13 +14,21 @@ See the job run logs and results [here]({{ env.RUN_URL }}).
 
 For each of the following archives, find the run status in the Github archiver run. If validation tests pass, manually review the archive and publish. If no changes detected, delete the draft. If changes are detected, manually review the archive following the guidelines in step 3 of `README.md`, then publish the new version. Then confirm publication status, adding a note on the status (e.g., "v1 published", "no changes detected, draft deleted") or creating a follow-up sub-issue as needed.
 
-{% if RUN_TYPE == 'fsspec' %}
+{% if env.RUN_TYPE == 'fsspec' %}
 # Publishing fsspec archives
 
 The data for these archives is too large for Zenodo, so it is archived to GCS and only the `datapackage.json` metadata is archived on Zenodo. Both need to be reviewed and published:
 
 - [ ] Review the new archive in the `workspace` directory of the GCS deposition path, then run the `publish-or-retry-fsspec-archive` workflow with `publish-run` and the run ID above.
 - [ ] Review the Zenodo metadata draft (linked in the changed archives below, marked "Zenodo metadata"), then publish it. Its version and DOI are already recorded in the `datapackage.json` in GCS.
+
+# Last-modified date test
+
+We are testing whether the HTTP metadata of each file on the data provider's server (`Last-Modified` and size, and `ETag` where it is a hash of the contents) reliably predicts that the file has changed, so that we could skip downloading unchanged files. A file is predicted to have changed if any of those differs from what we archived. Each prediction is compared with whether the file's hash actually changed. False negatives, where a changed file was predicted unchanged, are the ones that matter.
+
+{{ env.LAST_MODIFIED }}
+
+- [ ] Reviewed the last-modified test results and noted any surprises (e.g. false negatives) below
 {% endif %}
 
 # Changed archives

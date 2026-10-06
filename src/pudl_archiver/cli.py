@@ -239,6 +239,7 @@ def publish_run(summary_file: str):
             run_settings=previous_run_summary.run_settings,
             skip_partitions=successful_partitions,
             skip_checksums=previous_run_summary.uploaded_checksums,
+            skip_source_metadata=previous_run_summary.source_metadata,
         )
     )
 
@@ -279,6 +280,7 @@ def retry_run(summary_file: str, auto_publish: bool):
             run_settings=failed_run_summary.run_settings,
             skip_partitions=successful_partitions,
             skip_checksums=failed_run_summary.uploaded_checksums,
+            skip_source_metadata=failed_run_summary.source_metadata,
         )
     )
 

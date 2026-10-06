@@ -12,6 +12,7 @@ from pudl_archiver.archivers.validate import (
     MetadataArchiveSummary,
     RunSummary,
     _datapackage_changed,
+    create_last_modified_checks,
     exception_validation,
 )
 from pudl_archiver.depositors import (
@@ -21,7 +22,12 @@ from pudl_archiver.depositors import (
     PublishedDeposition,
     get_deposition,
 )
-from pudl_archiver.frictionless import DataPackage, Partitions, ResourceInfo
+from pudl_archiver.frictionless import (
+    DataPackage,
+    HttpFileMetadata,
+    Partitions,
+    ResourceInfo,
+)
 from pudl_archiver.utils import RunSettings
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
@@ -31,6 +37,7 @@ async def _remove_files_and_describe(
     draft: DraftDeposition,
     resources: dict[str, ResourceInfo],
     skip_partitions: dict[str, Partitions],
+    source_metadata: dict[str, HttpFileMetadata],
 ) -> tuple[DraftDeposition, DataPackage]:
     """Make the draft hold what was archived, and attach a datapackage describing it.
 
@@ -58,7 +65,8 @@ async def _remove_files_and_describe(
         partitions_in_deposition={
             name: resource.partitions for name, resource in resources.items()
         }
-        | skip_partitions
+        | skip_partitions,
+        source_metadata=source_metadata,
     )
     return draft, new_datapackage
 
@@ -105,6 +113,7 @@ async def orchestrate_run(
     session: aiohttp.ClientSession,
     skip_partitions: dict[str, Partitions] | None = None,
     skip_checksums: dict[str, str] | None = None,
+    skip_source_metadata: dict[str, HttpFileMetadata] | None = None,
 ) -> tuple[RunSummary, PublishedDeposition | None]:
     """Use downloader and depositor to archive a dataset.
 
@@ -117,6 +126,9 @@ async def orchestrate_run(
             which this run, a retry, doesn't need to download again.
         skip_checksums: Checksums, by filename, that the files of ``skip_partitions``
             had in the draft at the end of the previous run.
+            skip_source_metadata: The HTTP metadata, by filename, that the previous run
+            recorded for the files of ``skip_partitions``, which this run has no
+            other way of knowing.
     """
     resources = {}
     # Get datapackage from previous version if there is one
@@ -124,6 +136,8 @@ async def orchestrate_run(
     skip_partitions, uploaded_checksums = _verify_skipped_files(
         draft, skip_partitions or {}, skip_checksums or {}
     )
+
+    previous_upload_times = draft.get_previous_file_times()
 
     # Download resources and add to archive
     run_exception = None
@@ -138,6 +152,28 @@ async def orchestrate_run(
     except Exception as e:
         run_exception = e
         logger.exception("Error downloading resources")
+
+    # The HTTP metadata of every file that was archived comes from three places, from
+    # the most to the least recent: this run's downloads, the run that this one is a
+    # retry of (so that any number of retries keep what the earlier ones recorded), and
+    # the previous version of the archive, but only for files that haven't changed
+    # since. The summary has what the run archived, whether or not the run completes.
+    observed_metadata = {
+        name: resource.source_metadata
+        for name, resource in resources.items()
+        if resource.source_metadata is not None
+    }
+    archived_metadata = {
+        name: metadata
+        for name, metadata in (skip_source_metadata or {}).items()
+        if name in skip_partitions
+    } | observed_metadata
+    previous_metadata = {
+        resource.name: resource.source_metadata
+        for resource in (original_datapackage.resources if original_datapackage else [])
+        if resource.source_metadata is not None
+        and draft.get_checksum(resource.name) == resource.hash_
+    }
 
     if run_exception is not None:
         # The new version is incomplete, and we don't know what it should contain, so
@@ -161,7 +197,7 @@ async def orchestrate_run(
         )
     else:
         draft, new_datapackage = await _remove_files_and_describe(
-            draft, resources, skip_partitions
+            draft, resources, skip_partitions, previous_metadata | archived_metadata
         )
 
     # Validate run
@@ -169,6 +205,11 @@ async def orchestrate_run(
         original_datapackage, new_datapackage, resources
     )
     validations.append(exception_validation(run_exception))
+    successful_partitions = {
+        name: resource.partitions
+        for name, resource in resources.items()
+        if name not in downloader.failed_partitions
+    } | skip_partitions
     summary = RunSummary.create_summary(
         name=dataset,
         baseline_datapackage=original_datapackage,
@@ -176,19 +217,28 @@ async def orchestrate_run(
         validation_tests=validations,
         record_url=draft.get_deposition_link(),
         failed_partitions=downloader.failed_partitions,
-        successful_partitions={
-            name: resource.partitions
-            for name, resource in resources.items()
-            if name not in downloader.failed_partitions
-        }
-        | skip_partitions,
+        successful_partitions=successful_partitions,
         uploaded_checksums={
             name: checksum
             for name, checksum in uploaded_checksums.items()
             if name in skip_partitions
             or (name in resources and name not in downloader.failed_partitions)
         },
+        source_metadata={
+            name: metadata
+            for name, metadata in archived_metadata.items()
+            if name in successful_partitions
+        },
         run_settings=run_settings,
+        last_modified_checks=create_last_modified_checks(
+            {} if run_exception is not None else observed_metadata,
+            {r.name: r for r in original_datapackage.resources}
+            if original_datapackage
+            else {},
+            {r.name: r for r in new_datapackage.resources},
+            previous_upload_times,
+            downloader.etag_is_content_hash,
+        ),
     )
     published = await draft.publish_if_valid(
         summary,

@@ -14,7 +14,12 @@ import aiohttp
 from pydantic import BaseModel, ConfigDict
 
 from pudl_archiver.archivers.validate import RunSummary
-from pudl_archiver.frictionless import DataPackage, Partitions, ResourceInfo
+from pudl_archiver.frictionless import (
+    DataPackage,
+    HttpFileMetadata,
+    Partitions,
+    ResourceInfo,
+)
 from pudl_archiver.utils import RunSettings, Url, compute_md5
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
@@ -332,9 +337,17 @@ class DraftDeposition(BaseModel, ABC):
 
     @abstractmethod
     async def generate_datapackage(
-        self, partitions_in_deposition: dict[str, Partitions]
+        self,
+        partitions_in_deposition: dict[str, Partitions],
+        source_metadata: dict[str, HttpFileMetadata] | None = None,
     ) -> DataPackage:
-        """Generate new datapackage and return it."""
+        """Generate new datapackage and return it.
+
+        Args:
+            partitions_in_deposition: Working partitions of each file in the deposition.
+            source_metadata: Server metadata of files, by filename, to record in
+                the datapackage if the depositor supports it.
+        """
         ...
 
     async def mark_incomplete(self, reason: str) -> DraftDeposition:
@@ -380,6 +393,13 @@ class DraftDeposition(BaseModel, ABC):
                 f"{INCOMPLETE_MARKER}, because the run that created it failed. Retry "
                 "the run, or delete the draft."
             )
+
+    def get_previous_file_times(self) -> dict[str, datetime.datetime]:
+        """Return when each file in the previous published version was uploaded.
+
+        Depositors that can't tell return an empty dictionary.
+        """
+        return {}
 
     async def add_resource(self, name: str, resource: ResourceInfo) -> DraftDeposition:
         """Apply correct change to deposition based on downloaded resource."""
@@ -473,9 +493,12 @@ class DraftDeposition(BaseModel, ABC):
     async def attach_datapackage(
         self,
         partitions_in_deposition: dict[str, Partitions],
+        source_metadata: dict[str, HttpFileMetadata] | None = None,
     ) -> tuple[DraftDeposition, DataPackage]:
         """Generate new datapackage describing draft deposition in current state."""
-        new_datapackage = self.generate_datapackage(partitions_in_deposition)
+        new_datapackage = self.generate_datapackage(
+            partitions_in_deposition, source_metadata
+        )
 
         datapackage_json = io.BytesIO(
             bytes(

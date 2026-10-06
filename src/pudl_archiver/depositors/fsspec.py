@@ -29,6 +29,7 @@ overwrite data in the published directory, so the old version will disappear.
 """
 
 import base64
+import datetime
 import logging
 import traceback
 from enum import Enum
@@ -49,6 +50,7 @@ from pudl_archiver.depositors.depositor import (
 from pudl_archiver.frictionless import (
     MEDIA_TYPES,
     DataPackage,
+    HttpFileMetadata,
     Partitions,
     Resource,
 )
@@ -57,13 +59,19 @@ from pudl_archiver.utils import RunSettings, compute_md5
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 
-def _resource_from_upath(path: UPath, parts: Partitions, md5_hash: str) -> Resource:
+def _resource_from_upath(
+    path: UPath,
+    parts: Partitions,
+    md5_hash: str,
+    source_metadata: HttpFileMetadata | None = None,
+) -> Resource:
     """Create a resource from a single file with partitions.
 
     Args:
         path: UPath pointing to resource on local or remote filesystem.
         parts: Working partitions of current resource.
         md5_hash: String md5 hash of resource.
+        source_metadata: Metadata of the file on the data provider's server, if known.
     """
     mt = MEDIA_TYPES[path.suffix[1:]]
 
@@ -76,7 +84,18 @@ def _resource_from_upath(path: UPath, parts: Partitions, md5_hash: str) -> Resou
         bytes=path.stat().st_size,
         hash=md5_hash,
         format=path.suffix,
+        source_metadata=source_metadata,
     )
+
+
+def _creation_time(path: UPath) -> datetime.datetime | None:
+    """Get the time a file was created on its filesystem, if the filesystem says."""
+    info = path.fs.info(path.as_uri())
+    if created := info.get("timeCreated"):  # gcsfs: ISO 8601 string
+        return datetime.datetime.fromisoformat(created)
+    if (created := info.get("created", info.get("mtime"))) is not None:  # local
+        return datetime.datetime.fromtimestamp(created, tz=datetime.UTC)
+    return None
 
 
 class DepositionDirectory(Enum):
@@ -271,6 +290,19 @@ class FsspecDraftDeposition(DraftDeposition):
         }
         self.resources_in_draft = draft_files
 
+    def get_previous_file_times(self) -> dict[str, datetime.datetime]:
+        """Return creation times of the files in the previous published version.
+
+        A file is only uploaded when it has changed, so this is when the currently
+        published copy of each file was archived.
+        """
+        published = self.deposition.get_deposition_path(DepositionDirectory.PUBLISHED)
+        times = {}
+        for fname in self.deposition.deposition_files[DepositionDirectory.PUBLISHED]:
+            if created := _creation_time(published / fname):
+                times[fname] = created
+        return times
+
     async def list_files(self):
         """Return files that are included in the current version of the draft."""
         return list(self.resources_in_draft.keys())
@@ -403,6 +435,7 @@ class FsspecDraftDeposition(DraftDeposition):
     def generate_datapackage(
         self,
         partitions_in_deposition: dict[str, Partitions],
+        source_metadata: dict[str, HttpFileMetadata] | None = None,
     ) -> DataPackage:
         """Generate new datapackage, attach to deposition, and return."""
         logger.info(f"Creating new datapackage.json for {self.dataset_id}")
@@ -413,6 +446,7 @@ class FsspecDraftDeposition(DraftDeposition):
                 path,
                 partitions_in_deposition[fname],
                 self.deposition.get_checksum(path),
+                (source_metadata or {}).get(fname),
             )
             for fname, path in self.resources_in_draft.items()
             if fname not in ("datapackage.json", INCOMPLETE_MARKER)
