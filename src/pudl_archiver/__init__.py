@@ -86,8 +86,18 @@ async def archive_dataset(
     dataset: str,
     run_settings: RunSettings,
     skip_partitions: dict[str, Partitions] | None = None,
+    skip_checksums: dict[str, str] | None = None,
 ):
-    """A CLI for the PUDL Zenodo Storage system."""
+    """A CLI for the PUDL Zenodo Storage system.
+
+    Args:
+        dataset: Name of the dataset.
+        run_settings: Settings of the run.
+        skip_partitions: Partitions that a previous run archived, which a retry
+            doesn't need to download again.
+        skip_checksums: Checksums that the files of ``skip_partitions`` had in the
+            draft at the end of the previous run, so a retry can check they still do.
+    """
     async with _make_session() as session:
         # List to gather all archivers to run asyncronously
         cls = ARCHIVERS.get(dataset)
@@ -103,12 +113,13 @@ async def archive_dataset(
             run_settings=run_settings,
             session=session,
             skip_partitions=skip_partitions,
+            skip_checksums=skip_checksums,
         )
 
     if run_settings.summary_file is not None:
         await asyncio.to_thread(
             Path(run_settings.summary_file).write_text,
-            json.dumps(summary.model_dump(), indent=2),
+            json.dumps(summary.model_dump(mode="json"), indent=2),
         )
 
     # Check validation results of all runs that aren't unchanged
@@ -164,5 +175,5 @@ async def archive_fsspec_metadata(
     if run_settings.summary_file is not None and summary is not None:
         await asyncio.to_thread(
             Path(run_settings.summary_file).write_text,
-            json.dumps(summary.model_dump(), indent=2),
+            json.dumps(summary.model_dump(mode="json"), indent=2),
         )

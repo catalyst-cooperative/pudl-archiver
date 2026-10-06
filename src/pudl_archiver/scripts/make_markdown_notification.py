@@ -1,4 +1,3 @@
-#! /usr/bin/env python
 """Format archiver summary and error files as Markdown.
 
 This script reads run summary JSON files and optional failure logs, then emits
@@ -12,47 +11,27 @@ GitHub outputs include action checkboxes so follow-up work can be tracked in
 issues. Zulip outputs omit those actions and serve as notifications only.
 """
 
-import argparse
 import itertools
 import json
 import logging
 import re
 from pathlib import Path
 
+import click
 import pandas as pd
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 
-def _parse_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--summary-files",
-        nargs="+",
-        type=Path,
-        help="Paths to RunSummary JSON files.",
-        default=None,
-    )
-    parser.add_argument(
-        "--error-files",
-        nargs="+",
-        type=Path,
-        help="Paths to log files for failed runs.",
-        default=None,
-    )
-    parser.add_argument(
-        "--summary-type",
-        type=str,
-        help="What category of text to get (changes, failures, zulip).",
-        default=None,
-    )
-    parser.add_argument(
-        "--run-url",
-        type=str,
-        help="URL of the GitHub Actions workflow run for Zulip notifications.",
-        default=None,
-    )
-    return parser.parse_args()
+SUMMARY_TYPES = {
+    "error": "Exceptions from the error logs of runs that crashed.",
+    "failure": "Validation tests that failed in each run summary.",
+    "change": "Tables of files that changed, and Zenodo metadata drafts.",
+    "unchanged": "Archives that had no changes.",
+    "last_modified": "How well server metadata predicted which files changed (fsspec).",
+    "zulip": "A full report of errors, failures, changes and unchanged archives, "
+    "for a Zulip notification.",
+}
 
 
 def _format_message(
@@ -142,6 +121,72 @@ def _format_summary(
         name=name,
         content=changes,
         action=action,
+    )
+
+
+def _format_last_modified(summary: dict) -> str | None:
+    """Tabulate how well server metadata predicted which files changed."""
+    checks = summary.get("last_modified_checks")
+    if not checks:
+        return None
+
+    def _mark(value: bool | None) -> str:
+        return "?" if value is None else ("yes" if value else "no")
+
+    table = pd.DataFrame.from_records(
+        [
+            {
+                "name": c["name"],
+                "last_modified": c["last_modified"] or "",
+                "compared_with": c["reference"]
+                + (f" ({c['reference_time']})" if c["reference_time"] else ""),
+                "last_modified_changed": _mark(c.get("last_modified_changed")),
+                "size_differs": _mark(c.get("size_differs")),
+                "predicted_changed": _mark(c["predicted_changed"]),
+                "actually_changed": _mark(c["actually_changed"]),
+                "correct": _mark(
+                    None
+                    if c["predicted_changed"] is None
+                    else c["predicted_changed"] == c["actually_changed"]
+                ),
+            }
+            for c in checks
+        ]
+    )
+    predicted = [c for c in checks if c["predicted_changed"] is not None]
+    false_negatives = [
+        c["name"]
+        for c in predicted
+        if c["actually_changed"] and not c["predicted_changed"]
+    ]
+    false_positives = [
+        c["name"]
+        for c in predicted
+        if c["predicted_changed"] and not c["actually_changed"]
+    ]
+    correct = len(predicted) - len(false_negatives) - len(false_positives)
+    tally = (
+        f"{correct}/{len(predicted)} predictions correct, "
+        f"{len(false_negatives)} false negatives (predicted unchanged, but changed), "
+        f"{len(false_positives)} false positives (predicted changed, but unchanged). "
+        f"{len(checks) - len(predicted)} files could not be predicted."
+    )
+    lm_predicted = [c for c in checks if c.get("last_modified_changed") is not None]
+    lm_missed = [
+        c["name"]
+        for c in lm_predicted
+        if c["actually_changed"] and not c["last_modified_changed"]
+    ]
+    tally += (
+        f"\n\nChanged files missed by `Last-Modified` alone (before the size check): "
+        f"{len(lm_missed)}" + (f" ({', '.join(lm_missed)})" if lm_missed else "")
+    )
+    if false_negatives:
+        tally += f"\n\n**False negatives:** {', '.join(false_negatives)}"
+    return _format_message(
+        url=summary["record_url"],
+        name=summary["dataset_name"],
+        content=f"{tally}\n\n{table.to_markdown(index=False)}",
     )
 
 
@@ -253,7 +298,7 @@ def _build_markdown_report(
     return "\n\n".join(parts)
 
 
-def _load_summaries(summary_files: list[Path]) -> list[dict]:
+def _load_summaries(summary_files: tuple[Path, ...]) -> list[dict]:
     summaries = []
     for summary_file in summary_files:
         if summary_file.exists():  # Handle case where no files are found
@@ -262,7 +307,7 @@ def _load_summaries(summary_files: list[Path]) -> list[dict]:
     return summaries
 
 
-def _load_errors(error_files: list[Path]) -> list[str]:
+def _load_errors(error_files: tuple[Path, ...]) -> list[str]:
     errors = []
     for error_file in error_files:
         if error_file.exists():  # Handle case where no files are found or file is empty
@@ -271,13 +316,49 @@ def _load_errors(error_files: list[Path]) -> list[str]:
     return errors
 
 
+@click.command()
+@click.argument(
+    "summary_files",
+    nargs=-1,
+    required=True,
+    type=click.Path(path_type=Path),
+)
+@click.option(
+    "--error-file",
+    "error_files",
+    multiple=True,
+    type=click.Path(path_type=Path),
+    help="Log of an archiver run (<dataset>_log.txt), from which the exception of "
+    "the run is reported if it crashed. Repeat to give several. Optional, as a run "
+    "that succeeded has no error log.",
+)
+@click.option(
+    "--summary-type",
+    required=True,
+    type=click.Choice(list(SUMMARY_TYPES)),
+    help="Which Markdown to output. "
+    + " ".join(f"{name}: {text}" for name, text in SUMMARY_TYPES.items()),
+)
+@click.option(
+    "--run-url",
+    default=None,
+    help="URL of the GitHub Actions workflow run, to link to from the report for "
+    "the 'zulip' summary type.",
+)
 def main(
-    summary_files: list[Path],
-    error_files: list[Path],
+    summary_files: tuple[Path, ...],
+    error_files: tuple[Path, ...],
     summary_type: str,
-    run_url: str | None = None,
+    run_url: str | None,
 ) -> None:
-    """Format summary files for GitHub issue text or Zulip Markdown."""
+    """Format archiver run summaries and error logs as Markdown.
+
+    SUMMARY_FILES are the JSON summaries written by archiver runs
+    (<dataset>_run_summary.json, or <dataset>_metadata_summary.json for Zenodo
+    metadata drafts). At least one is required, as every run is expected to write
+    one. Paths that don't exist are skipped, so a shell glob that matched no files
+    is harmless.
+    """
     all_summaries = _load_summaries(summary_files)
     # Metadata-only summaries describe a Zenodo draft, not a data archive run.
     metadata_summaries = [s for s in all_summaries if s.get("metadata_only")]
@@ -327,16 +408,22 @@ def main(
         )
     )
 
-    if summary_type == "change":
-        print(changed_blocks)
+    last_modified_blocks = "\n\n".join(
+        filter(None, (_format_last_modified(s) for s in summaries))
+    )
+
+    if summary_type == "last_modified":
+        click.echo(last_modified_blocks)
+    elif summary_type == "change":
+        click.echo(changed_blocks)
     elif summary_type == "error":
-        print(error_blocks)
+        click.echo(error_blocks)
     elif summary_type == "failure":
-        print(failed_blocks)
+        click.echo(failed_blocks)
     elif summary_type == "unchanged":
-        print(unchanged_blocks)
+        click.echo(unchanged_blocks)
     elif summary_type == "zulip":
-        print(
+        click.echo(
             _build_markdown_report(
                 error_blocks=error_blocks,
                 failed_blocks=failed_blocks,
@@ -347,8 +434,8 @@ def main(
             )
         )
     else:
-        print([changed_blocks, unchanged_blocks, failed_blocks, error_blocks])
+        raise ValueError(f"Unknown summary type: {summary_type!r}")
 
 
 if __name__ == "__main__":
-    main(**vars(_parse_args()))
+    main()

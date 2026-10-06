@@ -69,12 +69,26 @@ class ZipLayout(BaseModel):
 Partitions = dict[str, Any]
 
 
+class SourceMetadata(BaseModel):
+    """HTTP metadata of a file on the data provider's server.
+
+    This is available from the response headers without downloading the file, and
+    is recorded at download time so that later runs can tell whether the file on the
+    server has changed since it was archived.
+    """
+
+    last_modified: datetime.datetime | None = None
+    etag: str | None = None
+    content_length: int | None = None
+
+
 class ResourceInfo(BaseModel):
     """Class providing information about downloaded resource."""
 
     local_path: Path
     partitions: Partitions
     layout: ZipLayout | None = None
+    source_metadata: SourceMetadata | None = None
 
 
 class Resource(BaseModel):
@@ -93,6 +107,15 @@ class Resource(BaseModel):
     format_: str = Field(alias="format")
     bytes_: int = Field(alias="bytes")
     hash_: str = Field(alias="hash")
+    source_metadata: SourceMetadata | None = None
+
+    @model_serializer(mode="wrap")
+    def _drop_empty_source_metadata(self, handler):
+        """Only emit ``source_metadata`` when it has been recorded."""
+        data = handler(self)
+        if self.source_metadata is None:
+            data.pop("source_metadata", None)
+        return data
 
 
 class DataPackage(BaseModel):

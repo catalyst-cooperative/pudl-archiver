@@ -1,6 +1,7 @@
 """Defines base class for archiver."""
 
 import asyncio
+import datetime
 import io
 import json
 import logging
@@ -22,7 +23,12 @@ from playwright.async_api import Browser as PlaywrightBrowser
 from playwright.async_api import Error as PlaywrightError
 
 from pudl_archiver.archivers import validate
-from pudl_archiver.frictionless import DataPackage, Partitions, ResourceInfo
+from pudl_archiver.frictionless import (
+    DataPackage,
+    Partitions,
+    ResourceInfo,
+    SourceMetadata,
+)
 from pudl_archiver.utils import (
     add_to_archive_stable_hash,
     retry_async,
@@ -111,6 +117,36 @@ async def _download_file(
         return response.status
 
 
+def parse_http_date(value: str | None) -> datetime.datetime | None:
+    """Parse an HTTP-date header such as ``Sat, 03 Oct 2026 07:19:42 GMT``.
+
+    Returns a timezone-aware UTC datetime, or None if the header is missing or
+    can't be parsed.
+    """
+    if not value:
+        return None
+    try:
+        return datetime.datetime.strptime(
+            value.strip(), "%a, %d %b %Y %H:%M:%S GMT"
+        ).replace(tzinfo=datetime.UTC)
+    except ValueError:
+        logger.warning(f"Unable to parse HTTP date header: {value!r}")
+        return None
+
+
+async def _fetch_source_metadata(
+    session: aiohttp.ClientSession, url: str, **kwargs
+) -> SourceMetadata:
+    async with session.head(url, allow_redirects=True, **kwargs) as response:
+        response.raise_for_status()
+        content_length = response.headers.get("Content-Length")
+        return SourceMetadata(
+            last_modified=parse_http_date(response.headers.get("Last-Modified")),
+            etag=response.headers.get("ETag"),
+            content_length=int(content_length) if content_length else None,
+        )
+
+
 class AbstractDatasetArchiver(ABC):
     """An abstract base archiver class."""
 
@@ -157,6 +193,11 @@ class AbstractDatasetArchiver(ABC):
         self.file_validations: list[validate.FileUniversalValidation] = []
 
         self.failed_partitions: dict[str, Partitions] = {}
+
+        #: The datapackage of the previous version of the archive, if there is one. It's
+        #: set by the orchestrator before ``get_resources`` is called, so archivers can
+        #: check what they find against what was archived before.
+        self.baseline_datapackage: DataPackage | None = None
 
         # Create logger
         self.logger = logging.getLogger(f"catalystcoop.{__name__}")
@@ -287,6 +328,24 @@ class AbstractDatasetArchiver(ABC):
         return await retry_async(
             _download_file, [self.session, url, file_path, post], kwargs
         )
+
+    async def get_source_metadata(self, url: str, **kwargs) -> SourceMetadata | None:
+        """Get ``Last-Modified``, ``ETag`` and size of a file without downloading it.
+
+        This is purely informational, so any failure is logged and results in None
+        rather than failing the archiver run.
+
+        Args:
+            url: URL of file on the server.
+            kwargs: Key word args to pass to the request.
+        """
+        try:
+            return await retry_async(
+                _fetch_source_metadata, [self.session, url], kwargs
+            )
+        except Exception:
+            logger.warning(f"Unable to get source metadata for {url}", exc_info=True)
+            return None
 
     async def download_and_zip_file(
         self, url: str, filename: str, zip_path: Path, **kwargs
