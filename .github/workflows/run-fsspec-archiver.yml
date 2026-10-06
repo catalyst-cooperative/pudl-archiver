@@ -272,16 +272,24 @@ jobs:
     if: ${{ always() && (github.event_name == 'schedule' || inputs.create_github_issue == true) }}
     runs-on: ubuntu-latest
     needs:
+      - notify-start
       - archive-run
       - archive-notify
     steps:
       - uses: actions/checkout@v7
+      - name: Set issue title
+        id: title
+        env:
+          DATASET: ${{ needs.notify-start.outputs.dataset }}
+        run: |
+          echo "ISSUE_TITLE=Review $(date +'%B %-d, %Y') $DATASET archive run" >> "$GITHUB_OUTPUT"
       - name: Create an issue
         id: create-issue
         uses: JasonEtco/create-an-issue@v2.9.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          ISSUE_TITLE: ${{ steps.title.outputs.ISSUE_TITLE }}
           RUN_TYPE: fsspec
           ERRORS: ${{ needs.archive-notify.outputs.errors }}
           FAILURES: ${{ needs.archive-notify.outputs.failures }}
