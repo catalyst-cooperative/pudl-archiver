@@ -63,12 +63,48 @@ async def _remove_files_and_describe(
     return draft, new_datapackage
 
 
+def _verify_skipped_files(
+    draft: DraftDeposition,
+    skip_partitions: dict[str, Partitions],
+    skip_checksums: dict[str, str],
+) -> tuple[dict[str, Partitions], dict[str, str]]:
+    """Only skip the files that are in the draft as the previous run left them.
+
+    A retry skips the files that the failed run archived, trusting that they are
+    still in the draft. The draft is a mix of old and new files, and it may have been
+    edited since the failed run, so check each file's checksum against the one the
+    failed run recorded. A file that is missing, or has a different checksum, is
+    downloaded again. Summaries from before the checksums were recorded have none, so
+    their files are trusted, as they used to be.
+
+    Returns:
+        The partitions that can be skipped, and the checksums of their files.
+    """
+    verified = {}
+    checksums = {}
+    for name, partitions in skip_partitions.items():
+        in_draft = draft.get_checksum(name)
+        expected = skip_checksums.get(name)
+        if expected is not None and in_draft != expected:
+            logger.warning(
+                f"Not skipping {name}: the draft has "
+                f"{'no such file' if in_draft is None else f'checksum {in_draft}'}, but "
+                f"the previous run uploaded checksum {expected}. Downloading it again."
+            )
+            continue
+        verified[name] = partitions
+        if in_draft is not None:
+            checksums[name] = in_draft
+    return verified, checksums
+
+
 async def orchestrate_run(
     dataset: str,
     downloader: AbstractDatasetArchiver,
     run_settings: RunSettings,
     session: aiohttp.ClientSession,
     skip_partitions: dict[str, Partitions] | None = None,
+    skip_checksums: dict[str, str] | None = None,
 ) -> tuple[RunSummary, PublishedDeposition | None]:
     """Use downloader and depositor to archive a dataset.
 
@@ -79,11 +115,15 @@ async def orchestrate_run(
         session: HTTP session.
         skip_partitions: Partitions, by filename, that a previous run archived, and
             which this run, a retry, doesn't need to download again.
+        skip_checksums: Checksums, by filename, that the files of ``skip_partitions``
+            had in the draft at the end of the previous run.
     """
     resources = {}
     # Get datapackage from previous version if there is one
     draft, original_datapackage = await get_deposition(dataset, session, run_settings)
-    skip_partitions = skip_partitions or {}
+    skip_partitions, uploaded_checksums = _verify_skipped_files(
+        draft, skip_partitions or {}, skip_checksums or {}
+    )
 
     # Download resources and add to archive
     run_exception = None
@@ -93,6 +133,8 @@ async def orchestrate_run(
         ):
             resources[name] = resource
             draft = await draft.add_resource(name, resource)
+            if (checksum := draft.get_checksum(name)) is not None:
+                uploaded_checksums[name] = checksum
     except Exception as e:
         run_exception = e
         logger.exception("Error downloading resources")
@@ -140,6 +182,12 @@ async def orchestrate_run(
             if name not in downloader.failed_partitions
         }
         | skip_partitions,
+        uploaded_checksums={
+            name: checksum
+            for name, checksum in uploaded_checksums.items()
+            if name in skip_partitions
+            or (name in resources and name not in downloader.failed_partitions)
+        },
         run_settings=run_settings,
     )
     published = await draft.publish_if_valid(
