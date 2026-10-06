@@ -25,6 +25,15 @@ on:
         options:
           - publish-run
           - retry-run
+      create_github_issue:
+        description: |
+          Track the results of a retry-run on Github, if it succeeds in creating an
+          archive to review. If the run being retried has an issue, this comments on
+          it, and otherwise it creates a new one. Ignored for a publish-run, and
+          retries triggered automatically by a failed archiver run always do this.
+        required: true
+        type: boolean
+        default: true
 
 jobs:
   publish-run:
@@ -33,12 +42,18 @@ jobs:
       github.event_name == 'workflow_dispatch' ||
       github.event.workflow_run.conclusion == 'failure'
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -l {0}
     # Browsers and their system libraries come preinstalled in this image, so
     # no apt/browser setup is needed. The tag must match the playwright version
     # pinned in pyproject.toml.
     container:
       image: mcr.microsoft.com/playwright:v1.63.0-noble
       options: --ipc=host --init
+    outputs:
+      dataset: ${{ steps.dataset_name.outputs.dataset }}
+      deposition_path: ${{ steps.dataset_name.outputs.deposition_path }}
     env:
       RUN_ID: ${{ github.event_name == 'workflow_dispatch' && inputs.run_id || github.event.workflow_run.id }}
       COMMAND: ${{ github.event_name == 'workflow_dispatch' && inputs.command || 'retry-run' }}
@@ -82,7 +97,16 @@ jobs:
         id: dataset_name
         run: |
           file=$(find . -name '*_run_summary.json')
-          echo "dataset=$(basename "$file" _run_summary.json)" >> "$GITHUB_OUTPUT"
+          dataset=$(basename "$file" _run_summary.json)
+          echo "dataset=$dataset" >> "$GITHUB_OUTPUT"
+          # The run settings in the summary have the path of the deposition, which
+          # ends with the dataset name. Its parent is what the post-archive jobs want.
+          deposition_path=$(pixi run python -c "
+          import json, sys
+          path = json.load(open(sys.argv[1]))['run_settings']['depositor_args']['deposition_path']
+          print(path.rstrip('/').removesuffix('/' + sys.argv[2]))
+          " "$file" "$dataset")
+          echo "deposition_path=$deposition_path" >> "$GITHUB_OUTPUT"
 
       - name: Attempt to publish deposition for ${{ steps.dataset_name.outputs.dataset }}
         # set -o pipefail passes on any failure codes to the next step,
@@ -107,3 +131,26 @@ jobs:
         with:
           name: error-log-${{ steps.dataset_name.outputs.dataset }}
           path: ${{ steps.dataset_name.outputs.dataset }}_log.txt
+
+  post-archive:
+    # A retry that succeeds leaves the same unpublished archive for review as a
+    # successful initial run, so it needs everything the initial run never got to
+    # do after failing: the Zenodo metadata draft, the Zulip notification and the
+    # Github issue. Publishing is the end of that process, so nothing follows it.
+    needs: publish-run
+    if: |
+      always() &&
+      needs.publish-run.outputs.dataset != '' &&
+      (github.event_name == 'workflow_run' || inputs.command == 'retry-run')
+    uses: ./.github/workflows/fsspec-post-archive.yml
+    with:
+      dataset: ${{ needs.publish-run.outputs.dataset }}
+      deposition_path: ${{ needs.publish-run.outputs.deposition_path }}
+      create_metadata_draft: ${{ needs.publish-run.result == 'success' && needs.publish-run.outputs.dataset == 'ferceqr' }}
+      create_github_issue: ${{ github.event_name == 'workflow_run' || inputs.create_github_issue }}
+      source_run_id: ${{ github.event_name == 'workflow_dispatch' && inputs.run_id || github.event.workflow_run.id }}
+    secrets: inherit
+    permissions:
+      contents: read
+      id-token: write
+      issues: write
