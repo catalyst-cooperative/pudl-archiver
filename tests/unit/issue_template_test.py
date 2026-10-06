@@ -24,8 +24,10 @@ def test_fsspec_sections_depend_on_the_run_type(run_type, has_fsspec_sections):
     jinja2 = pytest.importorskip(
         "jinja2"
     )  # Nunjucks, which the action uses, is similar
-    env = {"RUN_TYPE": run_type} if run_type else {}
+    env = {"LAST_MODIFIED": "the table"} | ({"RUN_TYPE": run_type} if run_type else {})
 
     issue = jinja2.Template(TEMPLATE.read_text()).render(env=env)
 
     assert ("Publishing fsspec archives" in issue) is has_fsspec_sections
+    assert ("Last-modified date test" in issue) is has_fsspec_sections
+    assert ("the table" in issue) is has_fsspec_sections

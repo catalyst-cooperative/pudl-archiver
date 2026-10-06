@@ -21,6 +21,14 @@ The data for these archives is too large for Zenodo, so it is archived to GCS an
 
 - [ ] Review the new archive in the `workspace` directory of the GCS deposition path, then run the `publish-or-retry-fsspec-archive` workflow with `publish-run` and the run ID above.
 - [ ] Review the Zenodo metadata draft (linked in the changed archives below, marked "Zenodo metadata"), then publish it. Its version and DOI are already recorded in the `datapackage.json` in GCS.
+
+# Last-modified date test
+
+We are testing whether the HTTP metadata of each file on the data provider's server (`Last-Modified` and size, and `ETag` where it is a hash of the contents) reliably predicts that the file has changed, so that we could skip downloading unchanged files. A file is predicted to have changed if any of those differs from what we archived. Each prediction is compared with whether the file's hash actually changed. False negatives, where a changed file was predicted unchanged, are the ones that matter.
+
+{{ env.LAST_MODIFIED }}
+
+- [ ] Reviewed the last-modified test results and noted any surprises (e.g. false negatives) below
 {% endif %}
 
 # Changed archives
