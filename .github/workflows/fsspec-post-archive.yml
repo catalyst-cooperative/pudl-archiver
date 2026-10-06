@@ -1,10 +1,11 @@
 ---
 name: fsspec-post-archive
 
-# Everything that happens after an fsspec archive has been created: it creates the
-# Zenodo metadata draft, notifies Zulip and opens the GitHub issue for reviewing the
-# archive. It reads the run summaries and error logs uploaded to the calling workflow
-# run.
+# Everything that happens after an fsspec archive has been created, shared by the
+# initial run (run-fsspec-archiver) and by retries (publish-or-retry-fsspec-archive),
+# since a retry that succeeds has to do all of this too. It creates the Zenodo
+# metadata draft, notifies Zulip and opens the GitHub issue for reviewing the archive.
+# It reads the run summaries and error logs uploaded to the calling workflow run.
 
 on:
   workflow_call:
@@ -25,6 +26,12 @@ on:
         description: Create a GitHub issue to track review and publication
         type: boolean
         default: false
+      source_run_id:
+        description: |
+          ID of the workflow run being retried. If an issue already tracks that run,
+          the results are added to it as a comment instead of creating a second issue.
+        type: string
+        default: ""
 
 jobs:
   archive-metadata:
@@ -166,21 +173,69 @@ jobs:
       unchanged: ${{ steps.github_summaries.outputs.UNCHANGED }}
 
   make-github-issue:
-    # If an issue is requested, create one to track review and publication.
+    # If an issue is requested, create one to track review and publication. There
+    # should only be one issue for an archive, however many attempts it takes, so a
+    # retry comments on the issue for the run it retries, if there is one.
     if: ${{ always() && inputs.create_github_issue }}
     runs-on: ubuntu-latest
     needs:
       - archive-notify
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      RUN_ID: ${{ github.run_id }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
     steps:
       - uses: actions/checkout@v7
+      # The issue links to the run that created it, and comments on it link to the
+      # runs that retried it, so any of them can be found from the run ID. GitHub's
+      # issue search doesn't index the run ID in a URL, so list the issues with the
+      # label and look through them instead.
+      - name: Find the issue for the run being retried
+        id: existing
+        if: ${{ inputs.source_run_id != '' }}
+        env:
+          SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+        run: |
+          [[ "$SOURCE_RUN_ID" =~ ^[0-9]+$ ]] || exit 1
+          number=$(gh issue list --repo "$GITHUB_REPOSITORY" --state all \
+            --label archive-update --limit 100 \
+            --json number,body,comments --jq "[.[] | select(([.body] + [.comments[].body] | join(\"\\n\")) | contains(\"actions/runs/$SOURCE_RUN_ID\"))] | first | .number // empty")
+          echo "number=$number" >> "$GITHUB_OUTPUT"
+          echo "Issue for run $SOURCE_RUN_ID: ${number:-none found}"
+      - name: Comment on the existing issue with the results of the retry
+        id: comment
+        if: ${{ steps.existing.outputs.number != '' }}
+        env:
+          ISSUE_NUMBER: ${{ steps.existing.outputs.number }}
+          ERRORS: ${{ needs.archive-notify.outputs.errors }}
+          FAILURES: ${{ needs.archive-notify.outputs.failures }}
+          CHANGES: ${{ needs.archive-notify.outputs.changes }}
+          UNCHANGED: ${{ needs.archive-notify.outputs.unchanged }}
+        run: |
+          {
+            echo "# Retry of this archive: [job run logs]($RUN_URL)"
+            echo
+            echo "The earlier run did not finish, so the results below are from a retry. To publish, run the \`publish-or-retry-fsspec-archive\` workflow with \`publish-run\` and the **retry's** run ID, \`$RUN_ID\`, instead of the run ID in the issue description."
+            for section in "Changed archives:CHANGES" \
+              "Validation failures:FAILURES" "Other failures:ERRORS" "Unchanged archives:UNCHANGED"; do
+              variable="${section#*:}"
+              if [ -n "${!variable}" ]; then
+                printf '\n## %s\n\n%s\n' "${section%%:*}" "${!variable}"
+              fi
+            done
+          } > comment.md
+          gh issue comment "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" --body-file comment.md
+          echo "url=$(gh issue view "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" --json url --jq .url)" >> "$GITHUB_OUTPUT"
       - name: Set issue title
         id: title
+        if: ${{ steps.existing.outputs.number == '' }}
         env:
           DATASET: ${{ inputs.dataset }}
         run: |
           echo "ISSUE_TITLE=Review $(date +'%B %-d, %Y') $DATASET archive run" >> "$GITHUB_OUTPUT"
       - name: Create an issue
         id: create-issue
+        if: ${{ steps.existing.outputs.number == '' }}
         uses: JasonEtco/create-an-issue@v2.9.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -194,7 +249,7 @@ jobs:
         with:
           filename: .github/ISSUE_TEMPLATE/monthly-archive-update.md
     outputs:
-      url: ${{ steps.create-issue.outputs.url }}
+      url: ${{ steps.create-issue.outputs.url || steps.comment.outputs.url }}
 
   make-zulip-announcement-for-github-issue:
     runs-on: ubuntu-latest
