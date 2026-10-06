@@ -280,15 +280,20 @@ class FsspecDraftDeposition(DraftDeposition):
 
     async def publish(self) -> FsspecPublishedDeposition:
         """Publish deposition."""
+        await self.raise_if_incomplete()
         # Delete files no longer included in published deposition
         self.deposition.get_deposition_path(DepositionDirectory.PUBLISHED).mkdir(
             exist_ok=True
         )
         for path in self.files_to_delete.values():
-            path.unlink()
+            path.unlink(missing_ok=True)
 
-        # Move files from draft to published deposition
-        for filename in self.deposition.deposition_files[DepositionDirectory.WORKSPACE]:
+        # Move files from draft to published deposition. List the workspace again,
+        # as files in it may have been deleted from the draft since it was opened.
+        workspace_files = Deposition.from_upath(
+            self.deposition.deposition_path
+        ).deposition_files[DepositionDirectory.WORKSPACE]
+        for filename in workspace_files:
             (
                 self.deposition.get_deposition_path(DepositionDirectory.WORKSPACE)
                 / filename
@@ -340,11 +345,29 @@ class FsspecDraftDeposition(DraftDeposition):
         )
 
     async def delete_file(self, filename: str) -> FsspecDraftDeposition:
-        """Delete a file from a deposition."""
+        """Delete a file from a deposition.
+
+        A file in the workspace only belongs to the draft, so it is deleted right
+        away, as it is from a Zenodo draft. The file of the same name in the
+        published version is only deleted when the draft is published.
+        """
+        workspace_path = (
+            self.deposition.get_deposition_path(DepositionDirectory.WORKSPACE)
+            / filename
+        )
+        published_path = (
+            self.deposition.get_deposition_path(DepositionDirectory.PUBLISHED)
+            / filename
+        )
+        files_to_delete = self.files_to_delete
+        if published_path.exists():
+            files_to_delete = files_to_delete | {filename: published_path}
+        if self.resources_in_draft[filename] == workspace_path:
+            workspace_path.unlink()
         return self.model_copy(
             update={
-                "files_to_delete": self.files_to_delete
-                | {filename: self.resources_in_draft[filename]},
+                "deposition": Deposition.from_upath(self.deposition.deposition_path),
+                "files_to_delete": files_to_delete,
                 "resources_in_draft": {
                     key: value
                     for key, value in self.resources_in_draft.items()

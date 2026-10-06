@@ -142,6 +142,10 @@ class RunSummary(BaseModel):
     datapackage_changed: bool
     failed_partitions: dict[str, Partitions]
     successful_partitions: dict[str, Partitions]
+    #: MD5 checksum, by filename, of each file of the ``successful_partitions`` as it
+    #: was in the draft at the end of the run. A retry only skips a file that is
+    #: still in the draft with this checksum.
+    uploaded_checksums: dict[str, str] = {}
     run_settings: RunSettings
 
     def get_failed_tests(self) -> list[ValidationTestResult]:
@@ -168,6 +172,7 @@ class RunSummary(BaseModel):
         failed_partitions: dict[str, Partitions],
         successful_partitions: dict[str, Partitions],
         run_settings: RunSettings,
+        uploaded_checksums: dict[str, str] | None = None,
     ) -> RunSummary:
         """Create a summary of archive changes from two DataPackage descriptors."""
         baseline_resources = {}
@@ -209,6 +214,7 @@ class RunSummary(BaseModel):
             datapackage_changed=datapackage_changed,
             failed_partitions=failed_partitions,
             successful_partitions=successful_partitions,
+            uploaded_checksums=uploaded_checksums or {},
             run_settings=run_settings,
         )
 

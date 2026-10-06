@@ -35,8 +35,10 @@ async def _remove_files_and_describe(
     """Make the draft hold what was archived, and attach a datapackage describing it.
 
     Files of the previous version that weren't downloaded are left out of the new
-    version, which only matters if it's published.
+    version, which only matters if it's published. This is also where a draft left
+    by a failed run, which this run has now completed, stops being marked incomplete.
     """
+    draft = await draft.clear_incomplete_marker()
     removed = [
         filename
         for filename in await draft.list_files()
@@ -61,18 +63,67 @@ async def _remove_files_and_describe(
     return draft, new_datapackage
 
 
+def _verify_skipped_files(
+    draft: DraftDeposition,
+    skip_partitions: dict[str, Partitions],
+    skip_checksums: dict[str, str],
+) -> tuple[dict[str, Partitions], dict[str, str]]:
+    """Only skip the files that are in the draft as the previous run left them.
+
+    A retry skips the files that the failed run archived, trusting that they are
+    still in the draft. The draft is a mix of old and new files, and it may have been
+    edited since the failed run, so check each file's checksum against the one the
+    failed run recorded. A file that is missing, or has a different checksum, is
+    downloaded again. Summaries from before the checksums were recorded have none, so
+    their files are trusted, as they used to be.
+
+    Returns:
+        The partitions that can be skipped, and the checksums of their files.
+    """
+    verified = {}
+    checksums = {}
+    for name, partitions in skip_partitions.items():
+        in_draft = draft.get_checksum(name)
+        expected = skip_checksums.get(name)
+        if expected is not None and in_draft != expected:
+            logger.warning(
+                f"Not skipping {name}: the draft has "
+                f"{'no such file' if in_draft is None else f'checksum {in_draft}'}, but "
+                f"the previous run uploaded checksum {expected}. Downloading it again."
+            )
+            continue
+        verified[name] = partitions
+        if in_draft is not None:
+            checksums[name] = in_draft
+    return verified, checksums
+
+
 async def orchestrate_run(
     dataset: str,
     downloader: AbstractDatasetArchiver,
     run_settings: RunSettings,
     session: aiohttp.ClientSession,
     skip_partitions: dict[str, Partitions] | None = None,
+    skip_checksums: dict[str, str] | None = None,
 ) -> tuple[RunSummary, PublishedDeposition | None]:
-    """Use downloader and depositor to archive a dataset."""
-    skip_partitions = skip_partitions or {}
+    """Use downloader and depositor to archive a dataset.
+
+    Args:
+        dataset: Name of the dataset.
+        downloader: Archiver to find and download the files with.
+        run_settings: Settings of the run.
+        session: HTTP session.
+        skip_partitions: Partitions, by filename, that a previous run archived, and
+            which this run, a retry, doesn't need to download again.
+        skip_checksums: Checksums, by filename, that the files of ``skip_partitions``
+            had in the draft at the end of the previous run.
+    """
     resources = {}
     # Get datapackage from previous version if there is one
     draft, original_datapackage = await get_deposition(dataset, session, run_settings)
+    skip_partitions, uploaded_checksums = _verify_skipped_files(
+        draft, skip_partitions or {}, skip_checksums or {}
+    )
 
     # Download resources and add to archive
     run_exception = None
@@ -82,21 +133,32 @@ async def orchestrate_run(
         ):
             resources[name] = resource
             draft = await draft.add_resource(name, resource)
+            if (checksum := draft.get_checksum(name)) is not None:
+                uploaded_checksums[name] = checksum
     except Exception as e:
         run_exception = e
         logger.exception("Error downloading resources")
 
-    if run_exception is not None and original_datapackage is not None:
-        # We don't know what the new version should contain, so don't guess. Removing
-        # the files that weren't downloaded would also leave a datapackage.json that
-        # doesn't describe them, and a cascade of failed validations about files
-        # missing or the archive shrinking, which are just consequences of the
-        # failure. Whatever was uploaded stays as it is, for a retry to build on.
+    if run_exception is not None:
+        # The new version is incomplete, and we don't know what it should contain, so
+        # don't guess. Removing the files that weren't downloaded would also leave a
+        # datapackage.json that doesn't describe them, and a cascade of failed
+        # validations about files missing or the archive shrinking, which are just
+        # consequences of the failure. Whatever was uploaded stays in the draft, for a
+        # retry to build on, but the draft mixes new and old files, so it is marked
+        # incomplete, and loses the datapackage.json of the previous version.
         logger.error(
             "The new version of the archive is incomplete, so leaving the files in "
-            "the draft and its datapackage.json as they were."
+            "the draft as they are and marking it incomplete."
         )
-        new_datapackage = original_datapackage
+        # Describe the draft before marking it, as the marker isn't part of the archive
+        new_datapackage = original_datapackage or draft.generate_datapackage(
+            {name: resource.partitions for name, resource in resources.items()}
+            | skip_partitions
+        )
+        draft = await draft.mark_incomplete(
+            f"{type(run_exception).__name__}: {run_exception}"
+        )
     else:
         draft, new_datapackage = await _remove_files_and_describe(
             draft, resources, skip_partitions
@@ -120,6 +182,12 @@ async def orchestrate_run(
             if name not in downloader.failed_partitions
         }
         | skip_partitions,
+        uploaded_checksums={
+            name: checksum
+            for name, checksum in uploaded_checksums.items()
+            if name in skip_partitions
+            or (name in resources and name not in downloader.failed_partitions)
+        },
         run_settings=run_settings,
     )
     published = await draft.publish_if_valid(
