@@ -9,7 +9,9 @@ from pudl_archiver.frictionless import DataPackage, HttpFileMetadata
 
 
 def _dt(day: int) -> datetime.datetime:
-    return datetime.datetime(2026, 10, day, 7, 0, tzinfo=datetime.UTC)
+    """Day 1 is long ago, and any other day is after files created during the test."""
+    year = 2020 if day == 1 else 2099
+    return datetime.datetime(year, 10, day, 7, 0, tzinfo=datetime.UTC)
 
 
 def _file(contents: bytes, day: int | None) -> bytes | tuple[bytes, dict]:
@@ -121,3 +123,66 @@ async def test_metadata_of_a_changed_file_isnt_kept_if_it_wasnt_observed(fake_ar
     await archive_dataset("pudl_test", settings)
 
     assert _recorded_days(fake_archive) == {"a.txt": None, "b.txt": 2, "c.txt": 3}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("first_run_has_metadata", [False, True])
+async def test_archive_records_and_checks_http_metadata(
+    fake_archive, first_run_has_metadata
+):
+    """Run twice: first creates the archive, second changes some of the files."""
+    day1 = 1 if first_run_has_metadata else None
+    v1 = {
+        "same.txt": _file(b"same contents", day1),
+        "changed.txt": _file(b"old contents", day1),
+        "touched.txt": _file(b"touched contents", day1),
+    }
+    summary_file, settings = fake_archive.prepare(v1, 1, initialize=True)
+    await archive_dataset("pudl_test", settings)
+
+    summary1 = fake_archive.load(summary_file)
+    assert summary1.success
+    # Everything is new in the first run
+    assert {c.name for c in summary1.last_modified_checks} == (
+        set(v1) if first_run_has_metadata else set()
+    )
+    datapackage = DataPackage.model_validate_json(
+        fake_archive.published()["datapackage.json"]
+    )
+    stored = {r.name: r.source_metadata for r in datapackage.resources}
+    assert (stored["same.txt"] is not None) == first_run_has_metadata
+
+    v2 = {
+        "same.txt": _file(b"same contents", 1),
+        # Different size and modified time
+        "changed.txt": _file(b"newer, longer contents", 3),
+        # Modified on the server without the content changing
+        "touched.txt": _file(b"touched contents", 3),
+        "new.txt": _file(b"brand new", 3),
+    }
+    summary_file, settings = fake_archive.prepare(v2, 2)
+    await archive_dataset("pudl_test", settings)
+
+    checks = {c.name: c for c in fake_archive.load(summary_file).last_modified_checks}
+    # (predicted, actually) changed. Touching a file on the server without changing
+    # its contents is a false positive.
+    assert {
+        n: (c.predicted_changed, c.actually_changed) for n, c in checks.items()
+    } == {
+        "same.txt": (False, False),
+        "changed.txt": (True, True),
+        "touched.txt": (True, False),
+        "new.txt": (True, True),
+    }
+    assert checks["new.txt"].reference == "new_file"
+    assert checks["same.txt"].reference == (
+        "stored_metadata" if first_run_has_metadata else "previous_upload_time"
+    )
+
+    # The new metadata is recorded for the next run, for every file
+    datapackage = DataPackage.model_validate_json(
+        fake_archive.published()["datapackage.json"]
+    )
+    stored = {r.name: r.source_metadata for r in datapackage.resources}
+    assert stored["changed.txt"].last_modified == _dt(3)
+    assert stored["new.txt"].content_length == len(b"brand new")

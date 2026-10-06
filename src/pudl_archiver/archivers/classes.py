@@ -152,6 +152,11 @@ class AbstractDatasetArchiver(ABC):
 
     name: str
     concurrency_limit: int | None = None
+    #: Whether the ``ETag`` that the server sends is a hash of the contents of the
+    #: file, so that a different ETag means that the file has changed. Set it to True
+    #: for servers where that is so. Where the ETag is made from the modification
+    #: time, as on IIS, it says no more than ``Last-Modified``, and isn't compared.
+    etag_is_content_hash: bool = False
     directory_per_resource_chunk: bool = False
 
     # Configure which generic validation tests to run

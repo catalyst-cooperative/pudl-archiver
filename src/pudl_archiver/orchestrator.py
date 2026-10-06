@@ -12,6 +12,7 @@ from pudl_archiver.archivers.validate import (
     MetadataArchiveSummary,
     RunSummary,
     _datapackage_changed,
+    create_last_modified_checks,
     exception_validation,
 )
 from pudl_archiver.depositors import (
@@ -51,6 +52,8 @@ async def orchestrate_run(
     resources = {}
     # Get datapackage from previous version if there is one
     draft, original_datapackage = await get_deposition(dataset, session, run_settings)
+
+    previous_upload_times = draft.get_previous_file_times()
 
     # Download resources and add to archive
     run_exception = None
@@ -127,6 +130,15 @@ async def orchestrate_run(
             if name in successful_partitions
         },
         run_settings=run_settings,
+        last_modified_checks=create_last_modified_checks(
+            observed_metadata,
+            {r.name: r for r in original_datapackage.resources}
+            if original_datapackage
+            else {},
+            {r.name: r for r in new_datapackage.resources},
+            previous_upload_times,
+            downloader.etag_is_content_hash,
+        ),
     )
     published = await draft.publish_if_valid(
         summary,
