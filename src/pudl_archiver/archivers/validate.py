@@ -16,6 +16,7 @@ from pydantic import BaseModel
 
 from pudl_archiver.frictionless import (
     DataPackage,
+    HttpFileMetadata,
     Partitions,
     Resource,
     ZipLayout,
@@ -142,6 +143,9 @@ class RunSummary(BaseModel):
     datapackage_changed: bool
     failed_partitions: dict[str, Partitions]
     successful_partitions: dict[str, Partitions]
+    #: HTTP metadata, by filename, of the files of the ``successful_partitions``, so
+    #: that a retry, or a publish, can record it too for the files it doesn't download.
+    source_metadata: dict[str, HttpFileMetadata] = {}
     run_settings: RunSettings
 
     def get_failed_tests(self) -> list[ValidationTestResult]:
@@ -168,6 +172,7 @@ class RunSummary(BaseModel):
         failed_partitions: dict[str, Partitions],
         successful_partitions: dict[str, Partitions],
         run_settings: RunSettings,
+        source_metadata: dict[str, HttpFileMetadata] | None = None,
     ) -> RunSummary:
         """Create a summary of archive changes from two DataPackage descriptors."""
         baseline_resources = {}
@@ -209,6 +214,7 @@ class RunSummary(BaseModel):
             datapackage_changed=datapackage_changed,
             failed_partitions=failed_partitions,
             successful_partitions=successful_partitions,
+            source_metadata=source_metadata or {},
             run_settings=run_settings,
         )
 

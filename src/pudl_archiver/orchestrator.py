@@ -20,7 +20,7 @@ from pudl_archiver.depositors import (
     PublishedDeposition,
     get_deposition,
 )
-from pudl_archiver.frictionless import DataPackage, Partitions
+from pudl_archiver.frictionless import DataPackage, HttpFileMetadata, Partitions
 from pudl_archiver.utils import RunSettings
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
@@ -32,8 +32,21 @@ async def orchestrate_run(
     run_settings: RunSettings,
     session: aiohttp.ClientSession,
     skip_partitions: dict[str, Partitions] | None = None,
+    skip_source_metadata: dict[str, HttpFileMetadata] | None = None,
 ) -> tuple[RunSummary, PublishedDeposition | None]:
-    """Use downloader and depositor to archive a dataset."""
+    """Use downloader and depositor to archive a dataset.
+
+    Args:
+        dataset: Name of the dataset.
+        downloader: Archiver to find and download the files with.
+        run_settings: Settings of the run.
+        session: HTTP session.
+        skip_partitions: Partitions, by filename, that a previous run archived, and
+            which this run, a retry, doesn't need to download again.
+        skip_source_metadata: The HTTP metadata, by filename, that the previous run
+            recorded for the files of ``skip_partitions``, which this run has no
+            other way of knowing.
+    """
     skip_partitions = skip_partitions or {}
     resources = {}
     # Get datapackage from previous version if there is one
@@ -61,24 +74,33 @@ async def orchestrate_run(
             logger.info(f"Deleting {filename} from deposition.")
             draft = await draft.delete_file(filename)
 
-    # Create new datapackage
-    # Files that weren't downloaded in this run keep the metadata from the last one
+    # Create new datapackage. It records the HTTP metadata of every file that was
+    # archived, which comes from three places, from the most to the least recent:
+    # this run's downloads, the run that this one is a retry of (so that any number of
+    # retries keep what the earlier ones recorded), and the previous version of the
+    # archive, but only for files that haven't changed since.
     observed_metadata = {
         name: resource.source_metadata
         for name, resource in resources.items()
         if resource.source_metadata is not None
     }
-    source_metadata = {
+    archived_metadata = {
+        name: metadata
+        for name, metadata in (skip_source_metadata or {}).items()
+        if name in skip_partitions
+    } | observed_metadata
+    previous_metadata = {
         resource.name: resource.source_metadata
         for resource in (original_datapackage.resources if original_datapackage else [])
         if resource.source_metadata is not None
-    } | observed_metadata
+        and draft.get_checksum(resource.name) == resource.hash_
+    }
     draft, new_datapackage = await draft.attach_datapackage(
         partitions_in_deposition={
             name: resource.partitions for name, resource in resources.items()
         }
         | skip_partitions,
-        source_metadata=source_metadata,
+        source_metadata=previous_metadata | archived_metadata,
     )
 
     # Validate run
@@ -86,6 +108,11 @@ async def orchestrate_run(
         original_datapackage, new_datapackage, resources
     )
     validations.append(exception_validation(run_exception))
+    successful_partitions = {
+        name: resource.partitions
+        for name, resource in resources.items()
+        if name not in downloader.failed_partitions
+    } | skip_partitions
     summary = RunSummary.create_summary(
         name=dataset,
         baseline_datapackage=original_datapackage,
@@ -93,12 +120,12 @@ async def orchestrate_run(
         validation_tests=validations,
         record_url=draft.get_deposition_link(),
         failed_partitions=downloader.failed_partitions,
-        successful_partitions={
-            name: resource.partitions
-            for name, resource in resources.items()
-            if name not in downloader.failed_partitions
-        }
-        | skip_partitions,
+        successful_partitions=successful_partitions,
+        source_metadata={
+            name: metadata
+            for name, metadata in archived_metadata.items()
+            if name in successful_partitions
+        },
         run_settings=run_settings,
     )
     published = await draft.publish_if_valid(
