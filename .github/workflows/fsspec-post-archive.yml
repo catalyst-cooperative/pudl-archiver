@@ -1,0 +1,214 @@
+---
+name: fsspec-post-archive
+
+# Everything that happens after an fsspec archive has been created: it creates the
+# Zenodo metadata draft, notifies Zulip and opens the GitHub issue for reviewing the
+# archive. It reads the run summaries and error logs uploaded to the calling workflow
+# run.
+
+on:
+  workflow_call:
+    inputs:
+      dataset:
+        description: Name of the dataset that was archived
+        type: string
+        required: true
+      deposition_path:
+        description: fsspec compatible path that contains the archive's deposition
+        type: string
+        default: "gs://archives.catalyst.coop"
+      create_metadata_draft:
+        description: Create a Zenodo draft of the datapackage.json (only for an archive that was created successfully)
+        type: boolean
+        default: false
+      create_github_issue:
+        description: Create a GitHub issue to track review and publication
+        type: boolean
+        default: false
+
+jobs:
+  archive-metadata:
+    # Datasets in the fsspec archiver are too big for Zenodo, but we still archive
+    # their datapackage.json there as a citable record. This creates a Zenodo draft
+    # that must be reviewed and published manually, along with the fsspec archive.
+    if: ${{ inputs.create_metadata_draft }}
+    # A failure here should not trigger publish-or-retry-fsspec-archive, which
+    # is only meant to retry a failed archive-run. Failures are still reported
+    # through the error log artifact.
+    continue-on-error: true
+    defaults:
+      run:
+        shell: bash -l {0}
+    runs-on: ubuntu-latest
+    env:
+      DATASET: ${{ inputs.dataset }}
+      DEPOSITION_PATH: ${{ inputs.deposition_path }}
+    permissions:
+      contents: "read"
+      id-token: "write"
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set default GCP credentials
+        id: gcloud-auth
+        continue-on-error: true
+        uses: "google-github-actions/auth@v3"
+        with:
+          workload_identity_provider: "projects/345950277072/locations/global/workloadIdentityPools/gh-actions-pool/providers/gh-actions-provider"
+          service_account: "pudl-archiver-gha@catalyst-cooperative-pudl.iam.gserviceaccount.com"
+
+      - name: Set up pixi
+        uses: prefix-dev/setup-pixi@v0.10.2
+        with:
+          cache: true
+
+      - name: Create Zenodo metadata draft for ${{ env.DATASET }}
+        env:
+          ZENODO_TOKEN_UPLOAD: ${{ secrets.ZENODO_TOKEN_UPLOAD }}
+          ZENODO_TOKEN_PUBLISH: ${{ secrets.ZENODO_TOKEN_PUBLISH }}
+        run: |
+          set -o pipefail
+          pixi run pudl_archiver \
+            archive \
+            fsspec-metadata \
+            "$DATASET" \
+            "$DEPOSITION_PATH"/"$DATASET" 2>&1 | tee "${DATASET}_metadata_log.txt"
+
+      - name: Save failed runs
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: error-log-${{ env.DATASET }}-metadata
+          path: ${{ env.DATASET }}_metadata_log.txt
+
+      - name: Upload metadata summary
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: run-summaries-${{ env.DATASET }}-metadata
+          path: ${{ env.DATASET }}_metadata_summary.json
+
+  archive-notify:
+    runs-on: ubuntu-latest
+    needs:
+      - archive-metadata
+    if: ${{ always() }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Download summaries
+        id: download-summaries
+        uses: actions/download-artifact@v8
+        with:
+          pattern: run-summaries-*
+          merge-multiple: true
+      - name: Download failures
+        id: download-artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: error-log-*
+          merge-multiple: true
+      - name: Show downloaded artifacts
+        run: ls -R
+      # These steps only run to create a Github issue summarizing the run.
+      - name: Load pixi from cache
+        if: ${{ always() && inputs.create_github_issue }}
+        uses: prefix-dev/setup-pixi@v0.10.2
+      - name: Munge summaries together for Github
+        if: ${{ always() && inputs.create_github_issue }}
+        id: github_summaries
+        run: |
+          {
+            echo 'ERRORS<<DELIM1'
+            pixi run ./scripts/make_markdown_notification.py --summary-files ./*_run_summary.json ./*_metadata_summary.json --error-files ./*_log.txt --summary-type error
+            echo 'DELIM1'
+            echo 'FAILURES<<DELIM2'
+            pixi run ./scripts/make_markdown_notification.py --summary-files ./*_run_summary.json ./*_metadata_summary.json --error-files ./*_log.txt --summary-type failure
+            echo 'DELIM2'
+            echo 'CHANGES<<DELIM3'
+            pixi run ./scripts/make_markdown_notification.py --summary-files ./*_run_summary.json ./*_metadata_summary.json --error-files ./*_log.txt --summary-type change
+            echo 'DELIM3'
+            echo 'UNCHANGED<<DELIM4'
+            pixi run ./scripts/make_markdown_notification.py --summary-files ./*_run_summary.json ./*_metadata_summary.json --error-files ./*_log.txt --summary-type unchanged
+            echo 'DELIM4'
+          } | tee -a "$GITHUB_OUTPUT"
+      # These steps only run if no Github issue is requested to be created.
+      # The summary will show up in Zulip instead.
+      - name: Load pixi from cache for Zulip notification
+        if: ${{ always() }}
+        uses: prefix-dev/setup-pixi@v0.10.2
+      - name: Create Zulip notification content
+        id: zulip_summaries
+        if: ${{ always() }}
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          {
+            echo "ZULIP_CONTENT<<EOF"
+            pixi run ./scripts/make_markdown_notification.py --summary-files ./*_run_summary.json ./*_metadata_summary.json --error-files ./*_log.txt --summary-type zulip --run-url "$RUN_URL"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+      - name: Notify Zulip of archive run completion
+        if: ${{ always() }}
+        uses: zulip/github-actions-zulip/send-message@v2
+        with:
+          api-key: ${{ secrets.ZULIP_API_KEY }}
+          email: "build-status-bot@catalyst-cooperative.zulipchat.com"
+          organization-url: "https://catalyst-cooperative.zulipchat.com"
+          type: "stream"
+          to: "pudl-deployments"
+          topic: "pudl-archiver"
+          content: ${{ steps.zulip_summaries.outputs.ZULIP_CONTENT }}
+
+    outputs:
+      errors: ${{ steps.github_summaries.outputs.ERRORS }}
+      failures: ${{ steps.github_summaries.outputs.FAILURES }}
+      changes: ${{ steps.github_summaries.outputs.CHANGES }}
+      unchanged: ${{ steps.github_summaries.outputs.UNCHANGED }}
+
+  make-github-issue:
+    # If an issue is requested, create one to track review and publication.
+    if: ${{ always() && inputs.create_github_issue }}
+    runs-on: ubuntu-latest
+    needs:
+      - archive-notify
+    steps:
+      - uses: actions/checkout@v7
+      - name: Set issue title
+        id: title
+        env:
+          DATASET: ${{ inputs.dataset }}
+        run: |
+          echo "ISSUE_TITLE=Review $(date +'%B %-d, %Y') $DATASET archive run" >> "$GITHUB_OUTPUT"
+      - name: Create an issue
+        id: create-issue
+        uses: JasonEtco/create-an-issue@v2.9.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          ISSUE_TITLE: ${{ steps.title.outputs.ISSUE_TITLE }}
+          RUN_TYPE: fsspec
+          ERRORS: ${{ needs.archive-notify.outputs.errors }}
+          FAILURES: ${{ needs.archive-notify.outputs.failures }}
+          CHANGES: ${{ needs.archive-notify.outputs.changes }}
+          UNCHANGED: ${{ needs.archive-notify.outputs.unchanged }}
+        with:
+          filename: .github/ISSUE_TEMPLATE/monthly-archive-update.md
+    outputs:
+      url: ${{ steps.create-issue.outputs.url }}
+
+  make-zulip-announcement-for-github-issue:
+    runs-on: ubuntu-latest
+    needs:
+      - make-github-issue
+    env:
+      github-url: ${{ needs.make-github-issue.outputs.url }}
+    steps:
+      - uses: zulip/github-actions-zulip/send-message@v2
+        with:
+          api-key: ${{ secrets.ZULIP_API_KEY }}
+          email: "build-status-bot@catalyst-cooperative.zulipchat.com"
+          organization-url: "https://catalyst-cooperative.zulipchat.com"
+          type: "stream"
+          to: "pudl-deployments"
+          topic: "pudl-archiver"
+          content: "PUDL data archive run complete: ${{ env.github-url }}"
