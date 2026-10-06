@@ -116,6 +116,9 @@ class FercEQRArchiver(AbstractDatasetArchiver):
         # Extract year-quarter from URL
         logger.info(f"Found EQR data for {partitions['year']}q{partitions['quarter']}")
 
+        # Record server metadata before downloading, so we know what we archived
+        source_metadata = await self.get_source_metadata(url)
+
         # Download quarter
         download_path = (
             self.download_directory
@@ -126,4 +129,5 @@ class FercEQRArchiver(AbstractDatasetArchiver):
         return ResourceInfo(
             local_path=download_path,
             partitions=partitions,
+            source_metadata=source_metadata,
         )
