@@ -17,13 +17,48 @@ from pudl_archiver.archivers.validate import (
 from pudl_archiver.depositors import (
     DepositionAction,
     DepositionChange,
+    DraftDeposition,
     PublishedDeposition,
     get_deposition,
 )
-from pudl_archiver.frictionless import DataPackage, Partitions
+from pudl_archiver.frictionless import DataPackage, Partitions, ResourceInfo
 from pudl_archiver.utils import RunSettings
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
+
+
+async def _remove_files_and_describe(
+    draft: DraftDeposition,
+    resources: dict[str, ResourceInfo],
+    skip_partitions: dict[str, Partitions],
+) -> tuple[DraftDeposition, DataPackage]:
+    """Make the draft hold what was archived, and attach a datapackage describing it.
+
+    Files of the previous version that weren't downloaded are left out of the new
+    version, which only matters if it's published.
+    """
+    removed = [
+        filename
+        for filename in await draft.list_files()
+        if filename not in resources
+        and filename != "datapackage.json"
+        and filename not in skip_partitions
+    ]
+    if removed:
+        logger.info(
+            f"Leaving {len(removed)} files out of the new version of the deposition: "
+            f"{', '.join(removed)}"
+        )
+    for filename in removed:
+        draft = await draft.delete_file(filename)
+
+    draft, new_datapackage = await draft.attach_datapackage(
+        partitions_in_deposition={
+            name: resource.partitions for name, resource in resources.items()
+        }
+        | skip_partitions
+    )
+    return draft, new_datapackage
 
 
 async def orchestrate_run(
@@ -51,23 +86,21 @@ async def orchestrate_run(
         run_exception = e
         logger.exception("Error downloading resources")
 
-    # Delete files in draft that weren't downloaded by downloader
-    for filename in await draft.list_files():
-        if (
-            filename not in resources
-            and filename != "datapackage.json"
-            and filename not in skip_partitions
-        ):
-            logger.info(f"Deleting {filename} from deposition.")
-            draft = await draft.delete_file(filename)
-
-    # Create new datapackage
-    draft, new_datapackage = await draft.attach_datapackage(
-        partitions_in_deposition={
-            name: resource.partitions for name, resource in resources.items()
-        }
-        | skip_partitions
-    )
+    if run_exception is not None and original_datapackage is not None:
+        # We don't know what the new version should contain, so don't guess. Removing
+        # the files that weren't downloaded would also leave a datapackage.json that
+        # doesn't describe them, and a cascade of failed validations about files
+        # missing or the archive shrinking, which are just consequences of the
+        # failure. Whatever was uploaded stays as it is, for a retry to build on.
+        logger.error(
+            "The new version of the archive is incomplete, so leaving the files in "
+            "the draft and its datapackage.json as they were."
+        )
+        new_datapackage = original_datapackage
+    else:
+        draft, new_datapackage = await _remove_files_and_describe(
+            draft, resources, skip_partitions
+        )
 
     # Validate run
     validations = downloader.validate_dataset(
