@@ -21,7 +21,16 @@ from pudl_archiver.metadata.nrelcambium import nrel_cambium_generator
 # Note that the only required fields are title (your name) and path
 # (e.g., a link to your Github account, your ORCID site or a personal webpage), but
 # filling other fields is strongly encouraged!
-ADDL_CONTRIBUTORS: dict[str, dict[str, str]] = {}
+ADDL_CONTRIBUTORS: dict[str, dict[str, Any]] = {
+    "noah-parsons": {
+        "name": "noah-parsons",
+        "title": "Noah Parsons",
+        "path": "https://github.com/Noah-Parsons",
+        "roles": ["contributor"],
+        "zenodo_role": "datacollector",
+        "orcid": "0009-0000-7224-6040",
+    },
+}
 
 
 NON_PUDL_SOURCES: dict[str, Any] = {
@@ -572,5 +581,44 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         "license_pudl": LICENSES["cc-by-4.0"],
         "email": "sharingthesun@nlr.gov",
         "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
+    },
+    "pacificorpqueue": {
+        "title": "PacifiCorp Generation Interconnection Queue",
+        "path": "https://www.oasis.oati.com/woa/docs/PPW/PPWdocs/pacificorpcliaq.htm",
+        "description": (
+            "PacifiCorp's generator interconnection queue, as posted on its Open "
+            "Access Same-Time Information System (OASIS) site, which is hosted by "
+            "Open Access Technology International (OATI). FERC's pro forma "
+            "interconnection procedures require transmission providers to keep a "
+            "list of all interconnection requests on OASIS, including each "
+            "request's size, location, point of interconnection, requested "
+            "in-service date and status. PacifiCorp publishes the queue as one HTML "
+            "page per cluster study, plus a page for its former serial queue. The "
+            "postings record a request's current status but generally not when it "
+            "changed, so successive archived versions preserve a history that no "
+            "single posting contains."
+        ),
+        "working_partitions": {},
+        "keywords": sorted(
+            set(
+                [
+                    "pacificorp",
+                    "interconnection",
+                    "interconnection queue",
+                    "generator interconnection",
+                    "cluster study",
+                    "oasis",
+                    "oati",
+                    "ferc",
+                ]
+                + KEYWORDS["electricity"]
+            )
+        ),
+        "license_raw": LICENSES["pd-mark"],
+        "license_pudl": LICENSES["cc-by-4.0"],
+        "contributors": [
+            CONTRIBUTORS["catalyst-cooperative"],
+            ADDL_CONTRIBUTORS["noah-parsons"],
+        ],
     },
 } | {f"nrelcambium{year}": nrel_cambium_generator(year) for year in range(2020, 2025)}
