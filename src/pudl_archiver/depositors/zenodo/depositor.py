@@ -23,6 +23,7 @@ from pudl_archiver.depositors.depositor import (
 from pudl_archiver.frictionless import (
     MEDIA_TYPES,
     DataPackage,
+    HttpFileMetadata,
     Partitions,
     Resource,
 )
@@ -728,7 +729,9 @@ class ZenodoDraftDeposition(DraftDeposition):
         return await self.api_client.list_files(self.deposition)
 
     def generate_datapackage(
-        self, partitions_in_deposition: dict[str, Partitions]
+        self,
+        partitions_in_deposition: dict[str, Partitions],
+        source_metadata: dict[str, HttpFileMetadata] | None = None,
     ) -> DataPackage:
         """Generate new datapackage, attach to deposition, and return."""
         logger.info(f"Creating new datapackage.json for {self.dataset_id}")

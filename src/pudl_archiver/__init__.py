@@ -8,7 +8,7 @@ from pathlib import Path
 import aiohttp
 
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver
-from pudl_archiver.frictionless import Partitions
+from pudl_archiver.frictionless import HttpFileMetadata, Partitions
 from pudl_archiver.orchestrator import orchestrate_metadata_archive, orchestrate_run
 from pudl_archiver.utils import (
     PRODUCTION_FSSPEC_DEPOSITION_ROOTS,
@@ -86,6 +86,7 @@ async def archive_dataset(
     dataset: str,
     run_settings: RunSettings,
     skip_partitions: dict[str, Partitions] | None = None,
+    skip_source_metadata: dict[str, HttpFileMetadata] | None = None,
 ):
     """A CLI for the PUDL Zenodo Storage system."""
     async with _make_session() as session:
@@ -103,12 +104,13 @@ async def archive_dataset(
             run_settings=run_settings,
             session=session,
             skip_partitions=skip_partitions,
+            skip_source_metadata=skip_source_metadata,
         )
 
     if run_settings.summary_file is not None:
         await asyncio.to_thread(
             Path(run_settings.summary_file).write_text,
-            json.dumps(summary.model_dump(), indent=2),
+            json.dumps(summary.model_dump(mode="json"), indent=2),
         )
 
     # Check validation results of all runs that aren't unchanged
@@ -164,5 +166,5 @@ async def archive_fsspec_metadata(
     if run_settings.summary_file is not None and summary is not None:
         await asyncio.to_thread(
             Path(run_settings.summary_file).write_text,
-            json.dumps(summary.model_dump(), indent=2),
+            json.dumps(summary.model_dump(mode="json"), indent=2),
         )
