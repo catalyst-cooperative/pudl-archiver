@@ -9,40 +9,13 @@ from pathlib import Path
 import aiohttp
 import pytest
 import requests
-from dotenv import load_dotenv
 
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver, ResourceInfo
 from pudl_archiver.depositors.zenodo.entities import (
     Deposition,
-    DepositionCreator,
-    DepositionMetadata,
 )
-from pudl_archiver.metadata.constants import LICENSES
 from pudl_archiver.orchestrator import orchestrate_run
 from pudl_archiver.utils import RunSettings
-
-
-@pytest.fixture()
-def dotenv():
-    """Load dotenv to get API keys."""
-    load_dotenv()
-
-
-@pytest.fixture()
-def deposition_metadata():
-    """Create fake DepositionMetadata model."""
-    return DepositionMetadata(
-        title="PUDL Test",
-        creators=[
-            DepositionCreator(
-                name="catalyst-cooperative", affiliation="Catalyst Cooperative"
-            )
-        ],
-        description="Test dataset for the sandbox, thanks!",
-        version="1.0.0",
-        license="cc-zero",
-        keywords=["test"],
-    )
 
 
 @pytest.fixture()
@@ -55,13 +28,6 @@ def upload_key(dotenv):
 def publish_key(dotenv):
     """Get publish key."""
     return os.environ["ZENODO_SANDBOX_TOKEN_PUBLISH"]
-
-
-@pytest.fixture()
-async def session():
-    """Create async http session."""
-    async with aiohttp.ClientSession(raise_for_status=False) as session:
-        yield session
 
 
 @pytest.fixture()
@@ -112,52 +78,17 @@ def test_files():
         yield files
 
 
-@pytest.fixture()
-def datasource():
-    """Create fake datasource for testing."""
-    return {
-        "name": "pudl_test",
-        "title": "Pudl Test",
-        "description": "Test dataset for the sandbox, thanks!",
-        "path": "https://fake.link",
-        "license_raw": LICENSES["cc-by-4.0"],
-        "contributors": [
-            {"title": "Catalyst Cooperative", "organization": "Catalyst Cooperative"}
-        ],
-    }
-
-
-@pytest.fixture()
-def test_settings():
-    """Create temporary DOI settings file."""
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        settings_file = Path(tmp_dir) / "zenodo_doi.yaml"
-        with Path.open(settings_file, "w") as f:
-            f.writelines(["fake_dataset:\n", "    sandbox_doi: null"])
-
-        yield Path(tmp_dir)
-
-
 @pytest.mark.asyncio
 async def test_zenodo_workflow(
     session: aiohttp.ClientSession,
     upload_key: str,
     publish_key: str,
-    test_settings: Path,
+    zenodo_sandbox,
     test_files: dict[str, list[dict[str, str]]],
-    deposition_metadata: DepositionMetadata,
-    datasource: dict,
     mocker,
     caplog,
 ):
     """Test the entire zenodo client workflow."""
-    # Mock settings path
-    settings_mock = mocker.MagicMock(return_value=test_settings)
-    mocker.patch(
-        "pudl_archiver.depositors.zenodo.depositor.importlib.resources.files",
-        new=settings_mock,
-    )
-
     settings = RunSettings(
         clobber_unchanged=True,
         auto_publish=False,
@@ -203,19 +134,6 @@ async def test_zenodo_workflow(
 
             for info in self.resources.values():
                 yield identity(info)
-
-    # Mock out creating deposition metadata with fake data source
-    deposition_metadata_mock = mocker.MagicMock(return_value=deposition_metadata)
-    mocker.patch(
-        "pudl_archiver.depositors.zenodo.entities.DepositionMetadata.from_data_source",
-        new=deposition_metadata_mock,
-    )
-
-    # Mock out creating datapackage with fake data source
-    mocker.patch(
-        "pudl_archiver.frictionless.get_pudl_sources",
-        return_value={"pudl_test": datasource},
-    )
 
     # Create new deposition and add files
     v1_resources = {
