@@ -1,4 +1,3 @@
-#! /usr/bin/env python
 """Format archiver summary and error files as Markdown.
 
 This script reads run summary JSON files and optional failure logs, then emits
@@ -12,47 +11,26 @@ GitHub outputs include action checkboxes so follow-up work can be tracked in
 issues. Zulip outputs omit those actions and serve as notifications only.
 """
 
-import argparse
 import itertools
 import json
 import logging
 import re
 from pathlib import Path
 
+import click
 import pandas as pd
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 
 
-def _parse_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--summary-files",
-        nargs="+",
-        type=Path,
-        help="Paths to RunSummary JSON files.",
-        default=None,
-    )
-    parser.add_argument(
-        "--error-files",
-        nargs="+",
-        type=Path,
-        help="Paths to log files for failed runs.",
-        default=None,
-    )
-    parser.add_argument(
-        "--summary-type",
-        type=str,
-        help="What category of text to get (changes, failures, zulip).",
-        default=None,
-    )
-    parser.add_argument(
-        "--run-url",
-        type=str,
-        help="URL of the GitHub Actions workflow run for Zulip notifications.",
-        default=None,
-    )
-    return parser.parse_args()
+SUMMARY_TYPES = {
+    "error": "Exceptions from the error logs of runs that crashed.",
+    "failure": "Validation tests that failed in each run summary.",
+    "change": "Tables of files that changed, and Zenodo metadata drafts.",
+    "unchanged": "Archives that had no changes.",
+    "zulip": "A full report of errors, failures, changes and unchanged archives, "
+    "for a Zulip notification.",
+}
 
 
 def _format_message(
@@ -253,7 +231,7 @@ def _build_markdown_report(
     return "\n\n".join(parts)
 
 
-def _load_summaries(summary_files: list[Path]) -> list[dict]:
+def _load_summaries(summary_files: tuple[Path, ...]) -> list[dict]:
     summaries = []
     for summary_file in summary_files:
         if summary_file.exists():  # Handle case where no files are found
@@ -262,7 +240,7 @@ def _load_summaries(summary_files: list[Path]) -> list[dict]:
     return summaries
 
 
-def _load_errors(error_files: list[Path]) -> list[str]:
+def _load_errors(error_files: tuple[Path, ...]) -> list[str]:
     errors = []
     for error_file in error_files:
         if error_file.exists():  # Handle case where no files are found or file is empty
@@ -271,13 +249,49 @@ def _load_errors(error_files: list[Path]) -> list[str]:
     return errors
 
 
+@click.command()
+@click.argument(
+    "summary_files",
+    nargs=-1,
+    required=True,
+    type=click.Path(path_type=Path),
+)
+@click.option(
+    "--error-file",
+    "error_files",
+    multiple=True,
+    type=click.Path(path_type=Path),
+    help="Log of an archiver run (<dataset>_log.txt), from which the exception of "
+    "the run is reported if it crashed. Repeat to give several. Optional, as a run "
+    "that succeeded has no error log.",
+)
+@click.option(
+    "--summary-type",
+    required=True,
+    type=click.Choice(list(SUMMARY_TYPES)),
+    help="Which Markdown to output. "
+    + " ".join(f"{name}: {text}" for name, text in SUMMARY_TYPES.items()),
+)
+@click.option(
+    "--run-url",
+    default=None,
+    help="URL of the GitHub Actions workflow run, to link to from the report for "
+    "the 'zulip' summary type.",
+)
 def main(
-    summary_files: list[Path],
-    error_files: list[Path],
+    summary_files: tuple[Path, ...],
+    error_files: tuple[Path, ...],
     summary_type: str,
-    run_url: str | None = None,
+    run_url: str | None,
 ) -> None:
-    """Format summary files for GitHub issue text or Zulip Markdown."""
+    """Format archiver run summaries and error logs as Markdown.
+
+    SUMMARY_FILES are the JSON summaries written by archiver runs
+    (<dataset>_run_summary.json, or <dataset>_metadata_summary.json for Zenodo
+    metadata drafts). At least one is required, as every run is expected to write
+    one. Paths that don't exist are skipped, so a shell glob that matched no files
+    is harmless.
+    """
     all_summaries = _load_summaries(summary_files)
     # Metadata-only summaries describe a Zenodo draft, not a data archive run.
     metadata_summaries = [s for s in all_summaries if s.get("metadata_only")]
@@ -328,15 +342,15 @@ def main(
     )
 
     if summary_type == "change":
-        print(changed_blocks)
+        click.echo(changed_blocks)
     elif summary_type == "error":
-        print(error_blocks)
+        click.echo(error_blocks)
     elif summary_type == "failure":
-        print(failed_blocks)
+        click.echo(failed_blocks)
     elif summary_type == "unchanged":
-        print(unchanged_blocks)
+        click.echo(unchanged_blocks)
     elif summary_type == "zulip":
-        print(
+        click.echo(
             _build_markdown_report(
                 error_blocks=error_blocks,
                 failed_blocks=failed_blocks,
@@ -347,8 +361,8 @@ def main(
             )
         )
     else:
-        print([changed_blocks, unchanged_blocks, failed_blocks, error_blocks])
+        raise ValueError(f"Unknown summary type: {summary_type!r}")
 
 
 if __name__ == "__main__":
-    main(**vars(_parse_args()))
+    main()
