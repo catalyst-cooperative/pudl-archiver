@@ -6,6 +6,7 @@ import re
 from pathlib import Path
 
 import pandas as pd
+from playwright.async_api import Error as PlaywrightError
 from playwright.async_api import async_playwright
 
 from pudl_archiver.archivers.classes import (
@@ -14,9 +15,12 @@ from pudl_archiver.archivers.classes import (
     Partitions,
     ResourceInfo,
 )
+from pudl_archiver.utils import retry_async
 
 logger = logging.getLogger(f"catalystcoop.{__name__}")
 YEAR_QUARTER_PATT = re.compile(r"CSV_(\d{4})_Q(\d).zip")
+FILE_NAME_PATT = re.compile(r"ferceqr-(\d{4}q\d)\.zip")
+FIRST_YEAR_QUARTER = "2013q3"
 
 
 class FercEQRArchiver(AbstractDatasetArchiver):
@@ -48,42 +52,87 @@ class FercEQRArchiver(AbstractDatasetArchiver):
 
     async def get_resources(self) -> tuple[ArchiveAwaitable, Partitions]:
         """Download FERC EQR resources."""
-        # Dynamically get links to all quarters of EQR data
-        urls = await self.get_urls()
+        # Dynamically get links to all quarters of EQR data. Loading the page
+        # sometimes fails, for example when the browser's navigation is cancelled,
+        # and trying again is cheap compared to failing the whole run.
+        urls = await retry_async(
+            self.get_urls,
+            retry_on=(PlaywrightError,),
+            retry_count=4,
+            retry_base_s=5,
+        )
 
-        # Check how many quarters of data we found from EQR webpage
-        # The number we expect will change as data is released
-        # but as of writing there are 48, so this provides reasonable lower bound
         logger.info(f"Found {len(urls)} quarters of available EQR data.")
-        if len(urls) < 48:
-            raise RuntimeError(
-                "Expected a minimum of 48 quarters of EQR data to be available."
-                f" Found the following URLs: {urls}"
-            )
+        year_quarters = {url: self._year_quarter_from_url(url) for url in urls}
+        if not year_quarters:
+            raise RuntimeError("Found no quarters of EQR data on the website.")
 
-        most_recent_quarter = {"year": 1990, "quarter": 1}
-        for url in urls:
-            link_match = YEAR_QUARTER_PATT.search(url)
-            partitions = {
-                "year": int(link_match.group(1)),
-                "quarter": int(link_match.group(2)),
-            }
+        # Fail now, instead of after downloading everything, if quarters are missing
+        self._check_no_quarters_have_vanished(set(year_quarters.values()))
+        self._check_quarters_are_continuous(sorted(year_quarters.values()))
 
-            # Find most recent available quarter of data
-            new_date = pd.to_datetime(f"{partitions['year']}-Q{partitions['quarter']}")
-            most_recent_date = pd.to_datetime(
-                f"{most_recent_quarter['year']}-Q{most_recent_quarter['quarter']}"
-            )
-
-            if new_date > most_recent_date:
-                most_recent_quarter = partitions
-            yield self.get_quarter_csv(url, partitions), partitions
+        most_recent_quarter = max(year_quarters.values())
         # Don't fail on large size diffs for most recent quarter
         # We expect to see significant changes as new data is released
-        logger.info(
-            f"Ignoring size diffs for quarter: {most_recent_quarter['year']}q{most_recent_quarter['quarter']}"
-        )
-        self.ignore_file_size_increase_partitions = [most_recent_quarter]
+        logger.info(f"Ignoring size diffs for quarter: {most_recent_quarter}")
+        self.ignore_file_size_increase_partitions = [
+            {"year_quarter": most_recent_quarter}
+        ]
+
+        for url, year_quarter in year_quarters.items():
+            partitions = {"year_quarter": year_quarter}
+            yield self.get_quarter_csv(url, partitions), partitions
+
+    @staticmethod
+    def _year_quarter_from_url(url: str) -> str:
+        """Get the quarter of a download link, formatted like ``2013q3``."""
+        link_match = YEAR_QUARTER_PATT.search(url)
+        return f"{link_match.group(1)}q{link_match.group(2)}"
+
+    def _check_no_quarters_have_vanished(self, year_quarters: set[str]) -> None:
+        """Check that every quarter in the previous archive is still available.
+
+        The quarters on the website should always be the same as, or more than, the
+        ones that we archived before. Files only vanish when FERC is in the middle
+        of updating them, or by mistake, so don't build a new archive without them.
+        """
+        if self.baseline_datapackage is None or not self.fail_on_missing_files:
+            return
+        previous = {
+            match.group(1)
+            for resource in self.baseline_datapackage.resources
+            if (match := FILE_NAME_PATT.search(resource.name))
+        }
+        vanished = sorted(previous - year_quarters)
+        if vanished:
+            raise RuntimeError(
+                f"Quarters of EQR data that were archived before have vanished from "
+                f"the website: {vanished}. FERC may be in the middle of updating its "
+                "files, so try again later."
+            )
+
+    @staticmethod
+    def _check_quarters_are_continuous(year_quarters: list[str]) -> None:
+        """Check that there are no quarters missing from the first to the last one.
+
+        The data starts in 2013q3. Quarters before that are on a different page.
+        """
+        if year_quarters[0] != FIRST_YEAR_QUARTER:
+            raise RuntimeError(
+                f"Expected EQR data to start in {FIRST_YEAR_QUARTER}, but the first "
+                f"quarter available is {year_quarters[0]}."
+            )
+        expected = pd.period_range(year_quarters[0], year_quarters[-1], freq="Q")
+        missing = [
+            str(quarter).lower()
+            for quarter in expected
+            if str(quarter).lower() not in set(year_quarters)
+        ]
+        if missing:
+            raise RuntimeError(
+                f"Missing quarters of EQR data on the website: {missing}. "
+                "FERC may be in the middle of updating its files, so try again later."
+            )
 
     async def get_urls(self) -> list[str]:
         """Use playwright to dynamically grab URLs from the EQR webpage.
@@ -114,12 +163,11 @@ class FercEQRArchiver(AbstractDatasetArchiver):
     ) -> tuple[Path, dict]:
         """Download a quarter of 2013-present data."""
         # Extract year-quarter from URL
-        logger.info(f"Found EQR data for {partitions['year']}q{partitions['quarter']}")
+        logger.info(f"Found EQR data for {partitions['year_quarter']}")
 
         # Download quarter
         download_path = (
-            self.download_directory
-            / f"ferceqr-{partitions['year']}q{partitions['quarter']}.zip"
+            self.download_directory / f"ferceqr-{partitions['year_quarter']}.zip"
         )
         await self.download_zipfile(url, download_path)
 
