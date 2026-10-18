@@ -593,7 +593,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
             "list of all interconnection requests on OASIS, including each "
             "request's size, location, point of interconnection, requested "
             "in-service date and status. PacifiCorp publishes the queue as one HTML "
-            "page per cluster study, plus a page for its former serial queue. The "
+            "page per cluster study. The "
             "postings record a request's current status but generally not when it "
             "changed, so successive archived versions preserve a history that no "
             "single posting contains."

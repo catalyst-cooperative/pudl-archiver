@@ -4,11 +4,50 @@ import zipfile
 import pytest
 
 from pudl_archiver.archivers.pacificorpqueue import (
-    CANDIDATE_QUEUE_PAGES,
-    KNOWN_QUEUE_PAGES,
     PacifiCorpQueueArchiver,
     oati_ssl_context,
+    partition_name,
+    queue_pages,
 )
+
+BASE = "https://www.oasis.oati.com/woa/docs/PPW/PPWdocs"
+
+
+def document(title: str, file_name: str, url: str | None = None) -> dict:
+    """Build a menu entry for one document, shaped like the OASIS menu's JSON."""
+    url = url or f"{BASE}/{file_name}"
+    return {
+        "textValue": title,
+        "FileName": file_name,
+        "leaf": True,
+        "children": None,
+        "text": (
+            f"<span title='{title}'>{title}</span>"
+            f'<div class="popup" onclick="CopyToClipboard(this,\'{url}\')"></div>'
+        ),
+    }
+
+
+def folder(title: str, children: list[dict]) -> dict:
+    """Build a menu folder, shaped like the OASIS menu's JSON."""
+    return {"textValue": title, "FileName": None, "leaf": False, "children": children}
+
+
+def menu(cluster_queue_entries: list[dict]) -> dict:
+    """Build a whole menu with the Cluster Queues folder two levels down."""
+    return {
+        "success": True,
+        "children": [
+            folder("ATC Information", [document("ATC", "atc.htm")]),
+            folder(
+                "Generation Interconnection",
+                [
+                    folder("Applications", []),
+                    folder("Cluster Queues", cluster_queue_entries),
+                ],
+            ),
+        ],
+    }
 
 
 def test_oati_ssl_context_keeps_verification_on():
@@ -20,43 +59,103 @@ def test_oati_ssl_context_keeps_verification_on():
     assert len(context.get_ca_certs()) == 1
 
 
+def test_partition_name():
+    assert partition_name("Cluster Study 4 - Queue") == "cluster_study_4"
+    assert partition_name("Transition Cluster - Queue") == "transition_cluster"
+    assert partition_name("Transition Cluster 2 - Queue") == "transition_cluster_2"
+
+
+def test_queue_pages_keeps_only_queue_documents():
+    tree = menu(
+        [
+            document("Transition Cluster - Queue", "pacificorpcliaq.htm"),
+            document("Cluster Study 4 - Queue", "pacificorpcliaq4.htm"),
+            document(
+                "Cluster Study 4 - Cluster Studies", "Cluster4_ClusterStudies.htm"
+            ),
+            folder("Cluster 4 Information", [document("Report - Queue", "r.htm")]),
+        ]
+    )
+    assert queue_pages(tree) == {
+        "transition_cluster": f"{BASE}/pacificorpcliaq.htm",
+        "cluster_study_4": f"{BASE}/pacificorpcliaq4.htm",
+    }
+
+
+def test_queue_pages_rejects_addresses_off_the_oasis_site():
+    tree = menu(
+        [
+            document(
+                "Cluster Study 5 - Queue",
+                "pacificorpcliaq5.htm",
+                url="https://example.com/pacificorpcliaq5.htm",
+            )
+        ]
+    )
+    with pytest.raises(RuntimeError, match="points off the OASIS site"):
+        queue_pages(tree)
+
+
+def test_queue_pages_rejects_address_that_does_not_match_file_name():
+    tree = menu(
+        [
+            document(
+                "Cluster Study 5 - Queue",
+                "pacificorpcliaq5.htm",
+                url=f"{BASE}/something_else.htm",
+            )
+        ]
+    )
+    with pytest.raises(RuntimeError, match="does not match file"):
+        queue_pages(tree)
+
+
+def test_queue_pages_fails_if_folder_is_missing():
+    tree = {"success": True, "children": [folder("ATC Information", [])]}
+    with pytest.raises(RuntimeError, match="No 'Cluster Queues' folder"):
+        queue_pages(tree)
+
+
+def test_queue_pages_fails_if_folder_has_no_queues():
+    tree = menu([document("Cluster Study 4 - Cluster Studies", "c4.htm")])
+    with pytest.raises(RuntimeError, match="No queue pages found"):
+        queue_pages(tree)
+
+
 @pytest.mark.asyncio
-async def test_get_resources_archives_known_and_new_pages(mocker):
-    new_url = CANDIDATE_QUEUE_PAGES["cluster_6"]
+async def test_get_resources_archives_every_page_in_the_menu(mocker):
+    tree = menu(
+        [
+            document("Transition Cluster - Queue", "pacificorpcliaq.htm"),
+            document("Cluster Study 4 - Queue", "pacificorpcliaq4.htm"),
+        ]
+    )
     page = b"<html><body>PacifiCorp Generation Interconnection Requests</body></html>"
 
-    async def fake_fetch_page(url, ssl_context):
-        if url in KNOWN_QUEUE_PAGES.values() or url == new_url:
-            return 200, page
-        return 404, b"Not Found"
-
     archiver = PacifiCorpQueueArchiver(mocker.AsyncMock())
-    mocker.patch.object(archiver, "fetch_page", side_effect=fake_fetch_page)
+    mocker.patch.object(archiver, "get_menu_tree", return_value=tree)
+    mocker.patch.object(archiver, "fetch_page", return_value=(200, page))
 
     resources = [await res async for res in archiver.get_resources()]
 
-    partitions = {r.partitions["queue"] for r in resources}
-    assert partitions == set(KNOWN_QUEUE_PAGES) | {"cluster_6"}
-
+    assert {r.partitions["queue"] for r in resources} == {
+        "transition_cluster",
+        "cluster_study_4",
+    }
     # Each page is zipped under its original file name, with contents unchanged.
     for resource in resources:
         with zipfile.ZipFile(resource.local_path) as archive:
             (name,) = archive.namelist()
-            assert name.endswith(".htm")
+            assert name.startswith("pacificorpcliaq")
             assert archive.read(name) == page
 
 
 @pytest.mark.asyncio
-async def test_missing_known_page_raises(mocker):
-    async def fake_fetch_page(url, ssl_context):
-        if url == KNOWN_QUEUE_PAGES["cluster_2"]:
-            return 404, b"Not Found"
-        return 200, b"<html></html>"
-
+async def test_missing_queue_page_raises(mocker):
     archiver = PacifiCorpQueueArchiver(mocker.AsyncMock())
-    mocker.patch.object(archiver, "fetch_page", side_effect=fake_fetch_page)
+    mocker.patch.object(archiver, "fetch_page", return_value=(404, b"Not Found"))
 
     with pytest.raises(RuntimeError, match="returned HTTP 404"):
         await archiver.get_queue_page(
-            "cluster_2", KNOWN_QUEUE_PAGES["cluster_2"], ssl_context=None
+            "cluster_study_4", f"{BASE}/pacificorpcliaq4.htm", ssl_context=None
         )
