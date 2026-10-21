@@ -6,28 +6,23 @@ International (OATI). Each cluster's queue is a static HTML page, listed in the
 "Generation Interconnection > Cluster Queues" folder of the OASIS document menu.
 Each page is archived exactly as published.
 
-The document menu is built in the browser from a JSON request (``HomePage/GetData``)
-that the OASIS application answers only for real browsers; other HTTP clients receive
-HTTP 403. The menu is therefore read with a headless browser, and the queue pages it
-lists are then downloaded directly.
+The site is read with a headless browser, for two reasons. The document menu is built
+in the browser from a JSON request (``HomePage/GetData``) that the OASIS application
+answers only for real browsers; other HTTP clients receive HTTP 403. And OATI's
+certificate chain for www.oasis.oati.com is not trusted by Python's or Chromium's
+default trust stores, so the browser skips certificate checks. To limit what that
+allows, only HTTPS addresses on the OATI host are accepted from the menu, and a page
+that loads from any other host is rejected.
 
-OATI's certificate chain for www.oasis.oati.com is not trusted by Python's or
-Chromium's default trust stores. Queue pages are downloaded trusting OATI's
-intermediate certificate, stored in ``pudl_archiver/package_data``, with signature,
-expiry and hostname checks still in place. That file will need replacing when OATI
-changes its intermediate; the current one expires on 2030-10-09. The browser that
-reads the menu cannot be given that certificate, so it skips certificate checks. To
-limit what that allows, only HTTPS addresses on the OATI host are accepted from the
-menu, and every page is then downloaded with full verification.
+Each page is saved as the bytes the server sent, not as the browser's rendering of it.
 """
 
-import importlib.resources
 import re
-import ssl
 from io import BytesIO
 from urllib.parse import urlparse
 
-from playwright.async_api import async_playwright
+from playwright.async_api import Browser, BrowserContext, Playwright, async_playwright
+from playwright.async_api import Error as PlaywrightError
 
 from pudl_archiver.archivers.classes import (
     AbstractDatasetArchiver,
@@ -43,20 +38,9 @@ MENU_PAGE_URL = (
 MENU_DATA_PATH = "/HomePage/GetData"
 QUEUE_FOLDER = "Cluster Queues"
 QUEUE_SUFFIX = " - Queue"
-OATI_CA_FILE = "oati_webcares_server_issuing_ca_2025.pem"
 
 COPY_URL_PATTERN = re.compile(r"CopyToClipboard\(this,'([^']+)'\)")
 """Each menu entry's full address appears in its copy-to-clipboard button."""
-
-
-def oati_ssl_context() -> ssl.SSLContext:
-    """Build an SSL context that trusts OATI's intermediate certificate only."""
-    ca_pem = (
-        importlib.resources.files("pudl_archiver.package_data") / OATI_CA_FILE
-    ).read_text()
-    context = ssl.create_default_context(cadata=ca_pem)
-    context.verify_flags |= ssl.VERIFY_X509_PARTIAL_CHAIN
-    return context
 
 
 def find_folder(nodes: list[dict] | None, name: str) -> dict | None:
@@ -124,49 +108,75 @@ class PacifiCorpQueueArchiver(AbstractDatasetArchiver):
     )
     # larger changes in page size than the default before flagging them.
 
+    # Set by start_browser; None until then, so cleanup is safe if starting fails.
+    playwright: Playwright | None = None
+    browser: Browser | None = None
+    browser_context: BrowserContext | None = None
+
     async def get_resources(self) -> ArchiveAwaitable:
         """Download every queue page listed in the OASIS menu."""
+        await self.start_browser()
         pages = queue_pages(await self.get_menu_tree())
         self.logger.info(f"Found PacifiCorp queue pages: {sorted(pages)}")
 
-        ssl_context = oati_ssl_context()
         for partition, url in pages.items():
-            yield self.get_queue_page(partition, url, ssl_context)
+            yield self.get_queue_page(partition, url)
+
+    async def start_browser(self) -> None:
+        """Start a headless browser that skips OATI's unverifiable certificate."""
+        self.playwright = await async_playwright().start()
+        self.browser = await self.playwright.chromium.launch()
+        self.browser_context = await self.browser.new_context(ignore_https_errors=True)
+
+    async def after_download(self) -> None:
+        """Close the browser once every page has been downloaded."""
+        if self.browser is not None:
+            await self.browser.close()
+        if self.playwright is not None:
+            await self.playwright.stop()
 
     async def get_menu_tree(self) -> dict:
-        """Load the OASIS home page in a browser and return the menu it requests."""
-        async with async_playwright() as p:
-            browser = await p.chromium.launch()
-            try:
-                page = await browser.new_page(ignore_https_errors=True)
-                async with page.expect_response(
-                    lambda response: MENU_DATA_PATH in response.url
-                ) as response_info:
-                    await page.goto(MENU_PAGE_URL)
-                response = await response_info.value
-                if response.status != 200:
-                    raise RuntimeError(
-                        f"OASIS menu request returned HTTP {response.status}."
-                    )
-                return await response.json()
-            finally:
-                await browser.close()
+        """Load the OASIS home page and return the menu it requests."""
+        page = await self.browser_context.new_page()
+        try:
+            async with page.expect_response(
+                lambda response: MENU_DATA_PATH in response.url
+            ) as response_info:
+                await page.goto(MENU_PAGE_URL)
+            response = await response_info.value
+            if response.status != 200:
+                raise RuntimeError(
+                    f"OASIS menu request returned HTTP {response.status}."
+                )
+            return await response.json()
+        finally:
+            await page.close()
 
-    async def fetch_page(
-        self, url: str, ssl_context: ssl.SSLContext
-    ) -> tuple[int, bytes]:
-        """Fetch a page from the OATI OASIS site, returning its status and contents."""
-        response = await retry_async(
-            self.session.get, args=[url], kwargs={"ssl": ssl_context}
-        )
-        body = await retry_async(response.read)
-        return response.status, body
+    async def fetch_page(self, url: str) -> tuple[int, bytes]:
+        """Load a page from the OATI OASIS site, returning its status and contents.
 
-    async def get_queue_page(
-        self, partition: str, url: str, ssl_context: ssl.SSLContext
-    ) -> ResourceInfo:
+        The contents are the response body exactly as the server sent it. The page's
+        ``content()`` is not used, because that is the browser's re-serialisation of
+        the page after parsing, not the file as published.
+        """
+        page = await self.browser_context.new_page()
+        try:
+            response = await retry_async(
+                page.goto, args=[url], retry_on=(PlaywrightError,)
+            )
+            if response is None:
+                raise RuntimeError(f"No response when loading {url}.")
+            if urlparse(response.url).hostname != OASIS_HOST:
+                raise RuntimeError(
+                    f"Queue page {url} redirected off the OASIS site, to {response.url}."
+                )
+            return response.status, await response.body()
+        finally:
+            await page.close()
+
+    async def get_queue_page(self, partition: str, url: str) -> ResourceInfo:
         """Download one queue page and zip it, keeping the original file unchanged."""
-        status, body = await self.fetch_page(url, ssl_context)
+        status, body = await self.fetch_page(url)
         if status != 200:
             raise RuntimeError(f"Queue page {url} returned HTTP {status}.")
 

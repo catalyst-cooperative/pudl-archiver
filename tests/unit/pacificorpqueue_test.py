@@ -1,11 +1,9 @@
-import ssl
 import zipfile
 
 import pytest
 
 from pudl_archiver.archivers.pacificorpqueue import (
     PacifiCorpQueueArchiver,
-    oati_ssl_context,
     partition_name,
     queue_pages,
 )
@@ -48,15 +46,6 @@ def menu(cluster_queue_entries: list[dict]) -> dict:
             ),
         ],
     }
-
-
-def test_oati_ssl_context_keeps_verification_on():
-    context = oati_ssl_context()
-    assert context.verify_mode == ssl.CERT_REQUIRED
-    assert context.check_hostname
-    assert context.verify_flags & ssl.VERIFY_X509_PARTIAL_CHAIN
-    # Only OATI's intermediate is trusted, not the public trust store.
-    assert len(context.get_ca_certs()) == 1
 
 
 def test_partition_name():
@@ -133,6 +122,7 @@ async def test_get_resources_archives_every_page_in_the_menu(mocker):
     page = b"<html><body>PacifiCorp Generation Interconnection Requests</body></html>"
 
     archiver = PacifiCorpQueueArchiver(mocker.AsyncMock())
+    mocker.patch.object(archiver, "start_browser")
     mocker.patch.object(archiver, "get_menu_tree", return_value=tree)
     mocker.patch.object(archiver, "fetch_page", return_value=(200, page))
 
@@ -156,6 +146,44 @@ async def test_missing_queue_page_raises(mocker):
     mocker.patch.object(archiver, "fetch_page", return_value=(404, b"Not Found"))
 
     with pytest.raises(RuntimeError, match="returned HTTP 404"):
-        await archiver.get_queue_page(
-            "cluster_study_4", f"{BASE}/pacificorpcliaq4.htm", ssl_context=None
-        )
+        await archiver.get_queue_page("cluster_study_4", f"{BASE}/pacificorpcliaq4.htm")
+
+
+def browser_returning(mocker, archiver, response):
+    """Give the archiver a browser whose pages load to this response."""
+    page = mocker.AsyncMock()
+    page.goto.return_value = response
+    page.content.return_value = "<html>the browser's rendering</html>"
+    archiver.browser_context = mocker.AsyncMock()
+    archiver.browser_context.new_page.return_value = page
+    return page
+
+
+@pytest.mark.asyncio
+async def test_fetch_page_keeps_the_bytes_the_server_sent(mocker):
+    archiver = PacifiCorpQueueArchiver(mocker.AsyncMock())
+    url = f"{BASE}/pacificorpcliaq4.htm"
+    response = mocker.Mock(url=url, status=200)
+    response.body = mocker.AsyncMock(return_value=b"<html>as published</html>")
+    page = browser_returning(mocker, archiver, response)
+
+    assert await archiver.fetch_page(url) == (200, b"<html>as published</html>")
+    page.content.assert_not_awaited()
+    page.close.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_fetch_page_rejects_a_redirect_off_the_oasis_site(mocker):
+    archiver = PacifiCorpQueueArchiver(mocker.AsyncMock())
+    response = mocker.Mock(url="https://example.com/pacificorpcliaq4.htm", status=200)
+    page = browser_returning(mocker, archiver, response)
+
+    with pytest.raises(RuntimeError, match="redirected off the OASIS site"):
+        await archiver.fetch_page(f"{BASE}/pacificorpcliaq4.htm")
+    page.close.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_after_download_is_safe_if_the_browser_never_started(mocker):
+    archiver = PacifiCorpQueueArchiver(mocker.AsyncMock())
+    await archiver.after_download()
