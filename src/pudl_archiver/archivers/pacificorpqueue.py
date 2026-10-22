@@ -57,10 +57,10 @@ def find_folder(nodes: list[dict] | None, name: str) -> dict | None:
 def partition_name(title: str) -> str:
     """Turn a menu title into a partition name.
 
-    For example, "Cluster Study 4 - Queue" becomes "cluster_study_4".
+    For example, "Cluster Study 4 - Queue" becomes "cluster-study-4".
     """
     base = title.removesuffix(QUEUE_SUFFIX)
-    return re.sub(r"[^a-z0-9]+", "_", base.lower()).strip("_")
+    return re.sub(r"[^a-z0-9]+", "-", base.lower()).strip("-")
 
 
 def queue_pages(tree: dict) -> dict[str, str]:

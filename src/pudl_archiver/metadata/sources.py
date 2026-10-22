@@ -584,7 +584,7 @@ NON_PUDL_SOURCES: dict[str, Any] = {
     },
     "pacificorpqueue": {
         "title": "PacifiCorp Generation Interconnection Queue",
-        "path": "https://www.oasis.oati.com/woa/docs/PPW/PPWdocs/pacificorpcliaq.htm",
+        "path": "https://www.oasis.oati.com/woa/docs/PPW/",
         "description": (
             "PacifiCorp's generator interconnection queue, as posted on its Open "
             "Access Same-Time Information System (OASIS) site, which is hosted by "

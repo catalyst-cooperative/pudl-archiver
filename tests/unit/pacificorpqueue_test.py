@@ -49,9 +49,9 @@ def menu(cluster_queue_entries: list[dict]) -> dict:
 
 
 def test_partition_name():
-    assert partition_name("Cluster Study 4 - Queue") == "cluster_study_4"
-    assert partition_name("Transition Cluster - Queue") == "transition_cluster"
-    assert partition_name("Transition Cluster 2 - Queue") == "transition_cluster_2"
+    assert partition_name("Cluster Study 4 - Queue") == "cluster-study-4"
+    assert partition_name("Transition Cluster - Queue") == "transition-cluster"
+    assert partition_name("Transition Cluster 2 - Queue") == "transition-cluster-2"
 
 
 def test_queue_pages_keeps_only_queue_documents():
@@ -66,8 +66,8 @@ def test_queue_pages_keeps_only_queue_documents():
         ]
     )
     assert queue_pages(tree) == {
-        "transition_cluster": f"{BASE}/pacificorpcliaq.htm",
-        "cluster_study_4": f"{BASE}/pacificorpcliaq4.htm",
+        "transition-cluster": f"{BASE}/pacificorpcliaq.htm",
+        "cluster-study-4": f"{BASE}/pacificorpcliaq4.htm",
     }
 
 
@@ -129,8 +129,8 @@ async def test_get_resources_archives_every_page_in_the_menu(mocker):
     resources = [await res async for res in archiver.get_resources()]
 
     assert {r.partitions["queue"] for r in resources} == {
-        "transition_cluster",
-        "cluster_study_4",
+        "transition-cluster",
+        "cluster-study-4",
     }
     # Each page is zipped under its original file name, with contents unchanged.
     for resource in resources:
@@ -146,7 +146,7 @@ async def test_missing_queue_page_raises(mocker):
     mocker.patch.object(archiver, "fetch_page", return_value=(404, b"Not Found"))
 
     with pytest.raises(RuntimeError, match="returned HTTP 404"):
-        await archiver.get_queue_page("cluster_study_4", f"{BASE}/pacificorpcliaq4.htm")
+        await archiver.get_queue_page("cluster-study-4", f"{BASE}/pacificorpcliaq4.htm")
 
 
 def browser_returning(mocker, archiver, response):
