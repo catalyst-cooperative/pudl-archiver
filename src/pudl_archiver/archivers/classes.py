@@ -158,6 +158,13 @@ class AbstractDatasetArchiver(ABC):
 
         self.failed_partitions: dict[str, Partitions] = {}
 
+        self.baseline_datapackage: DataPackage | None = None
+        """The datapackage of the previous version of the archive, if there is one.
+
+        It's set by the orchestrator before ``get_resources`` is called, so archivers
+        can check what they find against what was archived before.
+        """
+
         # Create logger
         self.logger = logging.getLogger(f"catalystcoop.{__name__}")
         self.logger.info(f"Archiving {self.name}")

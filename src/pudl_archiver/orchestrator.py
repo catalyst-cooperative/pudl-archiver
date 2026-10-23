@@ -38,6 +38,7 @@ async def orchestrate_run(
     resources = {}
     # Get datapackage from previous version if there is one
     draft, original_datapackage = await get_deposition(dataset, session, run_settings)
+    downloader.baseline_datapackage = original_datapackage
 
     # Download resources and add to archive
     run_exception = None
