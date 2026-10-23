@@ -222,16 +222,16 @@ jobs:
           for log in ./*_log.txt; do error_files+=(--error-file "$log"); done
           {
             echo 'ERRORS<<DELIM1'
-            pixi run python -m pudl_archiver.scripts.make_markdown_notification ./*_run_summary.json ./*_metadata_summary.json "${error_files[@]}" --summary-type error
+            pixi run make_markdown_notification ./*_run_summary.json ./*_metadata_summary.json "${error_files[@]}" --summary-type error
             echo 'DELIM1'
             echo 'FAILURES<<DELIM2'
-            pixi run python -m pudl_archiver.scripts.make_markdown_notification ./*_run_summary.json ./*_metadata_summary.json "${error_files[@]}" --summary-type failure
+            pixi run make_markdown_notification ./*_run_summary.json ./*_metadata_summary.json "${error_files[@]}" --summary-type failure
             echo 'DELIM2'
             echo 'CHANGES<<DELIM3'
-            pixi run python -m pudl_archiver.scripts.make_markdown_notification ./*_run_summary.json ./*_metadata_summary.json "${error_files[@]}" --summary-type change
+            pixi run make_markdown_notification ./*_run_summary.json ./*_metadata_summary.json "${error_files[@]}" --summary-type change
             echo 'DELIM3'
             echo 'UNCHANGED<<DELIM4'
-            pixi run python -m pudl_archiver.scripts.make_markdown_notification ./*_run_summary.json ./*_metadata_summary.json "${error_files[@]}" --summary-type unchanged
+            pixi run make_markdown_notification ./*_run_summary.json ./*_metadata_summary.json "${error_files[@]}" --summary-type unchanged
             echo 'DELIM4'
           } | tee -a "$GITHUB_OUTPUT"
       # These steps only run if no Github issue is requested to be created.
@@ -249,7 +249,7 @@ jobs:
           for log in ./*_log.txt; do error_files+=(--error-file "$log"); done
           {
             echo "ZULIP_CONTENT<<EOF"
-            pixi run python -m pudl_archiver.scripts.make_markdown_notification ./*_run_summary.json ./*_metadata_summary.json "${error_files[@]}" --summary-type zulip --run-url "$RUN_URL"
+            pixi run make_markdown_notification ./*_run_summary.json ./*_metadata_summary.json "${error_files[@]}" --summary-type zulip --run-url "$RUN_URL"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
       - name: Notify Zulip of archive run completion

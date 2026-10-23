@@ -145,7 +145,7 @@ jobs:
           for log in ./*_log.txt; do error_files+=(--error-file "$log"); done
           {
             echo "ZULIP_CONTENT<<EOF"
-            pixi run python -m pudl_archiver.scripts.make_markdown_notification ./*_run_summary.json "${error_files[@]}" --summary-type zulip --run-url "$RUN_URL"
+            pixi run make_markdown_notification ./*_run_summary.json "${error_files[@]}" --summary-type zulip --run-url "$RUN_URL"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
       - name: Notify Zulip of archive initialization
