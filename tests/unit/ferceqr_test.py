@@ -9,29 +9,59 @@ from playwright.async_api import Error as PlaywrightError
 from pudl_archiver.archivers.classes import VALID_PARTITION_RANGES
 from pudl_archiver.archivers.ferc.ferceqr import FercEQRArchiver
 
+# Arbitrary quarters, deliberately not the real first and last ones, so that the
+# tests are about how quarters are handled and not about which ones exist.
+FIRST = "2015q2"
+MIDDLE = "2016q3"
+LAST_ARCHIVED = "2017q4"  # The last quarter of the previous archive
+LAST_ONLINE = "2018q1"  # Newer than the previous archive
+N_ONLINE = 12  # Quarters from FIRST through LAST_ONLINE
+
+
+@pytest.fixture(autouse=True)
+def _first_quarter(monkeypatch):
+    """Make the archiver expect the data to start in the fake ``FIRST`` quarter."""
+    monkeypatch.setattr(
+        "pudl_archiver.archivers.ferc.ferceqr.FIRST_YEAR_QUARTER", FIRST
+    )
+
+
+def _quarter_labels(last: str, skip: tuple[str, ...]) -> list[str]:
+    """List quarter labels like ``2015q2`` from ``FIRST`` through ``last``."""
+    return [
+        label
+        for q in pd.period_range(FIRST, last, freq="Q")
+        if (label := f"{q.year}q{q.quarter}") not in skip
+    ]
+
 
 def _urls(*skip: str) -> list[str]:
-    quarters = pd.period_range("2013q3", "2026q3", freq="Q")
+    """Make the download links on the website, from ``FIRST`` through ``LAST_ONLINE``."""
     return [
-        f"https://example.com/CSV_{q.year}_Q{q.quarter}.zip"
-        for q in quarters
-        if f"{q.year}q{q.quarter}" not in skip
+        f"https://example.com/CSV_{label[:4]}_Q{label[-1]}.zip"
+        for label in _quarter_labels(LAST_ONLINE, skip)
     ]
 
 
-def _archived_before(*skip: str):
-    """The previous archive, which had every quarter up to 2026q2."""
-    names = [
-        f"ferceqr-{q.year}q{q.quarter}.zip"
-        for q in pd.period_range("2013q3", "2026q2", freq="Q")
-        if f"{q.year}q{q.quarter}" not in skip
-    ]
+def _archived_before(*skip: str) -> SimpleNamespace:
+    """Make a stand-in for the previous archive's datapackage.
+
+    The previous archive had every quarter through ``LAST_ARCHIVED``.
+    """
+    names = [f"ferceqr-{label}.zip" for label in _quarter_labels(LAST_ARCHIVED, skip)]
     return SimpleNamespace(resources=[SimpleNamespace(name=name) for name in names])
 
 
-async def _get_resources(mocker, urls, baseline=None):
+def _archiver(mocker, baseline=None) -> FercEQRArchiver:
+    """Make an archiver that has no session and a given previous archive."""
     archiver = FercEQRArchiver(session=mocker.MagicMock())
     archiver.baseline_datapackage = baseline
+    return archiver
+
+
+async def _get_resources(mocker, urls, baseline=None):
+    """Run ``get_resources`` on a fixed list of links, without downloading anything."""
+    archiver = _archiver(mocker, baseline)
     mocker.patch.object(archiver, "get_urls", return_value=urls)
     found = []
     async for resource, partitions in archiver.get_resources():
@@ -41,52 +71,57 @@ async def _get_resources(mocker, urls, baseline=None):
 
 
 @pytest.mark.asyncio
-async def test_quarters_are_partitioned_by_year_quarter(mocker):
-    archiver, found = await _get_resources(mocker, _urls())
+@pytest.mark.parametrize(
+    "baseline", [None, _archived_before()], ids=["no-baseline", "baseline"]
+)
+async def test_quarters_are_partitioned_by_year_quarter(mocker, baseline):
+    """Check each quarter is yielded as a ``year_quarter`` partition.
 
-    assert found[0] == {"year_quarter": "2013q3"}
-    assert found[-1] == {"year_quarter": "2026q3"}
-    assert len(found) == 53
-    # In a form that the archiver's validation of continuity understands
-    assert list(found[0]) == ["year_quarter"]
+    The newest quarter, ``LAST_ONLINE``, is only on the website and not in the previous
+    archive, so the baseline case also checks that new quarters are not flagged.
+    """
+    archiver, found = await _get_resources(mocker, _urls(), baseline)
+
+    assert found[0] == {"year_quarter": FIRST}
+    assert found[-1] == {"year_quarter": LAST_ONLINE}
+    assert len(found) == N_ONLINE
+    # The key is one that the archiver's validation of continuity understands
     assert "year_quarter" in VALID_PARTITION_RANGES
-    pd.PeriodIndex([p["year_quarter"] for p in found], freq="Q")
     # The newest quarter is expected to grow
-    assert archiver.ignore_file_size_increase_partitions == [{"year_quarter": "2026q3"}]
+    assert archiver.ignore_file_size_increase_partitions == [
+        {"year_quarter": LAST_ONLINE}
+    ]
 
 
 @pytest.mark.asyncio
-async def test_missing_quarter_fails_before_downloading(mocker):
-    with pytest.raises(RuntimeError, match=r"Missing quarters.*\['2023q3'\]"):
-        await _get_resources(mocker, _urls("2023q3"))
+@pytest.mark.parametrize(
+    "urls,message",
+    [
+        (_urls(MIDDLE), rf"Missing quarters.*\['{MIDDLE}'\]"),
+        (_urls(FIRST), f"start in {FIRST}"),
+        ([], "no quarters"),
+    ],
+    ids=["gap", "first-quarter-missing", "empty"],
+)
+async def test_bad_quarters_fail_before_downloading(mocker, urls, message):
+    """Check that a gap, a late start or no quarters at all fails the run early.
+
+    Since ``_get_resources`` closes every resource without downloading it, an error
+    here can only have come from the checks made before any download starts.
+    """
+    with pytest.raises(RuntimeError, match=message):
+        await _get_resources(mocker, urls)
 
 
 @pytest.mark.asyncio
-async def test_first_quarter_missing_fails(mocker):
-    with pytest.raises(RuntimeError, match="start in 2013q3"):
-        await _get_resources(mocker, _urls("2013q3"))
+async def test_loading_the_page_is_retried_then_gives_up(mocker):
+    """Check that failing to load the page is retried, and eventually raised.
 
-
-@pytest.mark.asyncio
-async def test_loading_the_page_is_retried(mocker):
+    How ``retry_async`` backs off is tested in ``utils_test``. This only checks that
+    the archiver retries Playwright errors, and for how many attempts.
+    """
     mocker.patch("pudl_archiver.utils.asyncio.sleep")  # Don't wait between attempts
-    archiver = FercEQRArchiver(session=mocker.MagicMock())
-    get_urls = mocker.patch.object(
-        archiver,
-        "get_urls",
-        side_effect=[PlaywrightError("Page.goto: Operation was cancelled"), _urls()],
-    )
-
-    async for resource, _ in archiver.get_resources():
-        resource.close()
-
-    assert get_urls.call_count == 2
-
-
-@pytest.mark.asyncio
-async def test_loading_the_page_gives_up_eventually(mocker):
-    mocker.patch("pudl_archiver.utils.asyncio.sleep")
-    archiver = FercEQRArchiver(session=mocker.MagicMock())
+    archiver = _archiver(mocker)
     get_urls = mocker.patch.object(
         archiver, "get_urls", side_effect=PlaywrightError("Page.goto: Timeout")
     )
@@ -98,32 +133,23 @@ async def test_loading_the_page_gives_up_eventually(mocker):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("vanished", ["2013q3", "2023q3", "2026q2"])
+@pytest.mark.parametrize("vanished", [FIRST, MIDDLE, LAST_ARCHIVED])
 async def test_quarters_that_vanished_from_the_website_are_named(mocker, vanished):
-    # Only the latest, which no gap shows, or the first, can also go
+    """Check that quarters in the previous archive, but not online, are reported.
+
+    The first quarter, a quarter in the middle and the last quarter before the newest
+    one are each removed. The newest quarter, ``LAST_ONLINE``, is also removed, so that
+    the last previous quarter vanishing doesn't leave a gap to be noticed.
+    """
     with pytest.raises(RuntimeError, match=rf"have vanished.*\['{vanished}'\]"):
         await _get_resources(
-            mocker, _urls(vanished, "2026q3"), baseline=_archived_before()
+            mocker, _urls(vanished, LAST_ONLINE), baseline=_archived_before()
         )
 
 
-@pytest.mark.asyncio
-async def test_new_quarters_are_fine(mocker):
-    # 2026q3 is on the website, and wasn't in the previous archive
-    _, found = await _get_resources(mocker, _urls(), baseline=_archived_before())
-
-    assert {"year_quarter": "2026q3"} in found
-
-
 def test_vanished_quarters_are_not_checked_when_missing_files_are_allowed(mocker):
-    archiver = FercEQRArchiver(session=mocker.MagicMock())
-    archiver.baseline_datapackage = _archived_before()
+    """Check that the vanished-quarters check is skipped if missing files are OK."""
+    archiver = _archiver(mocker, _archived_before())
     archiver.fail_on_missing_files = False
 
-    archiver._check_no_quarters_have_vanished({"2013q3"})
-
-
-@pytest.mark.asyncio
-async def test_finding_no_quarters_fails(mocker):
-    with pytest.raises(RuntimeError, match="no quarters"):
-        await _get_resources(mocker, [])
+    archiver._check_no_quarters_have_vanished({FIRST})
