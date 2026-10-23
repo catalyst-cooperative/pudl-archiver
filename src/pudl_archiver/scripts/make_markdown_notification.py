@@ -288,9 +288,10 @@ def main(
 
     SUMMARY_FILES are the JSON summaries written by archiver runs
     (<dataset>_run_summary.json, or <dataset>_metadata_summary.json for Zenodo
-    metadata drafts). At least one is required, as every run is expected to write
-    one. Paths that don't exist are skipped, so a shell glob that matched no files
-    is harmless.
+    metadata drafts). At least one argument is required, which guards against a
+    workflow failing to pass any, but the files need not exist. Paths that don't
+    exist are skipped, so a shell glob that matched no files is harmless, and the
+    error logs of a run that crashed before writing its summary are still reported.
     """
     all_summaries = _load_summaries(summary_files)
     # Metadata-only summaries describe a Zenodo draft, not a data archive run.
