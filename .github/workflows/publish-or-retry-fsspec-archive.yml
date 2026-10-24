@@ -133,13 +133,14 @@ jobs:
           path: ${{ steps.dataset_name.outputs.dataset }}_log.txt
 
   post-archive:
-    # A retry that succeeds leaves the same unpublished archive for review as a
-    # successful initial run, so it needs everything the initial run never got to
-    # do after failing: the Zenodo metadata draft, the Zulip notification and the
-    # Github issue. Publishing is the end of that process, so nothing follows it.
+    # After a retry, do what run-fsspec-archiver does after an initial run: make
+    # the Zenodo metadata draft (only if the retry succeeded), notify Zulip and
+    # update the Github issue. The initial run couldn't make the draft, because it
+    # failed. Skip this after a publish-run, which is the last step.
     needs: publish-run
     if: |
       always() &&
+      needs.publish-run.result != 'skipped' &&
       needs.publish-run.outputs.dataset != '' &&
       (github.event_name == 'workflow_run' || inputs.command == 'retry-run')
     uses: ./.github/workflows/fsspec-post-archive.yml
