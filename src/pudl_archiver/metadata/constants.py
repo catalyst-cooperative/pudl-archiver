@@ -18,6 +18,14 @@ LICENSES: dict[str, dict[str, str]] = {
         "title": "U.S. Government Work",
         "path": "http://www.usa.gov/publicdomain/label/1.0/",
     },
+    # For collections of facts that are not protected by U.S. copyright (Feist
+    # Publications v. Rural Telephone Service, 499 U.S. 340 (1991)) but are not
+    # government works, e.g. a utility's regulatory postings.
+    "pd-mark": {
+        "name": "other-pd",
+        "title": "Public Domain Mark 1.0 (uncopyrightable factual data)",
+        "path": "https://creativecommons.org/publicdomain/mark/1.0/",
+    },
 }
 """Static license descriptors (frictionless License fields: name, title, path).
 
