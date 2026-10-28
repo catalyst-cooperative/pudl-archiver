@@ -77,7 +77,7 @@ jobs:
               ;;
 
             "21 4 2 * *")
-              echo 'datasets=["doeiraec","doelead","eiabluesky","eiacbecs","eiamecs","eianems","eiarecs","eiasteo","eiawater","epaegrid","epapcap","mshamines","nrelss","nrelsts","usgsuspvdb","usgsuswtdb"]' >> "$GITHUB_OUTPUT"
+              echo 'datasets=["doeiraec","doelead","eiabluesky","eiacbecs","eiamecs","eianems","eiarecs","eiasteo","eiawater","epaegrid","epapcap","mshamines","nrelss","nrelsts","pacificorpqueue","usgsuspvdb","usgsuswtdb"]' >> "$GITHUB_OUTPUT"
               echo "run_type=non_pudl" >> "$GITHUB_OUTPUT"
               ;;
 
