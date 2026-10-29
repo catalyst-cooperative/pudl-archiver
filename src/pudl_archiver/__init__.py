@@ -93,13 +93,13 @@ async def archive_dataset(
         cls = ARCHIVERS.get(dataset)
         if not cls:
             raise RuntimeError(f"Dataset {dataset} not supported")
-        downloader = cls(
-            session,
-            run_settings.only_years,
-        )
         summary, _published = await orchestrate_run(
             dataset=dataset,
-            downloader=downloader,
+            archiver_factory=lambda prior_state: cls(
+                session,
+                run_settings.only_years,
+                prior_state=prior_state,
+            ),
             run_settings=run_settings,
             session=session,
             skip_partitions=skip_partitions,
