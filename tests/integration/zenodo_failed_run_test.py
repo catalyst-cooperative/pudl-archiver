@@ -2,6 +2,7 @@
 
 import asyncio
 import hashlib
+import io
 
 import pytest
 
@@ -100,6 +101,9 @@ async def test_failed_run_leaves_a_marked_draft_that_a_retry_resumes(
         "Run exception validation test"
     ]
     assert failed.file_changes == []
+    # b.txt was downloaded and found unchanged, and a.txt was uploaded
+    assert set(failed.uploaded_checksums) == {"a.txt", "b.txt"}
+    assert failed.uploaded_checksums["a.txt"] == md5(V2["a.txt"])
 
     # A new version of a Zenodo record starts as an empty draft, so the draft only has
     # what the failed run uploaded. It has no datapackage.json that describes it,
@@ -119,7 +123,12 @@ async def test_failed_run_leaves_a_marked_draft_that_a_retry_resumes(
     with pytest.raises(IncompleteDepositionError):
         await draft.publish()
 
-    # Retry what failed, skipping the files that the failed run archived
+    # Someone edits a file in the draft, before the retry
+    draft = await draft.delete_file("b.txt")
+    draft = await draft.create_file("b.txt", io.BytesIO(b"edited by hand"))
+    await asyncio.sleep(1)
+
+    # Retry: only skip what is still in the draft as the failed run left it
     retry = FakeDownloader(V2, session=session)
     retried, published = await orchestrate_run(
         dataset="pudl_test",
@@ -127,10 +136,12 @@ async def test_failed_run_leaves_a_marked_draft_that_a_retry_resumes(
         run_settings=settings,
         session=session,
         skip_partitions=failed.successful_partitions,
+        skip_checksums=failed.uploaded_checksums,
     )
 
     assert retried.success
-    assert retry.downloaded == ["c.txt"]
+    # a.txt was uploaded by the failed run, and is still there. b.txt isn't.
+    assert sorted(retry.downloaded) == ["b.txt", "c.txt"]
     assert INCOMPLETE_MARKER not in published.deposition.files_map
     datapackage = DataPackage.model_validate_json(
         await published.get_file("datapackage.json")
