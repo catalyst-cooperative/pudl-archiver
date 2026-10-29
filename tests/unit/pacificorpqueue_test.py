@@ -4,6 +4,7 @@ import pytest
 
 from pudl_archiver.archivers.pacificorpqueue import (
     PacifiCorpQueueArchiver,
+    other_partition_name,
     partition_name,
     queue_pages,
 )
@@ -31,7 +32,9 @@ def folder(title: str, children: list[dict]) -> dict:
     return {"textValue": title, "FileName": None, "leaf": False, "children": children}
 
 
-def menu(cluster_queue_entries: list[dict]) -> dict:
+def menu(
+    cluster_queue_entries: list[dict], other_folders: list[dict] | None = None
+) -> dict:
     """Build a whole menu with the Cluster Queues folder two levels down."""
     return {
         "success": True,
@@ -42,6 +45,7 @@ def menu(cluster_queue_entries: list[dict]) -> dict:
                 [
                     folder("Applications", []),
                     folder("Cluster Queues", cluster_queue_entries),
+                    *(other_folders or []),
                 ],
             ),
         ],
@@ -69,6 +73,63 @@ def test_queue_pages_keeps_only_queue_documents():
         "transition-cluster": f"{BASE}/pacificorpcliaq.htm",
         "cluster-study-4": f"{BASE}/pacificorpcliaq4.htm",
     }
+
+
+def test_other_partition_name():
+    assert (
+        other_partition_name("Serial Queue", "Generation Interconnection Queue")
+        == "serial"
+    )
+    assert other_partition_name("Fast Track Queue", "Fast Track Queue") == "fast-track"
+    assert (
+        other_partition_name("Serial Queue", "Archive - Withdrawn")
+        == "serial-archive-withdrawn"
+    )
+
+
+def test_queue_pages_includes_the_other_queue_folders():
+    tree = menu(
+        [document("Cluster Study 4 - Queue", "pacificorpcliaq4.htm")],
+        [
+            folder(
+                "Serial Queue",
+                [
+                    document("Generation Interconnection Queue", "pacificorplgiaq.htm"),
+                    document("Archive - Withdrawn", "pacificorplgiaqw.htm"),
+                    document("Application", "application.docx"),
+                ],
+            ),
+            folder(
+                "Surplus Queue", [document("Surplus Queue", "pacificorpslgiaq.htm")]
+            ),
+            # Folders whose names do not end in "Queue" are not queues.
+            folder("Queue Statistics", [document("2026", "pacificorpstats.htm")]),
+            folder("Model Files", [document("Model File Access", "models.pdf")]),
+        ],
+    )
+    assert queue_pages(tree) == {
+        "cluster-study-4": f"{BASE}/pacificorpcliaq4.htm",
+        "serial": f"{BASE}/pacificorplgiaq.htm",
+        "serial-archive-withdrawn": f"{BASE}/pacificorplgiaqw.htm",
+        "surplus": f"{BASE}/pacificorpslgiaq.htm",
+    }
+
+
+def test_queue_pages_rejects_two_pages_with_the_same_partition():
+    tree = menu(
+        [],
+        [
+            folder(
+                "Surplus Queue",
+                [
+                    document("Surplus Queue", "pacificorpslgiaq.htm"),
+                    document("Older Surplus Queue", "pacificorpslgiaq2.htm"),
+                ],
+            )
+        ],
+    )
+    with pytest.raises(RuntimeError, match="share the partition 'surplus'"):
+        queue_pages(tree)
 
 
 def test_queue_pages_rejects_addresses_off_the_oasis_site():
@@ -101,7 +162,7 @@ def test_queue_pages_rejects_address_that_does_not_match_file_name():
 
 def test_queue_pages_fails_if_folder_is_missing():
     tree = {"success": True, "children": [folder("ATC Information", [])]}
-    with pytest.raises(RuntimeError, match="No 'Cluster Queues' folder"):
+    with pytest.raises(RuntimeError, match="No 'Generation Interconnection' folder"):
         queue_pages(tree)
 
 
