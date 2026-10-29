@@ -14,7 +14,7 @@ See the job run logs and results [here]({{ env.RUN_URL }}).
 
 For each of the following archives, find the run status in the Github archiver run. If validation tests pass, manually review the archive and publish. If no changes detected, delete the draft. If changes are detected, manually review the archive following the guidelines in step 3 of `README.md`, then publish the new version. Then confirm publication status, adding a note on the status (e.g., "v1 published", "no changes detected, draft deleted") or creating a follow-up sub-issue as needed.
 
-{% if RUN_TYPE == 'fsspec' %}
+{% if env.RUN_TYPE == 'fsspec' %}
 # Publishing fsspec archives
 
 The data for these archives is too large for Zenodo, so it is archived to GCS and only the `datapackage.json` metadata is archived on Zenodo. Both need to be reviewed and published:
