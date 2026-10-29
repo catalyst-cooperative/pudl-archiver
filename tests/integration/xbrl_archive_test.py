@@ -84,9 +84,10 @@ async def test_archive_year_stability(mocker, tmp_path):
         # Run once
         summary, _ = await orchestrate_run(
             dataset="ferc1",
-            downloader=Ferc1Archiver(
+            archiver_factory=lambda prior_state: Ferc1Archiver(
                 session,
                 only_years=[2022, 2023, 2024],
+                prior_state=prior_state,
             ),
             run_settings=RunSettings(
                 initialize=True,
@@ -100,9 +101,10 @@ async def test_archive_year_stability(mocker, tmp_path):
         # Run again and validate stability
         summary, _ = await orchestrate_run(
             dataset="ferc1",
-            downloader=Ferc1Archiver(
+            archiver_factory=lambda prior_state: Ferc1Archiver(
                 session,
                 only_years=[2022, 2023, 2024],
+                prior_state=prior_state,
             ),
             run_settings=RunSettings(
                 initialize=False,

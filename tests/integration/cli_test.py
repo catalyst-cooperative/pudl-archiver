@@ -6,6 +6,7 @@ import aiohttp
 import pytest
 from click.testing import CliRunner
 
+from pudl_archiver.archivers.classes import PriorState
 from pudl_archiver.archivers.eia.eia860 import Eia860Archiver
 from pudl_archiver.archivers.ferc.ferc1 import Ferc1Archiver
 from pudl_archiver.archivers.validate import RunSummary, ValidationTestResult
@@ -95,7 +96,10 @@ async def test_cli(
 
     _, kwargs = orchestrate_run_mock.await_args
     assert kwargs["dataset"] == dataset
-    assert type(kwargs["downloader"]) is downloader
+    prior_state = PriorState()
+    archiver = kwargs["archiver_factory"](prior_state)
+    assert type(archiver) is downloader
+    assert archiver.prior_state is prior_state
     assert isinstance(kwargs["session"], aiohttp.ClientSession)
     assert isinstance(kwargs["run_settings"], RunSettings)
 
