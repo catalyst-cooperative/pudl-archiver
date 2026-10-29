@@ -10,6 +10,7 @@ import typing
 import zipfile
 from abc import ABC, abstractmethod
 from contextlib import nullcontext
+from dataclasses import dataclass
 from html.parser import HTMLParser
 from pathlib import Path
 from secrets import randbelow
@@ -111,6 +112,18 @@ async def _download_file(
         return response.status
 
 
+@dataclass(frozen=True)
+class PriorState:
+    """What is known, before an archiving run starts, about the previous archive.
+
+    The orchestrator builds this and gives it to the archiver when it creates it, so
+    that ``get_resources`` can check what it finds against what was archived before.
+    """
+
+    baseline_datapackage: DataPackage | None = None
+    """The datapackage of the previous version of the archive, if there is one."""
+
+
 class AbstractDatasetArchiver(ABC):
     """An abstract base archiver class."""
 
@@ -136,6 +149,7 @@ class AbstractDatasetArchiver(ABC):
         self,
         session: aiohttp.ClientSession,
         only_years: list[int] | None = None,
+        prior_state: PriorState | None = None,
     ):
         """Initialize Archiver object.
 
@@ -143,6 +157,9 @@ class AbstractDatasetArchiver(ABC):
             session: Async HTTP client session manager.
             only_years: a list of years to download data for. If empty list or
                 None, download all years' data.
+            prior_state: What is known about the previous version of the archive,
+                for checking what the archiver finds against it. Defaults to an
+                empty state, as for a first-time archive.
             download_directory: where to save data to. Defaults to temp dir.
         """
         self.session = session
@@ -157,6 +174,8 @@ class AbstractDatasetArchiver(ABC):
         self.file_validations: list[validate.FileUniversalValidation] = []
 
         self.failed_partitions: dict[str, Partitions] = {}
+
+        self.prior_state = prior_state or PriorState()
 
         # Create logger
         self.logger = logging.getLogger(f"catalystcoop.{__name__}")
