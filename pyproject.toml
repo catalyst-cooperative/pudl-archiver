@@ -8,6 +8,7 @@ readme = { file = "README.md", content-type = "text/markdown" }
 
 [project.scripts]
 pudl_archiver = "pudl_archiver.cli:main"
+make_markdown_notification = "pudl_archiver.scripts.make_markdown_notification:main"
 
 [build-system]
 build-backend = "hatchling.build"
@@ -26,6 +27,7 @@ testpaths = ["./"]
 filterwarnings = [
   "ignore:distutils Version classes are deprecated:DeprecationWarning",
   "ignore:Creating a LegacyVersion:DeprecationWarning:pkg_resources[.*]",
+  "ignore:grpcio < 1.83.0 does not support Post-Quantum Cryptography:FutureWarning",
 ]
 addopts = ["--verbose"]
 log_format = "%(asctime)s [%(levelname)8s] %(name)s:%(lineno)s %(message)s"

@@ -146,7 +146,7 @@ async def test_zenodo_workflow(
     # Test with auto publish off (should succeed, but not publish)
     v1_summary, v1_refreshed = await orchestrate_run(
         dataset="pudl_test",
-        downloader=TestDownloader(v1_resources, session=session),
+        archiver_factory=lambda _: TestDownloader(v1_resources, session=session),
         run_settings=settings,
         session=session,
     )
@@ -157,7 +157,7 @@ async def test_zenodo_workflow(
     settings = settings.model_copy(update={"auto_publish": True})
     v1_summary, v1_refreshed = await orchestrate_run(
         dataset="pudl_test",
-        downloader=TestDownloader(v1_resources, session=session),
+        archiver_factory=lambda _: TestDownloader(v1_resources, session=session),
         run_settings=settings,
         session=session,
     )
@@ -191,7 +191,7 @@ async def test_zenodo_workflow(
     downloader.fail_on_dataset_size_change = False
     v2_summary, v2_refreshed = await orchestrate_run(
         dataset="pudl_test",
-        downloader=downloader,
+        archiver_factory=lambda _: downloader,
         run_settings=settings,
         session=session,
     )
@@ -204,7 +204,7 @@ async def test_zenodo_workflow(
     downloader.fail_on_missing_files = False
     v2_summary, v2_refreshed = await orchestrate_run(
         dataset="pudl_test",
-        downloader=downloader,
+        archiver_factory=lambda _: downloader,
         run_settings=settings,
         session=session,
     )
@@ -233,7 +233,7 @@ async def test_zenodo_workflow(
         downloader.fail_on_missing_files = False
         vc_summary, vc_refreshed = await orchestrate_run(
             dataset="pudl_test",
-            downloader=downloader,
+            archiver_factory=lambda _: downloader,
             run_settings=settings,
             session=session,
         )
@@ -252,7 +252,7 @@ async def test_zenodo_workflow(
     # re-run with normal checksums
     vc_summary, vc_refreshed = await orchestrate_run(
         dataset="pudl_test",
-        downloader=downloader,
+        archiver_factory=lambda _: downloader,
         run_settings=settings,
         session=session,
     )
@@ -268,7 +268,7 @@ async def test_zenodo_workflow(
     ):
         v3_summary, v3_refreshed = await orchestrate_run(
             dataset="pudl_test",
-            downloader=downloader,
+            archiver_factory=lambda _: downloader,
             run_settings=settings,
             session=session,
         )
@@ -277,7 +277,7 @@ async def test_zenodo_workflow(
     # no updates to make, should not leave the conceptdoi pointing at a draft
     v4_summary, _ = await orchestrate_run(
         dataset="pudl_test",
-        downloader=downloader,
+        archiver_factory=lambda _: downloader,
         run_settings=settings,
         session=session,
     )

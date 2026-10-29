@@ -2,12 +2,13 @@
 
 import logging
 import tempfile
+from collections.abc import Callable
 from pathlib import Path
 
 import aiohttp
 from upath import UPath
 
-from pudl_archiver.archivers.classes import AbstractDatasetArchiver
+from pudl_archiver.archivers.classes import AbstractDatasetArchiver, PriorState
 from pudl_archiver.archivers.validate import (
     MetadataArchiveSummary,
     RunSummary,
@@ -63,16 +64,30 @@ async def _remove_files_and_describe(
 
 async def orchestrate_run(
     dataset: str,
-    downloader: AbstractDatasetArchiver,
+    archiver_factory: Callable[[PriorState], AbstractDatasetArchiver],
     run_settings: RunSettings,
     session: aiohttp.ClientSession,
     skip_partitions: dict[str, Partitions] | None = None,
 ) -> tuple[RunSummary, PublishedDeposition | None]:
-    """Use downloader and depositor to archive a dataset."""
+    """Use an archiver and depositor to archive a dataset.
+
+    The archiver is created here, once the previous version of the archive has been
+    fetched, so that it starts out knowing about it.
+
+    Args:
+        dataset: Name of the dataset.
+        archiver_factory: Creates the archiver, given what is known about the
+            previous version of the archive.
+        run_settings: Settings of the run.
+        session: HTTP session.
+        skip_partitions: Partitions, by filename, that a previous run archived, and
+            which this run, a retry, doesn't need to download again.
+    """
     skip_partitions = skip_partitions or {}
     resources = {}
     # Get datapackage from previous version if there is one
     draft, original_datapackage = await get_deposition(dataset, session, run_settings)
+    downloader = archiver_factory(PriorState(baseline_datapackage=original_datapackage))
 
     # Download resources and add to archive
     run_exception = None
