@@ -685,9 +685,6 @@ class AbstractDatasetArchiver(ABC):
         if partition_to_test:
             if len(partition_to_test) == 1:
                 interval = VALID_PARTITION_RANGES[partition_to_test[0]]
-                expected_date_range = pd.date_range(
-                    min(dataset_partitions), max(dataset_partitions), freq=interval
-                )
                 if partition_to_test[0] == "year_quarter":
                     # "1995q1"-style strings have no fast vectorized parser in
                     # pandas, so use PeriodIndex instead of to_datetime to
@@ -700,12 +697,17 @@ class AbstractDatasetArchiver(ABC):
                     observed_date_range = pd.to_datetime(
                         dataset_partitions, format="%Y-%m"
                     )
+                # Build the expected range from the parsed dates: passing "1995q1"
+                # strings straight to date_range is deprecated in pandas 3.
+                expected_date_range = pd.date_range(
+                    observed_date_range.min(), observed_date_range.max(), freq=interval
+                )
                 diff = expected_date_range.difference(observed_date_range)
 
                 if observed_date_range.has_duplicates:
                     success = False
                     note = [
-                        f"Partition contains duplicate time periods of data: f{observed_date_range.duplicated()}"
+                        f"Partition contains duplicate time periods of data: {sorted(set(observed_date_range[observed_date_range.duplicated()].strftime('%Y-%m-%d')))}"
                     ]
                 elif not diff.empty:
                     success = False
