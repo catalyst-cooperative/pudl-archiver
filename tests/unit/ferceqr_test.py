@@ -6,7 +6,7 @@ import pandas as pd
 import pytest
 from playwright.async_api import Error as PlaywrightError
 
-from pudl_archiver.archivers.classes import VALID_PARTITION_RANGES
+from pudl_archiver.archivers.classes import VALID_PARTITION_RANGES, PriorState
 from pudl_archiver.archivers.ferc.ferceqr import FercEQRArchiver
 
 # Arbitrary quarters, deliberately not the real first and last ones, so that the
@@ -54,9 +54,10 @@ def _archived_before(*skip: str) -> SimpleNamespace:
 
 def _archiver(mocker, baseline=None) -> FercEQRArchiver:
     """Make an archiver that has no session and a given previous archive."""
-    archiver = FercEQRArchiver(session=mocker.MagicMock())
-    archiver.baseline_datapackage = baseline
-    return archiver
+    return FercEQRArchiver(
+        session=mocker.MagicMock(),
+        prior_state=PriorState(baseline_datapackage=baseline),
+    )
 
 
 async def _get_resources(mocker, urls, baseline=None):

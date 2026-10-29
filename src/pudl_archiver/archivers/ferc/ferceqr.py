@@ -96,11 +96,12 @@ class FercEQRArchiver(AbstractDatasetArchiver):
         ones that we archived before. Files only vanish when FERC is in the middle
         of updating them, or by mistake, so don't build a new archive without them.
         """
-        if self.baseline_datapackage is None or not self.fail_on_missing_files:
+        baseline = self.prior_state.baseline_datapackage
+        if baseline is None or not self.fail_on_missing_files:
             return
         previous = {
             match.group(1)
-            for resource in self.baseline_datapackage.resources
+            for resource in baseline.resources
             if (match := FILE_NAME_PATT.search(resource.name))
         }
         vanished = sorted(previous - year_quarters)

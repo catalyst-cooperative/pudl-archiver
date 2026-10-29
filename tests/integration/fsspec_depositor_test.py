@@ -139,7 +139,7 @@ async def test_retry_run_bad_zip(
 
     v1_summary, _ = await orchestrate_run(
         dataset="pudl_test",
-        downloader=TestDownloader(fail_part=True, session="session"),
+        archiver_factory=lambda _: TestDownloader(fail_part=True, session="session"),
         run_settings=settings,
         session="session",
     )
@@ -158,7 +158,7 @@ async def test_retry_run_bad_zip(
     v2_downloader = TestDownloader(fail_part=False, session="session")
     v2_summary, _ = await orchestrate_run(
         dataset="pudl_test",
-        downloader=v2_downloader,
+        archiver_factory=lambda _: v2_downloader,
         run_settings=settings,
         session="session",
         skip_partitions=v1_summary.successful_partitions,
@@ -226,7 +226,7 @@ async def test_retry_run_exception(
 
     v1_summary, _ = await orchestrate_run(
         dataset="pudl_test",
-        downloader=TestDownloader(fail_part=True, session="session"),
+        archiver_factory=lambda _: TestDownloader(fail_part=True, session="session"),
         run_settings=settings,
         session="session",
     )
@@ -247,7 +247,7 @@ async def test_retry_run_exception(
     v2_downloader = TestDownloader(fail_part=False, session="session")
     v2_summary, _ = await orchestrate_run(
         dataset="pudl_test",
-        downloader=v2_downloader,
+        archiver_factory=lambda _: v2_downloader,
         run_settings=settings,
         session="session",
         skip_partitions=v1_summary.successful_partitions,
@@ -307,7 +307,7 @@ async def test_retry_run_unpartitioned(
 
     v1_summary, _ = await orchestrate_run(
         dataset="pudl_test",
-        downloader=TestDownloader(fail_part=True, session="session"),
+        archiver_factory=lambda _: TestDownloader(fail_part=True, session="session"),
         run_settings=settings,
         session="session",
     )
@@ -326,7 +326,7 @@ async def test_retry_run_unpartitioned(
     v2_downloader = TestDownloader(fail_part=False, session="session")
     v2_summary, _ = await orchestrate_run(
         dataset="pudl_test",
-        downloader=v2_downloader,
+        archiver_factory=lambda _: v2_downloader,
         run_settings=settings,
         session="session",
         skip_partitions=v1_summary.successful_partitions,
@@ -391,7 +391,9 @@ async def test_publish_run(
 
     v1_summary, _ = await orchestrate_run(
         dataset="pudl_test",
-        downloader=TestDownloader(should_download=True, session="session"),
+        archiver_factory=lambda _: TestDownloader(
+            should_download=True, session="session"
+        ),
         run_settings=settings,
         session="session",
     )
@@ -413,7 +415,7 @@ async def test_publish_run(
     v2_downloader = TestDownloader(should_download=False, session="session")
     v2_summary, _ = await orchestrate_run(
         dataset="pudl_test",
-        downloader=v2_downloader,
+        archiver_factory=lambda _: v2_downloader,
         run_settings=settings,
         session="session",
         skip_partitions=v1_summary.successful_partitions,
@@ -472,7 +474,7 @@ async def test_fsspec_depositor(
     settings = settings.model_copy(update={"auto_publish": True})
     v1_summary, _v1_refreshed = await orchestrate_run(
         dataset="pudl_test",
-        downloader=TestDownloader(v1_resources, session="session"),
+        archiver_factory=lambda _: TestDownloader(v1_resources, session="session"),
         run_settings=settings,
         session="session",
     )
