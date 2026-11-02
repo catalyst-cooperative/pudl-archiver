@@ -238,6 +238,7 @@ def publish_run(summary_file: str):
             dataset=previous_run_summary.dataset_name,
             run_settings=previous_run_summary.run_settings,
             skip_partitions=successful_partitions,
+            skip_checksums=previous_run_summary.uploaded_checksums,
         )
     )
 
@@ -277,6 +278,7 @@ def retry_run(summary_file: str, auto_publish: bool):
             dataset=failed_run_summary.dataset_name,
             run_settings=failed_run_summary.run_settings,
             skip_partitions=successful_partitions,
+            skip_checksums=failed_run_summary.uploaded_checksums,
         )
     )
 

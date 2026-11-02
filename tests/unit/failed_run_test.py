@@ -25,13 +25,14 @@ async def _archive_v1_then_fail_v2(fake_archive, fail="downloading"):
     return fake_archive.load(summary_file)
 
 
-async def _retry(fake_archive, failed, auto_publish=True):
+async def _retry(fake_archive, failed, auto_publish=True, trust_all=False):
     """Retry a failed run the way `retry-run` does, returning its summary."""
     summary_file, settings = fake_archive.prepare(V2, 3, auto_publish=auto_publish)
     await archive_dataset(
         "pudl_test",
         settings,
         skip_partitions=failed.successful_partitions,
+        skip_checksums={} if trust_all else failed.uploaded_checksums,
     )
     return fake_archive.load(summary_file)
 
@@ -68,6 +69,9 @@ async def test_failure_to_download_leaves_the_draft_and_archive_as_they_were(
         "Run exception validation test"
     ]
     assert summary.file_changes == []
+    assert set(summary.uploaded_checksums) == (
+        {"a.txt"} if fail == "downloading" else set()
+    )
 
 
 @pytest.mark.asyncio
@@ -89,6 +93,8 @@ async def test_retry_resumes_from_a_failed_draft(fake_archive):
     assert [c.name for c in summary.file_changes] == ["a.txt"]
     # and the draft is gone, with its marker
     assert not list(fake_archive.workspace.glob("*"))
+    # The retry says what it uploaded, so that another retry could skip it too
+    assert set(summary.uploaded_checksums) == {"a.txt", "b.txt"}
 
 
 @pytest.mark.asyncio
@@ -116,11 +122,40 @@ async def test_retry_that_is_not_published_is_no_longer_marked_incomplete(
         "pudl_test",
         settings,
         skip_partitions=retried.successful_partitions,
+        skip_checksums=retried.uploaded_checksums,
     )
     assert fake_archive.load(summary_file).success
     assert fake_archive.downloaded == []
     assert fake_archive.published()["a.txt"] == b"a, now changed"
     assert not list(fake_archive.workspace.glob("*"))
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "edit,trust_all,expected",
+    [
+        ("edit", False, ["a.txt", "b.txt"]),
+        ("delete", False, ["a.txt", "b.txt"]),
+        # Run summaries from before the checksums were recorded don't have them
+        ("edit", True, ["b.txt"]),
+    ],
+    ids=["edited", "deleted", "unverifiable"],
+)
+async def test_retry_only_skips_files_that_are_in_the_draft_as_they_were(
+    fake_archive, edit, trust_all, expected
+):
+    failed = await _archive_v1_then_fail_v2(fake_archive)
+    uploaded = fake_archive.workspace / "a.txt"
+    if edit == "edit":
+        uploaded.write_bytes(b"tampered with")
+    else:
+        uploaded.unlink()
+    fake_archive.downloaded.clear()
+
+    summary = await _retry(fake_archive, failed, trust_all=trust_all)
+
+    assert summary.success
+    assert fake_archive.downloaded == expected
 
 
 @pytest.mark.asyncio
