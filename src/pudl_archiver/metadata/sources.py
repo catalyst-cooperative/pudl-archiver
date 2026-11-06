@@ -592,9 +592,10 @@ NON_PUDL_SOURCES: dict[str, Any] = {
             "interconnection procedures require transmission providers to keep a "
             "list of all interconnection requests on OASIS, including each "
             "request's size, location, point of interconnection, requested "
-            "in-service date and status. PacifiCorp publishes the queue as one HTML "
-            "page per cluster study. The "
-            "postings record a request's current status but generally not when it "
+            "in-service date and status. PacifiCorp publishes each queue as an HTML "
+            "page: one per cluster study, plus its serial, surplus, provisional, "
+            "fast-track and other queues, and archive pages for serial requests that "
+            "were withdrawn or went into service. The postings record a request's current status but generally not when it "
             "changed, so successive archived versions preserve a history that no "
             "single posting contains."
         ),
