@@ -3,10 +3,12 @@ import zipfile
 import pytest
 
 from pudl_archiver.archivers.pacificorpqueue import (
+    PAGE_TIMEOUT_MS,
     PacifiCorpQueueArchiver,
     other_partition_name,
     partition_name,
     queue_pages,
+    validate_url,
 )
 
 BASE = "https://www.oasis.oati.com/woa/docs/PPW/PPWdocs"
@@ -142,7 +144,7 @@ def test_queue_pages_rejects_addresses_off_the_oasis_site():
             )
         ]
     )
-    with pytest.raises(RuntimeError, match="points off the OASIS site"):
+    with pytest.raises(RuntimeError, match="Menu entry .* is off the OASIS site"):
         queue_pages(tree)
 
 
@@ -239,9 +241,60 @@ async def test_fetch_page_rejects_a_redirect_off_the_oasis_site(mocker):
     response = mocker.Mock(url="https://example.com/pacificorpcliaq4.htm", status=200)
     page = browser_returning(mocker, archiver, response)
 
-    with pytest.raises(RuntimeError, match="redirected off the OASIS site"):
+    with pytest.raises(RuntimeError, match="redirected, and its target is off"):
         await archiver.fetch_page(f"{BASE}/pacificorpcliaq4.htm")
     page.close.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_fetch_page_rejects_a_redirect_to_plain_http(mocker):
+    archiver = PacifiCorpQueueArchiver(mocker.AsyncMock())
+    plain = "http://www.oasis.oati.com/woa/docs/PPW/PPWdocs/pacificorpcliaq4.htm"
+    response = mocker.Mock(url=plain, status=200)
+    page = browser_returning(mocker, archiver, response)
+
+    with pytest.raises(RuntimeError, match="redirected, and its target is off"):
+        await archiver.fetch_page(f"{BASE}/pacificorpcliaq4.htm")
+    page.close.assert_awaited_once()
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://example.com/pacificorpcliaq4.htm",
+        "http://www.oasis.oati.com/woa/docs/PPW/PPWdocs/pacificorpcliaq4.htm",
+        "https://www.oasis.oati.com.example.com/pacificorpcliaq4.htm",
+        "/woa/docs/PPW/PPWdocs/pacificorpcliaq4.htm",
+    ],
+)
+def test_validate_url_rejects_addresses_off_the_oasis_site(url):
+    with pytest.raises(RuntimeError, match="The address is off the OASIS site"):
+        validate_url(url, "The address")
+
+
+def test_validate_url_returns_an_oasis_address_unchanged():
+    url = f"{BASE}/pacificorplgiaqw.htm"
+    assert validate_url(url, "The address") == url
+
+
+@pytest.mark.asyncio
+async def test_start_browser_allows_slow_pages(mocker):
+    context = mocker.Mock()
+    browser = mocker.Mock(new_context=mocker.AsyncMock(return_value=context))
+    playwright = mocker.Mock()
+    playwright.chromium.launch = mocker.AsyncMock(return_value=browser)
+    starter = mocker.Mock(start=mocker.AsyncMock(return_value=playwright))
+    mocker.patch(
+        "pudl_archiver.archivers.pacificorpqueue.async_playwright",
+        return_value=starter,
+    )
+
+    archiver = PacifiCorpQueueArchiver(mocker.AsyncMock())
+    await archiver.start_browser()
+
+    browser.new_context.assert_awaited_once_with(ignore_https_errors=True)
+    context.set_default_timeout.assert_called_once_with(PAGE_TIMEOUT_MS)
+    assert PAGE_TIMEOUT_MS > 30_000  # Longer than Playwright's default.
 
 
 @pytest.mark.asyncio

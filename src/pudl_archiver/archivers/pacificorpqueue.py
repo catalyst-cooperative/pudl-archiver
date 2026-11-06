@@ -19,6 +19,17 @@ allows, only HTTPS addresses on the OATI host are accepted from the menu, and a 
 that loads from any other host is rejected.
 
 Each page is saved as the bytes the server sent, not as the browser's rendering of it.
+
+The archiver works in three steps, and the module is laid out in the same order:
+
+1. Find the queue pages. :meth:`PacifiCorpQueueArchiver.get_menu_tree` loads the OASIS
+   menu, and :func:`queue_pages` walks it to list the queue pages, keyed by partition.
+2. Validate and name them. :func:`page_url` takes each page's address from the menu and
+   checks it with :func:`validate_url`; :func:`partition_name` and
+   :func:`other_partition_name` turn menu titles into partition names.
+3. Download them. :meth:`PacifiCorpQueueArchiver.fetch_page` loads each page, checks
+   with :func:`validate_url` that it did not redirect off the OASIS site, and
+   :meth:`PacifiCorpQueueArchiver.get_queue_page` zips it unchanged.
 """
 
 import re
@@ -40,6 +51,12 @@ MENU_PAGE_URL = (
     f"https://{OASIS_HOST}/webSmartOASIS/HomePage?ProviderName=PPW&Homepage=1"
 )
 MENU_DATA_PATH = "/HomePage/GetData"
+PAGE_TIMEOUT_MS = 10 * 60 * 1000
+"""Ten minutes, as for the other Playwright downloads and the aiohttp session.
+
+Some pages take far longer than Playwright's 30-second default to load: the serial
+queue's withdrawn archive (pacificorplgiaqw.htm) lists every withdrawn request.
+"""
 GI_FOLDER = "Generation Interconnection"
 CLUSTER_FOLDER = "Cluster Queues"
 QUEUE_SUFFIX = " - Queue"
@@ -48,6 +65,9 @@ QUEUE_PAGE_PATTERN = re.compile(r"^pacificorp\w*\.htm$", re.IGNORECASE)
 
 COPY_URL_PATTERN = re.compile(r"CopyToClipboard\(this,'([^']+)'\)")
 """Each menu entry's full address appears in its copy-to-clipboard button."""
+
+
+# Step 1: find the queue pages in the OASIS menu.
 
 
 def find_folder(nodes: list[dict] | None, name: str) -> dict | None:
@@ -59,6 +79,100 @@ def find_folder(nodes: list[dict] | None, name: str) -> dict | None:
         if found is not None:
             return found
     return None
+
+
+def folder_pages(folder: dict) -> list[tuple[str, dict]]:
+    """List the queue pages in one folder of Generation Interconnection."""
+    name = (folder.get("textValue") or "").strip()
+    is_cluster = name == CLUSTER_FOLDER
+    if not is_cluster and not name.endswith("Queue"):
+        return []
+    pages = []
+    for node in folder.get("children") or []:
+        if not node.get("leaf"):
+            continue
+        title = (node.get("textValue") or "").strip()
+        if is_cluster and title.endswith(QUEUE_SUFFIX):
+            pages.append((partition_name(title), node))
+        elif not is_cluster and QUEUE_PAGE_PATTERN.match(node.get("FileName") or ""):
+            pages.append((other_partition_name(name, title), node))
+    return pages
+
+
+def queue_pages(tree: dict) -> dict[str, str]:
+    """List the queue pages in the OASIS menu, keyed by partition name.
+
+    Takes every "<cluster> - Queue" page in the Cluster Queues folder, and every
+    pacificorp*.htm page in the other folders of Generation Interconnection whose names
+    end in "Queue". Applications, studies and other documents are skipped. Each page's
+    address is validated with :func:`page_url` before it is returned.
+    """
+    gi = find_folder(tree.get("children"), GI_FOLDER)
+    if gi is None:
+        raise RuntimeError(
+            f"No '{GI_FOLDER}' folder in the OASIS menu; its layout may have changed."
+        )
+
+    found = [
+        entry
+        for folder in gi.get("children") or []
+        if not folder.get("leaf")
+        for entry in folder_pages(folder)
+    ]
+
+    pages: dict[str, str] = {}
+    for partition, node in found:
+        if partition in pages:
+            raise RuntimeError(
+                f"Two queue pages would share the partition {partition!r}."
+            )
+        pages[partition] = page_url(node)
+
+    if not pages:
+        raise RuntimeError(f"No queue pages found in the '{GI_FOLDER}' folder.")
+    return pages
+
+
+# Step 2: validate each page's address and name its partition.
+
+
+def validate_url(url: str, source: str) -> str:
+    """Check that an address is an HTTPS page on the OASIS site, and return it.
+
+    This is the one check on where the archiver may go. It is applied twice: to each
+    address taken from the menu (:func:`page_url`), and to the address each page
+    finally loads from, after any redirects
+    (:meth:`PacifiCorpQueueArchiver.fetch_page`). It matters because the browser skips
+    certificate checks for OATI's host.
+
+    Args:
+        url: the address to check.
+        source: where the address came from, for the error message.
+    """
+    parsed = urlparse(url)
+    if parsed.scheme != "https" or parsed.hostname != OASIS_HOST:
+        raise RuntimeError(f"{source} is off the OASIS site: {url}")
+    return url
+
+
+def page_url(node: dict) -> str:
+    """Return a menu entry's address, after validating it.
+
+    The address must pass :func:`validate_url` and must end in the file name the menu
+    gives for the entry.
+    """
+    title = node.get("textValue") or ""
+    match = COPY_URL_PATTERN.search(node.get("text") or "")
+    if match is None:
+        raise RuntimeError(f"No address found for menu entry {title!r}.")
+    url = validate_url(match.group(1), f"Menu entry {title!r}")
+
+    file_name = node.get("FileName")
+    if file_name and not urlparse(url).path.endswith(f"/{file_name}"):
+        raise RuntimeError(
+            f"Menu entry {title!r}: address {url} does not match file {file_name}."
+        )
+    return url
 
 
 def slug(text: str) -> str:
@@ -87,74 +201,7 @@ def other_partition_name(folder: str, title: str) -> str:
     return f"{base}-{slug(title)}"
 
 
-def page_url(node: dict) -> str:
-    """Return a menu entry's address, checking that it is a page on the OASIS site."""
-    title = node.get("textValue") or ""
-    match = COPY_URL_PATTERN.search(node.get("text") or "")
-    if match is None:
-        raise RuntimeError(f"No address found for menu entry {title!r}.")
-    url = match.group(1)
-
-    parsed = urlparse(url)
-    if parsed.scheme != "https" or parsed.hostname != OASIS_HOST:
-        raise RuntimeError(f"Menu entry {title!r} points off the OASIS site: {url}")
-    file_name = node.get("FileName")
-    if file_name and not parsed.path.endswith(f"/{file_name}"):
-        raise RuntimeError(
-            f"Menu entry {title!r}: address {url} does not match file {file_name}."
-        )
-    return url
-
-
-def folder_pages(folder: dict) -> list[tuple[str, dict]]:
-    """List the queue pages in one folder of Generation Interconnection."""
-    name = (folder.get("textValue") or "").strip()
-    is_cluster = name == CLUSTER_FOLDER
-    if not is_cluster and not name.endswith("Queue"):
-        return []
-    pages = []
-    for node in folder.get("children") or []:
-        if not node.get("leaf"):
-            continue
-        title = (node.get("textValue") or "").strip()
-        if is_cluster and title.endswith(QUEUE_SUFFIX):
-            pages.append((partition_name(title), node))
-        elif not is_cluster and QUEUE_PAGE_PATTERN.match(node.get("FileName") or ""):
-            pages.append((other_partition_name(name, title), node))
-    return pages
-
-
-def queue_pages(tree: dict) -> dict[str, str]:
-    """List the queue pages in the OASIS menu, keyed by partition name.
-
-    Takes every "<cluster> - Queue" page in the Cluster Queues folder, and every
-    pacificorp*.htm page in the other folders of Generation Interconnection whose names
-    end in "Queue". Applications, studies and other documents are skipped.
-    """
-    gi = find_folder(tree.get("children"), GI_FOLDER)
-    if gi is None:
-        raise RuntimeError(
-            f"No '{GI_FOLDER}' folder in the OASIS menu; its layout may have changed."
-        )
-
-    found = [
-        entry
-        for folder in gi.get("children") or []
-        if not folder.get("leaf")
-        for entry in folder_pages(folder)
-    ]
-
-    pages: dict[str, str] = {}
-    for partition, node in found:
-        if partition in pages:
-            raise RuntimeError(
-                f"Two queue pages would share the partition {partition!r}."
-            )
-        pages[partition] = page_url(node)
-
-    if not pages:
-        raise RuntimeError(f"No queue pages found in the '{GI_FOLDER}' folder.")
-    return pages
+# Step 3: download each page (the archiver class below).
 
 
 class PacifiCorpQueueArchiver(AbstractDatasetArchiver):
@@ -175,17 +222,25 @@ class PacifiCorpQueueArchiver(AbstractDatasetArchiver):
     async def get_resources(self) -> ArchiveAwaitable:
         """Download every queue page listed in the OASIS menu."""
         await self.start_browser()
+
+        # Steps 1 and 2: find the queue pages in the menu, validate their addresses
+        # and name their partitions.
         pages = queue_pages(await self.get_menu_tree())
         self.logger.info(f"Found PacifiCorp queue pages: {sorted(pages)}")
 
+        # Step 3: download each page.
         for partition, url in pages.items():
             yield self.get_queue_page(partition, url)
 
     async def start_browser(self) -> None:
-        """Start a headless browser that skips OATI's unverifiable certificate."""
+        """Start a headless browser that skips OATI's unverifiable certificate.
+
+        Every page load and wait in the browser uses :data:`PAGE_TIMEOUT_MS`.
+        """
         self.playwright = await async_playwright().start()
         self.browser = await self.playwright.chromium.launch()
         self.browser_context = await self.browser.new_context(ignore_https_errors=True)
+        self.browser_context.set_default_timeout(PAGE_TIMEOUT_MS)
 
     async def after_download(self) -> None:
         """Close the browser once every page has been downloaded."""
@@ -214,9 +269,11 @@ class PacifiCorpQueueArchiver(AbstractDatasetArchiver):
     async def fetch_page(self, url: str) -> tuple[int, bytes]:
         """Load a page from the OATI OASIS site, returning its status and contents.
 
-        The contents are the response body exactly as the server sent it. The page's
-        ``content()`` is not used, because that is the browser's re-serialisation of
-        the page after parsing, not the file as published.
+        The page must finish loading on the OASIS site; a redirect elsewhere is
+        rejected by :func:`validate_url`. The contents are the response body exactly as
+        the server sent it. The page's ``content()`` is not used, because that is the
+        browser's re-serialisation of the page after parsing, not the file as
+        published.
         """
         page = await self.browser_context.new_page()
         try:
@@ -225,10 +282,7 @@ class PacifiCorpQueueArchiver(AbstractDatasetArchiver):
             )
             if response is None:
                 raise RuntimeError(f"No response when loading {url}.")
-            if urlparse(response.url).hostname != OASIS_HOST:
-                raise RuntimeError(
-                    f"Queue page {url} redirected off the OASIS site, to {response.url}."
-                )
+            validate_url(response.url, f"Queue page {url} redirected, and its target")
             return response.status, await response.body()
         finally:
             await page.close()
