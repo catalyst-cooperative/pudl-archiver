@@ -114,6 +114,8 @@ nrelcambium2022:
   production_doi: 10.5281/zenodo.14920258
 nrelcambium2023:
   production_doi: 10.5281/zenodo.14907942
+nrelcambium2024:
+  production_doi: 10.5281/zenodo.18036225
 nrelefs:
   production_doi: 10.5281/zenodo.14782873
   sandbox_doi: 10.5072/zenodo.180507
