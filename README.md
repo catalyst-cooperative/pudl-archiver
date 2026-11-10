@@ -86,7 +86,9 @@ For datasets that use PUDL source metadata, `pudl-archiver` loads a PUDL
 `s3://pudl.catalyst.coop/nightly/pudl_parquet_datapackage.json`
 
 To develop or test against a local descriptor, set `PUDL_DATAPACKAGE_PATH` to be the
-absolute path to your local `datapackage.json` file.
+absolute path to your local `datapackage.json` file. The FERC EQR is deployed with its
+own descriptor, read by default from `s3://pudl.catalyst.coop/ferceqr/datapackage.json`;
+override it with `FERCEQR_DATAPACKAGE_PATH`. Sources from both descriptors are merged.
 
 ### Using Docker
 `playwright` doesn't always play right with every environment, so we've provided a
