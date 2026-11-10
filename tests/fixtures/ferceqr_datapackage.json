@@ -1,0 +1,52 @@
+{
+  "contributors": [
+    {
+      "title": "Catalyst Cooperative",
+      "path": "https://catalyst.coop/",
+      "email": "pudl@catalyst.coop",
+      "roles": [
+        "publisher"
+      ],
+      "zenodo_role": "distributor",
+      "organization": "Catalyst Cooperative",
+      "name": "catalyst-cooperative"
+    }
+  ],
+  "sources": [
+    {
+      "name": "ferceqr",
+      "title": "FERC Form 920 -- Electric Quarterly Report (EQR)",
+      "path": "https://www.ferc.gov/industries-data/electric/power-sales-and-markets/electric-quarterly-reports-eqr",
+      "description": "The Electric Quarterly Report (EQR) is submitted by sellers participating in bilateral electricity market transactions.",
+      "keywords": [
+        "ferc",
+        "ferceqr",
+        "electric"
+      ],
+      "license_raw": {
+        "name": "other-pd",
+        "title": "U.S. Government Works",
+        "path": "https://www.usa.gov/publicdomain/label/1.0/"
+      },
+      "license_pudl": {
+        "name": "CC-BY-4.0",
+        "title": "Creative Commons Attribution 4.0",
+        "path": "https://creativecommons.org/licenses/by/4.0"
+      },
+      "contributors": [
+        {
+          "title": "Catalyst Cooperative",
+          "path": "https://catalyst.coop/",
+          "email": "pudl@catalyst.coop",
+          "roles": [
+            "publisher"
+          ],
+          "zenodo_role": "distributor",
+          "organization": "Catalyst Cooperative",
+          "name": "catalyst-cooperative"
+        }
+      ]
+    }
+  ],
+  "resources": []
+}

@@ -231,6 +231,61 @@ NON_PUDL_SOURCES: dict[str, Any] = {
         "license_pudl": LICENSES["cc-by-4.0"],
         "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
     },
+    "eiawater": {
+        "title": "EIA Thermoelectric Cooling Water",
+        "path": "https://www.eia.gov/electricity/data/water",
+        "description": (
+            "Monthly cooling water usage by generator and boiler. Data "
+            "collected in conjunction with the EIA-860 and EIA-923."
+        ),
+        "keywords": sorted(
+            set(
+                KEYWORDS["eia"]
+                + KEYWORDS["us_govt"]
+                + [
+                    "water",
+                    "thermoelectric",
+                    "cooling water",
+                    "water usage",
+                    "coolant",
+                    "water energy nexus",
+                    "energy water nexus",
+                ]
+            )
+        ),
+        "license_raw": LICENSES["us-govt"],
+        "license_pudl": LICENSES["cc-by-4.0"],
+        "email": "infoelectric@eia.gov",
+        "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
+    },
+    "mshamines": {
+        "title": "Mine Safety and Health Administration (MSHA) Mines",
+        "path": "https://arlweb.msha.gov/OpenGovernmentData/OGIMSHA.asp",
+        "description": (
+            "The Mine dataset lists all Coal and Metal/Non-Metal mines under MSHA's "
+            "jurisdiction. It includes such information as the current status of each "
+            "mine (Active, Abandoned, NonProducing, etc.), the current owner and "
+            "operating company, commodity codes and physical attributes of the mine."
+        ),
+        "keywords": sorted(
+            KEYWORDS["us_govt"]
+            + [
+                "msha",
+                "mshamines",
+                "mine safety and health administration",
+                "mines",
+                "mining",
+                "coal",
+                "metal",
+                "department of labor",
+                "safety",
+                "accident",
+            ]
+        ),
+        "license_raw": LICENSES["us-govt"],
+        "license_pudl": LICENSES["cc-by-4.0"],
+        "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
+    },
     "usgsuswtdb": {
         "title": "USGS USWTDB - U.S. Wind Turbine Database",
         "path": "https://energy.usgs.gov/uswtdb/",
