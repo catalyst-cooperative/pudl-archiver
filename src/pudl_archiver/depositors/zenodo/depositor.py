@@ -15,6 +15,7 @@ import yaml
 from pydantic import BaseModel, PrivateAttr
 
 from pudl_archiver.depositors.depositor import (
+    INCOMPLETE_MARKER,
     DepositorAPIClient,
     DraftDeposition,
     PublishedDeposition,
@@ -645,6 +646,7 @@ class ZenodoDraftDeposition(DraftDeposition):
 
     async def publish(self) -> ZenodoPublishedDeposition:
         """Publish draft deposition and return new depositor with updated deposition."""
+        await self.raise_if_incomplete()
         published = await self.api_client.publish(self.deposition)
         if self.settings.initialize:
             self.api_client.update_dataset_settings(self.dataset_id, published)
@@ -737,7 +739,7 @@ class ZenodoDraftDeposition(DraftDeposition):
         resources = [
             _resource_from_file(f, partitions_in_deposition[f.filename])
             for f in self.deposition.files
-            if f.filename != "datapackage.json"
+            if f.filename not in ("datapackage.json", INCOMPLETE_MARKER)
         ]
         datapackage = DataPackage.new_datapackage(
             self.dataset_id,
