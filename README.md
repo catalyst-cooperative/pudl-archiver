@@ -86,7 +86,9 @@ For datasets that use PUDL source metadata, `pudl-archiver` loads a PUDL
 `s3://pudl.catalyst.coop/nightly/pudl_parquet_datapackage.json`
 
 To develop or test against a local descriptor, set `PUDL_DATAPACKAGE_PATH` to be the
-absolute path to your local `datapackage.json` file.
+absolute path to your local `datapackage.json` file. The FERC EQR is deployed with its
+own descriptor, read by default from `s3://pudl.catalyst.coop/ferceqr/datapackage.json`;
+override it with `FERCEQR_DATAPACKAGE_PATH`. Sources from both descriptors are merged.
 
 ### Using Docker
 `playwright` doesn't always play right with every environment, so we've provided a
@@ -183,6 +185,11 @@ pudl_archiver retry-run {run_summary_json_file}
 
 This command will inherit all settings from the previous run except `--auto-publish` to
 avoid accidental publication.
+
+A run that fails leaves its draft deposition holding the files that it uploaded, so that
+a retry can resume from them. The draft is marked as incomplete: it contains a file called
+`INCOMPLETE_DO_NOT_PUBLISH.txt` that says why the run failed, it has no `datapackage.json`,
+and the archiver refuses to publish it. The marker is removed when a retry completes.
 
 During a retry, the archiver expects all successfully downloaded resources to still
 be in the draft deposition. If the state of the deposition has been changed in any
