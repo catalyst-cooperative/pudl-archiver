@@ -25,12 +25,14 @@ class Ferc2Archiver(AbstractDatasetArchiver):
             * 1996-2021 DBF data from the FERC Online Viewer
             * 2022-present XBRL data from the FERC RSS Feed.
         """
-        self.playwright = await async_playwright().start()
-        self.browser = await self.playwright.webkit.launch()
-
         ferc_historical_dbf_years = [
             year for year in range(1991, 1996) if self.valid_year(year)
         ]
+        # Only the historical DBF downloads need a browser, so only start one if
+        # any of those years were requested.
+        if ferc_historical_dbf_years:
+            self.playwright = await async_playwright().start()
+            self.browser = await self.playwright.webkit.launch()
         for year in ferc_historical_dbf_years:
             for part in [1, 2]:
                 yield self.get_year_dbf(year, part)
@@ -52,6 +54,15 @@ class Ferc2Archiver(AbstractDatasetArchiver):
             self.valid_year,
             self.session,
         )
+
+    async def after_download(self) -> None:
+        """Close the browser, if one was started, once downloads are complete."""
+        if getattr(self, "browser", None) is not None:
+            await self.browser.close()
+            self.browser = None
+        if getattr(self, "playwright", None) is not None:
+            await self.playwright.stop()
+            self.playwright = None
 
     async def get_year_dbf(
         self, year: int, part: int | None = None
