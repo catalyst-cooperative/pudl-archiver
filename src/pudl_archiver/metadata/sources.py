@@ -1,5 +1,6 @@
 """Metadata and operational constants."""
 
+from datetime import datetime
 from typing import Any
 
 import pandas as pd
@@ -34,6 +35,37 @@ ADDL_CONTRIBUTORS: dict[str, dict[str, Any]] = {
 
 
 NON_PUDL_SOURCES: dict[str, Any] = {
+    "blscpi": {
+        "title": "BLS CPI -- Bureau of Labor Statistics CPI for All Urban Consumers (CPI-U)",
+        "path": "https://www.bls.gov/news.release/cpi.toc.htm",
+        "description": (
+            """
+            The Consumer Price Index (CPI) is a metric produced by the Bureau of Labor Statistics (BLS) which measures the change in prices
+            paid by consumers for goods and services. Within that, the CPI-U captures the spending patterns of an urban consumer group,
+            which represents over 90 percent of the total U.S. population. It is based on the expenditures
+            of almost all residents of urban or metropolitan areas, including professionals, the self-employed, the poor, the
+            unemployed, and retired people, as well as urban wage earners and clerical workers.
+            """
+        ),
+        "working_partitions": {"years": range(1990, datetime.now().year)},
+        "keywords": sorted(
+            {
+                "cpi",
+                "price",
+                "inflation",
+                "consumer",
+                "energy price",
+                "energy burden",
+                "bls",
+                "bureau of labor statistics",
+                "consumer price index",
+            }
+        ),
+        "license_raw": LICENSES["us-govt"],
+        "license_pudl": LICENSES["cc-by-4.0"],
+        "email": "cpi_info@bls.gov",
+        "contributors": [CONTRIBUTORS["catalyst-cooperative"]],
+    },
     "doelead": {
         "title": "DOE LEAD -- Low Income Energy Affordability Data",
         "path": "https://www.energy.gov/scep/low-income-energy-affordability-data-lead-tool",
