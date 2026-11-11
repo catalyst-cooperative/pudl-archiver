@@ -27,8 +27,8 @@ The archiver works in three steps, and the module is laid out in the same order:
 2. Validate and name them. :func:`page_url` takes each page's address from the menu and
    checks it with :func:`validate_url`; :func:`partition_name` and
    :func:`other_partition_name` turn menu titles into partition names.
-3. Download them. :meth:`PacifiCorpQueueArchiver.fetch_page` loads each page, checks
-   with :func:`validate_url` that it did not redirect off the OASIS site, and
+3. Download them. :meth:`PacifiCorpQueueArchiver.fetch_page` downloads each page,
+   checks with :func:`validate_url` that it did not redirect off the OASIS site, and
    :meth:`PacifiCorpQueueArchiver.get_queue_page` zips it unchanged.
 """
 
@@ -84,6 +84,10 @@ def find_folder(nodes: list[dict] | None, name: str) -> dict | None:
 def folder_pages(folder: dict) -> list[tuple[str, dict]]:
     """List the queue pages in one folder of Generation Interconnection."""
     name = (folder.get("textValue") or "").strip()
+    # The cluster folder contains multiple queue links, one per cluster study, each
+    # titled "<cluster> - Queue". The other folders are expected to contain one queue
+    # link each, matched by file name rather than title; the exception is Serial Queue,
+    # which also holds its archive pages.
     is_cluster = name == CLUSTER_FOLDER
     if not is_cluster and not name.endswith("Queue"):
         return []
@@ -120,6 +124,8 @@ def queue_pages(tree: dict) -> dict[str, str]:
         for entry in folder_pages(folder)
     ]
 
+    # Loop through entries and add to pages with corresponding partition,
+    # checking that no two queue pages share identical partitions.
     pages: dict[str, str] = {}
     for partition, node in found:
         if partition in pages:
@@ -267,25 +273,31 @@ class PacifiCorpQueueArchiver(AbstractDatasetArchiver):
             await page.close()
 
     async def fetch_page(self, url: str) -> tuple[int, bytes]:
-        """Load a page from the OATI OASIS site, returning its status and contents.
+        """Download a page from the OATI OASIS site, returning its status and contents.
 
-        The page must finish loading on the OASIS site; a redirect elsewhere is
-        rejected by :func:`validate_url`. The contents are the response body exactly as
-        the server sent it. The page's ``content()`` is not used, because that is the
-        browser's re-serialisation of the page after parsing, not the file as
-        published.
+        Queue pages are static files, so they are downloaded with the browser
+        context's request client rather than opened in a browser tab. A page opened in
+        a tab can only return its body while Chromium's DevTools still holds it, and
+        DevTools keeps a limited amount per response: the serial queue's withdrawn
+        archive (pacificorplgiaqw.htm) is over 50 MB, so its body was evicted before it
+        could be read ("Request content was evicted from inspector cache"). The request
+        client shares the context's settings, including the skipped certificate check,
+        follows redirects, and returns the body exactly as the server sent it.
+
+        The page must finish on the OASIS site; a redirect elsewhere is rejected by
+        :func:`validate_url`.
         """
-        page = await self.browser_context.new_page()
+        response = await retry_async(
+            self.browser_context.request.get,
+            args=[url],
+            kwargs={"timeout": PAGE_TIMEOUT_MS},
+            retry_on=(PlaywrightError,),
+        )
         try:
-            response = await retry_async(
-                page.goto, args=[url], retry_on=(PlaywrightError,)
-            )
-            if response is None:
-                raise RuntimeError(f"No response when loading {url}.")
             validate_url(response.url, f"Queue page {url} redirected, and its target")
             return response.status, await response.body()
         finally:
-            await page.close()
+            await response.dispose()
 
     async def get_queue_page(self, partition: str, url: str) -> ResourceInfo:
         """Download one queue page and zip it, keeping the original file unchanged."""

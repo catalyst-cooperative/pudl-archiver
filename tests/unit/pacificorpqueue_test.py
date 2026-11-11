@@ -213,13 +213,12 @@ async def test_missing_queue_page_raises(mocker):
 
 
 def browser_returning(mocker, archiver, response):
-    """Give the archiver a browser whose pages load to this response."""
-    page = mocker.AsyncMock()
-    page.goto.return_value = response
-    page.content.return_value = "<html>the browser's rendering</html>"
-    archiver.browser_context = mocker.AsyncMock()
-    archiver.browser_context.new_page.return_value = page
-    return page
+    """Give the archiver a browser context whose requests return this response."""
+    response.body = mocker.AsyncMock(return_value=b"<html>as published</html>")
+    response.dispose = mocker.AsyncMock()
+    archiver.browser_context = mocker.Mock()
+    archiver.browser_context.request.get = mocker.AsyncMock(return_value=response)
+    return archiver.browser_context
 
 
 @pytest.mark.asyncio
@@ -227,23 +226,35 @@ async def test_fetch_page_keeps_the_bytes_the_server_sent(mocker):
     archiver = PacifiCorpQueueArchiver(mocker.AsyncMock())
     url = f"{BASE}/pacificorpcliaq4.htm"
     response = mocker.Mock(url=url, status=200)
-    response.body = mocker.AsyncMock(return_value=b"<html>as published</html>")
-    page = browser_returning(mocker, archiver, response)
+    context = browser_returning(mocker, archiver, response)
 
     assert await archiver.fetch_page(url) == (200, b"<html>as published</html>")
-    page.content.assert_not_awaited()
-    page.close.assert_awaited_once()
+    context.request.get.assert_awaited_once_with(url, timeout=PAGE_TIMEOUT_MS)
+    response.dispose.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_fetch_page_does_not_open_a_browser_tab(mocker):
+    # Bodies read from a tab are held in Chromium's DevTools cache, which evicts large
+    # responses such as the withdrawn archive before they can be read.
+    archiver = PacifiCorpQueueArchiver(mocker.AsyncMock())
+    url = f"{BASE}/pacificorplgiaqw.htm"
+    context = browser_returning(mocker, archiver, mocker.Mock(url=url, status=200))
+
+    await archiver.fetch_page(url)
+    context.new_page.assert_not_called()
 
 
 @pytest.mark.asyncio
 async def test_fetch_page_rejects_a_redirect_off_the_oasis_site(mocker):
     archiver = PacifiCorpQueueArchiver(mocker.AsyncMock())
     response = mocker.Mock(url="https://example.com/pacificorpcliaq4.htm", status=200)
-    page = browser_returning(mocker, archiver, response)
+    browser_returning(mocker, archiver, response)
 
     with pytest.raises(RuntimeError, match="redirected, and its target is off"):
         await archiver.fetch_page(f"{BASE}/pacificorpcliaq4.htm")
-    page.close.assert_awaited_once()
+    response.body.assert_not_awaited()
+    response.dispose.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -251,11 +262,12 @@ async def test_fetch_page_rejects_a_redirect_to_plain_http(mocker):
     archiver = PacifiCorpQueueArchiver(mocker.AsyncMock())
     plain = "http://www.oasis.oati.com/woa/docs/PPW/PPWdocs/pacificorpcliaq4.htm"
     response = mocker.Mock(url=plain, status=200)
-    page = browser_returning(mocker, archiver, response)
+    browser_returning(mocker, archiver, response)
 
     with pytest.raises(RuntimeError, match="redirected, and its target is off"):
         await archiver.fetch_page(f"{BASE}/pacificorpcliaq4.htm")
-    page.close.assert_awaited_once()
+    response.body.assert_not_awaited()
+    response.dispose.assert_awaited_once()
 
 
 @pytest.mark.parametrize(
