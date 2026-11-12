@@ -1,6 +1,7 @@
 """Download Bureau of Labor Statistics (BLS) Consumer Price Index (CPI) data."""
 
 import datetime
+import json
 import os
 from typing import ClassVar
 
@@ -9,6 +10,7 @@ from pudl_archiver.archivers.classes import (
     ArchiveAwaitable,
     ResourceInfo,
 )
+from pudl_archiver.frictionless import ZipLayout
 
 "https://fred.stlouisfed.org/graph/fredgraph.csv?bgcolor=%23ebf3fb&chart_type=line&drp=0&fo=open%20sans&graph_bgcolor=%23ffffff&height=450&mode=fred&recession_bars=on&txtcolor=%23444444&ts=12&tts=12&width=1320&nt=0&thu=0&trc=0&show_legend=yes&show_axis_titles=yes&show_tooltip=yes&id=CPIAUCSL&scale=left&cosd=1947-01-01&coed=2026-10-01&line_color=%230073e6&link_values=false&line_style=solid&mark_type=none&mw=3&lw=3&ost=-99999&oet=99999&mma=0&fml=a&fq=Monthly&fam=avg&fgst=lin&fgsnd=2020-02-01&line_index=1&transformation=lin&vintage_date=2026-11-11&revision_date=2026-11-11&nd=1947-01-01"
 
@@ -17,6 +19,8 @@ class BlsCpiArchiver(AbstractDatasetArchiver):
     """BLS CPI archiver."""
 
     name = "blscpi"
+    concurrency_limit = 1  # Cranky old server
+
     start_year = 1990  # Last major revision was in 1987, this seems like a reasonable history to start.
     end_year = datetime.datetime.now().year
 
@@ -28,7 +32,8 @@ class BlsCpiArchiver(AbstractDatasetArchiver):
     async def get_resources(self) -> ArchiveAwaitable:
         """Download BLS CPI resources."""
         for year in range(self.start_year, self.end_year + 1):
-            yield self.get_year_resource(year)
+            if self.valid_year(year):
+                yield self.get_year_resource(year)
 
     async def get_year_resource(self, year: int) -> ResourceInfo:
         """Download all available data for a year.
@@ -36,22 +41,40 @@ class BlsCpiArchiver(AbstractDatasetArchiver):
         Args:
             year: the year we're downloading data for
         """
+        series_ids = [
+            "CUUR0000SA0",
+            "CUSR0000SA0",
+        ]  # Which series to archive - in the future, could expand to multiple,
+
+        archive_path = self.download_directory / f"{self.name}-{year}.zip"
         response = await self.get_json(
             f"{self.base_url}/timeseries/data/",
             json=self.parameters
             | {
                 "startyear": str(year),
                 "endyear": str(year),
-                "seriesid": [
-                    "CUUR0000SA0"
-                ],  # Which series to archive - in the future, could expand to multiple,
+                "seriesid": series_ids,
                 "annualaverage": True,
             },
             headers={"Content-type": "application/json"},
             post=True,
         )
-        # TODO actually archive data....
-        if response:
-            pass
 
-        return ResourceInfo()
+        json_name = f"{self.name}-{year}.json"
+        json_path = self.download_directory / json_name
+
+        with json_path.open("w", encoding="utf-8") as json_file:
+            json.dump(response, json_file, indent=2)
+
+        with json_path.open("rb") as json_file:
+            self.add_to_archive(
+                zip_path=archive_path,
+                filename=json_name,
+                blob=json_file,
+            )
+
+        return ResourceInfo(
+            local_path=archive_path,
+            partitions={"year": year, "series": series_ids},
+            layout=ZipLayout(file_paths={json_path.name}),
+        )
