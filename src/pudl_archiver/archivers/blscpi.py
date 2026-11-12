@@ -1,5 +1,6 @@
 """Download Bureau of Labor Statistics (BLS) Consumer Price Index (CPI) data."""
 
+import asyncio
 import datetime
 import json
 import os
@@ -31,28 +32,40 @@ class BlsCpiArchiver(AbstractDatasetArchiver):
 
     async def get_resources(self) -> ArchiveAwaitable:
         """Download BLS CPI resources."""
-        for year in range(self.start_year, self.end_year + 1):
-            if self.valid_year(year):
-                yield self.get_year_resource(year)
+        years = sorted(
+            [
+                year
+                for year in range(self.start_year, self.end_year + 1)
+                if self.valid_year(year)
+            ]
+        )
+        year_chunks = [years[i : i + 10] for i in range(0, len(years), 10)]
+        for chunk in year_chunks:
+            yield self.get_year_resource(chunk)
 
-    async def get_year_resource(self, year: int) -> ResourceInfo:
+    async def get_year_resource(self, years: list[int]) -> ResourceInfo:
         """Download all available data for a year.
 
         Args:
             year: the year we're downloading data for
         """
+        self.logger.info(f"Archiving BLS data for {years}")
         series_ids = [
             "CUUR0000SA0",
             "CUSR0000SA0",
         ]  # Which series to archive - in the future, could expand to multiple,
+        start_year = years[0]
+        end_year = years[-1]
 
-        archive_path = self.download_directory / f"{self.name}-{year}.zip"
+        archive_path = (
+            self.download_directory / f"{self.name}-{start_year}-{end_year}.zip"
+        )
         response = await self.get_json(
             f"{self.base_url}/timeseries/data/",
             json=self.parameters
             | {
-                "startyear": str(year),
-                "endyear": str(year),
+                "startyear": str(start_year),
+                "endyear": str(end_year),
                 "seriesid": series_ids,
                 "annualaverage": True,
             },
@@ -60,7 +73,7 @@ class BlsCpiArchiver(AbstractDatasetArchiver):
             post=True,
         )
 
-        json_name = f"{self.name}-{year}.json"
+        json_name = f"{self.name}-{start_year}-{end_year}.json"
         json_path = self.download_directory / json_name
 
         with json_path.open("w", encoding="utf-8") as json_file:
@@ -73,8 +86,10 @@ class BlsCpiArchiver(AbstractDatasetArchiver):
                 blob=json_file,
             )
 
+        await asyncio.sleep(60)  # This is really a cranky server.
+
         return ResourceInfo(
             local_path=archive_path,
-            partitions={"year": year, "series": series_ids},
+            partitions={"year": years, "series": series_ids},
             layout=ZipLayout(file_paths={json_path.name}),
         )
