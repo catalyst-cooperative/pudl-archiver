@@ -38,13 +38,17 @@ class BlsCpiArchiver(AbstractDatasetArchiver):
         """
         response = await self.get_json(
             f"{self.base_url}/timeseries/data/",
-            data=self.parameters
+            json=self.parameters
             | {
-                "startyear": year,
-                "endyear": year + 1,
-                "seriesid": "LAUCN040010000000005",
+                "startyear": str(year),
+                "endyear": str(year),
+                "seriesid": [
+                    "CUUR0000SA0"
+                ],  # Which series to archive - in the future, could expand to multiple,
+                "annualaverage": True,
             },
             headers={"Content-type": "application/json"},
+            post=True,
         )
         # TODO actually archive data....
         if response:
