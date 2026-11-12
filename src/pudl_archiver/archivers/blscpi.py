@@ -13,8 +13,6 @@ from pudl_archiver.archivers.classes import (
 )
 from pudl_archiver.frictionless import ZipLayout
 
-"https://fred.stlouisfed.org/graph/fredgraph.csv?bgcolor=%23ebf3fb&chart_type=line&drp=0&fo=open%20sans&graph_bgcolor=%23ffffff&height=450&mode=fred&recession_bars=on&txtcolor=%23444444&ts=12&tts=12&width=1320&nt=0&thu=0&trc=0&show_legend=yes&show_axis_titles=yes&show_tooltip=yes&id=CPIAUCSL&scale=left&cosd=1947-01-01&coed=2026-10-01&line_color=%230073e6&link_values=false&line_style=solid&mark_type=none&mw=3&lw=3&ost=-99999&oet=99999&mma=0&fml=a&fq=Monthly&fam=avg&fgst=lin&fgsnd=2020-02-01&line_index=1&transformation=lin&vintage_date=2026-11-11&revision_date=2026-11-11&nd=1947-01-01"
-
 
 class BlsCpiArchiver(AbstractDatasetArchiver):
     """BLS CPI archiver."""
@@ -32,13 +30,7 @@ class BlsCpiArchiver(AbstractDatasetArchiver):
 
     async def get_resources(self) -> ArchiveAwaitable:
         """Download BLS CPI resources."""
-        years = sorted(
-            [
-                year
-                for year in range(self.start_year, self.end_year + 1)
-                if self.valid_year(year)
-            ]
-        )
+        years = sorted(year for year in range(self.start_year, self.end_year + 1))
         year_chunks = [years[i : i + 10] for i in range(0, len(years), 10)]
         for chunk in year_chunks:
             yield self.get_year_resource(chunk)
@@ -67,7 +59,7 @@ class BlsCpiArchiver(AbstractDatasetArchiver):
                 "startyear": str(start_year),
                 "endyear": str(end_year),
                 "seriesid": series_ids,
-                "annualaverage": True,
+                # "annualaverage": True,
             },
             headers={"Content-type": "application/json"},
             post=True,
