@@ -162,6 +162,7 @@ async def test_retry_run_bad_zip(
         run_settings=settings,
         session="session",
         skip_partitions=v1_summary.successful_partitions,
+        skip_checksums=v1_summary.uploaded_checksums,
     )
     assert not v2_downloader.good_downloaded
     assert v2_summary.success
@@ -251,6 +252,7 @@ async def test_retry_run_exception(
         run_settings=settings,
         session="session",
         skip_partitions=v1_summary.successful_partitions,
+        skip_checksums=v1_summary.uploaded_checksums,
     )
     assert v2_summary.success
     assert (deposition_path / "published" / "bad.zip").exists()
@@ -330,6 +332,7 @@ async def test_retry_run_unpartitioned(
         run_settings=settings,
         session="session",
         skip_partitions=v1_summary.successful_partitions,
+        skip_checksums=v1_summary.uploaded_checksums,
     )
     assert v2_summary.success
     assert (deposition_path / "published" / "good.zip").exists()
@@ -419,6 +422,7 @@ async def test_publish_run(
         run_settings=settings,
         session="session",
         skip_partitions=v1_summary.successful_partitions,
+        skip_checksums=v1_summary.uploaded_checksums,
     )
     assert v2_summary.success
     assert (deposition_path / "published" / "good.zip").exists()
