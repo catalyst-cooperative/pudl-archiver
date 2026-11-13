@@ -98,6 +98,14 @@ async def archive_dataset(
         skip_checksums: Checksums that the files of ``skip_partitions`` had in the
             draft at the end of the previous run, so a retry can check they still do.
     """
+    # Archivers may change the working directory during the run, so resolve the
+    # summary file path now, before any archiver can change the working directory.
+    summary_path = (
+        Path(run_settings.summary_file).absolute()
+        if run_settings.summary_file is not None
+        else None
+    )
+
     async with _make_session() as session:
         # List to gather all archivers to run asyncronously
         cls = ARCHIVERS.get(dataset)
@@ -116,9 +124,9 @@ async def archive_dataset(
             skip_checksums=skip_checksums,
         )
 
-    if run_settings.summary_file is not None:
+    if summary_path is not None:
         await asyncio.to_thread(
-            Path(run_settings.summary_file).write_text,
+            summary_path.write_text,
             json.dumps(summary.model_dump(), indent=2),
         )
 
