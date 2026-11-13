@@ -1,5 +1,7 @@
 """Test archiver pudl_archiver."""
 
+import os
+
 import pytest
 
 from pudl_archiver import archive_dataset
@@ -89,3 +91,41 @@ async def test_archive_dataset(
     with pytest.raises(RuntimeError):
         await archive_dataset("eia860", run_settings=settings)
     mocked_json_dump.assert_called_once_with(failed_run.model_dump(), indent=2)
+
+
+@pytest.mark.asyncio
+async def test_summary_written_when_archiver_changes_directory(
+    successful_run: RunSummary,
+    mocker,
+    monkeypatch,
+    tmp_path,
+):
+    """Test that the run summary is written where requested even if the archiver chdirs.
+
+    Archivers ``os.chdir`` into their download directory during a run, so a relative
+    summary file path must not be resolved against that directory.
+    """
+    mocker.patch.dict(
+        "os.environ",
+        {
+            "ZENODO_SANDBOX_TOKEN_UPLOAD": "bogus",
+            "ZENODO_SANDBOX_TOKEN_PUBLISH": "bogus too",
+        },
+    )
+    monkeypatch.chdir(tmp_path)
+    work_dir = tmp_path / "work"
+    work_dir.mkdir()
+
+    def run_in_work_dir(**kwargs):
+        os.chdir(work_dir)
+        return (successful_run, "published")
+
+    mocker.patch(
+        "pudl_archiver.orchestrate_run",
+        new=mocker.AsyncMock(side_effect=run_in_work_dir),
+    )
+    settings = RunSettings(summary_file="eia_run_summary.json")
+    await archive_dataset("eia860", run_settings=settings)
+
+    assert (tmp_path / "eia_run_summary.json").exists()
+    assert not (work_dir / "eia_run_summary.json").exists()
