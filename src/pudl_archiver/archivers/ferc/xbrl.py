@@ -220,6 +220,37 @@ class FilingMetadata(BaseModel):
         )
 
 
+class TaxonomyLoadError(RuntimeError):
+    """Arelle could not load every file that makes up a taxonomy."""
+
+
+def _load_taxonomy(taxonomy_entry_point: str) -> ModelXbrl.ModelXbrl:
+    """Use Arelle to load a taxonomy, and every file it references.
+
+    When Arelle can't load one of the files that make up a taxonomy (e.g. because a
+    download failed), it logs a ``FileNotLoadable`` error and carries on without it,
+    rather than raising. The taxonomy would then be archived with that file silently
+    missing, so raise instead, which lets the caller retry.
+
+    Args:
+        taxonomy_entry_point: URL of the file that is the entry point to the taxonomy.
+    """
+    cntlr = Cntlr.Cntlr()
+    cntlr.startLogging(logFileName="logToPrint")
+    model_manager = ModelManager.initialize(cntlr)
+    taxonomy = ModelXbrl.load(model_manager, taxonomy_entry_point)
+    # Arelle maps each file it had trouble with to whether it was blocked from loading
+    if unloadable := sorted(
+        url for url, blocked in taxonomy.urlUnloadableDocs.items() if blocked
+    ):
+        taxonomy.close()
+        raise TaxonomyLoadError(
+            f"Arelle could not load {len(unloadable)} file(s) of the taxonomy "
+            f"{taxonomy_entry_point}: {', '.join(unloadable)}"
+        )
+    return taxonomy
+
+
 async def archive_taxonomies(
     taxonomies_referenced: set[str],
     form: FercForm,
@@ -250,13 +281,10 @@ async def archive_taxonomies(
             logger.info(f"Archiving {taxonomy_entry_point}.")
 
             # Use Arelle to parse taxonomy
-            cntlr = Cntlr.Cntlr()
-            cntlr.startLogging(logFileName="logToPrint")
-            model_manager = ModelManager.initialize(cntlr)
             taxonomy = await retry_async(
                 asyncio.to_thread,
-                args=[ModelXbrl.load, model_manager, taxonomy_entry_point],
-                retry_on=(FileNotFoundError, FileExistsError),
+                args=[_load_taxonomy, taxonomy_entry_point],
+                retry_on=(FileNotFoundError, FileExistsError, TaxonomyLoadError),
             )
 
             # Loop through all files and save to appropriate location in archive
@@ -273,7 +301,9 @@ async def archive_taxonomies(
                         continue
 
                     # Download file
-                    response = await retry_async(session.get, args=[url])
+                    response = await retry_async(
+                        session.get, args=[url], kwargs={"raise_for_status": True}
+                    )
                     response_bytes = await retry_async(response.content.read)
                     path = Path(url_parsed.path).relative_to("/")
                     archive_files.add(path)
