@@ -193,7 +193,8 @@ and the archiver refuses to publish it. The marker is removed when a retry compl
 
 During a retry, the archiver skips the files that the failed run uploaded, but only if
 they are still in the draft deposition with the checksum that the run summary recorded.
-A file that is missing from the draft or has been changed since the failed run is
+A file that is missing from the draft, has been changed since the failed run, or has
+no recorded checksum (as in run summaries from before checksums were recorded) is
 downloaded again.
 
 Once a retry run has been kicked off, it will follow these steps below:

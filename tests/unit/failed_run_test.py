@@ -25,14 +25,14 @@ async def _archive_v1_then_fail_v2(fake_archive, fail="downloading"):
     return fake_archive.load(summary_file)
 
 
-async def _retry(fake_archive, failed, auto_publish=True, trust_all=False):
+async def _retry(fake_archive, failed, auto_publish=True, legacy_summary=False):
     """Retry a failed run the way `retry-run` does, returning its summary."""
     summary_file, settings = fake_archive.prepare(V2, 3, auto_publish=auto_publish)
     await archive_dataset(
         "pudl_test",
         settings,
         skip_partitions=failed.successful_partitions,
-        skip_checksums={} if trust_all else failed.uploaded_checksums,
+        skip_checksums={} if legacy_summary else failed.uploaded_checksums,
     )
     return fake_archive.load(summary_file)
 
@@ -132,27 +132,30 @@ async def test_retry_that_is_not_published_is_no_longer_marked_incomplete(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "edit,trust_all,expected",
+    "edit,legacy_summary,expected",
     [
         ("edit", False, ["a.txt", "b.txt"]),
         ("delete", False, ["a.txt", "b.txt"]),
-        # Run summaries from before the checksums were recorded don't have them
-        ("edit", True, ["b.txt"]),
+        # Run summaries from before the checksums were recorded don't have them,
+        # so nothing can be verified and everything is downloaded again
+        ("edit", True, ["a.txt", "b.txt"]),
+        ("delete", True, ["a.txt", "b.txt"]),
+        ("none", True, ["a.txt", "b.txt"]),
     ],
-    ids=["edited", "deleted", "unverifiable"],
+    ids=["edited", "deleted", "legacy-edited", "legacy-deleted", "legacy-untouched"],
 )
 async def test_retry_only_skips_files_that_are_in_the_draft_as_they_were(
-    fake_archive, edit, trust_all, expected
+    fake_archive, edit, legacy_summary, expected
 ):
     failed = await _archive_v1_then_fail_v2(fake_archive)
     uploaded = fake_archive.workspace / "a.txt"
     if edit == "edit":
         uploaded.write_bytes(b"tampered with")
-    else:
+    elif edit == "delete":
         uploaded.unlink()
     fake_archive.downloaded.clear()
 
-    summary = await _retry(fake_archive, failed, trust_all=trust_all)
+    summary = await _retry(fake_archive, failed, legacy_summary=legacy_summary)
 
     assert summary.success
     assert fake_archive.downloaded == expected

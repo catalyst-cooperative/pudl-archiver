@@ -74,9 +74,9 @@ def _verify_skipped_files(
     A retry skips the files that the failed run archived, trusting that they are
     still in the draft. The draft is a mix of old and new files, and it may have been
     edited since the failed run, so check each file's checksum against the one the
-    failed run recorded. A file that is missing, or has a different checksum, is
-    downloaded again. Summaries from before the checksums were recorded have none, so
-    their files are trusted, as they used to be.
+    failed run recorded. A file that is missing, that has a different checksum, or
+    that the failed run recorded no checksum for (as in summaries from before the
+    checksums were recorded) is downloaded again.
 
     Returns:
         The partitions that can be skipped, and the checksums of their files.
@@ -86,16 +86,17 @@ def _verify_skipped_files(
     for name, partitions in skip_partitions.items():
         in_draft = draft.get_checksum(name)
         expected = skip_checksums.get(name)
-        if expected is not None and in_draft != expected:
+        if in_draft is None or expected is None or in_draft != expected:
             logger.warning(
                 f"Not skipping {name}: the draft has "
                 f"{'no such file' if in_draft is None else f'checksum {in_draft}'}, but "
-                f"the previous run uploaded checksum {expected}. Downloading it again."
+                f"the previous run "
+                f"{'recorded no checksum' if expected is None else f'uploaded checksum {expected}'}. "
+                "Downloading it again."
             )
             continue
         verified[name] = partitions
-        if in_draft is not None:
-            checksums[name] = in_draft
+        checksums[name] = in_draft
     return verified, checksums
 
 
