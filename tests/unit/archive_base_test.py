@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 import requests
-from aiohttp import ClientSession
+from aiohttp import ClientResponseError, ClientSession
 
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver, ArchiveAwaitable
 from pudl_archiver.archivers.validate import ValidationTestResult, validate_filetype
@@ -735,3 +735,51 @@ def test_check_file_type(
 
     validation_result = validate_filetype(bad_zipfile, True)
     assert not validation_result.success
+
+
+@pytest.fixture
+async def flaky_server():
+    """Serve a page of links that fails with HTTP 503 the first time it is fetched."""
+    from aiohttp import web
+    from aiohttp.test_utils import TestServer
+
+    requests = []
+
+    async def page(request):
+        requests.append(request.path)
+        if request.path == "/missing" or len(requests) == 1:
+            status = 404 if request.path == "/missing" else 503
+            return web.Response(status=status, text="<html>Service Unavailable</html>")
+        return web.Response(
+            text='<html><a href="test_2019.zip">test_2019.zip</a></html>',
+            content_type="text/html",
+        )
+
+    app = web.Application()
+    app.router.add_get("/{name}", page)
+    async with TestServer(app) as server:
+        server.requests = requests
+        yield server
+
+
+@pytest.mark.asyncio
+async def test_get_hyperlinks_retries_an_http_error(mocker, flaky_server):
+    mocker.patch("pudl_archiver.utils.asyncio.sleep")
+    async with ClientSession() as session:
+        archiver = MockArchiver(None)
+        archiver.session = session
+        links = await archiver.get_hyperlinks(
+            str(flaky_server.make_url("/page")), re.compile(r"test_\d{4}.zip")
+        )
+    assert set(links) == {"test_2019.zip"}
+    assert flaky_server.requests == ["/page", "/page"]
+
+
+@pytest.mark.asyncio
+async def test_get_hyperlinks_raises_if_the_page_keeps_failing(mocker, flaky_server):
+    mocker.patch("pudl_archiver.utils.asyncio.sleep")
+    async with ClientSession() as session:
+        archiver = MockArchiver(None)
+        archiver.session = session
+        with pytest.raises(ClientResponseError, match="404"):
+            await archiver.get_hyperlinks(str(flaky_server.make_url("/missing")))
