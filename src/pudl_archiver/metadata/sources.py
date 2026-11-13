@@ -677,4 +677,46 @@ NON_PUDL_SOURCES: dict[str, Any] = {
             ADDL_CONTRIBUTORS["noah-parsons"],
         ],
     },
+    "blscpi": {
+        "title": "BLS CPI -- Consumer Price Index",
+        "path": "https://www.bls.gov/cpi/",
+        "description": (
+            "The Bureau of Labor Statistics (BLS) Consumer Price Index (CPI) measures "
+            "the average change over time in the prices that urban consumers pay for "
+            "a market basket of goods and services. It is commonly used to convert "
+            "nominal prices into real, inflation-adjusted prices. This archive holds "
+            "the complete flat files that BLS publishes on its LABSTAT download site "
+            "for three CPI surveys: the CPI for All Urban Consumers (CPI-U, survey "
+            "code cu), the CPI for Urban Wage Earners and Clerical Workers (CPI-W, "
+            "cw) and the Chained CPI for All Urban Consumers (C-CPI-U, su). Each "
+            "survey's files contain the index values for every series, together with "
+            "the series, item, area and footnote definitions needed to read them. "
+            "BLS revises five years of seasonally adjusted values each February, so "
+            "earlier versions of this archive preserve values that BLS has since "
+            "replaced."
+        ),
+        "working_partitions": {"survey": ["cu", "cw", "su"]},
+        "keywords": sorted(
+            KEYWORDS["us_govt"]
+            + [
+                "bls",
+                "bureau of labor statistics",
+                "department of labor",
+                "cpi",
+                "consumer price index",
+                "cpi-u",
+                "cpi-w",
+                "chained cpi",
+                "inflation",
+                "prices",
+                "price index",
+            ]
+        ),
+        "license_raw": LICENSES["us-govt"],
+        "license_pudl": LICENSES["cc-by-4.0"],
+        "contributors": [
+            CONTRIBUTORS["catalyst-cooperative"],
+            ADDL_CONTRIBUTORS["noah-parsons"],
+        ],
+    },
 } | {f"nrelcambium{year}": nrel_cambium_generator(year) for year in range(2020, 2025)}
