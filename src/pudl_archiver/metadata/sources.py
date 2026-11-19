@@ -1,6 +1,6 @@
 """Metadata and operational constants."""
 
-from datetime import datetime
+import datetime
 from typing import Any
 
 import pandas as pd
@@ -47,7 +47,9 @@ NON_PUDL_SOURCES: dict[str, Any] = {
             unemployed, and retired people, as well as urban wage earners and clerical workers.
             """
         ),
-        "working_partitions": {"years": range(1990, datetime.now().year)},
+        "working_partitions": {
+            "years": range(1990, datetime.datetime.now(datetime.UTC).year)
+        },
         "keywords": sorted(
             {
                 "cpi",

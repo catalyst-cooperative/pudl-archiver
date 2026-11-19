@@ -21,7 +21,7 @@ class BlsCpiArchiver(AbstractDatasetArchiver):
     concurrency_limit = 1  # Cranky old server
 
     start_year = 1990  # Last major revision was in 1987, this seems like a reasonable history to start.
-    end_year = datetime.datetime.now().year
+    end_year = datetime.datetime.now(datetime.UTC).year
 
     base_url = "https://api.bls.gov/publicAPI/v2"
     parameters: ClassVar[dict[str, str | None]] = {
