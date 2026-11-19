@@ -409,6 +409,10 @@ class AbstractDatasetArchiver(ABC):
         response = await retry_async(
             self.session.post if post else self.session.get, args=[url], kwargs=kwargs
         )
+        if (
+            isinstance(response.status, int) and response.status >= 400
+        ):  # Avoid instances of mocked response
+            raise ValueError(f"{response.status} status code received.")
         response_bytes = await retry_async(response.read)
         try:
             json_obj = json.loads(response_bytes.decode("utf-8"))
