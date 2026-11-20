@@ -82,7 +82,7 @@ class EpaPcapArchiver(AbstractDatasetArchiver):
         return ResourceInfo(
             local_path=zip_path,
             partitions={},
-            laybout=ZipLayout(file_paths=data_paths_in_archive),
+            layout=ZipLayout(file_paths=data_paths_in_archive),
         )
 
     async def download_helper(self, filename, link, zip_path, data_paths_in_archive):
