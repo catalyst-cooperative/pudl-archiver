@@ -1,10 +1,19 @@
 """Pytest configuration module."""
 
+import os
 import zipfile
 from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
+
+# Point the PUDL metadata at the checked-in fixture before anything imports
+# pudl_archiver: importing it loads the datapackage, so setting this any later (for
+# example in tests/unit/conftest.py) is too late and the tests fetch it from S3.
+os.environ.setdefault(
+    "PUDL_DATAPACKAGE_PATH",
+    str(Path(__file__).parent / "fixtures" / "datapackage.json"),
+)
 
 from pudl_archiver.frictionless import DataPackage
 
