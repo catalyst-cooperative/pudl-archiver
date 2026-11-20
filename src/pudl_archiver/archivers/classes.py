@@ -435,6 +435,11 @@ class AbstractDatasetArchiver(ABC):
             filter_pattern: If present, only return links that contain pattern.
             verify: Verify ssl certificate (EPACEMS https source has bad certificate).
             headers: Additional headers to send in the GET request.
+
+        Raises:
+            aiohttp.ClientResponseError: if the page still returns an HTTP error after
+                retrying. Otherwise an error page, which has none of the links, would
+                look like a page whose links have changed.
         """
         # Parse web page to get all hyperlinks
         response = await retry_async(
@@ -442,6 +447,7 @@ class AbstractDatasetArchiver(ABC):
             args=[url],
             kwargs={
                 "ssl": verify,
+                "raise_for_status": True,
                 **({"headers": headers} if headers is not None else {}),
             },
         )
