@@ -7,7 +7,7 @@ from io import BytesIO
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, Field, model_serializer
+from pydantic import BaseModel, ConfigDict, Field, model_serializer
 
 from pudl_archiver.metadata.pudl import get_pudl_sources
 from pudl_archiver.metadata.sources import NON_PUDL_SOURCES
@@ -71,6 +71,10 @@ Partitions = dict[str, Any]
 
 class ResourceInfo(BaseModel):
     """Class providing information about downloaded resource."""
+
+    # Reject unknown fields, so a misspelt field name fails loudly instead of being
+    # dropped and silently skipping the checks that depend on it.
+    model_config = ConfigDict(extra="forbid")
 
     local_path: Path
     partitions: Partitions

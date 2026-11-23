@@ -3,7 +3,9 @@
 import random
 from pathlib import Path
 
+import pytest
 from frictionless.package import Package
+from pydantic import ValidationError
 
 from pudl_archiver.archivers.classes import ResourceInfo
 from pudl_archiver.depositors.zenodo.depositor import _resource_from_file
@@ -41,3 +43,13 @@ def test_zenodo_datapackage():
     dp = DataPackage.new_datapackage("ferc1", resources, version="1.0.0")
 
     assert Package.validate_descriptor(dp.model_dump(by_alias=True)).valid
+
+
+def test_resource_info_rejects_unknown_fields():
+    """A misspelt field name should fail, not be dropped silently.
+
+    The EPA PCAP archiver once passed ``laybout=``, so its zip layout was never
+    checked.
+    """
+    with pytest.raises(ValidationError, match="laybout"):
+        ResourceInfo(local_path=Path("a.zip"), partitions={}, laybout=None)
