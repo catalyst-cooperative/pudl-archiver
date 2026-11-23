@@ -33,9 +33,9 @@ class BlsCpiArchiver(AbstractDatasetArchiver):
         years = sorted(year for year in range(self.start_year, self.end_year + 1))
         year_chunks = [years[i : i + 10] for i in range(0, len(years), 10)]
         for chunk in year_chunks:
-            yield self.get_year_resource(chunk)
+            yield self.get_multi_year_resource(chunk)
 
-    async def get_year_resource(self, years: list[int]) -> ResourceInfo:
+    async def get_multi_year_resource(self, years: list[int]) -> ResourceInfo:
         """Download all available data for a year.
 
         Args:
@@ -43,9 +43,10 @@ class BlsCpiArchiver(AbstractDatasetArchiver):
         """
         self.logger.info(f"Archiving BLS data for {years}")
         series_ids = [
-            "CUUR0000SA0",
-            "CUSR0000SA0",
+            "CUUR0000SA0",  # CPI for All Urban Consumers (CPI-U) 1982-84=100 (Unadjusted)
+            "CUSR0000SA0",  # CPI for All Urban Consumers (CPI-U) 1982-84=100 (Seasonally adjusted)
         ]  # Which series to archive - in the future, could expand to multiple,
+        # see https://data.bls.gov/toppicks?survey=bls
         start_year = years[0]
         end_year = years[-1]
 
@@ -59,7 +60,7 @@ class BlsCpiArchiver(AbstractDatasetArchiver):
                 "startyear": str(start_year),
                 "endyear": str(end_year),
                 "seriesid": series_ids,
-                # "annualaverage": True,
+                "annualaverage": True,
             },
             headers={"Content-type": "application/json"},
             post=True,
@@ -78,7 +79,7 @@ class BlsCpiArchiver(AbstractDatasetArchiver):
                 blob=json_file,
             )
 
-        await asyncio.sleep(60)  # This is really a cranky server.
+        await asyncio.sleep(30)  # This is really a cranky server.
 
         return ResourceInfo(
             local_path=archive_path,
