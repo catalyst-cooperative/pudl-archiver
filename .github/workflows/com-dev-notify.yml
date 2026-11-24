@@ -1,0 +1,78 @@
+---
+name: com-dev-notify
+
+on:
+  issues:
+    types: [opened]
+  discussion:
+    types: [created]
+  discussion_comment:
+    types: [created]
+  issue_comment:
+    types: [created]
+  pull_request_target:
+    types: [opened]
+
+env:
+  username: ""
+  url: ""
+  org: catalyst-cooperative
+  ignored_users: '["e-belfer", "krivard"]'
+jobs:
+  com-dev-notify:
+    name: Notify Catalyst of community activity
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get username if an issue was opened
+        if: ${{ github.event_name == 'issues' }}
+        run: |
+          echo "username=${{ github.event.issue.user.login }}" >> "${GITHUB_ENV}"
+          echo "url=${{ github.event.issue.html_url }}" >> "${GITHUB_ENV}"
+
+      - name: Get username if a discussion was created
+        if: ${{ github.event_name == 'discussion' }}
+        run: |
+          echo "username=${{ github.event.discussion.user.login }}" >> "${GITHUB_ENV}"
+          echo "url=${{ github.event.discussion.html_url }}" >> "${GITHUB_ENV}"
+
+      - name: Get username if a discussion comment was created
+        if: ${{ github.event_name == 'discussion_comment' }}
+        run: |
+          echo "username=${{ github.event.comment.user.login }}" >> "${GITHUB_ENV}"
+          echo "url=${{ github.event.comment.html_url }}" >> "${GITHUB_ENV}"
+
+      - name: Get username if a comment was created
+        if: ${{ github.event_name == 'issue_comment' }}
+        run: |
+          echo "username=${{ github.event.comment.user.login }}" >> "${GITHUB_ENV}"
+          echo "url=${{ github.event.comment.html_url }}" >> "${GITHUB_ENV}"
+
+      - name: Get username if a pull request was opened
+        if: ${{ github.event_name == 'pull_request_target' }}
+        run: |
+          echo "username=${{ github.event.pull_request.user.login }}" >> "${GITHUB_ENV}"
+          echo "url=${{ github.event.pull_request.html_url }}" >> "${GITHUB_ENV}"
+
+      - name: Check if organization member
+        id: is_organization_member
+        uses: JamesSingleton/is-organization-member@1.1.0
+        with:
+          organization: ${{ env.org }}
+          username: ${{ env.username }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Send message to ComDev Zulip channel
+        if: >-
+          ${{ steps.is_organization_member.outputs.result == 'false' && !contains(fromJSON(env.ignored_users), env.username) && !endsWith(env.username, '[bot]') }}
+        uses: zulip/github-actions-zulip/send-message@v2
+        with:
+          api-key: ${{ secrets.ZULIP_API_KEY }}
+          email: "build-status-bot@catalyst-cooperative.zulipchat.com"
+          organization-url: "https://catalyst-cooperative.zulipchat.com"
+          type: "stream"
+          to: "com-dev"
+          topic: "Community GitHub Activity"
+          content: >
+            [@${{ env.username }}](https://github.com/${{ env.username }})
+            [is active here](${{ env.url }})
+            in [${{ github.repository }}](https://github.com/${{ github.repository }}).
