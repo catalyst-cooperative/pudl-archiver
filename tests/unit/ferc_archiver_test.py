@@ -186,3 +186,31 @@ async def test_archive_year_metadata(tmpdir):
             ).encode()
             == f.read()
         )
+
+
+async def test_ferc2_browser_only_for_historical_years(mocker):
+    """FERC 2 starts a browser only for the 1991-1995 DBFs, and closes it afterwards."""
+    browser = mocker.AsyncMock()
+    pw = mocker.AsyncMock()
+    pw.webkit.launch.return_value = browser
+    start = mocker.AsyncMock(return_value=pw)
+    mocker.patch(
+        "pudl_archiver.archivers.ferc.ferc2.async_playwright"
+    ).return_value.start = start
+    mocker.patch(
+        "pudl_archiver.archivers.ferc.ferc2.ferc_online_helpers.get_resources_for_form"
+    )
+    mocker.patch("pudl_archiver.archivers.ferc.ferc2.xbrl.archive_xbrl_for_form")
+    mocker.patch.object(Ferc2Archiver, "get_year_dbf")
+
+    archiver = Ferc2Archiver(mocker.AsyncMock(), only_years=[2021])
+    _ = [r async for r in archiver.get_resources()]
+    start.assert_not_called()
+    await archiver.after_download()
+
+    archiver = Ferc2Archiver(mocker.AsyncMock(), only_years=[1993, 2021])
+    _ = [r async for r in archiver.get_resources()]
+    start.assert_awaited_once()
+    await archiver.after_download()
+    browser.close.assert_awaited_once()
+    pw.stop.assert_awaited_once()
