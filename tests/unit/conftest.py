@@ -1,20 +1,9 @@
 """Unit test configuration."""
 
 import json
-import os
 from pathlib import Path
 
 import pytest
-
-# Use the checked-in fixture descriptor so unit tests never fetch from S3.
-os.environ.setdefault(
-    "PUDL_DATAPACKAGE_PATH",
-    str(Path(__file__).parent.parent / "fixtures" / "datapackage.json"),
-)
-os.environ.setdefault(
-    "FERCEQR_DATAPACKAGE_PATH",
-    str(Path(__file__).parent.parent / "fixtures" / "ferceqr_datapackage.json"),
-)
 
 from pudl_archiver.archivers.classes import AbstractDatasetArchiver
 from pudl_archiver.archivers.validate import RunSummary

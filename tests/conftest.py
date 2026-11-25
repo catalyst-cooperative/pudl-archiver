@@ -1,12 +1,22 @@
 """Pytest configuration module."""
 
+import os
 import zipfile
 from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
 
-from pudl_archiver.frictionless import DataPackage
+# Point the PUDL and FERC EQR metadata at the checked-in fixtures before anything
+# imports pudl_archiver: importing it loads the descriptors, so setting these any later
+# (for example in tests/unit/conftest.py) is too late and the tests fetch them from S3.
+FIXTURES = Path(__file__).parent / "fixtures"
+os.environ.setdefault("PUDL_DATAPACKAGE_PATH", str(FIXTURES / "datapackage.json"))
+os.environ.setdefault(
+    "FERCEQR_DATAPACKAGE_PATH", str(FIXTURES / "ferceqr_datapackage.json")
+)
+
+from pudl_archiver.frictionless import DataPackage  # noqa: E402
 
 
 @pytest.fixture()
