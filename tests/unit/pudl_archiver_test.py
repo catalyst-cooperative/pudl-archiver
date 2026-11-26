@@ -112,6 +112,7 @@ async def test_summary_written_when_archiver_changes_directory(
             "ZENODO_SANDBOX_TOKEN_PUBLISH": "bogus too",
         },
     )
+    original_dir = os.getcwd()
     monkeypatch.chdir(tmp_path)
     work_dir = tmp_path / "work"
     work_dir.mkdir()
@@ -125,7 +126,10 @@ async def test_summary_written_when_archiver_changes_directory(
         new=mocker.AsyncMock(side_effect=run_in_work_dir),
     )
     settings = RunSettings(summary_file="eia_run_summary.json")
-    await archive_dataset("eia860", run_settings=settings)
+    try:
+        await archive_dataset("eia860", run_settings=settings)
 
-    assert (tmp_path / "eia_run_summary.json").exists()
-    assert not (work_dir / "eia_run_summary.json").exists()
+        assert (tmp_path / "eia_run_summary.json").exists()
+        assert not (work_dir / "eia_run_summary.json").exists()
+    finally:
+        monkeypatch.chdir(original_dir)
