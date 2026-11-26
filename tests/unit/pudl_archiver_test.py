@@ -1,6 +1,7 @@
 """Test archiver pudl_archiver."""
 
 import os
+from pathlib import Path
 
 import pytest
 
@@ -112,7 +113,7 @@ async def test_summary_written_when_archiver_changes_directory(
             "ZENODO_SANDBOX_TOKEN_PUBLISH": "bogus too",
         },
     )
-    original_dir = os.getcwd()
+    original_dir = Path.cwd()
     monkeypatch.chdir(tmp_path)
     work_dir = tmp_path / "work"
     work_dir.mkdir()
