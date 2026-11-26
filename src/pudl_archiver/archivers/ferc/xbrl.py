@@ -12,7 +12,7 @@ from collections.abc import Callable
 from enum import Enum
 from pathlib import Path
 from typing import Annotated
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlsplit
 from zipfile import ZIP_DEFLATED
 
 import aiohttp
@@ -220,6 +220,123 @@ class FilingMetadata(BaseModel):
         )
 
 
+FERC_TAXONOMY_HOST = "ecollection.ferc.gov"
+"""The host that serves every FERC XBRL taxonomy file."""
+
+EXPECTED_NON_FERC_HOSTS = frozenset({"www.xbrl.org", "xbrl.fasb.org"})
+"""Hosts of the generic XBRL files that FERC taxonomies reference, which we don't archive.
+
+A search of every FERC taxonomy found files from only these hosts besides FERC's own. Any
+other host is logged, in case FERC starts referencing files from somewhere new.
+"""
+
+
+def _is_ferc_taxonomy_url(url: str) -> bool:
+    """Whether a URL points to a file in one of FERC's own taxonomies.
+
+    Checks the scheme, the exact host and the path, so that e.g. ``evilferc.gov`` or
+    ``ferc.gov.example.com`` don't match but ``ECOLLECTION.FERC.GOV`` does
+    (``urlsplit`` lowercases the hostname and drops any port or user info).
+    """
+    parts = urlsplit(url)
+    return (
+        parts.scheme == "https"
+        and parts.hostname == FERC_TAXONOMY_HOST
+        and parts.path.startswith("/taxonomy/")
+    )
+
+
+def _log_unexpected_host(url: str) -> None:
+    """Log a skipped taxonomy file whose host we haven't seen before."""
+    host = urlsplit(url).hostname
+    if host not in EXPECTED_NON_FERC_HOSTS:
+        logger.warning(f"Skipping taxonomy file from an unexpected host: {url}")
+
+
+class TaxonomyLoadError(RuntimeError):
+    """Arelle could not load every FERC file that makes up a taxonomy."""
+
+
+class LoadedTaxonomy:
+    """A taxonomy loaded by Arelle, with the controller that loaded it.
+
+    Use as a context manager, so that the model and controller are both closed (and the
+    controller's log handler removed) once the taxonomy has been archived.
+    """
+
+    def __init__(self, cntlr: Cntlr.Cntlr, model: ModelXbrl.ModelXbrl):
+        """Hold the controller and the taxonomy model it loaded."""
+        self.cntlr = cntlr
+        self.model = model
+
+    def close(self) -> None:
+        """Close the taxonomy model, then the controller and its log handler."""
+        try:
+            self.model.close()
+        finally:
+            self.cntlr.close()
+
+    def __enter__(self) -> ModelXbrl.ModelXbrl:
+        """Return the taxonomy model."""
+        return self.model
+
+    def __exit__(self, *exc_info) -> None:
+        """Close the model and controller."""
+        self.close()
+
+
+def _load_taxonomy(taxonomy_entry_point: str) -> LoadedTaxonomy:
+    """Use Arelle to load a taxonomy, and every file it references.
+
+    When Arelle can't load one of the files that make up a taxonomy (e.g. because a
+    download failed), it logs a ``FileNotLoadable`` error and carries on without it,
+    rather than raising. The taxonomy would then be archived with that file silently
+    missing, so raise instead, which lets the caller retry. Only FERC's own files count:
+    the generic XBRL files a taxonomy references from other hosts aren't archived.
+
+    Every failure is retried, because we can't reliably tell a file that is missing for
+    good from a transient refusal. As of November 2026, FERC's server answers a GET for a
+    missing taxonomy file with HTTP 400 and the body ``{"reason":"File Not Found."}``
+    (not 404), it reportedly also uses 400 rather than 429 when rate-limiting, and a HEAD
+    request for a missing file returns 200. So neither a status code nor a HEAD probe
+    distinguishes the two; only the body of a GET would, and Arelle doesn't expose it.
+    A missing file therefore fails the run once the retries are used up.
+
+    Each attempt uses its own controller. If the taxonomy can't be loaded, the model
+    and controller are closed before raising, so failed attempts don't accumulate open
+    models or log handlers.
+
+    Args:
+        taxonomy_entry_point: URL of the file that is the entry point to the taxonomy.
+    """
+    cntlr = Cntlr.Cntlr()
+    cntlr.startLogging(logFileName="logToPrint")
+    loaded = None
+    try:
+        model_manager = ModelManager.initialize(cntlr)
+        loaded = LoadedTaxonomy(
+            cntlr, ModelXbrl.load(model_manager, taxonomy_entry_point)
+        )
+        # Arelle maps each file it had trouble with to whether it was blocked from loading
+        unloadable = sorted(
+            url
+            for url, blocked in loaded.model.urlUnloadableDocs.items()
+            if blocked and _is_ferc_taxonomy_url(url)
+        )
+        if unloadable:
+            raise TaxonomyLoadError(
+                f"Arelle could not load {len(unloadable)} file(s) of the taxonomy "
+                f"{taxonomy_entry_point}: {', '.join(unloadable)}"
+            )
+    except BaseException:
+        if loaded is not None:
+            loaded.close()
+        else:
+            cntlr.close()
+        raise
+    return loaded
+
+
 async def archive_taxonomies(
     taxonomies_referenced: set[str],
     form: FercForm,
@@ -250,30 +367,33 @@ async def archive_taxonomies(
             logger.info(f"Archiving {taxonomy_entry_point}.")
 
             # Use Arelle to parse taxonomy
-            cntlr = Cntlr.Cntlr()
-            cntlr.startLogging(logFileName="logToPrint")
-            model_manager = ModelManager.initialize(cntlr)
-            taxonomy = await retry_async(
+            loaded = await retry_async(
                 asyncio.to_thread,
-                args=[ModelXbrl.load, model_manager, taxonomy_entry_point],
-                retry_on=(FileNotFoundError, FileExistsError),
+                args=[_load_taxonomy, taxonomy_entry_point],
+                retry_on=(FileNotFoundError, FileExistsError, TaxonomyLoadError),
             )
 
             # Loop through all files and save to appropriate location in archive
             archive_files = set()
             taxonomy_buffer = io.BytesIO()
-            with zipfile.ZipFile(
-                taxonomy_buffer, "w", compression=ZIP_DEFLATED
-            ) as taxonomy_archive:
+            with (
+                loaded as taxonomy,
+                zipfile.ZipFile(
+                    taxonomy_buffer, "w", compression=ZIP_DEFLATED
+                ) as taxonomy_archive,
+            ):
                 for url in taxonomy.urlDocs:
                     url_parsed = urlparse(url)
 
-                    # There are some generic XML/XBRL files in the taxonomy that should be skipped
-                    if not url_parsed.netloc.endswith("ferc.gov"):
+                    # Skip the generic XML/XBRL files the taxonomy references
+                    if not _is_ferc_taxonomy_url(url):
+                        _log_unexpected_host(url)
                         continue
 
                     # Download file
-                    response = await retry_async(session.get, args=[url])
+                    response = await retry_async(
+                        session.get, args=[url], kwargs={"raise_for_status": True}
+                    )
                     response_bytes = await retry_async(response.content.read)
                     path = Path(url_parsed.path).relative_to("/")
                     archive_files.add(path)
